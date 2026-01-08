@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Sistema de Gerenciamento P3</title>
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+        <main>
+            <div class="saudacao">
+                <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
+                <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
+            </div>
+
+            <section class="dashboard">
+                <a href="mvi.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/skull.png" alt="skull" />
+                    <p>MVI - Mortes Violentas</p>
+                    <p class="numero">0</p>
+                </a>
+                <a href="cvp.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/robber.png" alt="robber" />
+                    <p>CVP - Crimes Contra o Patrimônio</p>
+                    <p class="numero">3</p>
+                </a>
+                <a href="tco.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/morale.png" alt="morale" />
+                    <p>TCO - Termos Circunstanciados</p>
+                    <p class="numero">50</p>
+                </a>
+                <a href="violenciadomestica.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/windows/32/hand.png" alt="hand" />
+                    <p>Violência Doméstica</p>
+                    <p class="numero">20</p>
+                </a>
+                <div class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/gun.png" alt="gun" />
+                    <p>Armas Apreenndidas</p>
+                    <p class="numero">50</p>
+                </div>
+                <a href="drogas.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/marijuana-leaf.png"
+                        alt="marijuana-leaf" />
+                    <p>Drogas Apreendidas</p>
+                    <p class="numero">50</p>
+                </a>
+                <a href="ait.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios-glyphs/30/policeman-male.png"
+                        alt="policeman-male" />
+                    <p>Infrações de Trânsito</p>
+                    <p class="numero" id="numeroait">50</p>
+                </a>
+                <a href="materiais.html" class="btn">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                    <p>Materiais Apreendidos</p>
+                    <p class="numero">50</p>
+                </a>
+                <a href="mandado.html" class="btn">
+                    <img width="50" height="50"
+                        src="https://img.icons8.com/external-outlines-amoghdesign/32/external-balance-law-crime-and-justice-outlines-amoghdesign.png"
+                        alt="external-balance-law-crime-and-justice-outlines-amoghdesign" />
+                    <p>Cumprimentos de Mandados</p>
+                    <p class="numero">50</p>
+                </a>
+                <div class="btn">
+                    <img width="50" height="50"
+                        src="https://img.icons8.com/external-xnimrodx-lineal-xnimrodx/64/external-boombox-music-xnimrodx-lineal-xnimrodx.png"
+                        alt="external-boombox-music-xnimrodx-lineal-xnimrodx" />
+                    <p>Perturbação do Sossego</p>
+                    <p class="numero">3200</p>
+                </div>
+
+            </section>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script>
+        // **ATENÇÃO: SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU GOOGLE APPS SCRIPT**
+        const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
+
+        // --- FUNÇÕES AUXILIARES DE AIT (NOVO CÓDIGO) ---
+
+        // Função auxiliar de comunicação com o Apps Script
+        async function fetchDataIndex(action, method = 'GET', params = {}) {
+            const url = new URL(WEBAPP_URL_AIT);
+            url.searchParams.append('action', action);
+
+            const options = {
+                method: method,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            };
+
+            if (method === 'GET') {
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            }
+
+            try {
+                const response = await fetch(url.toString(), options);
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+                return response.json();
+            } catch (error) {
+                console.error('Erro na comunicação com o App Script:', error);
+                return { status: 'error', message: 'Falha na conexão com o sistema de dados.' };
+            }
+        }
+
+        // Função principal para buscar e exibir o total de AITs do ano
+        async function updateAITCount() {
+            const element = document.getElementById('numeroait');
+            if (!element) {
+                console.warn('Elemento com ID "numeroait" não encontrado. O contador não será exibido.');
+                return;
+            }
+
+            element.textContent = '...'; // Placeholder de carregamento
+
+            // Chama a nova função no Apps Script
+            const result = await fetchDataIndex('countAITByYear', 'GET');
+
+            if (result.status === 'success') {
+                const currentYear = new Date().getFullYear();
+                // Atualiza o parágrafo com o resultado
+                element.textContent = result.count;
+            } else {
+                console.error('Falha ao contar AITs:', result.message);
+                element.textContent = 'ERRO';
+            }
+        }
+
+
+        // --- CÓDIGO DO RELÓGIO (EXISTENTE) ---
+
+        // Função para formatar e exibir a data/hora
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+            const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+        }
+
+        atualizarRelogio();
+        setInterval(atualizarRelogio, 1000);
+
+        // --- CÓDIGO PARA LOGIN/LOGOUT (EXISTENTE) ---
+
+        // 1. Função para verificar o login e exibir a info
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+
+            if (graduacao && nomeGuerra) {
+                userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+            } else {
+                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 2. Função de Logout
+        function logout() {
+            localStorage.removeItem('userGraduacao');
+            localStorage.removeItem('userNomeGuerra');
+            alert('Logout realizado com sucesso!');
+            window.location.href = 'login.html';
+        }
+
+        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin();
+
+            const btnLogout = document.getElementById('btn-logout');
+
+            if (btnLogout) {
+                btnLogout.addEventListener('click', logout);
+                console.log("Logout Listener anexado com sucesso.");
+            } else {
+                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+            }
+
+            // CHAMA A FUNÇÃO DE CONTADOR DO AIT AO CARREGAR A PÁGINA
+            updateAITCount();
+        });
+    </script>
+</body>
+
+</html>

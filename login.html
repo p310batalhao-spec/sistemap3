@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 | Login/Cadastro</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body class="login-page-body">
+    <main class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <img class="brasao-login" src="brasao.png" alt="Brasão do 10º Batalhão">
+                <h2 id="form-title">Acesso ao Sistema P3</h2>
+                <h3>10º Batalhão de Polícia Militar</h3>
+            </div>
+
+            <form id="login-form" action="#" method="POST" class="form-active">
+                <div class="input-group">
+                    <label for="username">CPF (Usuário)</label>
+                    <input type="text" id="username" name="username" placeholder="Digite seu CPF (apenas números)"
+                        required>
+                </div>
+                <div class="input-group">
+                    <label for="password">Senha</label>
+                    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
+                </div>
+
+                <button type="submit" class="btn-login-moderno" id="btn-login">Entrar</button>
+            </form>
+
+            <form id="cadastro-form" action="#" method="POST" class="form-hidden">
+                <div class="input-group">
+                    <label for="reg-graduacao">Graduação</label>
+                    <select id="reg-graduacao" name="GRADUACAO" required>
+                        <option value="">Selecione sua graduação</option>
+                        <option value="SD">SD</option>
+                        <option value="CB">CB</option>
+                        <option value="3º SGT">3º SGT</option>
+                        <option value="2º SGT">2º SGT</option>
+                        <option value="1º SGT">1º SGT</option>
+                        <option value="SUBTEN">SUBTEN</option>
+                        <option value="ASP OF">ASP OF</option>
+                        <option value="2º TEN">2º TEN</option>
+                        <option value="1º TEN">1º TEN</option>
+                        <option value="CAP">CAP</option>
+                        <option value="MAJ">MAJ</option>
+                        <option value="TEN CEL">TEN CEL</option>
+                        <option value="CEL">CEL</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="reg-nome">Nome Completo</label>
+                    <input type="text" id="reg-nome" name="NOME" placeholder="Digite seu nome completo" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-nome-guerra">Nome de Guerra (Opcional)</label>
+                    <input type="text" id="reg-nome-guerra" name="NOME_DE_GUERRA" placeholder="Ex: SGT João">
+                </div>
+                <div class="input-group">
+                    <label for="reg-cpf">CPF (Será seu Usuário)</label>
+                    <input type="text" id="reg-cpf" name="CPF" placeholder="Apenas números" required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-senha">Senha</label>
+                    <input type="password" id="reg-senha" name="SENHA" placeholder="Crie uma senha (mín. 6 caracteres)"
+                        required>
+                </div>
+                <div class="input-group">
+                    <label for="reg-confirma-senha">Confirme a Senha</label>
+                    <input type="password" id="reg-confirma-senha" placeholder="Confirme a senha" required>
+                </div>
+
+                <button type="submit" class="btn-login-moderno" id="btn-cadastro">Cadastrar</button>
+            </form>
+
+
+            <div class="login-footer">
+                <a href="#" id="toggle-form" class="link-recuperar-senha">Não tem conta? Cadastre-se!</a>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script>
+        // ** ATUALIZE AQUI ** com a URL de Implantação do seu Google Apps Script
+        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyU6ByxTQZmZ_dwiuDr8_baml31J3QnO5mjgV9wFtFpZhnCDmpStbI8-NT6fmxhoDF6aA/exec';
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const loginForm = document.getElementById('login-form');
+            const cadastroForm = document.getElementById('cadastro-form');
+            const toggleLink = document.getElementById('toggle-form');
+            const formTitle = document.getElementById('form-title');
+            const btnLogin = document.getElementById('btn-login');
+            const btnCadastro = document.getElementById('btn-cadastro');
+
+            // -----------------------------------------------------------
+            // FUNÇÃO DE TOGGLE (MUDAR DE LOGIN PARA CADASTRO E VICE-VERSA)
+            // -----------------------------------------------------------
+
+            function toggleForm(isRegister) {
+                if (isRegister) {
+                    // Mudar para Cadastro
+                    loginForm.style.display = 'none';
+                    cadastroForm.style.display = 'block';
+                    formTitle.textContent = 'Cadastro de Novo Usuário';
+                    toggleLink.innerHTML = 'Já tem conta? Faça Login!';
+                } else {
+                    // Mudar para Login
+                    loginForm.style.display = 'block';
+                    cadastroForm.style.display = 'none';
+                    formTitle.textContent = 'Acesso ao Sistema P3';
+                    toggleLink.innerHTML = 'Não tem conta? Cadastre-se!';
+                }
+            }
+
+            // Inicializa mostrando o formulário de login
+            toggleForm(false);
+
+            // Listener para o link de toggle
+            toggleLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                const isCurrentlyLogin = loginForm.style.display !== 'none';
+                toggleForm(isCurrentlyLogin);
+            });
+
+
+            // -----------------------------------------------------------
+            // LÓGICA DE LOGIN
+            // -----------------------------------------------------------
+
+            loginForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                handleLogin();
+            });
+
+            async function handleLogin() {
+                const username = document.getElementById('username').value.replace(/[^0-9]/g, ''); // Limpa o CPF
+                const password = document.getElementById('password').value;
+
+                if (!username || !password) {
+                    alert('Por favor, preencha o CPF e a Senha.');
+                    return;
+                }
+
+                btnLogin.disabled = true;
+                btnLogin.textContent = 'Verificando...';
+
+                try {
+                    const response = await fetch(WEBAPP_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'login',
+                            username: username,
+                            password: password
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+
+                        // =======================================================
+                        // CRÍTICO: SALVANDO A SESSÃO NO LOCALSTORAGE (CÓDIGO ADICIONADO!)
+                        // O `result.user` vem do seu Apps Script (Code.gs)
+                        localStorage.setItem('userGraduacao', result.user.graduacao);
+                        localStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
+                        // =======================================================
+
+                        alert(result.message);
+                        window.location.href = result.redirect;
+
+                    } else {
+                        alert('Falha no login: ' + result.message);
+                    }
+
+                } catch (error) {
+                    console.error('Erro de rede/servidor:', error);
+                    alert('Erro de conexão ao tentar fazer login.');
+                } finally {
+                    btnLogin.disabled = false;
+                    btnLogin.textContent = 'Entrar';
+                }
+            }
+
+            // -----------------------------------------------------------
+            // LÓGICA DE CADASTRO
+            // -----------------------------------------------------------
+
+            cadastroForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                handleRegistration();
+            });
+
+            async function handleRegistration() {
+                const grad = document.getElementById('reg-graduacao').value;
+                const nome = document.getElementById('reg-nome').value;
+                const nomeGuerra = document.getElementById('reg-nome-guerra').value;
+                const cpf = document.getElementById('reg-cpf').value.replace(/[^0-9]/g, ''); // Limpa e usa apenas números
+                const senha = document.getElementById('reg-senha').value;
+                const confirmaSenha = document.getElementById('reg-confirma-senha').value;
+
+                if (!grad || !nome || !cpf || !senha || !confirmaSenha) {
+                    alert('Por favor, preencha todos os campos obrigatórios.');
+                    return;
+                }
+
+                if (senha.length < 6) {
+                    alert('A senha deve ter pelo menos 6 caracteres.');
+                    return;
+                }
+
+                if (senha !== confirmaSenha) {
+                    alert('As senhas digitadas não coincidem.');
+                    return;
+                }
+
+                btnCadastro.disabled = true;
+                btnCadastro.textContent = 'Cadastrando...';
+
+                try {
+                    const response = await fetch(WEBAPP_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'register',
+                            GRADUACAO: grad,
+                            NOME: nome,
+                            NOME_DE_GUERRA: nomeGuerra,
+                            CPF: cpf,
+                            SENHA: senha
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        alert(result.message);
+                        // Limpa o formulário e retorna para a tela de login
+                        cadastroForm.reset();
+                        toggleForm(false);
+                    } else {
+                        alert('Falha no cadastro: ' + result.message);
+                    }
+
+                } catch (error) {
+                    console.error('Erro de rede/servidor:', error);
+                    alert('Erro de conexão ao tentar cadastrar o usuário.');
+                } finally {
+                    btnCadastro.disabled = false;
+                    btnCadastro.textContent = 'Cadastrar';
+                }
+            }
+
+        });
+    </script>
+</body>
+
+</html>

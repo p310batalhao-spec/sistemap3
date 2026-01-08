@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Materiais Apreendidos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html" class="active">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="TabelaEventos">
+                <h3>Cadastro e Gerenciamento de Materiais Apreendidos</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Novo Material
+                    </button>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="N° DO BOU">N° BOU</option>
+                        <option value="DATA">Data</option>
+                        <option value="CATEGORIA">Categoria</option>
+                        <option value="ESAJ">ESAJ</option>
+                        <option value="STATUS">Status</option>
+                        <option value="LOCAL">Local</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                    <div class="actions-bar">
+                        <button id="btn-imprimir" class="action-button primary-button">
+                            <img width="24" height="24" src="https://img.icons8.com/material-outlined/24/print.png"
+                                alt="Imprimir" /></button>
+                    </div>
+                </div>
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>IDMaterial</th>
+                                <th>N° DO BOU</th>
+                                <th>DATA</th>
+                                <th>CATEGORIA</th>
+                                <th>DESCRIÇÃO</th>
+                                <th>LOCAL DO DEPÓSITO</th>
+                                <th>DATA DE DEPOSITO</th>
+                                <th>ESAJ</th>
+                                <th>STATUS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </section>
+</body>
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+
+<script>
+    // Armazenamento global dos dados brutos
+    let allMateriais = [];
+
+    // -------------------------------------------------------------------
+    // CONFIGURAÇÃO DA API GOOGLE APPS SCRIPT
+    // -------------------------------------------------------------------
+    // COLOQUE A NOVA URL DE IMPLANTAÇÃO AQUI
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
+
+    // CHAVES DA PLANILHA DE MATERIAIS
+    const chavesMateriais = [
+        'IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO',
+        'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'
+    ];
+
+    const chavesEditaveis = chavesMateriais.filter(key => key !== 'IDMaterial');
+
+    // Opções de Status
+    const STATUS_OPTIONS = ['PROTOCOLADO', 'PENDENTE', 'ARQUIVADO', 'DEVOLVIDO', 'EM TRÂNSITO'];
+
+    // Função para criar o elemento SELECT de status
+    function createStatusSelect(cell, currentValue) {
+        // Se a célula já contém o select, não faça nada
+        if (cell.querySelector('select')) return;
+
+        // Armazena o valor atual para que possa ser usado pelo saveData
+        cell.dataset.previousValue = currentValue;
+
+        cell.innerHTML = ''; // Limpa o conteúdo (badge)
+        cell.removeAttribute('contenteditable'); // Remove editável padrão
+
+        const select = document.createElement('select');
+        select.classList.add('status-select');
+
+        STATUS_OPTIONS.forEach(optionText => {
+            const option = document.createElement('option');
+            option.value = optionText;
+            option.textContent = optionText;
+            if (optionText === currentValue) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        // REQUISIÇÃO 3: Removido o salvamento automático no evento 'change'
+        select.addEventListener('blur', function () {
+            // Se perder o foco, mas não mudou o valor, ou se a mudança não é automática,
+            // podemos apenas redesenhar o badge.
+            const row = cell.closest('tr');
+            const newStatus = select.value;
+
+            // Encontra a célula de Ações e habilita o botão de Salvar
+            const acoesCell = row.cells[row.cells.length - 1];
+            const saveButton = acoesCell.querySelector('.btn-salvar-evento');
+            if (saveButton) {
+                saveButton.style.backgroundColor = 'red';
+                saveButton.textContent = 'Salvar Edição';
+            }
+        });
+
+        cell.appendChild(select);
+        select.focus(); // Foca no select
+    }
+
+    // Função para redesenhar o badge na célula, usado após o salvamento
+    function redrawStatusBadge(cell, statusValue) {
+        const status = statusValue ? String(statusValue).toUpperCase() : 'PENDENTE';
+        const statusClass = status.replace(/[^A-Z0-9]/g, '').toLowerCase();
+
+        cell.innerHTML = `<span class="status-badge status-${statusClass}">${status}</span>`;
+        cell.setAttribute('contenteditable', 'true'); // Restaura o contenteditable para as outras células
+
+        // Adiciona evento de clique novamente para reabrir o select
+        cell.addEventListener('click', (e) => {
+            if (e.target.classList.contains('status-badge')) {
+                // A célula pai (td) deve ser passada, não o span do badge
+                createStatusSelect(cell, status);
+            }
+        }, { once: true }); // Executa apenas uma vez e se remove
+    }
+
+    // -------------------------------------------------------------------
+    // LÓGICA DE RENDERIZAÇÃO E EDIÇÃO DA TABELA
+    // -------------------------------------------------------------------
+
+    function renderTable(dataToRender) {
+        const tbody = document.querySelector('#tabela-materiais tbody');
+        const mensagem = document.getElementById('mensagem-carregamento');
+        tbody.innerHTML = ''; // Limpa a tabela
+
+        if (dataToRender && dataToRender.length) {
+            mensagem.style.display = 'none';
+
+            dataToRender.forEach(item => {
+                const row = tbody.insertRow();
+
+                // 1. IDMaterial (Oculto pelo CSS)
+                row.insertCell().textContent = item.IDMaterial || '';
+
+                // 2. Dados editáveis
+                chavesEditaveis.forEach(key => {
+                    const cell = row.insertCell();
+                    cell.dataset.campo = key;
+
+                    if (key === 'STATUS') {
+                        const statusValue = item[key] ? String(item[key]).toUpperCase() : 'PENDENTE';
+
+                        // Renderiza como badge (modo de exibição)
+                        redrawStatusBadge(cell, statusValue); // Reutiliza a função de redesenho
+
+                        // O event listener para clique no badge é adicionado dentro de redrawStatusBadge
+
+                    } else {
+                        // Outras células permanecem editáveis por texto
+                        cell.textContent = item[key] || '';
+                        cell.setAttribute('contenteditable', 'true');
+                    }
+                });
+
+                // 3. Coluna de Ações
+                const acoesCell = row.insertCell();
+                acoesCell.innerHTML = `
+                    <button class="btn-salvar-evento" data-id="${item.IDMaterial}">Salvar</button>
+                    <button class="btn-deletar-evento" data-id="${item.IDMaterial}">Deletar</button>
+                    `;
+            });
+        } else {
+            mensagem.textContent = 'Nenhum material apreendido encontrado com os filtros aplicados.';
+            mensagem.style.display = 'block';
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // LÓGICA DE FILTRO 
+    // -------------------------------------------------------------------
+
+    function filterData() {
+        // ... (filterData function remains the same)
+        const filtroTipo = document.getElementById('filtro-tipo').value;
+        const filtroValor = document.getElementById('filtro-valor-text').value;
+
+        const btnLimpar = document.getElementById('btn-limpar-filtro');
+
+        if (!filtroTipo || !filtroValor) {
+            renderTable(allMateriais);
+            btnLimpar.style.display = 'none';
+            return;
+        }
+
+        btnLimpar.style.display = 'inline-block';
+
+        const filtered = allMateriais.filter(item => {
+            let itemValue = String(item[filtroTipo] || '').toUpperCase();
+            let filterValue = String(filtroValor).toUpperCase();
+
+            if (filtroTipo === 'DATA' || filtroTipo === 'DATA DE DEPOSITO') {
+                return itemValue === filterValue;
+            } else {
+                return itemValue.includes(filterValue);
+            }
+        });
+
+        renderTable(filtered);
+    }
+
+    // -------------------------------------------------------------------
+    // COMUNICAÇÃO COM GOOGLE APPS SCRIPT
+    // -------------------------------------------------------------------
+
+    async function fetchData() {
+        // ... (fetchData function remains the same)
+        const mensagem = document.getElementById('mensagem-carregamento');
+
+        try {
+            mensagem.textContent = 'Carregando dados, aguarde...';
+            mensagem.style.color = 'gray';
+            mensagem.style.display = 'block';
+
+            const response = await fetch(`${WEBAPP_URL}?action=read`);
+
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                throw new Error(`Erro interno do Apps Script: ${data.message}`);
+            }
+
+            allMateriais = data;
+            renderTable(allMateriais);
+
+        } catch (error) {
+            console.error("Erro ao buscar dados:", error);
+            mensagem.textContent = `Erro ao conectar com a base de dados: ${error.message}. Verifique a WEBAPP_URL.`;
+            mensagem.style.color = 'red';
+        }
+    }
+
+    async function saveData(rowElement, isNew = false) {
+        const data = {};
+        data.action = isNew ? 'create' : 'update';
+
+        if (!isNew) {
+            const idCell = rowElement.cells[0];
+            data.IDMaterial = idCell.textContent.trim();
+            if (!data.IDMaterial) {
+                alert('Erro: não foi possível obter o ID para atualização.');
+                return;
+            }
+        } else {
+            data.IDMaterial = '';
+        }
+
+        chavesEditaveis.forEach((key, index) => {
+            const cellIndexInRow = index + 1;
+            const cell = rowElement.cells[cellIndexInRow];
+
+            if (key === 'STATUS') {
+                // Se for um select, pega o valor do select
+                const selectElement = cell.querySelector('.status-select');
+                if (selectElement) {
+                    data[key] = selectElement.value.trim();
+                } else {
+                    // Se for um badge (já redesenhado), pega o valor do badge
+                    const badgeElement = cell.querySelector('.status-badge');
+                    data[key] = badgeElement ? badgeElement.textContent.trim() : cell.textContent.trim();
+                }
+            } else {
+                data[key] = cell.textContent.trim();
+            }
+        });
+
+        try {
+            const response = await fetch(WEBAPP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(data)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert('Dados salvos com sucesso!');
+                fetchData();
+            } else {
+                alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido.'));
+            }
+        } catch (error) {
+            console.error('Erro na comunicação com o servidor:', error);
+            alert('Erro de conexão ao tentar salvar os dados.');
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // INICIALIZAÇÃO DE EVENTOS
+    // -------------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', function () {
+        fetchData();
+
+        // Event Listener para Salvar / Deletar (delegado)
+        document.querySelector('#tabela-materiais tbody').addEventListener('click', function (event) {
+            const target = event.target;
+            if (target.classList.contains('btn-salvar-evento')) {
+                const row = target.closest('tr');
+                const isNew = target.classList.contains('new-row');
+                saveData(row, isNew);
+            }
+            if (target.classList.contains('btn-deletar-evento')) {
+                alert('Implemente aqui a função deleteMaterial() para exclusão.');
+            }
+        });
+
+        // Event Listener para Adicionar Novo Material
+        document.getElementById('btn-adicionar-cadastro').addEventListener('click', function () {
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            const row = tbody.insertRow(0);
+
+            row.insertCell().textContent = 'NOVO';
+
+            chavesEditaveis.forEach(key => {
+                const cell = row.insertCell();
+                cell.dataset.campo = key;
+
+                if (key === 'STATUS') {
+                    // Para uma nova linha, exibe imediatamente o select
+                    createStatusSelect(cell, 'PENDENTE');
+                } else {
+                    cell.textContent = '';
+                    cell.setAttribute('contenteditable', 'true');
+                }
+            });
+
+            const acoesCell = row.insertCell();
+            acoesCell.innerHTML = `<button class="btn-salvar-evento new-row">Criar</button>`;
+
+            row.classList.add('new-row-highlight');
+        });
+
+        // Lógica para os campos de filtro
+        const filtroTipoEl = document.getElementById('filtro-tipo');
+        const btnAplicarEl = document.getElementById('btn-aplicar-filtro');
+        const btnLimparEl = document.getElementById('btn-limpar-filtro');
+
+        btnAplicarEl.addEventListener('click', filterData);
+
+        btnLimparEl.addEventListener('click', function () {
+            filtroTipoEl.value = '';
+            document.getElementById('filtro-valor-text').value = '';
+
+            filterData();
+            this.style.display = 'none';
+        });
+
+    });
+
+    // -------------------------------------------------------------------
+    // Relógio
+    // -------------------------------------------------------------------
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const el = document.getElementById('relogio');
+        if (el) {
+            el.innerHTML = dataFormatada + '<br>' + horaFormatada;
+        }
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+    // --- CÓDIGO PARA LOGIN/LOGOUT ---
+
+    // 1. Função para verificar o login e exibir a info
+    function checkLogin() {
+        // Assume que as informações de sessão (graduação e nome de guerra)
+        // foram salvas no localStorage após o login bem-sucedido no login.html
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
+
+        if (graduacao && nomeGuerra) {
+            // Usuário logado: Exibe as informações
+            userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+        } else {
+            // Usuário não logado: Redireciona para o login
+            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+            window.location.href = 'login.html';
+        }
+    }
+
+    // 2. Função de Logout
+    function logout() {
+        // Remove as informações de sessão
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
+
+        // Redireciona para a tela de login
+        alert('Logout realizado com sucesso!');
+        window.location.href = 'login.html';
+    }
+
+    // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
+    document.addEventListener('DOMContentLoaded', function () {
+        checkLogin(); // Garante que a página só é exibida se houver login
+
+        const btnLogout = document.getElementById('btn-logout');
+
+        if (btnLogout) {
+            // O botão foi encontrado no DOM, anexa o evento
+            btnLogout.addEventListener('click', logout);
+            console.log("Logout Listener anexado com sucesso.");
+        } else {
+            // O botão NÃO foi encontrado, exibe erro no console
+            console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+        }
+    });
+
+// 4. NOVA FUNÇÃO: Imprimir apenas o conteúdo da tabela, com cabeçalho personalizado
+
+
+</script>
+
+</html>

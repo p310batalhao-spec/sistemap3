@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - MVI</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+ <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+         <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao">
+                <h2>Crimes Violentos Letais e Intensionais</h2>
+                <p>Homicídio, Tentativa de Homicídio, Infanticídio, Feminicídio</p>
+            </div>
+            <div class="TabelaEventos">
+                <h3>Cadastro de CVLI</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Novo CVLI
+                    </button>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="N° DO BOU">N° BOU</option>
+                        <option value="DATA">Data</option>
+                        <option value="CATEGORIA">Categoria</option>
+                        <option value="ESAJ">ESAJ</option>
+                        <option value="STATUS">Status</option>
+                        <option value="LOCAL">Local</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                </div>
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>IDMaterial</th>
+                                <th>N° DO BOU</th>
+                                <th>DATA</th>
+                                <th>CATEGORIA</th>
+                                <th>DESCRIÇÃO</th>
+                                <th>LOCAL DO DEPÓSITO</th>
+                                <th>DATA DE DEPOSITO</th>
+                                <th>ESAJ</th>
+                                <th>STATUS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </section>
+</body>
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+<script>
+
+        // Função para formatar e exibir a data/hora
+    function atualizarRelogio() {
+        const agora = new Date();
+
+        // Opções para o formato da data em Português do Brasil
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+
+        // Opções para o formato da hora (inclui segundos)
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        // Exibe no elemento relógio, separando data e hora por uma quebra de linha
+        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    }
+
+    // Chama a função uma vez para carregar imediatamente
+    atualizarRelogio();
+
+    //FUNÇÃO DO IFRAME PARA CARREGAR OS DADOS DO CARD NA MESMA PÁGINA.
+    // Configura para atualizar a cada 1000 milissegundos (1 segundo)
+    setInterval(atualizarRelogio, 1000);
+                // --- CÓDIGO PARA LOGIN/LOGOUT ---
+
+        // 1. Função para verificar o login e exibir a info
+        function checkLogin() {
+            // Assume que as informações de sessão (graduação e nome de guerra)
+            // foram salvas no localStorage após o login bem-sucedido no login.html
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+
+            if (graduacao && nomeGuerra) {
+                // Usuário logado: Exibe as informações
+                userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+            } else {
+                // Usuário não logado: Redireciona para o login
+                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 2. Função de Logout
+        function logout() {
+            // Remove as informações de sessão
+            localStorage.removeItem('userGraduacao');
+            localStorage.removeItem('userNomeGuerra');
+
+            // Redireciona para a tela de login
+            alert('Logout realizado com sucesso!');
+            window.location.href = 'login.html';
+        }
+
+        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin(); // Garante que a página só é exibida se houver login
+
+            const btnLogout = document.getElementById('btn-logout');
+
+            if (btnLogout) {
+                // O botão foi encontrado no DOM, anexa o evento
+                btnLogout.addEventListener('click', logout);
+                console.log("Logout Listener anexado com sucesso.");
+            } else {
+                // O botão NÃO foi encontrado, exibe erro no console
+                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+            }
+        });
+</script>

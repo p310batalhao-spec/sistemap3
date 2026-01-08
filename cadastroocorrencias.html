@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Ocorrências</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+     <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+         <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html" class="active">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html" >
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="ConteudoCadastro">
+                <h3>Upload e Processamento de Documento</h3>
+                <div class="orgupload">
+                    <p>Selecione um arquivo PDF ou XML para o processamento:</p>
+                    <input type="file" name="Upload" id="Upload">
+                    <button>Processar Documento</button>
+                </div>
+            </div>
+
+            <div class="TabelaCadastro">
+                <h3>Dados Extraídos e Edição Manual</h3>
+
+                <div class="tabela-container">
+                    <table id="tabela-dados">
+                        <thead>
+                            <tr>
+                                <th>Nº COP</th>
+                                <th>Tipificação</th>
+                                <th>Data Abertura</th>
+                                <th>Hora</th>
+                                <th>Vítima</th>
+                                <th>Endereço</th>
+                                <th>Bairro</th>
+                                <th>Cidade</th>
+                                <th>Tipo de Droga</th>
+                                <th>Peso (g)</th>
+                                <th>Tipo de Arma</th>
+                                <th>Qtd. Arma</th>
+                                <th>Equipamento Apreendido</th>
+                                <th>Veículo Apreendido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td contenteditable="true">123456</td>
+                                <td contenteditable="true">Roubo a Pessoa</td>
+                                <td contenteditable="true">06/01/2026</td>
+                                <td contenteditable="true">10:30</td>
+                                <td contenteditable="true">João da Silva</td>
+                                <td contenteditable="true">Rua das Flores, 100</td>
+                                <td contenteditable="true">Centro</td>
+                                <td contenteditable="true">Marechal Deodoro</td>
+                                <td contenteditable="true">N/A</td>
+                                <td contenteditable="true">N/A</td>
+                                <td contenteditable="true">Revólver</td>
+                                <td contenteditable="true">1</td>
+                                <td contenteditable="true">Celular</td>
+                                <td contenteditable="true">Moto CG</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <button class="btn-salvar">Salvar Dados Editados</button>
+            </div>
+
+            <div class="FormCadastro">
+                <form action=""></form>
+            </div>
+        </main>
+    </section>
+</body>
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+
+<script>
+    function redirecionarcadastro() {
+        // Redireciona para a própria página de cadastro.
+        window.location.href = "cadastroocorrencias.html";
+    }
+
+    // Função para formatar e exibir a data/hora
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+</script>
+
+</html>

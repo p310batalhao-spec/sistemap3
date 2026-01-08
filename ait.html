@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - AIT</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="tco.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/document--v1.png"
+                    alt="tco-icon" />
+                <p>TCO</p>
+            </a>
+            <a href="ait.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/police-badge.png"
+                    alt="ait-icon" />
+                <p>AIT</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/exit.png" alt="exit" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="TabelaEventos">
+                <h3>CADASTRO DE AUTOS DE INFRAÇÃO DE TRÂNSITO (AIT)</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="16" height="16"
+                            src="https://img.icons8.com/material-rounded/24/plus-math--v1.png" alt="Adicionar">
+                        Adicionar Novo AIT
+                    </button>
+                    <button id="btn-imprimir">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/print.png" alt="Imprimir">
+                        Imprimir Tabela
+                    </button>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por Coluna:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione a Coluna</option>
+                        <option value="DATA DO AIT">DATA DO AIT</option>
+                        <option value="NUMERO_AIT">NUMERO_AIT</option>
+                        <option value="PLACA_CHASSI">PLACA/CHASSI</option>
+                        <option value="TIPO_VEICULO">TIPO VEÍCULO</option>
+                        <option value="COD_INFRACAO">CÓD. INFRAÇÃO</option>
+                        <option value="CIDADE">CIDADE</option>
+                    </select>
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor a buscar">
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display:none;">Limpar Filtro</button>
+                </div>
+
+                <p id="mensagem-carregamento">Carregando dados do Google Sheets...</p>
+
+                <div class="tabela-container">
+                    <table id="tabela-ait">
+                        <thead>
+                            <tr>
+                                <th>DATA DO AIT</th>
+                                <th>NUMERO AIT</th>
+                                <th>TIPO AIT</th>
+                                <th>PLACA/CHASSI</th>
+                                <th>TIPO VEÍCULO</th>
+                                <th>CÓD. INFRAÇÃO</th>
+                                <th>DESCRIÇÃO</th>
+                                <th>AUTO RETIRADA?</th>
+                                <th>DATA ENVIO</th>
+                                <th>ENDEREÇO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <footer>
+        <p>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</p>
+    </footer>
+
+    <script>
+        // ATENÇÃO: SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU GOOGLE APPS SCRIPT
+        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
+        const CHAVE_PRIMARIA = 'NUMERO_AIT';
+        const VALOR_INICIAL_CHAVE = '[NOVO NÚMERO AIT]'; // Valor padrão para novas linhas
+
+        // Chaves de todas as colunas da planilha (DEVE SER A MESMA ORDEM DO HEADERS_AIT no Code.gs)
+        const chavesAIT = [
+            'DATA DO AIT', 'NUMERO_AIT', 'TIPO_AIT', 'PLACA_CHASSI', 'TIPO_VEICULO', 'COD_INFRACAO',
+            'DESCRICAO', 'AUTO_RETIRADA', 'DATA_ENVIO', 'ENDEREÇO', 'BAIRRO', 'CIDADE'
+        ];
+
+        // Colunas que o usuário pode editar diretamente.
+        const chavesEditaveis = chavesAIT; // Todas são editáveis
+
+        // Opções para as colunas com menu suspenso (dropdown)
+        const DROPDOWN_OPTIONS = {
+            'TIPO_AIT': ['Municipal', 'Estadual', 'Federal'],
+            'TIPO_VEICULO': ['Automóvel', 'Motocicleta', 'Caminhão', 'Ônibus', 'Outro'],
+            'AUTO_RETIRADA': ['Sim', 'Não']
+        };
+
+        // Armazenamento local dos dados (para filtragem)
+        let dadosAIT = [];
+        const tabelaBody = document.querySelector('#tabela-ait tbody');
+        const msgCarregamento = document.getElementById('mensagem-carregamento');
+
+
+        /**
+         * FUNÇÃO AUXILIAR: Converte string de data DD/MM/AAAA para objeto Date
+         */
+        function parseDate(dateString) {
+            if (!dateString) return null;
+            const parts = dateString.split('/');
+            if (parts.length === 3) {
+                // new Date(ano, mês-1, dia)
+                return new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            return null;
+        }
+
+
+        /**
+         * 1. FUNÇÕES DE COMUNICAÇÃO (GET/POST)
+         */
+
+        async function fetchData(action, method = 'GET', params = {}) {
+            const url = new URL(WEBAPP_URL);
+            url.searchParams.append('action', action);
+
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+            };
+
+            if (method === 'GET') {
+                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+            } else if (method === 'POST') {
+                options.body = new URLSearchParams(params).toString();
+            }
+
+            try {
+                const response = await fetch(url.toString(), options);
+                if (!response.ok) {
+                    throw new Error(`Erro de rede: ${response.statusText}`);
+                }
+                return response.json();
+            } catch (error) {
+                console.error('Erro na comunicação com o App Script:', error);
+                alert('Erro ao carregar ou salvar dados. Verifique a URL do Web App e o console.');
+                return { status: 'error', message: error.message };
+            }
+        }
+
+        async function loadAIT() {
+            tabelaBody.innerHTML = '';
+            msgCarregamento.style.display = 'block';
+
+            const result = await fetchData('read');
+
+            msgCarregamento.style.display = 'none';
+
+            if (result.status === 'error') {
+                console.error('Erro ao carregar AITs:', result.message);
+                tabelaBody.innerHTML = `<tr><td colspan="${chavesAIT.length + 1}">Erro ao carregar dados: ${result.message}</td></tr>`;
+                return;
+            }
+
+            // LÓGICA DE ORDENAÇÃO (Mais recente para o mais antigo)
+            dadosAIT = result;
+            dadosAIT.sort((a, b) => {
+                const dateA = parseDate(a['DATA DO AIT']);
+                const dateB = parseDate(b['DATA DO AIT']);
+
+                if (!dateA) return 1; 
+                if (!dateB) return -1;
+                
+                return dateB - dateA; 
+            });
+
+            renderTable(dadosAIT);
+        }
+
+        async function saveRow(rowElement, isNew) {
+            rowElement.style.opacity = '0.5';
+
+            const rowData = {};
+            let success = false;
+            let response;
+            
+            // 1. Coleta os dados de todas as células editáveis/dropdowns
+            chavesAIT.forEach(chave => {
+                const cell = rowElement.querySelector(`[data-key="${chave}"]`);
+                if (cell) {
+                    const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
+                    if (isDropdown) {
+                        rowData[chave] = cell.querySelector('select').value;
+                    } else {
+                        rowData[chave] = cell.textContent.trim();
+                    }
+                }
+            });
+            
+            const chaveValor = rowData[CHAVE_PRIMARIA];
+
+            if (!chaveValor || chaveValor === VALOR_INICIAL_CHAVE) {
+                alert(`O campo ${CHAVE_PRIMARIA} deve ser preenchido com um valor único para salvar.`);
+                rowElement.style.opacity = '1';
+                return;
+            }
+
+            // 2. Chama o App Script
+            if (isNew) {
+                response = await fetchData('create', 'POST', rowData);
+            } else {
+                response = await fetchData('update', 'POST', rowData);
+            }
+
+            // 3. Feedback visual e recarregamento
+            rowElement.style.opacity = '1';
+            if (response.status === 'success') {
+                alert(isNew ? 'Novo AIT criado com sucesso!' : 'AIT atualizado com sucesso!');
+                rowElement.classList.remove('new-row-highlight');
+                rowElement.classList.remove('editing');
+                await loadAIT(); // Recarrega a tabela para garantir sincronia e ordenação
+            } else {
+                alert(`Falha ao salvar: ${response.message}`);
+                console.error('Erro de salvamento:', response.message);
+            }
+        }
+        
+        async function deleteRow(rowElement) {
+            const chaveValor = rowElement.dataset.chave; // Usamos o NUMERO_AIT para a exclusão
+
+            if (!chaveValor || chaveValor === VALOR_INICIAL_CHAVE) {
+                // Se for uma nova linha não salva, apenas remove do DOM
+                rowElement.remove();
+                return;
+            }
+
+            if (confirm(`Tem certeza que deseja EXCLUIR o AIT Nº ${chaveValor}? Esta ação é irreversível!`)) {
+                rowElement.style.opacity = '0.5';
+                
+                const response = await fetchData('delete', 'POST', { [CHAVE_PRIMARIA]: chaveValor });
+                
+                rowElement.style.opacity = '1';
+                
+                if (response.status === 'success') {
+                    alert('AIT excluído com sucesso!');
+                    await loadAIT();
+                } else {
+                    alert(`Falha ao excluir: ${response.message}`);
+                    console.error('Erro de exclusão:', response.message);
+                }
+            }
+        }
+
+
+        /**
+         * 2. FUNÇÕES DE RENDERIZAÇÃO E EDIÇÃO
+         */
+
+        function createDropdown(key, currentValue) {
+            const options = DROPDOWN_OPTIONS[key] || [];
+
+            let selectHtml = `<select class="dropdown-select" data-key="${key}">`;
+
+            let found = false;
+            options.forEach(option => {
+                if (option === currentValue) {
+                    found = true;
+                }
+                selectHtml += `<option value="${option}" ${option === currentValue ? 'selected' : ''}>${option}</option>`;
+            });
+
+            if (!found && currentValue) {
+                selectHtml = `<option value="${currentValue}" selected>${currentValue}</option>` + selectHtml;
+            }
+
+            selectHtml += '</select>';
+            return selectHtml;
+        }
+
+        function renderTable(data) {
+            tabelaBody.innerHTML = ''; // Limpa o corpo da tabela
+
+            if (data.length === 0) {
+                tabelaBody.innerHTML = `<tr><td colspan="${chavesAIT.length + 1}">Nenhum AIT encontrado.</td></tr>`;
+                return;
+            }
+
+            data.forEach(item => {
+                const row = tabelaBody.insertRow();
+                // O atributo data-chave usará o NUMERO_AIT para identificação
+                row.dataset.chave = item[CHAVE_PRIMARIA] || ''; 
+                row.classList.add('editing');
+
+                chavesAIT.forEach(chave => {
+                    const cell = row.insertCell();
+                    cell.dataset.key = chave;
+
+                    const isEditable = chavesEditaveis.includes(chave);
+                    const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
+
+                    let value = item[chave] || '';
+
+                    if (isDropdown) {
+                        cell.innerHTML = createDropdown(chave, value);
+                        cell.contentEditable = 'false';
+                    } else if (isEditable) {
+                        cell.textContent = value;
+                        cell.contentEditable = 'true';
+                        
+                        // Garante que o NUMERO_AIT (chave primária) não seja editado após o salvamento
+                        if (chave === CHAVE_PRIMARIA && row.dataset.chave) {
+                             cell.contentEditable = 'false'; 
+                             cell.classList.add('chave-primaria'); // Estilo visual para chave
+                        }
+                    } else {
+                        cell.textContent = value;
+                        cell.contentEditable = 'false';
+                    }
+                });
+
+                // Coluna AÇÕES
+                const actionCell = row.insertCell();
+                actionCell.innerHTML = `
+                    <button class="btn-salvar-evento" onclick="handleSave(this)">Salvar</button>
+                    <button class="btn-deletar-evento" onclick="handleDelete(this)">Excluir</button>
+                `;
+            });
+        }
+
+        function handleSave(button) {
+            const row = button.closest('tr');
+            // Uma linha é considerada NOVA se o data-chave for vazio ou o valor inicial
+            const isNew = !row.dataset.chave || row.dataset.chave === VALOR_INICIAL_CHAVE;
+            saveRow(row, isNew);
+        }
+
+        function handleDelete(button) {
+            const row = button.closest('tr');
+            deleteRow(row);
+        }
+
+        function addNewRow() {
+            const row = tabelaBody.insertRow(0); // Insere no topo
+            row.dataset.chave = VALOR_INICIAL_CHAVE; // Define o valor inicial da chave
+            row.classList.add('new-row-highlight', 'editing');
+
+            chavesAIT.forEach(chave => {
+                const cell = row.insertCell();
+                cell.dataset.key = chave;
+
+                const isEditable = chavesEditaveis.includes(chave);
+                const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
+
+                let initialValue = '';
+
+                if (isDropdown) {
+                    initialValue = DROPDOWN_OPTIONS[chave][0]; // Usa a primeira opção como default
+                    cell.innerHTML = createDropdown(chave, initialValue);
+                    cell.contentEditable = 'false';
+                } else if (isEditable) {
+                    if (chave === CHAVE_PRIMARIA) {
+                        cell.textContent = VALOR_INICIAL_CHAVE; // Valor de placeholder
+                        cell.classList.add('chave-primaria');
+                    }
+                    cell.contentEditable = 'true';
+                } else {
+                    cell.textContent = initialValue;
+                    cell.contentEditable = 'false';
+                }
+            });
+
+            // Coluna AÇÕES
+            const actionCell = row.insertCell();
+            actionCell.innerHTML = `
+                <button class="btn-salvar-evento" onclick="handleSave(this)">Salvar</button>
+                <button class="btn-deletar-evento" onclick="handleDelete(this)">Cancelar</button>
+            `;
+
+            row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+
+        /**
+         * 3. FUNÇÕES DE FILTRAGEM
+         */
+        
+        function aplicarFiltro() {
+            const filtroTipo = document.getElementById('filtro-tipo').value;
+            const filtroValor = document.getElementById('filtro-valor-text').value.toLowerCase().trim();
+            const btnLimpar = document.getElementById('btn-limpar-filtro');
+
+            if (!filtroTipo || !filtroValor) {
+                renderTable(dadosAIT); 
+                btnLimpar.style.display = 'none';
+                return;
+            }
+
+            const dadosFiltrados = dadosAIT.filter(item => {
+                const valorCelula = (item[filtroTipo] || '').toString().toLowerCase();
+                return valorCelula.includes(filtroValor);
+            });
+
+            renderTable(dadosFiltrados);
+            btnLimpar.style.display = 'inline-block';
+        }
+
+        function limparFiltro() {
+            document.getElementById('filtro-tipo').value = '';
+            document.getElementById('filtro-valor-text').value = '';
+            document.getElementById('btn-limpar-filtro').style.display = 'none';
+            renderTable(dadosAIT); 
+        }
+
+        function imprimirTabela() {
+            window.print();
+        }
+
+
+        /**
+         * 4. FUNÇÕES DE SUPORTE (Relógio / Login)
+         */
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+            const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+        }
+
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+
+            if (graduacao && nomeGuerra) {
+                userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+            } else {
+                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('userGraduacao');
+            localStorage.removeItem('userNomeGuerra');
+            alert('Logout realizado com sucesso!');
+            window.location.href = 'login.html';
+        }
+
+
+        /**
+         * 5. INICIALIZAÇÃO
+         */
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Inicializa o Relógio
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+
+            // Verifica Login
+            checkLogin();
+
+            // Carrega os dados do AIT
+            loadAIT();
+
+            // Anexa Listeners
+            document.getElementById('btn-logout').addEventListener('click', logout);
+            document.getElementById('btn-adicionar-cadastro').addEventListener('click', addNewRow);
+            document.getElementById('btn-aplicar-filtro').addEventListener('click', aplicarFiltro);
+            document.getElementById('btn-limpar-filtro').addEventListener('click', limparFiltro);
+
+            const btnImprimir = document.getElementById('btn-imprimir');
+            if (btnImprimir) {
+                btnImprimir.addEventListener('click', imprimirTabela);
+            }
+
+            console.log("Sistema AIT inicializado. Lembre-se de atualizar a variável 'WEBAPP_URL' no script.");
+        });
+    </script>
+</body>
+
+</html>

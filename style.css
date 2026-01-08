@@ -1,0 +1,1538 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
+header{
+    display: flex;
+    align-items: center;
+    /* Correto: Separa o grupo esquerdo (informações) do elemento direito (relógio) */
+    justify-content: space-between; 
+    padding: 30px;
+    background: linear-gradient(90deg,rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+
+}
+
+/* Novo estilo para envolver o brasão e o texto, para que fiquem juntos à esquerda */
+.header-info-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Novo estilo para o Relógio/Data */
+#relogio {
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: right;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1.4; 
+    padding-left: 20px; /* Adiciona um pequeno padding para garantir a distância da borda */
+}
+
+/* --- Layout da Página (Sidebar + Conteúdo) --- */
+.pagecomplete {
+    display: flex; /* Usa Flexbox para colocar sidebar e main lado a lado */
+    min-height: calc(100vh - 80px); 
+    overflow-x: hidden; /* Evita que o conteúdo do main cause rolagem horizontal na página inteira */
+}
+
+/* --- Estilos do Dashboard (index.html) --- */
+
+/* Contêiner Grid para organizar os cartões em colunas */
+.dashboard {
+    display: grid;
+    /* Define 3 colunas flexíveis de tamanho mínimo 250px */
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+    gap: 20px; /* Espaço entre os cartões */
+    margin-top: 20px;
+}
+
+/* Estilo do Cartão (.btn) */
+.btn {
+    background-color: white;
+    border-radius: 10px;
+    padding: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-start;
+    height: 150px; /* Altura fixa para uniformizar */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra para efeito 3D */
+    transition: transform 0.3s;
+    /* Borda para o destaque visual superior (cor primária) */
+    border-top: 4px solid rgba(59, 111, 184, 1); 
+}
+
+.btn:hover {
+    transform: translateY(-5px); /* Efeito sutil ao passar o mouse */
+    cursor: pointer;
+}
+
+/* Estiliza o valor numérico (o número grande) */
+.btn .numero {
+    font-size: 2.5rem;
+    color: rgba(10, 68, 143, 1);
+    font-weight: bold;
+    margin-top: 10px;
+}
+
+/* --- Estilos da Saudação --- */
+.saudacao {
+    background: linear-gradient(90deg,rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    padding: 30px;
+    border: none;
+    border-radius: 10px;
+    text-align: left; 
+    font-family: Arial, Helvetica, sans-serif;
+    color: white;
+    line-height: 1.4; 
+}
+
+/* --- Estilos da Navegação (Sidebar) --- */
+main {
+    flex-grow: 1; /* Ocupa todo o espaço restante horizontalmente */
+    padding: 20px; 
+}
+
+.brasao{
+    height: 80px;
+}
+
+.navegacao{
+    width: 250px; 
+    padding-top: 40px;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-family: Arial, Helvetica, sans-serif;
+    background-color: white; 
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1); 
+    height: 100%; 
+}
+
+.navegacao a{
+    margin-left: 10px;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    background-color: white;
+    color: black; 
+}
+
+.navegacao img{
+    height: 24px; 
+    width: 24px;
+}
+
+.navegacao p{
+    padding: 10px;
+}
+
+/* Estilo para o link de navegação ativo (Active State) */
+.navegacao a.active {
+    /* Usa o mesmo gradiente do cabeçalho */
+    background: linear-gradient(90deg,rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    color: white; /* Texto branco para contraste */
+    font-weight: bold;
+    transform: none; 
+}
+
+/* Filtro CSS para tentar inverter/tonalizar o ícone para branco no estado ativo */
+.navegacao a.active img {
+    filter: brightness(0) invert(1); 
+}
+
+.navegacao a:hover{
+    background-color: rgb(233, 233, 233); 
+    color: black; 
+    transform: scale(1.05); 
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.navegacao a.active:hover {
+    /* Sobrescreve o hover para manter o estilo ativo no item selecionado */
+    background: linear-gradient(90deg,rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    color: white;
+    transform: none;
+}
+
+
+.cabecalhotexto {
+    font-family: Arial, Helvetica, Helvetica, sans-serif;
+    color: white;
+    text-shadow: 1px 1px 2px black; 
+}
+
+body{
+    background: #f3f3f5;
+}
+
+.conteudo{
+    margin-top: 20px;
+}
+    
+footer{
+    display: flex;
+    background: black;
+    color: white;
+    padding: 30px;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+}
+
+/* --- ESTILOS DE CADASTRO DE OCORRÊNCIAS (cadastroocorrencias.html) --- */
+
+/* ConteudoCadastro: Configurado para Largura Total (100%) do main */
+.ConteudoCadastro{
+    margin-top: 20px; 
+    margin-bottom: 20px;
+    border:none;
+    border-radius: 10px;
+    border-top: 3px solid;
+    border-color: rgba(59, 111, 184, 1);
+    background-color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 20px; 
+    width: 70%; /* Ocupa a largura total do main, ajustando-se à tela */
+}
+
+.orgupload{
+    display: flex;
+    flex-direction: row; 
+    align-items: center;
+    justify-content: space-between; 
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.ConteudoCadastro button{
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.ConteudoCadastro button:hover{
+    background-color: rgba(10, 68, 143, 1);
+    transform: scale(1.1);
+    transition: 0.3s;
+}
+
+
+.ConteudoCadastro h3{
+    margin-top: 10px;
+    padding: 10px 0; 
+}
+
+.orgupload input:hover{
+    cursor: pointer;
+}
+
+/* --- ESTILOS DA TABELA EDITÁVEL --- */
+
+.TabelaCadastro {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 20px;
+    padding-bottom: 50px;
+    width: 70%; /* Ocupa a largura total do MAIN */
+}
+
+.TabelaCadastro h3 {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+/* Contêiner para permitir rolagem horizontal (O SCROLL) */
+.tabela-container {
+    overflow-x: auto; /* CHAVE: Adiciona a barra de rolagem horizontal se necessário */
+    margin-bottom: 20px;
+}
+
+#tabela-dados {
+    width: 100%;
+    border-collapse: collapse; 
+    min-width: 1400px; /* Força a tabela a ser mais larga que o container para ativar o scroll */
+}
+
+#tabela-dados th, #tabela-dados td {
+    border: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+    white-space: nowrap; /* Impede a quebra de linha dentro da célula */
+}
+
+#tabela-dados th {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-size: 0.9rem;
+    position: sticky; 
+    top: 0;
+    z-index: 10;
+}
+
+/* Estilo para as células editáveis */
+#tabela-dados td[contenteditable="true"]:focus {
+    background-color: #e6f7ff;
+    outline: 1px solid rgba(10, 68, 143, 1);
+}
+
+/* Estilo do botão Salvar da Tabela */
+.TabelaCadastro .btn-salvar {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    float: right; 
+}
+
+.TabelaCadastro .btn-salvar:hover {
+    background-color: rgba(10, 68, 143, 1);
+}
+
+
+/* --- ESTILOS DE EVENTOS (eventos.html) --- */
+/* Esta seção foi totalmente revisada para corrigir o problema de largura, rolagem e quebra de linha */
+
+.TabelaEventos {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 20px;
+    padding-bottom: 50px;
+    /* Ajustado para ocupar 95% do main e ter uma largura máxima razoável */
+    width: 95%; 
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.TabelaEventos h3 {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.adicionar-cadastro-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+#btn-adicionar-cadastro {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745; /* Cor verde para Adicionar */
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s;
+}
+
+#btn-adicionar-cadastro img {
+    filter: brightness(0) invert(1);
+    height: 16px;
+    width: 16px;
+}
+
+#btn-adicionar-cadastro:hover {
+    background-color: #1e7e34;
+}
+
+/* Estilo para a mensagem de carregamento */
+#mensagem-carregamento {
+    color: gray;
+    font-style: italic;
+}
+
+/* --- FILTROS --- */
+.filtros-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap; /* Garante que os itens quebrem a linha se a tela for pequena */
+}
+.filtros-container label {
+    font-weight: bold;
+    color: #333;
+}
+.filtros-container select,
+.filtros-container input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 150px;
+}
+.filtros-container button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+#btn-aplicar-filtro {
+    background-color: #007bff; /* Azul primário */
+    color: white;
+}
+#btn-aplicar-filtro:hover {
+    background-color: #0056b3;
+}
+#btn-limpar-filtro {
+    background-color: #f0ad4e; /* Amarelo/Laranja */
+    color: white;
+}
+#btn-limpar-filtro:hover {
+    background-color: #ec971f;
+}
+/* --- ESTILOS DE EVENTOS (eventos.html) --- */
+
+.TabelaEventos {
+    margin-top: 20px;
+    margin-bottom: 20px;
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    font-family: Arial, Helvetica, sans-serif;
+    padding: 20px;
+    padding-bottom: 50px;
+    /* Ajustado para ocupar 95% do main e ter uma largura máxima razoável */
+    width: 95%; 
+    max-width: 1400px; 
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.TabelaEventos h3 {
+    margin-bottom: 20px;
+    padding: 0;
+}
+
+.adicionar-cadastro-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+#btn-adicionar-cadastro {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745; /* Cor verde para Adicionar */
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s;
+}
+
+.btnQuadroEventos{
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    background-color: #28a745; /* Cor verde para Adicionar */
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: background-color 0.3s;
+
+}
+
+.btnQuadroEventos:hover{
+    background-color: #1e7e34;
+    transform: scale(1.1);
+    transition: 0.3s;
+}
+
+#btn-adicionar-cadastro img {
+    filter: brightness(0) invert(1);
+    height: 16px;
+    width: 16px;
+}
+
+#btn-adicionar-cadastro:hover {
+    background-color: #1e7e34;
+    transform: scale(1.1);
+    transition: 0.3s;
+}
+
+/* Estilo para a mensagem de carregamento */
+#mensagem-carregamento {
+    color: gray;
+    font-style: italic;
+}
+
+/* --- FILTROS --- */
+.filtros-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-top: 1px solid #eee;
+    flex-wrap: wrap; /* Garante que os itens quebrem a linha se a tela for pequena */
+}
+.filtros-container label {
+    font-weight: bold;
+    color: #333;
+}
+.filtros-container select,
+.filtros-container input[type="text"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    min-width: 150px;
+}
+.filtros-container button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+#btn-aplicar-filtro {
+    background-color: #007bff; /* Azul primário */
+    color: white;
+}
+#btn-aplicar-filtro:hover {
+    background-color: #0056b3;
+}
+#btn-limpar-filtro {
+    background-color: #f0ad4e; /* Amarelo/Laranja */
+    color: white;
+}
+#btn-limpar-filtro:hover {
+    background-color: #ec971f;
+}
+
+
+/* --- TABELA E CONTÊINER (CORREÇÃO DE LARGURA FIXA E ROLAGEM) --- */
+
+/* Contêiner para permitir rolagem horizontal e vertical FIXA */
+.tabela-container {
+    /* CHAVE: Mantém a altura fixa com rolagem vertical (Y) */
+    max-height: 500px; 
+    overflow-y: auto; 
+    
+    /* CHAVE: Mantém a rolagem horizontal para o caso de a tabela ser mais larga que o contêiner */
+    overflow-x: auto; 
+    
+    /* CHAVE: Ocupa a largura total do seu pai (TabelaEventos) */
+    width: 100%; 
+    
+    margin-bottom: 20px;
+    position: relative; 
+}
+
+#tabela-eventos {
+    /* CHAVE 1: Força a tabela a respeitar as larguras definidas nas colunas (fixed) */
+    table-layout: fixed; 
+    /* CHAVE 2: Define a largura total necessária (soma de todas as colunas) */
+    width: 1680px; 
+    border-collapse: collapse;
+}
+
+#tabela-eventos th {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-size: 0.9rem; 
+    text-transform: uppercase;
+    
+    /* CHAVE: Garante que o cabeçalho fique fixo no topo ao rolar o corpo da tabela */
+    position: sticky; 
+    top: 0; 
+    z-index: 10;
+}
+
+/* Células e Cabeçalho */
+#tabela-eventos th, 
+#tabela-eventos td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: left;
+    
+    /* CHAVE: Permite que o texto quebre a linha dentro da célula */
+    white-space: normal;
+    word-wrap: break-word; /* Garante que palavras muito longas sejam quebradas */
+    vertical-align: top; /* CHAVE: Alinha o texto no topo da célula */
+}
+
+/* --- DISTRIBUIÇÃO DE LARGURA DAS COLUNAS (AJUSTE FINO) --- */
+
+/* Oculta a primeira coluna (ID) - INDEX 1 */
+#tabela-eventos th:nth-child(1), #tabela-eventos td:nth-child(1) { display: none; }
+
+/* As larguras somadas resultam em 1680px (largura total da tabela) */
+#tabela-eventos th:nth-child(2), #tabela-eventos td:nth-child(2) { width: 100px; } /* PORTE */
+#tabela-eventos th:nth-child(3), #tabela-eventos td:nth-child(3) { width: 100px; } /* PROTOCOLO */
+#tabela-eventos th:nth-child(4), #tabela-eventos td:nth-child(4) { width: 100px; } /* DATA */
+#tabela-eventos th:nth-child(5), #tabela-eventos td:nth-child(5) { width: 120px; } /* CIDADE */
+#tabela-eventos th:nth-child(6), #tabela-eventos td:nth-child(6) { width: 180px; } /* NOME DO EVENTO (MAIS ESPAÇO) */
+#tabela-eventos th:nth-child(7), #tabela-eventos td:nth-child(7) { width: 220px; } /* LOCAL DO EVENTO (MAIS ESPAÇO) */
+#tabela-eventos th:nth-child(8), #tabela-eventos td:nth-child(8) { width: 80px; } /* INÍCIO */
+#tabela-eventos th:nth-child(9), #tabela-eventos td:nth-child(9) { width: 80px; } /* TÉRMINO */
+#tabela-eventos th:nth-child(10), #tabela-eventos td:nth-child(10) { width: 80px; } /* PÚBLICO */
+#tabela-eventos th:nth-child(11), #tabela-eventos td:nth-child(11) { width: 120px; } /* ORGANIZAÇÃO */
+#tabela-eventos th:nth-child(12), #tabela-eventos td:nth-child(12) { width: 120px; } /* RESPONSÁVEL */
+#tabela-eventos th:nth-child(13), #tabela-eventos td:nth-child(13) { width: 120px; } /* CPF */
+#tabela-eventos th:nth-child(14), #tabela-eventos td:nth-child(14) { width: 120px; } /* TELEFONE */
+#tabela-eventos th:nth-child(15), #tabela-eventos td:nth-child(15) { width: 150px; } /* AÇÕES (espaço para botões) */
+
+
+#tabela-eventos tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Estilos para as células editáveis */
+#tabela-eventos td[contenteditable="true"] {
+    cursor: text;
+}
+#tabela-eventos td[contenteditable="true"]:focus {
+    background-color: #fff9e6; /* Amarelo claro para indicar edição */
+    outline: 1px solid #ffc107;
+}
+
+/* Estilo para a nova linha */
+.new-row-highlight {
+    background-color: #e6ffed; /* Fundo verde claro para nova linha */
+}
+
+/* Estilo dos Botões de Ação na Tabela */
+.btn-salvar-evento, .btn-deletar-evento {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+    /* Ajuste: Força a quebra de linha para caber na célula de 150px */
+    white-space: normal; 
+    display: inline-block;
+    width: 65px; 
+    text-align: center;
+}
+
+.btn-salvar-evento {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+}
+.btn-salvar-evento:hover {
+    background-color: rgba(10, 68, 143, 1);
+}
+
+.btn-deletar-evento {
+    background-color: #dc3545;
+    color: white;
+}
+.btn-deletar-evento:hover {
+    background-color: #bd2130;
+}
+
+/* --- ESTILOS DE PORTE DO EVENTO (BADGES) --- */
+
+.porte-badge {
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.75rem;
+    display: block; /* CHAVE: Faz o span se comportar como um bloco, respeitando a largura */
+    width: 100%; /* Ocupa a largura total da célula (100px) */
+    text-align: center;
+    /* CHAVE: Permite que o texto quebre a linha dentro do badge, se necessário */
+    white-space: normal; 
+}
+
+.grande-porte {
+    background-color: #dc3545; /* Vermelho */
+    color: white;
+}
+
+.medio-porte {
+    background-color: #ffc107; /* Amarelo/Laranja */
+    color: #343a40; /* Texto escuro */
+}
+
+.pequeno-porte {
+    background-color: #28a745; /* Verde */
+    color: white;
+}
+
+.na-porte {
+    background-color: #6c757d; /* Cinza */
+    color: white;
+}
+
+/* --- OCULTAR COLUNA ID (REQUISIÇÃO 1) --- */
+
+/* Oculta o cabeçalho e a célula de dados da primeira coluna (ID) */
+#tabela-eventos th:nth-child(1),
+#tabela-eventos td:nth-child(1) {
+    display: none;
+}
+
+/* ==================================================================== */
+/* ESTILOS DE MATERIAIS APREENDIDOS (materiais.html) - LARGURAS DA TABELA */
+/* ==================================================================== */
+
+#tabela-materiais {
+    /* CHAVE 1: Força a tabela a respeitar as larguras definidas nas colunas (fixed) */
+    table-layout: fixed; 
+    /* LARGURA TOTAL: Soma das larguras (1290px) */
+    width: 1290px; 
+    border-collapse: collapse;
+}
+
+/* Oculta a primeira coluna (IDMaterial) - INDEX 1 */
+#tabela-materiais th:nth-child(1), #tabela-materiais td:nth-child(1) { display: none; }
+
+/* --- DISTRIBUIÇÃO DE LARGURA DAS COLUNAS (10 colunas no total) --- */
+/* (Os índices a seguir são baseados na posição visível da coluna no HTML/cabeçalho) */
+#tabela-materiais th:nth-child(2), #tabela-materiais td:nth-child(2) { width: 100px; } /* N° DO BOU */
+#tabela-materiais th:nth-child(3), #tabela-materiais td:nth-child(3) { width: 100px; } /* DATA */
+#tabela-materiais th:nth-child(4), #tabela-materiais td:nth-child(4) { width: 150px; } /* CATEGORIA */
+#tabela-materiais th:nth-child(5), #tabela-materiais td:nth-child(5) { width: 250px; } /* DESCRIÇÃO (MAIOR ESPAÇO) */
+#tabela-materiais th:nth-child(6), #tabela-materiais td:nth-child(6) { width: 200px; } /* LOCAL DO DEPÓSITO */
+#tabela-materiais th:nth-child(7), #tabela-materiais td:nth-child(7) { width: 120px; } /* DATA DE DEPOSITO */
+#tabela-materiais th:nth-child(8), #tabela-materiais td:nth-child(8) { width: 100px; } /* ESAJ */
+#tabela-materiais th:nth-child(9), #tabela-materiais td:nth-child(9) { width: 120px; } /* STATUS (AJUSTADO PARA 120PX) */
+#tabela-materiais th:nth-child(10), #tabela-materiais td:nth-child(10) { width: 150px; } /* AÇÕES (Salvar/Deletar) */
+
+/* Reutiliza o estilo do cabeçalho fixo, hover, etc., da tabela-eventos */
+#tabela-materiais th {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-size: 0.9rem; 
+    text-transform: uppercase;
+    position: sticky; 
+    top: 0; 
+    z-index: 10;
+}
+
+#tabela-materiais th, 
+#tabela-materiais td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: normal;
+    word-wrap: break-word; 
+    vertical-align: top; 
+}
+
+#tabela-materiais tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Estilos para as células editáveis */
+#tabela-materiais td[contenteditable="true"] {
+    cursor: text;
+}
+#tabela-materiais td[contenteditable="true"]:focus {
+    background-color: #fff9e6; 
+    outline: 1px solid #ffc107;
+}
+
+/* Estilo para a nova linha */
+#tabela-materiais .new-row-highlight {
+    background-color: #e6ffed; 
+}
+
+/* Reutiliza os estilos de botões de ação (Salvar/Deletar) da tabela de Eventos */
+#tabela-materiais .btn-salvar-evento {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+}
+#tabela-materiais .btn-deletar-evento {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* ==================================================================== */
+/* NOVOS ESTILOS DE STATUS DOS MATERIAIS (BADGES) E SELECT EDITÁVEL */
+/* ==================================================================== */
+
+/* Estilo base para todos os badges de status */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.7rem; /* Reduzindo um pouco o tamanho da fonte */
+    display: block; /* CHAVE: Garante que o span ocupe 100% da célula, forçando a quebra */
+    width: 100%; 
+    text-align: center;
+    cursor: pointer; /* Indica que é clicável */
+    border: 1px solid transparent;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    white-space: normal; /* Garante que o texto quebre */
+}
+
+/* PROTOCOLADO: Verde */
+.status-protocolado {
+    background-color: #28a745; /* Verde */
+    color: white;
+    border: 1px solid #1e7e34; /* Detalhe diferente */
+}
+
+/* PENDENTE: Preto */
+.status-pendente {
+    background-color: #b20000; /* Vermelho Escuro */
+    color: #fff;
+}
+
+/* ARQUIVADO: Preto */
+.status-arquivado {
+    background-color: #343a40; /* Preto Escuro */
+    color: #ccc; /* Texto cinza claro para diferenciar sutilmente */
+}
+
+/* DEVOLVIDO: Azul */
+.status-devolvido {
+    background-color: #007bff; /* Azul */
+    color: white;
+}
+
+/* Estilo para o Select dentro da Célula de Status */
+#tabela-materiais select.status-select {
+    width: 100%;
+    padding: 3px 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    font-family: Arial, sans-serif;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+/* ==================================================================== */
+/* ESTILOS DA PÁGINA DE LOGIN (login.html) */
+/* ==================================================================== */
+
+/* Ajuste o corpo da página de login para ocupar 100% da viewport e centralizar o conteúdo */
+
+
+
+.login-page-body {
+    background-color: #002c5c;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-image: linear-gradient(135deg, rgba(59, 111, 184, 0.1) 0%, rgba(255, 255, 255, 1) 100%);
+}
+
+/* Container principal para centralizar o card e garantir espaçamento */
+.login-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+}
+
+/* O Card de Login */
+.login-card {
+    background: #ffffff3a;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15); /* Sombra suave e moderna */
+    padding: 40px 30px;
+    text-align: center;
+}
+
+/* Estilos do Cabeçalho do Card (Brasão e Títulos) */
+.login-header {
+    margin-bottom: 30px;
+}
+
+.brasao-login {
+    width: 80px;
+    height: auto;
+    margin-bottom: 15px;
+}
+
+.login-header h2 {
+    color: #0a448f; /* Azul escuro principal */
+    font-size: 1.6rem;
+    margin-bottom: 5px;
+}
+
+.login-header h3 {
+    color: #ffffff; /* Cinza claro */
+    font-size: 0.9rem;
+    font-weight: normal;
+}
+
+/* Estilos do Formulário */
+.login-form {
+    text-align: left;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+.input-group label {
+    display: block;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.input-group input[type="text"],
+.input-group input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-group input:focus {
+    border-color: rgba(59, 111, 184, 1);
+    box-shadow: 0 0 0 3px rgba(59, 111, 184, 0.2);
+    outline: none;
+}
+
+/* Botão de Login Moderno */
+.btn-login-moderno {
+    width: 100%;
+    padding: 12px;
+    background-color: rgba(59, 111, 184, 1); /* Azul principal */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    margin-top: 10px;
+}
+
+.btn-login-moderno:hover {
+    background-color: rgba(10, 68, 143, 1); /* Azul mais escuro no hover */
+}
+
+.btn-login-moderno:active {
+    transform: translateY(1px);
+}
+
+/* Rodapé do Login (Link de senha) */
+.login-footer {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.link-recuperar-senha {
+    color: #007bff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.link-recuperar-senha:hover {
+    text-decoration: underline;
+}
+
+/* Estilo do Rodapé Global para a Página de Login */
+.login-page-body > footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    padding: 10px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 0.8rem;
+    background-color: transparent;
+}
+/* ==================================================================== */
+/* NOVOS ESTILOS PARA TELA DE LOGIN/CADASTRO */
+/* ==================================================================== */
+
+/* Oculta o formulário de Cadastro por padrão no CSS (a exibição é controlada pelo JS) */
+#cadastro-form {
+    display: none;
+}
+
+/* Garante que o select field (Graduação) tenha o mesmo estilo que os inputs de texto */
+.input-group select {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    box-sizing: border-box;
+    font-size: 1rem;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    background-color: white; 
+    /* Adiciona a seta para baixo, pois removemos a padrão do navegador (appearance) */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"><path d="M7 10l5 5 5-5z" fill="%23343a40"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 20px;
+
+    /* Remove estilo padrão do sistema operacional */
+    appearance: none; 
+    -webkit-appearance: none;
+}
+
+.input-group select:focus {
+    border-color: rgba(59, 111, 184, 1);
+    box-shadow: 0 0 0 3px rgba(59, 111, 184, 0.2);
+    outline: none;
+}
+/* Novo container direito para agrupar info do usuário, relógio */
+.header-info-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    color: white;
+    font-family: Arial, Helvetica, sans-serif;
+    gap: 10     px; /* Espaçamento entre os elementos */
+
+}
+
+.exibirusuario{
+    margin-right: 50px;
+
+}
+
+#user-info p {
+    margin: 0;
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+}
+
+#user-info .user-nome {
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+/* Estilo para o botão de logout na sidebar */
+.btn-logout {
+    display: flex;
+    align-items: center;
+    padding: 15px 10px;
+    width: 100%; /* Ocupa toda a largura da sidebar */
+    background-color: transparent;
+    border: none;
+    color: #0d47a1; /* Cor azul similar ao menu */
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: bold;
+    text-align: left;
+    transition: background-color 0.3s;
+    margin-top: auto; /* Empurra o botão para o final da nav */
+}
+
+.btn-logout:hover {
+    background-color: #bbdefb; /* Cor de hover mais clara */
+}
+
+.btn-logout img {
+    filter: invert(19%) sepia(87%) saturate(1476%) hue-rotate(205deg) brightness(97%) contrast(97%); /* Deixa o ícone azul */
+    margin-right: 15px;
+}
+
+/* Garante que a NAV ocupe toda a altura para que o botão 'Sair' vá para o final */
+.navegacao {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start; /* Alinha itens do menu ao topo */
+    height: 100%; /* Permite que o 'margin-top: auto' do botão Sair funcione */
+    /* Mantenha sua largura e cor de fundo originais */
+}
+
+/* REGRAS DE IMPRESSÃO (@media print) TABELA CADASTRO DE MATERIAIS */ 
+/* ==================================================================== */
+@media print {
+    
+    /* 1. ESCONDER ELEMENTOS NÃO ESSENCIAIS DA PÁGINA ORIGINAL */
+    
+    header,
+    .navegacao,
+    footer,
+    .actions-bar,
+    .edit-btn 
+    {
+        display: none !important;
+    }
+    
+    /* 2. FORMATAR O CONTEÚDO PRINCIPAL */
+
+    .pagecomplete,
+    .page-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+        float: none !important; 
+    }
+
+    /* 3. ESTILOS DO NOVO CABEÇALHO DE IMPRESSÃO */
+    
+    .print-header {
+        border-bottom: 2px solid #ccc;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+    
+    /* Grupo de títulos do Batalhão */
+    .print-title-group {
+        text-align: left;
+    }
+
+    .print-title-group h1 {
+        font-size: 14pt;
+        margin: 0;
+        color: #000;
+    }
+    
+    .print-title-group h3 {
+        font-size: 10pt;
+        margin: 0;
+        color: #555;
+    }
+
+    /* Detalhes do Relatório (Título, Filtro, Data) */
+    .print-details {
+        text-align: right;
+    }
+
+    .print-details h2 {
+        font-size: 16pt;
+        margin: 0 0 5px 0;
+        color: #0d47a1; /* Azul institucional */
+    }
+
+    .print-details p {
+        margin: 0;
+        font-size: 9pt;
+        color: #333;
+    }
+
+    .filtro-utilizado {
+        font-weight: bold;
+        margin-bottom: 5px !important;
+    }
+
+    /* 4. FORMATAR A TABELA */
+    
+    .print-table-container {
+        margin-top: 15px;
+    }
+    
+    #tabela-materiais {
+        width: 100% !important;
+        border: 1px solid #333 !important;
+        border-collapse: collapse !important;
+        font-size: 9pt; /* Tamanho de fonte menor para impressão */
+    }
+
+    #tabela-materiais th,
+    #tabela-materiais td {
+        border: 1px solid #333 !important;
+        padding: 4px 6px !important;
+    }
+    
+    #tabela-materiais thead th {
+        background-color: #eee !important;
+    }
+}
+/* ==================================================================== */
+/* ESTILOS DE TCO GERAL (tco.html) - LARGURAS DA TABELA */
+/* ==================================================================== */
+
+#tabela-tco {
+    /* CHAVE 1: Força a tabela a respeitar as larguras definidas nas colunas (fixed) */
+    table-layout: fixed; 
+    /* LARGURA TOTAL: Soma das larguras (2430px) - Garante Rolagem Horizontal */
+    width: 2430px; 
+    border-collapse: collapse;
+}
+
+/* Oculta a primeira coluna (ID) - INDEX 1 */
+#tabela-tco th:nth-child(1), #tabela-tco td:nth-child(1) { display: none; }
+
+/* --- DISTRIBUIÇÃO DE LARGURA DAS COLUNAS (20 colunas no total, 19 + 1 Ações) --- */
+/* Os índices a seguir são baseados na posição VISÍVEL da coluna no HTML/cabeçalho */
+#tabela-tco th:nth-child(2), #tabela-tco td:nth-child(2) { width: 100px; } /* Dia da Semana */
+#tabela-tco th:nth-child(3), #tabela-tco td:nth-child(3) { width: 100px; } /* Mês */
+#tabela-tco th:nth-child(4), #tabela-tco td:nth-child(4) { width: 80px; } /* Hora */
+#tabela-tco th:nth-child(5), #tabela-tco td:nth-child(5) { width: 120px; } /* Nº Ocorrência */
+#tabela-tco th:nth-child(6), #tabela-tco td:nth-child(6) { width: 100px; } /* DATA */
+#tabela-tco th:nth-child(7), #tabela-tco td:nth-child(7) { width: 100px; } /* SERVIÇO */
+#tabela-tco th:nth-child(8), #tabela-tco td:nth-child(8) { width: 120px; } /* OPERADOR CAPA */
+#tabela-tco th:nth-child(9), #tabela-tco td:nth-child(9) { width: 100px; } /* SISDOC */
+#tabela-tco th:nth-child(10), #tabela-tco td:nth-child(10) { width: 180px; } /* Tipicidade Geral */
+#tabela-tco th:nth-child(11), #tabela-tco td:nth-child(11) { width: 150px; } /* Movimentação (Dropdown) */
+#tabela-tco th:nth-child(12), #tabela-tco td:nth-child(12) { width: 250px; } /* OBS: (Maior) */
+#tabela-tco th:nth-child(13), #tabela-tco td:nth-child(13) { width: 120px; } /* Material Apreendido */
+#tabela-tco th:nth-child(14), #tabela-tco td:nth-child(14) { width: 100px; } /* Data Envio */
+#tabela-tco th:nth-child(15), #tabela-tco td:nth-child(15) { width: 120px; } /* LocalE-SAJ */
+#tabela-tco th:nth-child(16), #tabela-tco td:nth-child(16) { width: 120px; } /* PETICIONADOR */
+#tabela-tco th:nth-child(17), #tabela-tco td:nth-child(17) { width: 200px; } /* Endereço */
+#tabela-tco th:nth-child(18), #tabela-tco td:nth-child(18) { width: 100px; } /* Vistoriou? (Dropdown) */
+#tabela-tco th:nth-child(19), #tabela-tco td:nth-child(19) { width: 120px; } /* NUMERO_LACRE */
+#tabela-tco th:nth-child(20), #tabela-tco td:nth-child(20) { width: 150px; } /* AÇÕES (Salvar/Deletar) */
+
+
+/* Reutiliza o estilo do cabeçalho fixo, hover, etc., da tabela-eventos */
+#tabela-tco th {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+    font-size: 0.8rem; 
+    text-transform: uppercase;
+    position: sticky; 
+    top: 0; 
+    z-index: 10;
+}
+
+#tabela-tco th, 
+#tabela-tco td {
+    border: 1px solid #ddd;
+    padding: 8px 10px;
+    text-align: left;
+    white-space: normal;
+    word-wrap: break-word; 
+    vertical-align: top;
+    font-size: 0.8rem; 
+}
+
+#tabela-tco tbody tr:hover {
+    background-color: #f1f1f1;
+}
+
+/* Estilos para as células editáveis */
+#tabela-tco td[contenteditable="true"] {
+    cursor: text;
+}
+#tabela-tco td[contenteditable="true"]:focus {
+    background-color: #fff9e6; 
+    outline: 1px solid #ffc107;
+}
+
+/* Estilo para a nova linha */
+#tabela-tco .new-row-highlight {
+    background-color: #e6ffed; 
+}
+
+/* Reutiliza os estilos de botões de ação (Salvar/Deletar) da tabela de Eventos */
+/* Os estilos abaixo também garantem que os botões de Salvar/Deletar funcionem. */
+#tabela-tco .btn-salvar-evento, 
+#tabela-tco .btn-deletar-evento {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+    white-space: normal; 
+    display: inline-block;
+    width: 65px; 
+    text-align: center;
+}
+
+#tabela-tco .btn-salvar-evento {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+}
+#tabela-tco .btn-salvar-evento:hover {
+    background-color: rgba(10, 68, 143, 1);
+}
+
+#tabela-tco .btn-deletar-evento {
+    background-color: #dc3545;
+    color: white;
+}
+#tabela-tco .btn-deletar-evento:hover {
+    background-color: #bd2130;
+}
+
+
+/* Estilo para o Select dentro da Célula de Movimentação/Vistoriou? */
+#tabela-tco select.dropdown-select {
+    width: 100%;
+    padding: 3px 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+    font-family: Arial, sans-serif;
+    background-color: #fff;
+    cursor: pointer;
+}
+/* ==================================================================== */
+/* ==================================================================== */
+/* NOVOS ESTILOS PARA STATUS DA COLUNA MOVIMENTAÇÃO DO TCO (Visual Tag) */
+/* AJUSTE: CORREÇÃO DE ALINHAMENTO VERTICAL E HORIZONTAL */
+/* ==================================================================== */
+
+/* Estilos gerais para a célula <td> da Movimentação */
+#tabela-tco td[data-key="Movimentação"] {
+    /* Centraliza o conteúdo (o select) dentro da célula */
+    display: flex;
+    flex-direction: column; 
+    justify-content: center; /* Centraliza Horizontalmente */
+    align-items: center;    /* Centraliza Verticalmente */
+    
+    /* Propriedades da Tag */
+    padding: 4px 8px; 
+    border-radius: 8px; 
+    font-weight: bold;
+    text-align: center;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2); 
+    box-sizing: border-box; 
+    
+    /* CORREÇÃO CHAVE: Remove line-height específico da célula */
+    line-height: 1.2; /* Reduz a chance de conflito com line-height da tabela */
+    height: 30px; /* Garante uma altura mínima para a tag (opcional, mas ajuda) */
+}
+
+
+/* Ajusta o Select (Dropdown) dentro das células de status */
+#tabela-tco td[data-key="Movimentação"] select.dropdown-select {
+    /* 1. Remove a aparência padrão do select */
+    appearance: none; 
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* 2. Propriedades de cor/fundo */
+    background-color: transparent; 
+    border: none;
+    color: inherit; 
+    font-weight: bold;
+
+    /* 3. Propriedades de layout e centralização */
+    padding: 0;
+    margin: 0;
+    width: auto; 
+    cursor: pointer;
+    
+    /* CORREÇÃO CHAVE: Alinhamento e linha */
+    height: 100%; /* Ocupa a altura total da célula tag */
+    line-height: 1.2; /* Garante que o texto se alinhe verticalmente com o display: flex do TD */
+    text-align: center; 
+    text-align-last: center; 
+}
+
+
+/* 1. PROTOCOLADO: Verde */
+.status-protocolado {
+    background-color: #28a745 !important; 
+    color: white !important;
+    border: 1px solid #1e7e34 !important; 
+}
+
+/* 2. PENDENTE (Em Diligência, Encaminhado ao Juizado): Vermelho Escuro */
+.status-pendente {
+    background-color: #b20000 !important; 
+    color: #fff !important;
+    border: 1px solid #8e0000 !important;
+}
+
+/* 3. ARQUIVADO: Preto/Cinza Escuro */
+.status-arquivado {
+    background-color: #343a40 !important; 
+    color: #ccc !important; 
+    border: 1px solid #1e2124 !important;
+}
+/* ==================================================================== */
+/* ==================================================================== */
+/* ESTILOS ESPECÍFICOS PARA A TABELA AIT (Similar ao TCO e Materiais) */
+/* ==================================================================== */
+
+#tabela-ait {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+#tabela-ait th,
+#tabela-ait td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    font-size: 0.9rem;
+    max-width: 250px; /* Limita largura de colunas para melhor visualização */
+    white-space: nowrap; /* Impede quebra de linha por padrão */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#tabela-ait th {
+    background-color: #0d47a1; /* Azul da PM */
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+/* Estilo para células editáveis */
+#tabela-ait td[contenteditable="true"] {
+    cursor: text;
+}
+
+/* Foco em células editáveis */
+#tabela-ait td[contenteditable="true"]:focus {
+    background-color: #fff9e6; 
+    outline: 1px solid #ffc107;
+}
+
+/* Estilo para a nova linha */
+#tabela-ait .new-row-highlight {
+    background-color: #e6ffed; 
+}
+
+/* Estilo para Dropdowns dentro das células */
+#tabela-ait select.dropdown-select {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 0.9rem;
+}
+
+/* Estilos dos Botões de Ação (Salvar/Excluir) */
+
+#tabela-ait .btn-salvar-evento, 
+#tabela-ait .btn-deletar-evento {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    margin-right: 5px;
+    transition: background-color 0.3s;
+    white-space: normal; 
+    display: inline-block;
+    width: 65px; 
+    text-align: center;
+}
+
+#tabela-ait .btn-salvar-evento {
+    background-color: rgba(59, 111, 184, 1);
+    color: white;
+}
+#tabela-ait .btn-salvar-evento:hover {
+    background-color: #0056b3;
+}
+
+#tabela-ait .btn-deletar-evento {
+    background-color: #dc3545;
+    color: white;
+}
+#tabela-ait .btn-deletar-evento:hover {
+    background-color: #c82333;
+}
+
+/* Zebra Striping (Cor de Fundo para linhas pares) */
+#tabela-ait tbody tr:nth-child(even) {
+    background-color: #f8f9fa;
+}
+
+#tabela-ait tbody tr:hover {
+    background-color: #e9ecef;
+}
+
+/* Estilo específico para a célula de Ações */
+#tabela-ait td:last-child {
+    white-space: normal; /* Permite que os botões quebrem linha se necessário */
+    min-width: 150px;
+}
+
+/* Campo de ID (Não editável) */
+
+#tabela-ait td.chave-primaria {
+    font-weight: bold;
+    background-color: #f1f1f1;
+    text-align: center;
+}
+
+/* --- ESTILOS PARA O DASHBOARD DE AIT --- */
+
+.dashboard-cards {
+    display: flex;
+    justify-content: space-around; /* Distribui o espaço entre os cards */
+    gap: 20px; /* Espaçamento entre os cards */
+    padding: 20px 0;
+    margin-bottom: 20px; /* Espaço entre o dashboard e a tabela */
+    background-color: #f8f9fa; /* Fundo claro para o dashboard */
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card {
+    flex-grow: 1; /* Permite que os cards cresçam igualmente */
+    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    border-left: 5px solid #0d47a1; /* Linha azul para destaque */
+}
+
+.card h3 {
+    font-size: 0.9rem;
+    color: #555;
+    margin-bottom: 5px;
+    font-weight: normal;
+}
+
+.count-number {
+    font-size: 2.2rem;
+    font-weight: bold;
+    color: #0d47a1; /* Azul institucional */
+    margin: 0;
+}

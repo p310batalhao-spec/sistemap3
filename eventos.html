@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Eventos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+         <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="eventos.html" class="active">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="TabelaEventos">
+                <h3>Cadastro e Gerenciamento de Eventos</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Novo Evento
+                    </button>
+                    <a href="https://script.google.com/macros/s/AKfycbw7PcNaoXUERn9ZuIBdiWG5_JeZZf-r0B1xjAKZU7fz-k-7Pg8PtNFIvyZIF091nbtkTg/exec"
+                        target="_blank" class="btnQuadroEventos">Gerar Quadro de Eventos</a>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="DATA">Data</option>
+                        <option value="CIDADE">Cidade</option>
+                        <option value="PORTE">Porte</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+
+                    <select id="filtro-valor-select-porte" style="display: none;">
+                        <option value="">Todos os Portes</option>
+                        <option value="PEQUENO PORTE">Pequeno Porte</option>
+                        <option value="MÉDIO PORTE">Médio Porte</option>
+                        <option value="GRANDE PORTE">Grande Porte</option>
+                        <option value="N/A">N/A</option>
+                    </select>
+
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                </div>
+                <div class="tabela-container">
+                    <table id="tabela-eventos">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>PORTE</th>
+                                <th>PROTOCOLO</th>
+                                <th>DATA</th>
+                                <th>CIDADE</th>
+                                <th>NOME DO EVENTO</th>
+                                <th>LOCAL DO EVENTO</th>
+                                <th>INÍCIO</th>
+                                <th>TÉRMINO</th>
+                                <th>PÚBLICO</th>
+                                <th>ORGANIZAÇÃO</th>
+                                <th>RESPONSÁVEL</th>
+                                <th>CPF</th>
+                                <th>TELEFONE</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </section>
+</body>
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+
+<script>
+    // Armazenamento global dos dados brutos
+    let allEventos = [];
+
+    // -------------------------------------------------------------------
+    // CONFIGURAÇÃO DA API GOOGLE APPS SCRIPT
+    // -------------------------------------------------------------------
+    // COLOQUE SUA URL DE IMPLANTAÇÃO CORRETA AQUI
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+
+    // -------------------------------------------------------------------
+    // LÓGICA DE CLASSIFICAÇÃO DE PORTE
+    // -------------------------------------------------------------------
+
+    function getClassificacao(publico) {
+        const numPublico = parseInt(publico, 10);
+        if (isNaN(numPublico) || numPublico <= 0) {
+            return { nome: 'N/A', classe: 'na-porte', valor: 'N/A' };
+        } else if (numPublico > 1000) {
+            return { nome: 'GRANDE PORTE', classe: 'grande-porte', valor: 'GRANDE PORTE' };
+        } else if (numPublico > 500) {
+            return { nome: 'MÉDIO PORTE', classe: 'medio-porte', valor: 'MÉDIO PORTE' };
+        } else {
+            return { nome: 'PEQUENO PORTE', classe: 'pequeno-porte', valor: 'PEQUENO PORTE' };
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // LÓGICA DE RENDERIZAÇÃO E EDIÇÃO DA TABELA
+    // -------------------------------------------------------------------
+
+    function renderTable(dataToRender) {
+        const tbody = document.querySelector('#tabela-eventos tbody');
+        const mensagem = document.getElementById('mensagem-carregamento');
+        tbody.innerHTML = ''; // Limpa a tabela
+
+        if (dataToRender && dataToRender.length) {
+            mensagem.style.display = 'none';
+
+            dataToRender.forEach(item => {
+                const row = tbody.insertRow();
+                const classificacao = getClassificacao(item['ESTIMATIVA DE PÚBLICO']);
+
+                // 1. ID (Oculto pelo CSS, mas ainda presente na estrutura do JS/HTML)
+                row.insertCell().textContent = item.ID || '';
+
+                // 2. PORTE (calculado)
+                const porteCell = row.insertCell();
+                porteCell.innerHTML = `<span class="porte-badge ${classificacao.classe}">${classificacao.nome}</span>`;
+                // Adiciona o valor do porte ao objeto para facilitar o filtro
+                item.PORTE = classificacao.valor;
+
+                // 3. Dados editáveis
+                const chavesEditaveis = [
+                    'PROTOCOLO', 'DATA', 'CIDADE', 'NOME DO EVENTO', 'LOCAL DO EVENTO',
+                    'HORÁRIO DE INÍCIO', 'HORÁRIO DE TÉRMINO', 'ESTIMATIVA DE PÚBLICO',
+                    'ORGANIZAÇÃO', 'NOME DO RESPONSÁVEL', 'CPF', 'TELEFONE'
+                ];
+
+                chavesEditaveis.forEach(key => {
+                    const cell = row.insertCell();
+                    cell.textContent = item[key] || '';
+                    cell.setAttribute('contenteditable', 'true');
+                    cell.dataset.campo = key;
+                });
+
+                // 4. Coluna de Ações
+                const acoesCell = row.insertCell();
+                acoesCell.innerHTML = `
+                    <button class="btn-salvar-evento" data-id="${item.ID}">Salvar</button>
+                    <button class="btn-deletar-evento" data-id="${item.ID}">Deletar</button>
+                    `;
+            });
+        } else {
+            mensagem.textContent = 'Nenhum evento encontrado com os filtros aplicados.';
+            mensagem.style.display = 'block';
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // LÓGICA DE FILTRO (REQUISIÇÃO 2)
+    // -------------------------------------------------------------------
+
+    function filterData() {
+        const filtroTipo = document.getElementById('filtro-tipo').value;
+        let filtroValor;
+
+        if (filtroTipo === 'PORTE') {
+            filtroValor = document.getElementById('filtro-valor-select-porte').value;
+        } else {
+            filtroValor = document.getElementById('filtro-valor-text').value;
+        }
+
+        const btnLimpar = document.getElementById('btn-limpar-filtro');
+
+        if (!filtroTipo || !filtroValor) {
+            // Se não há filtro, renderiza todos e esconde o botão limpar
+            renderTable(allEventos);
+            btnLimpar.style.display = 'none';
+            return;
+        }
+
+        // Exibe o botão limpar
+        btnLimpar.style.display = 'inline-block';
+
+        // Lógica de filtragem:
+        const filtered = allEventos.filter(item => {
+            let itemValue = String(item[filtroTipo] || '').toUpperCase();
+            let filterValue = String(filtroValor).toUpperCase();
+
+            if (filtroTipo === 'DATA') {
+                // Filtro exato para DATA
+                return itemValue === filterValue;
+            } else {
+                // Filtro de "contém" para CIDADE ou PORTE
+                return itemValue.includes(filterValue);
+            }
+        });
+
+        renderTable(filtered);
+    }
+
+
+    // -------------------------------------------------------------------
+    // COMUNICAÇÃO COM GOOGLE APPS SCRIPT
+    // -------------------------------------------------------------------
+
+    async function fetchData() {
+        const mensagem = document.getElementById('mensagem-carregamento');
+
+        try {
+            mensagem.textContent = 'Carregando dados, aguarde...';
+            mensagem.style.color = 'gray';
+            mensagem.style.display = 'block';
+
+            const response = await fetch(`${WEBAPP_URL}?action=read`);
+
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.status === 'error') {
+                throw new Error(`Erro interno do Apps Script: ${data.message}`);
+            }
+
+            // Armazena todos os dados brutos e renderiza
+            allEventos = data;
+            renderTable(allEventos);
+
+        } catch (error) {
+            console.error("Erro ao buscar dados:", error);
+            mensagem.textContent = `Erro ao conectar com a base de dados: ${error.message}.`;
+            mensagem.style.color = 'red';
+        }
+    }
+
+    async function saveData(rowElement, isNew = false) {
+        // ... (Implementação da lógica de salvar/atualizar) ...
+        const cells = rowElement.querySelectorAll('td[contenteditable="true"]');
+        const data = {};
+        data.action = isNew ? 'create' : 'update';
+
+        if (!isNew) {
+            const idCell = rowElement.cells[0];
+            data.ID = idCell.textContent.trim();
+            if (!data.ID) {
+                alert('Erro: não foi possível obter o ID para atualização.');
+                return;
+            }
+        }
+
+        cells.forEach(cell => {
+            const key = cell.dataset.campo;
+            data[key] = cell.textContent.trim();
+        });
+
+        try {
+            const response = await fetch(WEBAPP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(data)
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert('Dados salvos com sucesso!');
+                // Recarrega os dados para atualizar a tabela
+                fetchData();
+            } else {
+                alert('Erro ao salvar: ' + (result.message || 'Erro desconhecido.'));
+            }
+        } catch (error) {
+            console.error('Erro na comunicação com o servidor:', error);
+            alert('Erro de conexão ao tentar salvar os dados.');
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // INICIALIZAÇÃO DE EVENTOS
+    // -------------------------------------------------------------------
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // 1. Carrega dados ao iniciar
+        fetchData();
+
+        // 2. Event Listener para Salvar / Deletar (delegado)
+        document.querySelector('#tabela-eventos tbody').addEventListener('click', function (event) {
+            const target = event.target;
+            if (target.classList.contains('btn-salvar-evento')) {
+                const row = target.closest('tr');
+                const isNew = target.classList.contains('new-row');
+                saveData(row, isNew);
+            }
+            if (target.classList.contains('btn-deletar-evento')) {
+                alert('Implemente aqui a função deleteEvento() para exclusão.');
+            }
+        });
+
+        // 3. Event Listener para Adicionar Novo Evento
+        document.getElementById('btn-adicionar-cadastro').addEventListener('click', function () {
+            const tbody = document.querySelector('#tabela-eventos tbody');
+            const row = tbody.insertRow(0);
+
+            // ID (Oculto)
+            row.insertCell().textContent = 'NOVO';
+
+            // PORTE (Inicializa como N/A)
+            row.insertCell().innerHTML = '<span class="porte-badge na-porte">N/A</span>';
+
+            const chavesEditaveis = [
+                'PROTOCOLO', 'DATA', 'CIDADE', 'NOME DO EVENTO', 'LOCAL DO EVENTO',
+                'HORÁRIO DE INÍCIO', 'HORÁRIO DE TÉRMINO', 'ESTIMATIVA DE PÚBLICO',
+                'ORGANIZAÇÃO', 'NOME DO RESPONSÁVEL', 'CPF', 'TELEFONE'
+            ];
+            chavesEditaveis.forEach(key => {
+                const cell = row.insertCell();
+                cell.textContent = '';
+                cell.setAttribute('contenteditable', 'true');
+                cell.dataset.campo = key;
+            });
+
+            const acoesCell = row.insertCell();
+            acoesCell.innerHTML = `<button class="btn-salvar-evento new-row">Criar</button>`;
+
+            row.classList.add('new-row-highlight');
+        });
+
+        // 4. Recalcula PORTE quando editar ESTIMATIVA DE PÚBLICO
+        document.querySelector('#tabela-eventos tbody').addEventListener('input', function (event) {
+            const cell = event.target;
+            if (cell.dataset.campo === 'ESTIMATIVA DE PÚBLICO') {
+                const publico = cell.textContent.trim();
+                const classificacao = getClassificacao(publico);
+
+                const row = cell.closest('tr');
+                const porteCell = row.cells[1];
+
+                porteCell.innerHTML = `<span class="porte-badge ${classificacao.classe}">${classificacao.nome}</span>`;
+            }
+        });
+
+        // 5. Lógica para o campo de filtro
+        const filtroTipoEl = document.getElementById('filtro-tipo');
+        const filtroValorTextEl = document.getElementById('filtro-valor-text');
+        const filtroValorSelectPorteEl = document.getElementById('filtro-valor-select-porte');
+        const btnAplicarEl = document.getElementById('btn-aplicar-filtro');
+        const btnLimparEl = document.getElementById('btn-limpar-filtro');
+
+        // Alterna entre input de texto e dropdown de porte
+        filtroTipoEl.addEventListener('change', function () {
+            if (this.value === 'PORTE') {
+                filtroValorTextEl.style.display = 'none';
+                filtroValorSelectPorteEl.style.display = 'block';
+                filtroValorSelectPorteEl.value = ''; // Limpa o valor
+            } else {
+                filtroValorTextEl.style.display = 'block';
+                filtroValorSelectPorteEl.style.display = 'none';
+                filtroValorTextEl.value = ''; // Limpa o valor
+            }
+        });
+
+        // Aplica o filtro
+        btnAplicarEl.addEventListener('click', filterData);
+
+        // Limpa o filtro e recarrega a tabela completa
+        btnLimparEl.addEventListener('click', function () {
+            filtroTipoEl.value = '';
+            filtroValorTextEl.value = '';
+            filtroValorSelectPorteEl.value = '';
+            // Resetar visualmente
+            filtroValorTextEl.style.display = 'block';
+            filtroValorSelectPorteEl.style.display = 'none';
+
+            filterData(); // Chama a função sem valor de filtro
+            this.style.display = 'none';
+        });
+
+    });
+
+    // -------------------------------------------------------------------
+    // Relógio
+    // -------------------------------------------------------------------
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const el = document.getElementById('relogio');
+        if (el) {
+            el.innerHTML = dataFormatada + '<br>' + horaFormatada;
+        }
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+
+            // --- CÓDIGO PARA LOGIN/LOGOUT ---
+
+        // 1. Função para verificar o login e exibir a info
+        function checkLogin() {
+            // Assume que as informações de sessão (graduação e nome de guerra)
+            // foram salvas no localStorage após o login bem-sucedido no login.html
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+
+            if (graduacao && nomeGuerra) {
+                // Usuário logado: Exibe as informações
+                userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+            } else {
+                // Usuário não logado: Redireciona para o login
+                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        // 2. Função de Logout
+        function logout() {
+            // Remove as informações de sessão
+            localStorage.removeItem('userGraduacao');
+            localStorage.removeItem('userNomeGuerra');
+
+            // Redireciona para a tela de login
+            alert('Logout realizado com sucesso!');
+            window.location.href = 'login.html';
+        }
+
+        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin(); // Garante que a página só é exibida se houver login
+
+            const btnLogout = document.getElementById('btn-logout');
+
+            if (btnLogout) {
+                // O botão foi encontrado no DOM, anexa o evento
+                btnLogout.addEventListener('click', logout);
+                console.log("Logout Listener anexado com sucesso.");
+            } else {
+                // O botão NÃO foi encontrado, exibe erro no console
+                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+            }
+        });
+</script>
+
+</html>
