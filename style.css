@@ -1386,153 +1386,89 @@ footer{
 }
 /* ==================================================================== */
 /* ==================================================================== */
-/* ESTILOS ESPECÍFICOS PARA A TABELA AIT (Similar ao TCO e Materiais) */
-/* ==================================================================== */
+/* --- ESTILOS GERAIS DE TABELA DATA TABLES (APLICADOS AO DROGAS E AIT) --- */
 
-#tabela-ait {
-    width: 100%;
+/* Estilo para o contêiner de tabelas largas (Essencial para rolagem horizontal) */
+.tabela-container {
+    overflow-x: auto; /* Permite a rolagem horizontal se a tabela for maior que o contêiner */
+    width: 100%; /* Garante que o contêiner ocupe a largura total */
+    margin-top: 15px;
+}
+
+/* Estilo Base para as tabelas DataTables */
+#tabela-drogas, #tabela-ait {
+    width: 100% !important; /* DataTables define a largura via JS, mas o !important ajuda */
     border-collapse: collapse;
-    margin-top: 20px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-#tabela-ait th,
-#tabela-ait td {
-    border: 1px solid #ccc;
-    padding: 8px;
-    text-align: left;
+    margin: 0 auto;
     font-size: 0.9rem;
-    max-width: 250px; /* Limita largura de colunas para melhor visualização */
-    white-space: nowrap; /* Impede quebra de linha por padrão */
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
-#tabela-ait th {
-    background-color: #0d47a1; /* Azul da PM */
+#tabela-drogas th, #tabela-ait th,
+#tabela-drogas td, #tabela-ait td {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+    white-space: nowrap; /* Impede a quebra de linha por padrão, forçando a rolagem */
+}
+
+#tabela-drogas th, #tabela-ait th {
+    background-color: #0d47a1; /* Cor de fundo do cabeçalho */
     color: white;
     font-weight: bold;
-    text-transform: uppercase;
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-/* Estilo para células editáveis */
-#tabela-ait td[contenteditable="true"] {
-    cursor: text;
-}
-
-/* Foco em células editáveis */
-#tabela-ait td[contenteditable="true"]:focus {
-    background-color: #fff9e6; 
-    outline: 1px solid #ffc107;
-}
-
-/* Estilo para a nova linha */
-#tabela-ait .new-row-highlight {
-    background-color: #e6ffed; 
-}
-
-/* Estilo para Dropdowns dentro das células */
-#tabela-ait select.dropdown-select {
-    width: 100%;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    box-sizing: border-box;
-    font-size: 0.9rem;
-}
-
-/* Estilos dos Botões de Ação (Salvar/Excluir) */
-
-#tabela-ait .btn-salvar-evento, 
-#tabela-ait .btn-deletar-evento {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    margin-right: 5px;
-    transition: background-color 0.3s;
-    white-space: normal; 
-    display: inline-block;
-    width: 65px; 
     text-align: center;
 }
 
-#tabela-ait .btn-salvar-evento {
-    background-color: rgba(59, 111, 184, 1);
-    color: white;
-}
-#tabela-ait .btn-salvar-evento:hover {
-    background-color: #0056b3;
-}
-
-#tabela-ait .btn-deletar-evento {
-    background-color: #dc3545;
-    color: white;
-}
-#tabela-ait .btn-deletar-evento:hover {
-    background-color: #c82333;
-}
-
-/* Zebra Striping (Cor de Fundo para linhas pares) */
-#tabela-ait tbody tr:nth-child(even) {
+/* Estilo para linhas pares (Cor de Fundo para linhas pares) */
+#tabela-drogas tbody tr:nth-child(even), #tabela-ait tbody tr:nth-child(even) {
     background-color: #f8f9fa;
 }
 
-#tabela-ait tbody tr:hover {
+#tabela-drogas tbody tr:hover, #tabela-ait tbody tr:hover {
     background-color: #e9ecef;
 }
 
 /* Estilo específico para a célula de Ações */
-#tabela-ait td:last-child {
+#tabela-drogas td:last-child, #tabela-ait td:last-child {
     white-space: normal; /* Permite que os botões quebrem linha se necessário */
     min-width: 150px;
+    text-align: center;
 }
 
 /* Campo de ID (Não editável) */
-
-#tabela-ait td.chave-primaria {
+#tabela-drogas td.chave-primaria, #tabela-ait td.chave-primaria {
     font-weight: bold;
     background-color: #f1f1f1;
     text-align: center;
 }
 
-/* --- ESTILOS PARA O DASHBOARD DE AIT --- */
-
-.dashboard-cards {
-    display: flex;
-    justify-content: space-around; /* Distribui o espaço entre os cards */
-    gap: 20px; /* Espaçamento entre os cards */
-    padding: 20px 0;
-    margin-bottom: 20px; /* Espaço entre o dashboard e a tabela */
-    background-color: #f8f9fa; /* Fundo claro para o dashboard */
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+/* Estilo para inputs de edição */
+#tabela-drogas input[type="text"], #tabela-ait input[type="text"] {
+    width: 100%;
+    padding: 5px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+    font-size: 0.9em;
 }
+/* --- ESTILOS DATA TABLES PARA CABEÇALHOS (PADRÃO AZUL ESCURO) --- */
 
-.card {
-    flex-grow: 1; /* Permite que os cards cresçam igualmente */
-    background-color: #ffffff;
-    border-radius: 6px;
-    padding: 15px;
-    text-align: center;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    border-left: 5px solid #0d47a1; /* Linha azul para destaque */
-}
-
-.card h3 {
-    font-size: 0.9rem;
-    color: #555;
-    margin-bottom: 5px;
-    font-weight: normal;
-}
-
-.count-number {
-    font-size: 2.2rem;
+#tabela-drogas th, 
+#tabela-ait th {
+    /* Define o fundo azul que você usa */
+    background-color: #0d47a1 !important; 
+    /* Define a cor da fonte como branca */
+    color: white !important; 
+    /* Garante que o texto seja centralizado e em negrito */
     font-weight: bold;
-    color: #0d47a1; /* Azul institucional */
-    margin: 0;
+    text-align: center;
+    /* Linha abaixo adicionada para garantir consistência de borda */
+    border: 1px solid #0d47a1 !important; 
+}
+
+/* Garante que o padding nas células seja uniforme */
+#tabela-drogas th, #tabela-drogas td,
+#tabela-ait th, #tabela-ait td {
+    padding: 8px 10px;
+    border: 1px solid #dee2e6;
+    text-align: left;
+    white-space: nowrap; 
 }

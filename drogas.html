@@ -4,13 +4,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gerenciamento P3 - DROGAS APREENDIDAS</title>
+    <title>Sistema de Gerenciamento P3 - Drogas Apreendidas</title>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.0/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" type="text/css"
+        href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.dataTables.min.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
+    <script type="text/javascript" charset="utf8"
+        src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.0/css/dataTables.dataTables.min.css">
+    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
+
+    <link rel="stylesheet" type="text/css"
+        href="https://cdn.datatables.net/fixedheader/4.0.0/css/fixedHeader.dataTables.min.css">
+    <script type="text/javascript" charset="utf8"
+        src="https://cdn.datatables.net/fixedheader/4.0.0/js/dataTables.fixedHeader.min.js"></script>
+
+    <link rel="stylesheet" type="text/css"
+        href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.dataTables.min.css">
+    <script type="text/javascript" charset="utf8"
+        src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
+
+    <style>
+        .dataTables_wrapper {
+            margin-top: 20px;
+        }
+
+        #tabela-drogas input[type="text"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 0.9em;
+        }
+
+        .btn-salvar,
+        .btn-cancelar,
+        .new-row-editing .btn-editar,
+        .new-row-editing .btn-excluir {
+            margin-left: 5px;
+        }
+
+        .chave-primaria {
+            font-weight: bold;
+            background-color: #f0f0f0;
+            /* Destaca a chave primária */
+        }
+    </style>
+
 </head>
 
 <body>
- <header>
+    <header>
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
@@ -19,7 +68,7 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -59,52 +108,57 @@
 
         <main>
             <div class="saudacao">
-                <h2>Drogas Apreendidas</h2>
-                <p>TCO, Tráfico ou Mandado Judicial</p>
+                <h2>Gerenciamento de Registros de Drogas Apreendidas</h2>
             </div>
             <div class="TabelaEventos">
-                <h3>Cadastro de Drogas</h3>
+                <h3>Cadastro de Drogas Apreendidas</h3>
 
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
                             alt="Adicionar" />
-                        Adicionar Novo Cadastro de Droga
+                        Adicionar Novo Registro
                     </button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
                 </div>
 
                 <div class="filtros-container">
-                    <label for="filtro-tipo">Filtrar por:</label>
-                    <select id="filtro-tipo">
-                        <option value="">Selecione o campo</option>
-                        <option value="N° DO BOU">N° BOU</option>
-                        <option value="DATA">Data</option>
-                        <option value="CATEGORIA">Categoria</option>
-                        <option value="ESAJ">ESAJ</option>
-                        <option value="STATUS">Status</option>
-                        <option value="LOCAL">Local</option>
-                    </select>
+                    <label for="filtro-global">Pesquisa Rápida:</label>
+                    <input type="text" id="filtro-global" placeholder="Buscar em todos os campos...">
 
-                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
-
-                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
-                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                    <button id="btn-imprimir" class="btn-secondary" onclick="window.print()">Imprimir Tabela</button>
                 </div>
+
                 <div class="tabela-container">
-                    <table id="tabela-materiais">
+                    <table id="tabela-drogas" class="display responsive nowrap" style="width:70%">
                         <thead>
                             <tr>
-                                <th>IDMaterial</th>
-                                <th>N° DO BOU</th>
+                                <th>ID</th>
                                 <th>DATA</th>
-                                <th>CATEGORIA</th>
-                                <th>DESCRIÇÃO</th>
-                                <th>LOCAL DO DEPÓSITO</th>
-                                <th>DATA DE DEPOSITO</th>
-                                <th>ESAJ</th>
-                                <th>STATUS</th>
-                                <th>AÇÕES</th>
+                                <th>NUMERO COP</th>
+                                <th>FATO TÍPICO</th>
+                                <th>NOME</th>
+                                <th>RG</th>
+                                <th>CPF</th>
+                                <th>IDADE</th>
+                                <th>ALCUNHA</th>
+                                <th>SEXO</th>
+                                <th>MÃE</th>
+                                <th>CIDADE</th>
+                                <th>ESTADO</th>
+                                <th>BAIRRO</th>
+                                <th>PONTO REF</th>
+                                <th>ENDEREÇO</th>
+                                <th>DIA</th>
+                                <th>MÊS</th>
+                                <th>HORA</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>TIPO DE DROGA</th>
+                                <th>PESO (Kg)</th>
+                                <th>DADOS DA EQUIPE</th>
+                                <th>NUMERO_LACRE</th>
+                                <th>MOVIMENTAÇÃO</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,76 +174,416 @@
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
     </div>
 </footer>
-<script>
 
-        // Função para formatar e exibir a data/hora
+<script>
+    // --- FUNÇÕES DE RELÓGIO E LOGIN (EXISTENTES) ---
+
     function atualizarRelogio() {
         const agora = new Date();
-
-        // Opções para o formato da data em Português do Brasil
         const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
         const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-
-        // Opções para o formato da hora (inclui segundos)
         const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        // Exibe no elemento relógio, separando data e hora por uma quebra de linha
         document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
     }
 
-    // Chama a função uma vez para carregar imediatamente
-    atualizarRelogio();
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
 
-    //FUNÇÃO DO IFRAME PARA CARREGAR OS DADOS DO CARD NA MESMA PÁGINA.
-    // Configura para atualizar a cada 1000 milissegundos (1 segundo)
-    setInterval(atualizarRelogio, 1000);
-                // --- CÓDIGO PARA LOGIN/LOGOUT ---
-
-        // 1. Função para verificar o login e exibir a info
-        function checkLogin() {
-            // Assume que as informações de sessão (graduação e nome de guerra)
-            // foram salvas no localStorage após o login bem-sucedido no login.html
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
-
-            if (graduacao && nomeGuerra) {
-                // Usuário logado: Exibe as informações
-                userInfoEl.innerHTML = `
+        if (graduacao && nomeGuerra) {
+            userInfoEl.innerHTML = `
                 <p>Bem Vindo(a):</p>
                 <p class="user-nome">${graduacao} ${nomeGuerra}</p>
             `;
-            } else {
-                // Usuário não logado: Redireciona para o login
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                window.location.href = 'login.html';
-            }
-        }
-
-        // 2. Função de Logout
-        function logout() {
-            // Remove as informações de sessão
-            localStorage.removeItem('userGraduacao');
-            localStorage.removeItem('userNomeGuerra');
-
-            // Redireciona para a tela de login
-            alert('Logout realizado com sucesso!');
+        } else {
+            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
             window.location.href = 'login.html';
         }
+    }
 
-        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin(); // Garante que a página só é exibida se houver login
+    function logout() {
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
+        alert('Logout realizado com sucesso!');
+        window.location.href = 'login.html';
+    }
 
-            const btnLogout = document.getElementById('btn-logout');
 
-            if (btnLogout) {
-                // O botão foi encontrado no DOM, anexa o evento
-                btnLogout.addEventListener('click', logout);
-                console.log("Logout Listener anexado com sucesso.");
-            } else {
-                // O botão NÃO foi encontrado, exibe erro no console
-                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+    // =====================================================================
+    // --- CÓDIGO DE GERENCIAMENTO DE DROGAS APREENDIDAS (CRUD) ---
+    // =====================================================================
+
+    // A URL está correta na sua versão
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+
+    let dataTableDrogas = null;
+
+    const HEADERS_DROGAS_JS = [
+        'ID', 'DATA', 'NUMERO COP', 'FATO TÍPICO', 'NOME', 'RG', 'CPF', 'IDADE',
+        'ALCUNHA', 'SEXO', 'MÃE', 'CIDADE', 'ESTADO', 'BAIRRO', 'PONTO REF',
+        'ENDEREÇO', 'DIA', 'MÊS', 'HORA', 'LATITUDE', 'LONGITUDE', 'TIPO DE DROGA',
+        'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO', 'AÇÕES'
+    ];
+    const CHAVE_PRIMARIA_DROGAS_JS = 'ID';
+
+
+    /**
+     * 1. FUNÇÕES DE COMUNICAÇÃO (CRUD)
+     */
+
+    function loadDrogas() {
+        $('#mensagem-carregamento').show().text('Carregando dados, aguarde...');
+        $.ajax({
+            url: WEBAPP_URL,
+            type: 'GET',
+            data: { action: 'read' },
+            dataType: 'json',
+            success: function (response) {
+                $('#mensagem-carregamento').hide();
+                if (response.status === 'error') {
+                    alert('Erro ao carregar dados: ' + response.message);
+                } else {
+                    renderTable(response);
+                }
+            },
+            error: function () {
+                $('#mensagem-carregamento').text('Erro ao carregar dados. Verifique a URL do Apps Script e a implantação.');
+                alert('Erro na comunicação com o Apps Script.');
             }
         });
+    }
+
+    function saveRecord(rowData, type) {
+        const dataToSend = { action: type };
+        Object.keys(rowData).forEach(key => {
+            if (key !== 'AÇÕES') {
+                dataToSend[key] = rowData[key];
+            }
+        });
+
+        if (type === 'update' && !dataToSend[CHAVE_PRIMARIA_DROGAS_JS]) {
+            alert("Erro: Chave primária de atualização não encontrada!");
+            return;
+        }
+
+        $.ajax({
+            url: WEBAPP_URL,
+            type: 'POST',
+            data: dataToSend,
+            dataType: 'json',
+            success: function (response) {
+                if (response.status === 'success') {
+                    alert(response.message);
+                    loadDrogas();
+                } else {
+                    alert('Erro ao salvar: ' + response.message);
+                    loadDrogas();
+                }
+            },
+            error: function () {
+                alert('Erro de comunicação ao tentar salvar o registro.');
+                loadDrogas();
+            }
+        });
+    }
+
+    function deleteRecord(chaveValor) {
+        if (!confirm(`Tem certeza que deseja EXCLUIR o registro ID: ${chaveValor}?`)) {
+            return;
+        }
+
+        const dataToSend = { action: 'delete', [CHAVE_PRIMARIA_DROGAS_JS]: chaveValor };
+
+        $.ajax({
+            url: WEBAPP_URL,
+            type: 'POST',
+            data: dataToSend,
+            dataType: 'json',
+            success: function (response) {
+                if (response.status === 'success') {
+                    alert(response.message);
+                    loadDrogas();
+                } else {
+                    alert('Erro ao excluir: ' + response.message);
+                }
+            },
+            error: function () {
+                alert('Erro de comunicação ao tentar excluir o registro.');
+            }
+        });
+    }
+
+
+    /**
+     * 2. FUNÇÃO DE RENDERIZAÇÃO E INTERAÇÃO DA TABELA
+     */
+
+    function renderTable(data) {
+        if (dataTableDrogas) {
+            dataTableDrogas.destroy();
+            $('#tabela-drogas thead').empty();
+        }
+
+        const headerRow = '<tr>' + HEADERS_DROGAS_JS.map(header => `<th>${header}</th>`).join('') + '</tr>';
+        $('#tabela-drogas thead').html(headerRow);
+
+        const dataForTable = data.map(item => {
+            const row = [];
+            HEADERS_DROGAS_JS.slice(0, -1).forEach(header => {
+                row.push(item[header] !== null && item[header] !== undefined ? String(item[header]) : '');
+            });
+
+            row.push(`
+                <button class="btn-editar btn-action">Editar</button>
+                <button class="btn-salvar btn-action" style="display:none;">Salvar</button>
+                <button class="btn-cancelar btn-action" style="display:none;">Cancelar</button>
+                <button class="btn-excluir btn-action">Excluir</button>
+            `);
+            return row;
+        });
+
+        dataTableDrogas = $('#tabela-drogas').DataTable({
+            data: dataForTable,
+            columns: HEADERS_DROGAS_JS.map(h => ({
+                title: h,
+                className: h === CHAVE_PRIMARIA_DROGAS_JS ? 'chave-primaria' : '',
+                searchable: h !== 'AÇÕES',
+                orderable: h !== 'AÇÕES',
+                width: (h === CHAVE_PRIMARIA_DROGAS_JS || h === 'AÇÕES') ? 'auto' : '100px' // Mantendo o ajuste de largura mínima
+            })),
+            responsive: false, // Força a rolagem horizontal
+            scrollX: true,
+            destroy: true,
+            paging: true,
+            pageLength: 20,
+            dom: '<"top"li>rt<"bottom"p>',
+
+        });
+
+        // ... dentro da função renderTable(data)
+
+        // 4. Inicializa DataTables
+        dataTableDrogas = $('#tabela-drogas').DataTable({
+            data: dataForTable,
+            columns: HEADERS_DROGAS_JS.map(h => ({
+                // ... (Configurações de colunas) ...
+            })),
+            responsive: false,
+            scrollX: true,
+            destroy: true,
+            paging: true,
+            pageLength: 20,
+            dom: '<"top"li>rt<"bottom"p>',
+
+            // *******************************************
+            // ** NOVO: ATIVAÇÃO DO CABEÇALHO FIXO **
+            // *******************************************
+            fixedHeader: true, // Adiciona esta linha para fixar o cabeçalho
+
+        });
+
+        attachTableListeners();
+    }
+
+
+    /**
+     * 3. FUNÇÕES DE EDIÇÃO DA TABELA E LISTENERS
+     */
+
+    function attachTableListeners() {
+        $('#tabela-drogas tbody').off('click', '.btn-editar, .btn-salvar, .btn-cancelar, .btn-excluir');
+
+        $('#tabela-drogas tbody').on('click', '.btn-editar', function () {
+            const row = $(this).closest('tr');
+            toggleRowEdit(row, true);
+        });
+
+        $('#tabela-drogas tbody').on('click', '.btn-salvar', function () {
+            const row = $(this).closest('tr');
+            const chaveValor = dataTableDrogas.row(row).data()[0];
+            saveEditedRow(row, 'update', chaveValor);
+        });
+
+        $('#tabela-drogas tbody').on('click', '.btn-cancelar', function () {
+            loadDrogas();
+        });
+
+        $('#tabela-drogas tbody').on('click', '.btn-excluir', function () {
+            const row = $(this).closest('tr');
+            const chaveValor = dataTableDrogas.row(row).data()[0];
+            deleteRecord(chaveValor);
+        });
+
+        // Listener para a Pesquisa Global (Filtro) - Otimizado
+        $('#filtro-global').off('keyup');
+        $('#filtro-global').on('keyup', function () {
+            if (dataTableDrogas) {
+                dataTableDrogas.search(this.value).draw();
+            }
+        });
+    }
+
+
+    function toggleRowEdit(row, isEditing) {
+        const dataIndex = dataTableDrogas.row(row).index();
+        const rowDataOriginal = dataTableDrogas.data()[dataIndex];
+
+        row.find('td').each(function (colIndex) {
+            const cell = $(this);
+            const headerName = HEADERS_DROGAS_JS[colIndex];
+
+            if (headerName === 'AÇÕES') {
+                cell.find('.btn-editar, .btn-excluir').toggle(!isEditing);
+                cell.find('.btn-salvar, .btn-cancelar').toggle(isEditing);
+            }
+            else if (colIndex === 0) { // Campo ID
+                cell.toggleClass('editing-readonly', isEditing);
+            }
+            else {
+                if (isEditing) {
+                    const text = rowDataOriginal[colIndex].trim();
+                    const input = `<input type="text" value="${text}" style="width: 100%;">`;
+                    cell.html(input);
+                }
+            }
+        });
+    }
+
+    function saveEditedRow(row, type, chaveValor) {
+        const rowData = {};
+        rowData[CHAVE_PRIMARIA_DROGAS_JS] = chaveValor;
+
+        row.find('td').each(function (colIndex) {
+            const headerName = HEADERS_DROGAS_JS[colIndex];
+            if (headerName !== 'AÇÕES') {
+                const cell = $(this);
+                let value = '';
+
+                if (colIndex !== 0) { // Campos editáveis
+                    value = cell.find('input, textarea').val() || cell.text().trim();
+                } else {
+                    value = chaveValor; // ID
+                }
+
+                rowData[headerName] = value;
+            }
+        });
+
+        saveRecord(rowData, type);
+    }
+
+
+    /**
+     * 4. FUNÇÕES DE ADICIONAR NOVA LINHA (Inclui addNewRow)
+     */
+
+    function addNewRow() {
+        if ($('#tabela-drogas tbody').find('.new-row-editing').length > 0) {
+            alert("Já existe uma linha de cadastro aberta. Salve ou cancele antes de adicionar outra.");
+            return;
+        }
+
+        const emptyRowData = HEADERS_DROGAS_JS.map((header) => {
+            if (header === 'AÇÕES') {
+                return `
+                    <button class="btn-salvar-novo btn-action">Salvar Novo</button>
+                    <button class="btn-cancelar-novo btn-action">Cancelar</button>
+                `;
+            }
+            return '';
+        });
+
+        const newRow = dataTableDrogas.row.add(emptyRowData).draw().node();
+        $(newRow).addClass('new-row-editing').prependTo('#tabela-drogas tbody');
+
+        $(newRow).find('td').each(function (colIndex) {
+            const cell = $(this);
+            const headerName = HEADERS_DROGAS_JS[colIndex];
+
+            if (headerName !== 'AÇÕES') {
+                let initialValue = '';
+
+                if (headerName === 'DATA') {
+                    const today = new Date();
+                    const dd = String(today.getDate()).padStart(2, '0');
+                    const mm = String(today.getMonth() + 1).padStart(2, '0');
+                    const yyyy = today.getFullYear();
+                    initialValue = `${dd}/${mm}/${yyyy}`;
+                }
+
+                if (headerName === CHAVE_PRIMARIA_DROGAS_JS) {
+                    cell.html(`<input type="text" value="" placeholder="ID (Chave Única)" style="width: 100%;">`);
+                } else {
+                    cell.html(`<input type="text" value="${initialValue}" style="width: 100%;">`);
+                }
+            }
+        });
+
+        $(newRow).off('click', '.btn-salvar-novo, .btn-cancelar-novo');
+        $(newRow).on('click', '.btn-salvar-novo', function () {
+            const row = $(this).closest('tr');
+            saveNewRow(row);
+        });
+
+        $(newRow).on('click', '.btn-cancelar-novo', function () {
+            dataTableDrogas.row($(this).closest('tr')).remove().draw();
+        });
+    }
+
+    function saveNewRow(row) {
+        const rowData = {};
+        let isDataValid = true;
+
+        row.find('td').each(function (colIndex) {
+            const headerName = HEADERS_DROGAS_JS[colIndex];
+            if (headerName !== 'AÇÕES') {
+                const cell = $(this);
+                let value = cell.find('input, textarea').val();
+
+                if (headerName === CHAVE_PRIMARIA_DROGAS_JS && (!value || String(value).trim() === '')) {
+                    alert(`O campo ${CHAVE_PRIMARIA_DROGAS_JS} é obrigatório e não pode ser vazio.`);
+                    isDataValid = false;
+                    return false;
+                }
+
+                rowData[headerName] = value;
+            }
+        });
+
+        if (isDataValid) {
+            saveRecord(rowData, 'create');
+        }
+    }
+
+
+    // 5. INICIALIZAÇÃO GERAL
+    // Tudo deve estar definido antes deste bloco ser executado.
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializa o Relógio
+        atualizarRelogio();
+        setInterval(atualizarRelogio, 1000);
+
+        checkLogin();
+
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) {
+            btnLogout.addEventListener('click', logout);
+        }
+
+        const btnAdicionar = document.getElementById('btn-adicionar-cadastro');
+        if (btnAdicionar) {
+            // AGORA addNewRow ESTÁ DEFINIDA!
+            btnAdicionar.addEventListener('click', addNewRow);
+        }
+
+        loadDrogas();
+
+        // Configura o filtro global do DataTables (Listener anexo em attachTableListeners, mas deixo aqui o backup)
+        // O attachTableListeners é chamado dentro de loadDrogas, que é chamado aqui.
+
+        console.log("Sistema Drogas inicializado.");
+    }); 
 </script>
+
+</html>

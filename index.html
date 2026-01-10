@@ -66,59 +66,67 @@
                 <a href="mvi.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/skull.png" alt="skull" />
                     <p>MVI - Mortes Violentas</p>
-                    <p class="numero">0</p>
-                </a>
+                    <p id="numeromvi" class="numero">--</p>
+                </a><!--termina o mvi-->
+
                 <a href="cvp.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/robber.png" alt="robber" />
                     <p>CVP - Crimes Contra o Patrimônio</p>
-                    <p class="numero">3</p>
+                    <p id="numerocvp" class="numero">--</p>
                 </a>
                 <a href="tco.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/morale.png" alt="morale" />
                     <p>TCO - Termos Circunstanciados</p>
-                    <p class="numero">50</p>
-                </a>
+                    <p id="numerotco" class="numero">--</p>
+                </a> <!--termina o tco-->
+                
                 <a href="violenciadomestica.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/windows/32/hand.png" alt="hand" />
                     <p>Violência Doméstica</p>
-                    <p class="numero">20</p>
-                </a>
+                    <p id="violenciadomestica" class="numero">--</p>
+                </a> <!--termina violencia domestica-->
+                
                 <div class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/gun.png" alt="gun" />
                     <p>Armas Apreenndidas</p>
-                    <p class="numero">50</p>
-                </div>
+                    <p id="armasapreendidas" class="numero">--</p>
+                </div> <!--termina armas apreendidas-->
+
                 <a href="drogas.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/marijuana-leaf.png"
-                        alt="marijuana-leaf" />
+                        alt="Drogas Apreendidas" />
                     <p>Drogas Apreendidas</p>
-                    <p class="numero">50</p>
-                </a>
+                    <p id="numerodrogas" class="numero">--</p>
+                </a> <!--termina drogas apreendidas-->
+
                 <a href="ait.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios-glyphs/30/policeman-male.png"
                         alt="policeman-male" />
                     <p>Infrações de Trânsito</p>
                     <p class="numero" id="numeroait">50</p>
-                </a>
+                </a> <!--termina o ait-->
+
                 <a href="materiais.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                     <p>Materiais Apreendidos</p>
-                    <p class="numero">50</p>
-                </a>
+                    <p class="numero" id="numeromateriais">--</p> 
+                </a><!--termina materiais apreendidos-->
+
                 <a href="mandado.html" class="btn">
                     <img width="50" height="50"
                         src="https://img.icons8.com/external-outlines-amoghdesign/32/external-balance-law-crime-and-justice-outlines-amoghdesign.png"
                         alt="external-balance-law-crime-and-justice-outlines-amoghdesign" />
                     <p>Cumprimentos de Mandados</p>
-                    <p class="numero">50</p>
-                </a>
+                    <p id="numeromandados" class="numero">--</p>
+                </a><!--termina mandados-->
+
                 <div class="btn">
                     <img width="50" height="50"
                         src="https://img.icons8.com/external-xnimrodx-lineal-xnimrodx/64/external-boombox-music-xnimrodx-lineal-xnimrodx.png"
                         alt="external-boombox-music-xnimrodx-lineal-xnimrodx" />
                     <p>Perturbação do Sossego</p>
-                    <p class="numero">3200</p>
-                </div>
+                    <p id="numeroperturbacaodosossego" class="numero">--</p>
+                </div><!--termina perturbação do sossego-->
 
             </section>
         </main>
@@ -130,65 +138,22 @@
         </div>
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
     <script>
-        // **ATENÇÃO: SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU GOOGLE APPS SCRIPT**
+        // ********************************************************************
+        // ** ATENÇÃO: SUBSTITUA AS URLs ABAIXO PELAS SUAS URLs REAIS **
+        // ********************************************************************
+        // Usando um nome mais claro para a URL de cada App
         const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
-
-        // --- FUNÇÕES AUXILIARES DE AIT (NOVO CÓDIGO) ---
-
-        // Função auxiliar de comunicação com o Apps Script
-        async function fetchDataIndex(action, method = 'GET', params = {}) {
-            const url = new URL(WEBAPP_URL_AIT);
-            url.searchParams.append('action', action);
-
-            const options = {
-                method: method,
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            };
-
-            if (method === 'GET') {
-                Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-            }
-
-            try {
-                const response = await fetch(url.toString(), options);
-                if (!response.ok) {
-                    throw new Error(`Erro de rede: ${response.statusText}`);
-                }
-                return response.json();
-            } catch (error) {
-                console.error('Erro na comunicação com o App Script:', error);
-                return { status: 'error', message: 'Falha na conexão com o sistema de dados.' };
-            }
-        }
-
-        // Função principal para buscar e exibir o total de AITs do ano
-        async function updateAITCount() {
-            const element = document.getElementById('numeroait');
-            if (!element) {
-                console.warn('Elemento com ID "numeroait" não encontrado. O contador não será exibido.');
-                return;
-            }
-
-            element.textContent = '...'; // Placeholder de carregamento
-
-            // Chama a nova função no Apps Script
-            const result = await fetchDataIndex('countAITByYear', 'GET');
-
-            if (result.status === 'success') {
-                const currentYear = new Date().getFullYear();
-                // Atualiza o parágrafo com o resultado
-                element.textContent = result.count;
-            } else {
-                console.error('Falha ao contar AITs:', result.message);
-                element.textContent = 'ERRO';
-            }
-        }
+        const WEBAPP_URL_DROGAS = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+        const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec'; 
+        const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec'; // <-- NOVO: URL do Apps Script de Materiais
 
 
-        // --- CÓDIGO DO RELÓGIO (EXISTENTE) ---
+        // --- FUNÇÕES DE UTILIDADE (MANTIDAS) ---
 
-        // Função para formatar e exibir a data/hora
         function atualizarRelogio() {
             const agora = new Date();
             const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
@@ -197,12 +162,6 @@
             document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
         }
 
-        atualizarRelogio();
-        setInterval(atualizarRelogio, 1000);
-
-        // --- CÓDIGO PARA LOGIN/LOGOUT (EXISTENTE) ---
-
-        // 1. Função para verificar o login e exibir a info
         function checkLogin() {
             const graduacao = localStorage.getItem('userGraduacao');
             const nomeGuerra = localStorage.getItem('userNomeGuerra');
@@ -219,7 +178,6 @@
             }
         }
 
-        // 2. Função de Logout
         function logout() {
             localStorage.removeItem('userGraduacao');
             localStorage.removeItem('userNomeGuerra');
@@ -227,23 +185,130 @@
             window.location.href = 'login.html';
         }
 
-        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin();
 
-            const btnLogout = document.getElementById('btn-logout');
+        // --- FUNÇÃO OTIMIZADA PARA CONTADORES (GERAL) ---
 
-            if (btnLogout) {
-                btnLogout.addEventListener('click', logout);
-                console.log("Logout Listener anexado com sucesso.");
-            } else {
-                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+        /**
+         * Função genérica para buscar e exibir a contagem no dashboard.
+         * Usada para contagens que retornam apenas um número inteiro (campo 'count').
+         */
+        function updateCount(url, action, elementId) {
+            const currentYear = new Date().getFullYear();
+            $(`#${elementId}`).text('...');
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                data: {
+                    action: action,
+                    year: currentYear
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success' && response.count !== undefined) {
+                        $(`#${elementId}`).text(response.count);
+                    } else {
+                        $(`#${elementId}`).text('ERRO');
+                        console.error(`Erro ao carregar contagem ${elementId}: ${response.message || 'Erro de comunicação.'}`);
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    $(`#${elementId}`).text('FALHA');
+                    console.error(`Erro na comunicação com o Apps Script (${elementId}):`, textStatus, errorThrown);
+                }
+            });
+        }
+
+
+        /**
+         * FUNÇÃO ESPECÍFICA PARA DROGAS (Soma o Peso Anual)
+         * Esta é a função que você corrigiu anteriormente.
+         */
+        async function atualizarDrogas() {
+            if (typeof WEBAPP_URL_DROGAS === 'undefined') {
+                console.error("ERRO: A variável 'WEBAPP_URL_DROGAS' não está definida.");
+                return;
             }
 
-            // CHAMA A FUNÇÃO DE CONTADOR DO AIT AO CARREGAR A PÁGINA
-            updateAITCount();
+            // TENTA ENCONTRAR O ELEMENTO ONDE VAI O NÚMERO
+            const elementoContador = document.getElementById('numerodrogas');
+            // TENTA ENCONTRAR O ELEMENTO ONDE VAI O NOME ("Drogas Apreendidas")
+            const elementoTitulo = elementoContador ? elementoContador.previousElementSibling : null;
+
+            if (elementoContador) {
+                elementoContador.textContent = '...';
+            }
+
+            const currentYear = new Date().getFullYear();
+            const url = `${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${currentYear}`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    const totalFormatado = String(data.total).replace('.', ',');
+
+                    if (elementoTitulo) {
+                        // AÇÃO CRUCIAL: Mudar o título do card para a descrição da soma.
+                        elementoTitulo.textContent = 'Peso Total (Ano Atual)';
+                    }
+                    if (elementoContador) {
+                        // Exibe a soma e a unidade (ex: 15,45 Kg)
+                        elementoContador.textContent = `${totalFormatado} Kg`;
+                    }
+
+                } else {
+                    console.error('Erro ao carregar soma de peso de drogas:', data.message);
+                    if (elementoContador) {
+                        elementoContador.textContent = 'ERRO';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro na requisição da soma de drogas:', error);
+                if (elementoContador) {
+                    elementoContador.textContent = 'FALHA';
+                }
+            }
+        }
+
+
+        // --- INICIALIZAÇÃO GERAL ---
+
+        document.addEventListener('DOMContentLoaded', function () {
+            // Inicializa o Relógio
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+
+            // Verifica Login
+            checkLogin();
+
+            // Anexa Listener de Logout
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', logout);
+            }
+
+            // CARREGA OS CONTADORES
+
+            // 1. Contagem AIT 
+            updateCount(WEBAPP_URL_AIT, 'countAITs', 'numeroait');
+
+            // 2. Contagem Drogas
+            atualizarDrogas();
+
+            // 3. Contagem TCO
+            updateCount(WEBAPP_URL_TCO, 'countTCOs', 'numerotco');
+
+            // 4. Contagem Materiais Apreendidos (NOVO)
+            if (WEBAPP_URL_MATERIAIS && WEBAPP_URL_MATERIAIS !== 'SUA_URL_DO_WEBAPP_MATERIAIS_AQUI') {
+                // Usa a ação 'countMateriais' que implementamos para subtrair os 'DEVOLVIDO'
+                updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
+            } else {
+                // Alerta visual para o usuário configurar a URL se o placeholder estiver lá
+                $('#numeromateriais').text('Set URL'); 
+            }
         });
     </script>
-</body>
 
 </html>
