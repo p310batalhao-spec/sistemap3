@@ -10,7 +10,7 @@
 </head>
 
 <body>
-     <header>
+    <header>
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
@@ -19,11 +19,12 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
         </div>
+    </header>
     </header>
 
     <section class="pagecomplete">
@@ -41,7 +42,7 @@
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
             </a>
-            <a href="eventos.html" >
+            <a href="eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
@@ -139,8 +140,26 @@
         const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
     }
+
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
+
+        if (graduacao && nomeGuerra) {
+            userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+        } else {
+            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+            window.location.href = 'login.html';
+        }
+    }
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
+
+    checkLogin();
 </script>
 
 </html>

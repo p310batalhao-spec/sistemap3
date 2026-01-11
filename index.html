@@ -16,14 +16,13 @@
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
-            </div>
-        </div>
+            </div> <!--termina cabecalhotexto-->
+        </div><!--termina header-info-left-->
 
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info">
-            </div>
-        </div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div><!--termina header-info-right-->
     </header>
 
     <section class="pagecomplete">
@@ -79,13 +78,13 @@
                     <p>TCO - Termos Circunstanciados</p>
                     <p id="numerotco" class="numero">--</p>
                 </a> <!--termina o tco-->
-                
+
                 <a href="violenciadomestica.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/windows/32/hand.png" alt="hand" />
                     <p>Violência Doméstica</p>
                     <p id="violenciadomestica" class="numero">--</p>
                 </a> <!--termina violencia domestica-->
-                
+
                 <div class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/gun.png" alt="gun" />
                     <p>Armas Apreenndidas</p>
@@ -109,7 +108,7 @@
                 <a href="materiais.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                     <p>Materiais Apreendidos</p>
-                    <p class="numero" id="numeromateriais">--</p> 
+                    <p class="numero" id="numeromateriais">--</p>
                 </a><!--termina materiais apreendidos-->
 
                 <a href="mandado.html" class="btn">
@@ -148,7 +147,7 @@
         // Usando um nome mais claro para a URL de cada App
         const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
         const WEBAPP_URL_DROGAS = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
-        const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec'; 
+        const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
         const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec'; // <-- NOVO: URL do Apps Script de Materiais
 
 
@@ -306,7 +305,7 @@
                 updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
             } else {
                 // Alerta visual para o usuário configurar a URL se o placeholder estiver lá
-                $('#numeromateriais').text('Set URL'); 
+                $('#numeromateriais').text('Set URL');
             }
         });
     </script>

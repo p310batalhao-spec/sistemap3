@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - Drogas Apreendidas</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styledrogas.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
@@ -107,11 +108,39 @@
         </nav>
 
         <main>
+
             <div class="saudacao">
                 <h2>Gerenciamento de Registros de Drogas Apreendidas</h2>
-            </div>
+                <h4>A tabela abaixo contém o total de cadastros exibidos.</h4>
+                <h4>Os cards contém o total de drogas apreenndidas no ano corrente por tipo.</h4>
+            </div> <!-- termina saudacao -->
+
+            <section class="totalcards">
+                <div class="cardnumero">
+                    <h3>Maconha</h3>
+                    <p id="total-maconha" class="numero-grande">--</p>
+                </div> <!-- termina cardnumero -->
+                <div class="cardnumero">
+                    <h3>Crack</h3>
+                    <p id="total-crack" class="numero-grande">--</p>
+                </div> <!-- termina cardnumero -->
+                <div class="cardnumero">
+                    <h3>Cocaína</h3>
+                    <p id="total-cocaina" class="numero-grande">--</p>
+                </div> <!-- termina cardnumero -->
+                <div class="cardnumero">
+                    <h3>Rufinol</h3>
+                    <p id="total-rufinol" class="numero-grande">--</p>
+                </div> <!-- termina cardnumero -->                
+                <div class="cardnumero">
+                    <h3>Loló</h3>
+                    <p id="total-lolo" class="numero-grande">--</p>
+                </div> <!-- termina cardnumero -->
+            </section><!-- termina totalcards -->
+
             <div class="TabelaEventos">
                 <h3>Cadastro de Drogas Apreendidas</h3>
+
 
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
@@ -120,7 +149,7 @@
                         Adicionar Novo Registro
                     </button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
-                </div>
+                </div> <!-- termina adicionar-cadastro-container -->
 
                 <div class="filtros-container">
                     <label for="filtro-global">Pesquisa Rápida:</label>
@@ -276,6 +305,8 @@
                 if (response.status === 'success') {
                     alert(response.message);
                     loadDrogas();
+                    // Importante: Recarregar os cards após salvar/excluir
+                    atualizarDrogasPorTipo();
                 } else {
                     alert('Erro ao salvar: ' + response.message);
                     loadDrogas();
@@ -304,6 +335,8 @@
                 if (response.status === 'success') {
                     alert(response.message);
                     loadDrogas();
+                    // Importante: Recarregar os cards após salvar/excluir
+                    atualizarDrogasPorTipo();
                 } else {
                     alert('Erro ao excluir: ' + response.message);
                 }
@@ -343,6 +376,7 @@
             return row;
         });
 
+        // Configuração do DataTables (Ajustada para a versão mais recente)
         dataTableDrogas = $('#tabela-drogas').DataTable({
             data: dataForTable,
             columns: HEADERS_DROGAS_JS.map(h => ({
@@ -350,24 +384,8 @@
                 className: h === CHAVE_PRIMARIA_DROGAS_JS ? 'chave-primaria' : '',
                 searchable: h !== 'AÇÕES',
                 orderable: h !== 'AÇÕES',
-                width: (h === CHAVE_PRIMARIA_DROGAS_JS || h === 'AÇÕES') ? 'auto' : '100px' // Mantendo o ajuste de largura mínima
-            })),
-            responsive: false, // Força a rolagem horizontal
-            scrollX: true,
-            destroy: true,
-            paging: true,
-            pageLength: 20,
-            dom: '<"top"li>rt<"bottom"p>',
-
-        });
-
-        // ... dentro da função renderTable(data)
-
-        // 4. Inicializa DataTables
-        dataTableDrogas = $('#tabela-drogas').DataTable({
-            data: dataForTable,
-            columns: HEADERS_DROGAS_JS.map(h => ({
-                // ... (Configurações de colunas) ...
+                // Ajuste de largura (mantido para compatibilidade)
+                width: (h === CHAVE_PRIMARIA_DROGAS_JS || h === 'AÇÕES') ? 'auto' : '100px'
             })),
             responsive: false,
             scrollX: true,
@@ -375,13 +393,12 @@
             paging: true,
             pageLength: 20,
             dom: '<"top"li>rt<"bottom"p>',
-
-            // *******************************************
-            // ** NOVO: ATIVAÇÃO DO CABEÇALHO FIXO **
-            // *******************************************
-            fixedHeader: true, // Adiciona esta linha para fixar o cabeçalho
-
+            fixedHeader: true,
         });
+
+        // A linha original abaixo estava duplicando a inicialização do DataTable.
+        // Mantenho apenas a primeira inicialização.
+        // dataTableDrogas = $('#tabela-drogas').DataTable({ ... }); 
 
         attachTableListeners();
     }
@@ -442,7 +459,8 @@
             }
             else {
                 if (isEditing) {
-                    const text = rowDataOriginal[colIndex].trim();
+                    // Aqui usamos o dado original do DataTables para garantir que o valor está correto
+                    const text = rowDataOriginal[colIndex] ? String(rowDataOriginal[colIndex]).trim() : '';
                     const input = `<input type="text" value="${text}" style="width: 100%;">`;
                     cell.html(input);
                 }
@@ -557,33 +575,96 @@
     }
 
 
-    // 5. INICIALIZAÇÃO GERAL
-    // Tudo deve estar definido antes deste bloco ser executado.
+    // =====================================================================
+    // 5. FUNÇÃO DE CÁLCULO DE DROGAS POR TIPO (CORRIGIDA)
+    // =====================================================================
+
+    //* Função que carrega a soma de peso por tipo de droga para o ano atual.
+    async function atualizarDrogasPorTipo() {
+
+        // Referência a todos os elementos
+        const elementos = {
+            MACONHA: document.getElementById('total-maconha'),
+            CRACK: document.getElementById('total-crack'),
+            COCAINA: document.getElementById('total-cocaina'),
+            RUFINOL: document.getElementById('total-rufinol'),
+            LOLÓ: document.getElementById('total-lolo')
+        };
+
+        const anoAtual = new Date().getFullYear();
+
+        try {
+            const url = `${WEBAPP_URL}?action=sumPesoByDrugTypeAndYear&year=${anoAtual}`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.totals) {
+                // Itera sobre as chaves esperadas e atualiza o DOM
+                for (const tipo in elementos) {
+                    const total = data.totals[tipo] || '0,0000';
+                    const elemento = elementos[tipo];
+                    let unidade = 'Kg';
+
+                    // Lógica para unidades diferentes de peso
+                    if (tipo === 'RUFINOL' || tipo === 'LOLÓ') {
+                        unidade = 'Un';
+                    }
+
+                    if (elemento) {
+                        elemento.textContent = `${total} ${unidade}`;
+                    }
+                }
+            } else {
+                console.error('Falha ao obter soma por tipo de droga:', data.message);
+                // Exibe ERRO em todos os elementos
+                for (const tipo in elementos) {
+                    if (elementos[tipo]) elementos[tipo].textContent = 'ERRO';
+                }
+            }
+        } catch (error) {
+            console.error('Erro de rede/servidor na requisição da soma de drogas por tipo:', error);
+            // Exibe FALHA em todos os elementos
+            for (const tipo in elementos) {
+                if (elementos[tipo]) elementos[tipo].textContent = 'FALHA';
+            }
+        }
+    }
+
+
+    // =====================================================================
+    // 6. INICIALIZAÇÃO GERAL (CONSOLIDADA E ÚNICA)
+    // =====================================================================
     document.addEventListener('DOMContentLoaded', function () {
         // Inicializa o Relógio
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
 
+        // Verifica Login
         checkLogin();
 
+        // Anexa Listener de Logout
         const btnLogout = document.getElementById('btn-logout');
         if (btnLogout) {
             btnLogout.addEventListener('click', logout);
         }
 
+        // Anexa Listener para adicionar nova linha
         const btnAdicionar = document.getElementById('btn-adicionar-cadastro');
         if (btnAdicionar) {
-            // AGORA addNewRow ESTÁ DEFINIDA!
             btnAdicionar.addEventListener('click', addNewRow);
         }
 
+        // 1. Carrega a Tabela principal (CRUD)
         loadDrogas();
 
-        // Configura o filtro global do DataTables (Listener anexo em attachTableListeners, mas deixo aqui o backup)
-        // O attachTableListeners é chamado dentro de loadDrogas, que é chamado aqui.
+        // 2. Chama a função para carregar os totais por tipo de droga
+        // Esta chamada foi movida para o bloco principal de inicialização
+        atualizarDrogasPorTipo();
 
         console.log("Sistema Drogas inicializado.");
-    }); 
+    });
 </script>
+
+</html>
 
 </html>
