@@ -38,7 +38,7 @@ header{
 /* --- Layout da Página (Sidebar + Conteúdo) --- */
 .pagecomplete {
     display: flex; /* Usa Flexbox para colocar sidebar e main lado a lado */
-    min-height: calc(100vh - 80px); 
+    min-height: calc(100vh - 80px);
     overflow-x: hidden; /* Evita que o conteúdo do main cause rolagem horizontal na página inteira */
 }
 
@@ -66,14 +66,15 @@ header{
     align-items: flex-start;
     height: 150px; /* Altura fixa para uniformizar */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Sombra para efeito 3D */
-    transition: transform 0.3s;
-    /* Borda para o destaque visual superior (cor primária) */
-    border-top: 4px solid rgba(59, 111, 184, 1); 
+    
 }
 
 .btn:hover {
+    transition: transform 0.5s;
     transform: translateY(-5px); /* Efeito sutil ao passar o mouse */
     cursor: pointer;
+        /* Borda para o destaque visual superior (cor primária) */
+    border-top: 4px solid rgba(59, 111, 184, 1); 
 }
 
 /* Estiliza o valor numérico (o número grande) */

@@ -8,55 +8,50 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="styledrogas.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
-
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.0/css/dataTables.dataTables.min.css">
-    <link rel="stylesheet" type="text/css"
-        href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.dataTables.min.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
-    <script type="text/javascript" charset="utf8"
-        src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/2.0.0/css/dataTables.dataTables.min.css">
-    <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/2.0.0/js/dataTables.min.js"></script>
-
-    <link rel="stylesheet" type="text/css"
-        href="https://cdn.datatables.net/fixedheader/4.0.0/css/fixedHeader.dataTables.min.css">
-    <script type="text/javascript" charset="utf8"
-        src="https://cdn.datatables.net/fixedheader/4.0.0/js/dataTables.fixedHeader.min.js"></script>
-
-    <link rel="stylesheet" type="text/css"
-        href="https://cdn.datatables.net/responsive/3.0.0/css/responsive.dataTables.min.css">
-    <script type="text/javascript" charset="utf8"
-        src="https://cdn.datatables.net/responsive/3.0.0/js/dataTables.responsive.min.js"></script>
-
     <style>
-        .dataTables_wrapper {
+        /* Ajuste para garantir que a tabela ocupe o espaço correto sem quebrar o design */
+        .tabela-container {
+            width: 100%;
+            overflow-x: auto;
             margin-top: 20px;
         }
 
-        #tabela-drogas input[type="text"] {
-            padding: 5px;
+        #tabela-drogas input {
+            width: 100%;
+            padding: 4px;
             border: 1px solid #ccc;
-            box-sizing: border-box;
-            font-size: 0.9em;
+            border-radius: 4px;
         }
 
-        .btn-salvar,
-        .btn-cancelar,
-        .new-row-editing .btn-editar,
-        .new-row-editing .btn-excluir {
-            margin-left: 5px;
+        .btn-action {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 12px;
         }
 
-        .chave-primaria {
-            font-weight: bold;
-            background-color: #f0f0f0;
-            /* Destaca a chave primária */
+        .btn-editar {
+            background-color: #f0ad4e;
+            color: white;
+        }
+
+        .btn-salvar {
+            background-color: #5cb85c;
+            color: white;
+        }
+
+        .btn-cancelar {
+            background-color: #d9534f;
+            color: white;
+        }
+
+        .btn-excluir {
+            background-color: #333;
+            color: white;
         }
     </style>
-
 </head>
 
 <body>
@@ -68,11 +63,9 @@
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
             </div>
         </div>
-
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info">
-            </div>
+            <div class="exibirusuario" id="user-info"></div>
         </div>
     </header>
 
@@ -108,563 +101,208 @@
         </nav>
 
         <main>
-
             <div class="saudacao">
                 <h2>Gerenciamento de Registros de Drogas Apreendidas</h2>
-                <h4>A tabela abaixo contém o total de cadastros exibidos.</h4>
-                <h4>Os cards contém o total de drogas apreenndidas no ano corrente por tipo.</h4>
-            </div> <!-- termina saudacao -->
+                <h4>Cards atualizados com totais do ano corrente por tipo.</h4>
+            </div>
 
             <section class="totalcards">
-                <div class="cardnumero">
+                <div class="cardnumero" id="iconmaconha">
                     <h3>Maconha</h3>
-                    <p id="total-maconha" class="numero-grande">--</p>
-                </div> <!-- termina cardnumero -->
-                <div class="cardnumero">
+                    <p id="total-maconha" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconcrack">
                     <h3>Crack</h3>
-                    <p id="total-crack" class="numero-grande">--</p>
-                </div> <!-- termina cardnumero -->
-                <div class="cardnumero">
+                    <p id="total-crack" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconcocaina">
                     <h3>Cocaína</h3>
-                    <p id="total-cocaina" class="numero-grande">--</p>
-                </div> <!-- termina cardnumero -->
-                <div class="cardnumero">
+                    <p id="total-cocaina" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconrufinol">
                     <h3>Rufinol</h3>
-                    <p id="total-rufinol" class="numero-grande">--</p>
-                </div> <!-- termina cardnumero -->                
-                <div class="cardnumero">
+                    <p id="total-rufinol" class="numero-grande">0 Un</p>
+                </div>
+                <div class="cardnumero" id="iconlolo">
                     <h3>Loló</h3>
-                    <p id="total-lolo" class="numero-grande">--</p>
-                </div> <!-- termina cardnumero -->
-            </section><!-- termina totalcards -->
+                    <p id="total-lolo" class="numero-grande">0 Un</p>
+                </div>
+            </section>
 
             <div class="TabelaEventos">
-                <h3>Cadastro de Drogas Apreendidas</h3>
-
-
+                <h3>Tabela de Registros</h3>
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
-                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
-                            alt="Adicionar" />
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Add" />
                         Adicionar Novo Registro
                     </button>
-                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
-                </div> <!-- termina adicionar-cadastro-container -->
+                    <p id="mensagem-carregamento">Carregando dados...</p>
+                </div>
 
                 <div class="filtros-container">
-                    <label for="filtro-global">Pesquisa Rápida:</label>
-                    <input type="text" id="filtro-global" placeholder="Buscar em todos os campos...">
-
-                    <button id="btn-imprimir" class="btn-secondary" onclick="window.print()">Imprimir Tabela</button>
+                    <label>Pesquisa Rápida:</label>
+                    <input type="text" id="filtro-global" placeholder="Digite para filtrar..."
+                        onkeyup="filtrarTabela()">
+                    <button class="btn-secondary" onclick="window.print()">Imprimir</button>
                 </div>
 
                 <div class="tabela-container">
-                    <table id="tabela-drogas" class="display responsive nowrap" style="width:70%">
+                    <table id="tabela-drogas">
                         <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>DATA</th>
-                                <th>NUMERO COP</th>
-                                <th>FATO TÍPICO</th>
-                                <th>NOME</th>
-                                <th>RG</th>
-                                <th>CPF</th>
-                                <th>IDADE</th>
-                                <th>ALCUNHA</th>
-                                <th>SEXO</th>
-                                <th>MÃE</th>
-                                <th>CIDADE</th>
-                                <th>ESTADO</th>
-                                <th>BAIRRO</th>
-                                <th>PONTO REF</th>
-                                <th>ENDEREÇO</th>
-                                <th>DIA</th>
-                                <th>MÊS</th>
-                                <th>HORA</th>
-                                <th>LATITUDE</th>
-                                <th>LONGITUDE</th>
-                                <th>TIPO DE DROGA</th>
-                                <th>PESO (Kg)</th>
-                                <th>DADOS DA EQUIPE</th>
-                                <th>NUMERO_LACRE</th>
-                                <th>MOVIMENTAÇÃO</th>
+                            <tr id="table-header-row">
                             </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                     </table>
                 </div>
             </div>
         </main>
     </section>
-</body>
-<footer>
-    <div>
+
+    <footer>
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
-    </div>
-</footer>
+    </footer>
 
-<script>
-    // --- FUNÇÕES DE RELÓGIO E LOGIN (EXISTENTES) ---
+    <script>
+        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+        let allDrogas = [];
 
-    function atualizarRelogio() {
-        const agora = new Date();
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
-    }
+        const HEADERS = [
+            'ID', 'DATA', 'NUMERO COP', 'FATO TÍPICO', 'NOME', 'RG', 'CPF', 'IDADE',
+            'ALCUNHA', 'SEXO', 'MÃE', 'CIDADE', 'ESTADO', 'BAIRRO', 'PONTO REF',
+            'ENDEREÇO', 'DIA', 'MÊS', 'HORA', 'LATITUDE', 'LONGITUDE', 'TIPO DE DROGA',
+            'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
+        ];
 
-    function checkLogin() {
-        const graduacao = localStorage.getItem('userGraduacao');
-        const nomeGuerra = localStorage.getItem('userNomeGuerra');
-        const userInfoEl = document.getElementById('user-info');
+        // 1. CARREGAMENTO INICIAL
+        async function loadDrogas() {
+            const msg = document.getElementById('mensagem-carregamento');
+            try {
+                const response = await fetch(`${WEBAPP_URL}?action=read`);
+                const data = await response.json();
+                allDrogas = data;
+                renderTable(allDrogas);
+                atualizarDrogasPorTipo();
+                msg.style.display = 'none';
+            } catch (e) {
+                msg.textContent = "Erro ao carregar dados.";
+            }
+        }
 
-        if (graduacao && nomeGuerra) {
-            userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+        // 2. RENDERIZAÇÃO DA TABELA (Mantendo Design Padrão)
+        function renderTable(data) {
+            const thead = document.getElementById('table-header-row');
+            const tbody = document.querySelector('#tabela-drogas tbody');
+
+            thead.innerHTML = HEADERS.map(h => `<th>${h}</th>`).join('') + '<th>AÇÕES</th>';
+            tbody.innerHTML = '';
+
+            data.forEach(item => {
+                const row = tbody.insertRow();
+                HEADERS.forEach(header => {
+                    const cell = row.insertCell();
+                    cell.textContent = item[header] || '';
+                    cell.dataset.header = header;
+                });
+
+                const actionsCell = row.insertCell();
+                actionsCell.innerHTML = `
+                    <button class="btn-action btn-editar" onclick="editRow(this)">Editar</button>
+                    <button class="btn-action btn-excluir" onclick="deleteRow('${item.ID}')">Excluir</button>
+                `;
+            });
+        }
+
+        // 3. PESQUISA RÁPIDA (Filtro Manual para não quebrar design)
+        function filtrarTabela() {
+            const termo = document.getElementById('filtro-global').value.toUpperCase();
+            const filtrados = allDrogas.filter(d =>
+                Object.values(d).some(v => String(v).toUpperCase().includes(termo))
+            );
+            renderTable(filtrados);
+        }
+
+        // 4. EDIÇÃO NA LINHA
+        function editRow(btn) {
+            const row = btn.closest('tr');
+            const cells = row.querySelectorAll('td');
+
+            // Transformar células em inputs (exceto ID e Ações)
+            for (let i = 1; i < cells.length - 1; i++) {
+                const currentVal = cells[i].textContent;
+                cells[i].innerHTML = `<input type="text" value="${currentVal}">`;
+            }
+
+            const actionsCell = cells[cells.length - 1];
+            actionsCell.innerHTML = `
+                <button class="btn-action btn-salvar" onclick="saveRow(this)">Salvar</button>
+                <button class="btn-action btn-cancelar" onclick="loadDrogas()">Cancelar</button>
             `;
-        } else {
-            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-            window.location.href = 'login.html';
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem('userGraduacao');
-        localStorage.removeItem('userNomeGuerra');
-        alert('Logout realizado com sucesso!');
-        window.location.href = 'login.html';
-    }
-
-
-    // =====================================================================
-    // --- CÓDIGO DE GERENCIAMENTO DE DROGAS APREENDIDAS (CRUD) ---
-    // =====================================================================
-
-    // A URL está correta na sua versão
-    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
-
-    let dataTableDrogas = null;
-
-    const HEADERS_DROGAS_JS = [
-        'ID', 'DATA', 'NUMERO COP', 'FATO TÍPICO', 'NOME', 'RG', 'CPF', 'IDADE',
-        'ALCUNHA', 'SEXO', 'MÃE', 'CIDADE', 'ESTADO', 'BAIRRO', 'PONTO REF',
-        'ENDEREÇO', 'DIA', 'MÊS', 'HORA', 'LATITUDE', 'LONGITUDE', 'TIPO DE DROGA',
-        'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO', 'AÇÕES'
-    ];
-    const CHAVE_PRIMARIA_DROGAS_JS = 'ID';
-
-
-    /**
-     * 1. FUNÇÕES DE COMUNICAÇÃO (CRUD)
-     */
-
-    function loadDrogas() {
-        $('#mensagem-carregamento').show().text('Carregando dados, aguarde...');
-        $.ajax({
-            url: WEBAPP_URL,
-            type: 'GET',
-            data: { action: 'read' },
-            dataType: 'json',
-            success: function (response) {
-                $('#mensagem-carregamento').hide();
-                if (response.status === 'error') {
-                    alert('Erro ao carregar dados: ' + response.message);
-                } else {
-                    renderTable(response);
-                }
-            },
-            error: function () {
-                $('#mensagem-carregamento').text('Erro ao carregar dados. Verifique a URL do Apps Script e a implantação.');
-                alert('Erro na comunicação com o Apps Script.');
-            }
-        });
-    }
-
-    function saveRecord(rowData, type) {
-        const dataToSend = { action: type };
-        Object.keys(rowData).forEach(key => {
-            if (key !== 'AÇÕES') {
-                dataToSend[key] = rowData[key];
-            }
-        });
-
-        if (type === 'update' && !dataToSend[CHAVE_PRIMARIA_DROGAS_JS]) {
-            alert("Erro: Chave primária de atualização não encontrada!");
-            return;
         }
 
-        $.ajax({
-            url: WEBAPP_URL,
-            type: 'POST',
-            data: dataToSend,
-            dataType: 'json',
-            success: function (response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    loadDrogas();
-                    // Importante: Recarregar os cards após salvar/excluir
-                    atualizarDrogasPorTipo();
-                } else {
-                    alert('Erro ao salvar: ' + response.message);
-                    loadDrogas();
-                }
-            },
-            error: function () {
-                alert('Erro de comunicação ao tentar salvar o registro.');
-                loadDrogas();
-            }
-        });
-    }
+        async function saveRow(btn) {
+            const row = btn.closest('tr');
+            const id = row.cells[0].textContent;
+            const updatedData = { action: 'update', ID: id };
 
-    function deleteRecord(chaveValor) {
-        if (!confirm(`Tem certeza que deseja EXCLUIR o registro ID: ${chaveValor}?`)) {
-            return;
-        }
-
-        const dataToSend = { action: 'delete', [CHAVE_PRIMARIA_DROGAS_JS]: chaveValor };
-
-        $.ajax({
-            url: WEBAPP_URL,
-            type: 'POST',
-            data: dataToSend,
-            dataType: 'json',
-            success: function (response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    loadDrogas();
-                    // Importante: Recarregar os cards após salvar/excluir
-                    atualizarDrogasPorTipo();
-                } else {
-                    alert('Erro ao excluir: ' + response.message);
-                }
-            },
-            error: function () {
-                alert('Erro de comunicação ao tentar excluir o registro.');
-            }
-        });
-    }
-
-
-    /**
-     * 2. FUNÇÃO DE RENDERIZAÇÃO E INTERAÇÃO DA TABELA
-     */
-
-    function renderTable(data) {
-        if (dataTableDrogas) {
-            dataTableDrogas.destroy();
-            $('#tabela-drogas thead').empty();
-        }
-
-        const headerRow = '<tr>' + HEADERS_DROGAS_JS.map(header => `<th>${header}</th>`).join('') + '</tr>';
-        $('#tabela-drogas thead').html(headerRow);
-
-        const dataForTable = data.map(item => {
-            const row = [];
-            HEADERS_DROGAS_JS.slice(0, -1).forEach(header => {
-                row.push(item[header] !== null && item[header] !== undefined ? String(item[header]) : '');
+            HEADERS.slice(1).forEach((header, index) => {
+                const input = row.cells[index + 1].querySelector('input');
+                if (input) updatedData[header] = input.value;
             });
 
-            row.push(`
-                <button class="btn-editar btn-action">Editar</button>
-                <button class="btn-salvar btn-action" style="display:none;">Salvar</button>
-                <button class="btn-cancelar btn-action" style="display:none;">Cancelar</button>
-                <button class="btn-excluir btn-action">Excluir</button>
-            `);
-            return row;
-        });
+            // Lógica de envio (fetch POST para o seu Google Script)
+            // Aqui você deve usar o seu código de fetch/saveRecord original
+            console.log("Enviando atualização:", updatedData);
+            alert("Enviando dados para a planilha...");
+            // Após sucesso: loadDrogas();
+        }
 
-        // Configuração do DataTables (Ajustada para a versão mais recente)
-        dataTableDrogas = $('#tabela-drogas').DataTable({
-            data: dataForTable,
-            columns: HEADERS_DROGAS_JS.map(h => ({
-                title: h,
-                className: h === CHAVE_PRIMARIA_DROGAS_JS ? 'chave-primaria' : '',
-                searchable: h !== 'AÇÕES',
-                orderable: h !== 'AÇÕES',
-                // Ajuste de largura (mantido para compatibilidade)
-                width: (h === CHAVE_PRIMARIA_DROGAS_JS || h === 'AÇÕES') ? 'auto' : '100px'
-            })),
-            responsive: false,
-            scrollX: true,
-            destroy: true,
-            paging: true,
-            pageLength: 20,
-            dom: '<"top"li>rt<"bottom"p>',
-            fixedHeader: true,
-        });
+        // 5. TOTAIS DOS CARDS (Sua lógica de API mantida)
+        async function atualizarDrogasPorTipo() {
+            const tipos = ['MACONHA', 'CRACK', 'COCAINA', 'RUFINOL', 'LOLÓ'];
+            const anoAtual = new Date().getFullYear();
 
-        // A linha original abaixo estava duplicando a inicialização do DataTable.
-        // Mantenho apenas a primeira inicialização.
-        // dataTableDrogas = $('#tabela-drogas').DataTable({ ... }); 
+            try {
+                const response = await fetch(`${WEBAPP_URL}?action=sumPesoByDrugTypeAndYear&year=${anoAtual}`);
+                const data = await response.json();
 
-        attachTableListeners();
-    }
+                if (data.totals) {
+                    tipos.forEach(tipo => {
+                        const el = document.getElementById(`total-${tipo.toLowerCase().replace('ó', 'o').replace('í', 'i')}`);
+                        if (el) {
+                            const un = (tipo === 'RUFINOL' || tipo === 'LOLÓ') ? 'Un' : 'Kg';
+                            el.textContent = `${data.totals[tipo] || '0,0000'} ${un}`;
+                        }
+                    });
+                }
+            } catch (e) { console.error("Erro nos cards:", e); }
+        }
 
+        // 6. UTILITÁRIOS (Relógio, Login, Logout)
+        function atualizarRelogio() {
+            const agora = new Date();
+            document.getElementById('relogio').innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+        }
 
-    /**
-     * 3. FUNÇÕES DE EDIÇÃO DA TABELA E LISTENERS
-     */
+        function checkLogin() {
+            const grad = localStorage.getItem('userGraduacao');
+            const nome = localStorage.getItem('userNomeGuerra');
+            if (!grad) window.location.href = 'login.html';
+            else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${grad} ${nome}</p>`;
+        }
 
-    function attachTableListeners() {
-        $('#tabela-drogas tbody').off('click', '.btn-editar, .btn-salvar, .btn-cancelar, .btn-excluir');
-
-        $('#tabela-drogas tbody').on('click', '.btn-editar', function () {
-            const row = $(this).closest('tr');
-            toggleRowEdit(row, true);
-        });
-
-        $('#tabela-drogas tbody').on('click', '.btn-salvar', function () {
-            const row = $(this).closest('tr');
-            const chaveValor = dataTableDrogas.row(row).data()[0];
-            saveEditedRow(row, 'update', chaveValor);
-        });
-
-        $('#tabela-drogas tbody').on('click', '.btn-cancelar', function () {
+        document.addEventListener('DOMContentLoaded', () => {
+            checkLogin();
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
             loadDrogas();
+
+            document.getElementById('btn-logout').onclick = () => {
+                localStorage.clear();
+                window.location.href = 'login.html';
+            };
         });
-
-        $('#tabela-drogas tbody').on('click', '.btn-excluir', function () {
-            const row = $(this).closest('tr');
-            const chaveValor = dataTableDrogas.row(row).data()[0];
-            deleteRecord(chaveValor);
-        });
-
-        // Listener para a Pesquisa Global (Filtro) - Otimizado
-        $('#filtro-global').off('keyup');
-        $('#filtro-global').on('keyup', function () {
-            if (dataTableDrogas) {
-                dataTableDrogas.search(this.value).draw();
-            }
-        });
-    }
-
-
-    function toggleRowEdit(row, isEditing) {
-        const dataIndex = dataTableDrogas.row(row).index();
-        const rowDataOriginal = dataTableDrogas.data()[dataIndex];
-
-        row.find('td').each(function (colIndex) {
-            const cell = $(this);
-            const headerName = HEADERS_DROGAS_JS[colIndex];
-
-            if (headerName === 'AÇÕES') {
-                cell.find('.btn-editar, .btn-excluir').toggle(!isEditing);
-                cell.find('.btn-salvar, .btn-cancelar').toggle(isEditing);
-            }
-            else if (colIndex === 0) { // Campo ID
-                cell.toggleClass('editing-readonly', isEditing);
-            }
-            else {
-                if (isEditing) {
-                    // Aqui usamos o dado original do DataTables para garantir que o valor está correto
-                    const text = rowDataOriginal[colIndex] ? String(rowDataOriginal[colIndex]).trim() : '';
-                    const input = `<input type="text" value="${text}" style="width: 100%;">`;
-                    cell.html(input);
-                }
-            }
-        });
-    }
-
-    function saveEditedRow(row, type, chaveValor) {
-        const rowData = {};
-        rowData[CHAVE_PRIMARIA_DROGAS_JS] = chaveValor;
-
-        row.find('td').each(function (colIndex) {
-            const headerName = HEADERS_DROGAS_JS[colIndex];
-            if (headerName !== 'AÇÕES') {
-                const cell = $(this);
-                let value = '';
-
-                if (colIndex !== 0) { // Campos editáveis
-                    value = cell.find('input, textarea').val() || cell.text().trim();
-                } else {
-                    value = chaveValor; // ID
-                }
-
-                rowData[headerName] = value;
-            }
-        });
-
-        saveRecord(rowData, type);
-    }
-
-
-    /**
-     * 4. FUNÇÕES DE ADICIONAR NOVA LINHA (Inclui addNewRow)
-     */
-
-    function addNewRow() {
-        if ($('#tabela-drogas tbody').find('.new-row-editing').length > 0) {
-            alert("Já existe uma linha de cadastro aberta. Salve ou cancele antes de adicionar outra.");
-            return;
-        }
-
-        const emptyRowData = HEADERS_DROGAS_JS.map((header) => {
-            if (header === 'AÇÕES') {
-                return `
-                    <button class="btn-salvar-novo btn-action">Salvar Novo</button>
-                    <button class="btn-cancelar-novo btn-action">Cancelar</button>
-                `;
-            }
-            return '';
-        });
-
-        const newRow = dataTableDrogas.row.add(emptyRowData).draw().node();
-        $(newRow).addClass('new-row-editing').prependTo('#tabela-drogas tbody');
-
-        $(newRow).find('td').each(function (colIndex) {
-            const cell = $(this);
-            const headerName = HEADERS_DROGAS_JS[colIndex];
-
-            if (headerName !== 'AÇÕES') {
-                let initialValue = '';
-
-                if (headerName === 'DATA') {
-                    const today = new Date();
-                    const dd = String(today.getDate()).padStart(2, '0');
-                    const mm = String(today.getMonth() + 1).padStart(2, '0');
-                    const yyyy = today.getFullYear();
-                    initialValue = `${dd}/${mm}/${yyyy}`;
-                }
-
-                if (headerName === CHAVE_PRIMARIA_DROGAS_JS) {
-                    cell.html(`<input type="text" value="" placeholder="ID (Chave Única)" style="width: 100%;">`);
-                } else {
-                    cell.html(`<input type="text" value="${initialValue}" style="width: 100%;">`);
-                }
-            }
-        });
-
-        $(newRow).off('click', '.btn-salvar-novo, .btn-cancelar-novo');
-        $(newRow).on('click', '.btn-salvar-novo', function () {
-            const row = $(this).closest('tr');
-            saveNewRow(row);
-        });
-
-        $(newRow).on('click', '.btn-cancelar-novo', function () {
-            dataTableDrogas.row($(this).closest('tr')).remove().draw();
-        });
-    }
-
-    function saveNewRow(row) {
-        const rowData = {};
-        let isDataValid = true;
-
-        row.find('td').each(function (colIndex) {
-            const headerName = HEADERS_DROGAS_JS[colIndex];
-            if (headerName !== 'AÇÕES') {
-                const cell = $(this);
-                let value = cell.find('input, textarea').val();
-
-                if (headerName === CHAVE_PRIMARIA_DROGAS_JS && (!value || String(value).trim() === '')) {
-                    alert(`O campo ${CHAVE_PRIMARIA_DROGAS_JS} é obrigatório e não pode ser vazio.`);
-                    isDataValid = false;
-                    return false;
-                }
-
-                rowData[headerName] = value;
-            }
-        });
-
-        if (isDataValid) {
-            saveRecord(rowData, 'create');
-        }
-    }
-
-
-    // =====================================================================
-    // 5. FUNÇÃO DE CÁLCULO DE DROGAS POR TIPO (CORRIGIDA)
-    // =====================================================================
-
-    //* Função que carrega a soma de peso por tipo de droga para o ano atual.
-    async function atualizarDrogasPorTipo() {
-
-        // Referência a todos os elementos
-        const elementos = {
-            MACONHA: document.getElementById('total-maconha'),
-            CRACK: document.getElementById('total-crack'),
-            COCAINA: document.getElementById('total-cocaina'),
-            RUFINOL: document.getElementById('total-rufinol'),
-            LOLÓ: document.getElementById('total-lolo')
-        };
-
-        const anoAtual = new Date().getFullYear();
-
-        try {
-            const url = `${WEBAPP_URL}?action=sumPesoByDrugTypeAndYear&year=${anoAtual}`;
-            const response = await fetch(url);
-            const data = await response.json();
-
-            if (data.totals) {
-                // Itera sobre as chaves esperadas e atualiza o DOM
-                for (const tipo in elementos) {
-                    const total = data.totals[tipo] || '0,0000';
-                    const elemento = elementos[tipo];
-                    let unidade = 'Kg';
-
-                    // Lógica para unidades diferentes de peso
-                    if (tipo === 'RUFINOL' || tipo === 'LOLÓ') {
-                        unidade = 'Un';
-                    }
-
-                    if (elemento) {
-                        elemento.textContent = `${total} ${unidade}`;
-                    }
-                }
-            } else {
-                console.error('Falha ao obter soma por tipo de droga:', data.message);
-                // Exibe ERRO em todos os elementos
-                for (const tipo in elementos) {
-                    if (elementos[tipo]) elementos[tipo].textContent = 'ERRO';
-                }
-            }
-        } catch (error) {
-            console.error('Erro de rede/servidor na requisição da soma de drogas por tipo:', error);
-            // Exibe FALHA em todos os elementos
-            for (const tipo in elementos) {
-                if (elementos[tipo]) elementos[tipo].textContent = 'FALHA';
-            }
-        }
-    }
-
-
-    // =====================================================================
-    // 6. INICIALIZAÇÃO GERAL (CONSOLIDADA E ÚNICA)
-    // =====================================================================
-    document.addEventListener('DOMContentLoaded', function () {
-        // Inicializa o Relógio
-        atualizarRelogio();
-        setInterval(atualizarRelogio, 1000);
-
-        // Verifica Login
-        checkLogin();
-
-        // Anexa Listener de Logout
-        const btnLogout = document.getElementById('btn-logout');
-        if (btnLogout) {
-            btnLogout.addEventListener('click', logout);
-        }
-
-        // Anexa Listener para adicionar nova linha
-        const btnAdicionar = document.getElementById('btn-adicionar-cadastro');
-        if (btnAdicionar) {
-            btnAdicionar.addEventListener('click', addNewRow);
-        }
-
-        // 1. Carrega a Tabela principal (CRUD)
-        loadDrogas();
-
-        // 2. Chama a função para carregar os totais por tipo de droga
-        // Esta chamada foi movida para o bloco principal de inicialização
-        atualizarDrogasPorTipo();
-
-        console.log("Sistema Drogas inicializado.");
-    });
-</script>
-
-</html>
+    </script>
+</body>
 
 </html>

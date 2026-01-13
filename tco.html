@@ -6,11 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - TCO</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stylestco.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 </head>
 
 <body>
- <header>
+    <header>
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
@@ -19,7 +20,7 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -62,6 +63,19 @@
                 <h2>Termos Circunstanciados de Ocorrências</h2>
                 <p>Gerenciamento de TCO</p>
             </div>
+
+            <section class="totalcards">
+                <div class="cardnumero" id="totalanoanterior">
+                    <h3>Total de TCOs - Ano Anterior</h3>
+                    <p id="total-ano-anterior">--</p>
+                </div> <!--totalanoanterior-->
+                <div class="cardnumero" id="totaldoano">
+                    <h3>Total de TCOs - Ano Atual</h3>
+                    <p id="total-ano-atual">--</p>
+                </div><!--totaldoano-->
+            </section> <!--terminatotalcards-->
+
+
             <div class="TabelaEventos">
                 <h3>Cadastro de TCO</h3>
 
@@ -96,7 +110,7 @@
                     <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
                 </div>
                 <div class="tabela-container">
-                    <table id="tabela-tco"> 
+                    <table id="tabela-tco">
                         <thead>
                             <tr>
                                 <th>ID</th>
@@ -127,6 +141,9 @@
                 </div>
             </div>
         </main>
+
+        <iframe src="dashboard.html" style="width: 100%; height: 800px; border: none;"></iframe>
+
     </section>
 </body>
 <footer>
@@ -136,19 +153,19 @@
 </footer>
 <script>
     // URL de implantação do seu Google Apps Script (ATUALIZE ESTA VARIÁVEL)
-    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec'; 
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
 
     // Chaves de todas as colunas da planilha (DEVE SER A MESMA ORDEM DO HEADERS_TCO no Code.gs)
     const chavesTCO = [
-        'ID', 'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA', 
-        'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio', 
+        'ID', 'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA',
+        'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio',
         'LocalE-SAJ', 'PETICIONADOR', 'Endereço', 'Vistoriou?', 'NUMERO_LACRE'
     ];
 
     // Colunas que o usuário pode editar diretamente.
     const chavesEditaveis = [
-        'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA', 
-        'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio', 
+        'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA',
+        'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio',
         'LocalE-SAJ', 'PETICIONADOR', 'Endereço', 'Vistoriou?', 'NUMERO_LACRE'
     ];
 
@@ -172,16 +189,16 @@
 
         if (normalizedValue.includes('PROTOCOLADO')) {
             return 'status-protocolado';
-        } 
-        
+        }
+
         // Mapeia "Em Diligência" e "Encaminhado ao Juizado" para o status "PENDENTE"
         if (normalizedValue.includes('DILIGÊNCIA') ||
             normalizedValue.includes('JUIZADO') ||
             normalizedValue.includes('PENDENTE')
         ) {
-            return 'status-pendente'; 
-        } 
-        
+            return 'status-pendente';
+        }
+
         if (normalizedValue.includes('ARQUIVADO')) {
             return 'status-arquivado';
         }
@@ -301,9 +318,9 @@
 
     function createDropdown(key, currentValue) {
         const options = DROPDOWN_OPTIONS[key] || [];
-        
+
         let selectHtml = `<select class="dropdown-select" data-key="${key}">`;
-        
+
         let found = false;
         options.forEach(option => {
             if (option === currentValue) {
@@ -311,7 +328,7 @@
             }
             selectHtml += `<option value="${option}" ${option === currentValue ? 'selected' : ''}>${option}</option>`;
         });
-        
+
         if (!found && currentValue) {
             selectHtml = `<option value="${currentValue}" selected>${currentValue}</option>` + selectHtml;
         }
@@ -319,22 +336,22 @@
         selectHtml += '</select>';
         return selectHtml;
     }
-    
+
     /**
      * Adiciona listeners para mudar a cor da célula Movimentação ao selecionar
      */
     function attachDropdownListeners() {
         const movimentacaoCells = document.querySelectorAll('#tabela-tco td[data-key="Movimentação"]');
-        
+
         movimentacaoCells.forEach(cell => {
             const select = cell.querySelector('select.dropdown-select');
             if (select) {
-                select.addEventListener('change', function() {
+                select.addEventListener('change', function () {
                     const newValue = this.value;
                     // Remove todas as classes de status e aplica a nova
                     cell.classList.remove('status-protocolado', 'status-pendente', 'status-arquivado');
                     const newStatusClass = getStatusClass(newValue);
-                    
+
                     // Adiciona a classe tag e a classe de cor
                     cell.classList.add('status-tag');
                     if (newStatusClass) {
@@ -357,7 +374,7 @@
         data.forEach(item => {
             const row = tabelaBody.insertRow();
             row.dataset.id = item.ID || '';
-            row.classList.add('editing'); 
+            row.classList.add('editing');
 
             chavesTCO.forEach(chave => {
                 const cell = row.insertCell();
@@ -365,24 +382,24 @@
 
                 const isEditable = chavesEditaveis.includes(chave);
                 const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
-                
+
                 let value = item[chave] || '';
 
-                if (chave === 'Movimentação') { 
+                if (chave === 'Movimentação') {
                     const statusClass = getStatusClass(value);
-                    
+
                     // Adiciona a classe .status-tag para o visual de caixa colorida (obrigatório)
                     if (statusClass) {
                         cell.classList.add(statusClass);
                     }
                 }
-                
+
                 if (chave === 'ID') {
                     cell.textContent = value;
                     cell.contentEditable = 'false';
                 } else if (isDropdown) {
                     cell.innerHTML = createDropdown(chave, value);
-                    cell.contentEditable = 'false'; 
+                    cell.contentEditable = 'false';
                 } else if (isEditable) {
                     cell.textContent = value;
                     cell.contentEditable = 'true';
@@ -436,10 +453,10 @@
 
             let initialValue = '';
 
-            if (chave === 'Movimentação') { 
-                initialValue = DROPDOWN_OPTIONS[chave][0]; 
+            if (chave === 'Movimentação') {
+                initialValue = DROPDOWN_OPTIONS[chave][0];
                 const statusClass = getStatusClass(initialValue);
-                
+
                 // Adiciona a classe .status-tag para o visual de caixa colorida (obrigatório)
                 if (statusClass) {
                     cell.classList.add(statusClass);
@@ -448,7 +465,7 @@
 
 
             if (chave === 'ID') {
-                cell.textContent = '[NOVO TCO]'; 
+                cell.textContent = '[NOVO TCO]';
                 cell.contentEditable = 'false';
             } else if (isDropdown) {
                 cell.innerHTML = createDropdown(chave, initialValue);
@@ -472,7 +489,7 @@
         row.scrollIntoView({ behavior: 'smooth', block: 'start' });
         attachDropdownListeners(); // ANEXA LISTENERS TAMBÉM AO ADICIONAR NOVA LINHA
     }
-    
+
     /**
      * 3. FUNÇÕES DE FILTRAGEM
      */
@@ -488,7 +505,7 @@
             attachDropdownListeners();
             return;
         }
-        
+
         const dadosFiltrados = dadosTCO.filter(item => {
             const valorCelula = (item[filtroTipo] || '').toString().toLowerCase();
             return valorCelula.includes(filtroValor);
@@ -506,7 +523,7 @@
         renderTable(dadosTCO);
         attachDropdownListeners();
     }
-    
+
     // Função de Impressão (Implementação Simples)
     function imprimirTabela() {
         window.print();
@@ -516,7 +533,7 @@
     /**
      * 4. FUNÇÕES DE SUPORTE (Relógio / Login)
      */
-    
+
     // Função para formatar e exibir a data/hora
     function atualizarRelogio() {
         const agora = new Date();
@@ -563,18 +580,45 @@
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
 
+        // Carrega os totais de TCOs
+        loadTotalCounts();
+
         // Verifica Login
-        checkLogin(); 
-        
+        checkLogin();
+
         // Carrega os dados do TCO
-        loadTCO(); 
+        loadTCO();
+
+        /**
+ * FUNÇÃO: Busca as contagens de TCO por ano e atualiza os cards no topo.
+ */
+        async function loadTotalCounts() {
+            const anoAtual = new Date().getFullYear();
+            const anoAnterior = anoAtual - 1;
+
+            // Busca dados do Ano Atual
+            const resAtual = await fetchData('countTCOs', 'GET', { year: anoAtual });
+            if (resAtual.status === 'success') {
+                document.getElementById('total-ano-atual').textContent = resAtual.count;
+            } else {
+                document.getElementById('total-ano-atual').textContent = 'Erro';
+            }
+
+            // Busca dados do Ano Anterior
+            const resAnterior = await fetchData('countTCOs', 'GET', { year: anoAnterior });
+            if (resAnterior.status === 'success') {
+                document.getElementById('total-ano-anterior').textContent = resAnterior.count;
+            } else {
+                document.getElementById('total-ano-anterior').textContent = 'Erro';
+            }
+        }
 
         // Anexa Listeners
         document.getElementById('btn-logout').addEventListener('click', logout);
         document.getElementById('btn-adicionar-cadastro').addEventListener('click', addNewRow);
         document.getElementById('btn-aplicar-filtro').addEventListener('click', aplicarFiltro);
         document.getElementById('btn-limpar-filtro').addEventListener('click', limparFiltro);
-        
+
         const btnImprimir = document.getElementById('btn-imprimir');
         if (btnImprimir) {
             btnImprimir.addEventListener('click', imprimirTabela);
@@ -583,4 +627,5 @@
         console.log("Sistema TCO inicializado. Lembre-se de atualizar a variável 'WEBAPP_URL' no script.");
     });
 </script>
+
 </html>

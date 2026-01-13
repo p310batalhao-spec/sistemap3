@@ -6,6 +6,7 @@
     margin: 20px;
     margin-left: 20px;
     max-width: 90%;
+
 }
 
 .cardnumero {
@@ -27,6 +28,36 @@
     transform: translateY(-5px);
     transition: all 0.3s ease;
     border-top: 3px solid #0a71df;
+}
+
+#iconmaconha:hover {
+    background-image: url("https://img.icons8.com/ios/50/marijuana-leaf.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconcrack:hover {
+    background-image: url("https://img.icons8.com/ios/50/rock.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconcocaina:hover {
+    background-image: url("https://img.icons8.com/external-tal-revivo-bold-tal-revivo/50/external-newborns-treated-with-a-powder-with-perfume-fertility-bold-tal-revivo.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconrufinol:hover {
+    background-image: url("https://img.icons8.com/parakeet-partial-filled/50/pill.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconlolo:hover {
+    background-image: url("https://img.icons8.com/ios-filled/50/deodorant-spray.png");
+    background-repeat: no-repeat;
+    background-position: left;
 }
 
 .cardnumero h3{

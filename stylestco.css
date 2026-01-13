@@ -1,0 +1,40 @@
+
+/* Estilização dos cards de drogas apreendidas na página drogas.html */
+.totalcards{
+    display: flex;
+    justify-content:center;
+    margin: 20px;
+    margin-left: 20px;
+    max-width: 90%;
+    gap: 50px;
+
+}
+
+.cardnumero {
+    display: flex;
+    background-color: white;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    width: 220px; 
+    height: 90px;
+}
+
+.cardnumero:hover{
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    transform: translateY(-5px);
+    transition: all 0.3s ease;
+    border-top: 3px solid #0a71df;
+}
+.cardnumero p {
+    margin-top: 10px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #0a71df;
+}
+
