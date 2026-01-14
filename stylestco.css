@@ -61,6 +61,7 @@
     overflow-y: auto; /* ATENÇÃO: Habilita a rolagem se houver muitos campos */
     display: flex;
     flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Classe ativada via JavaScript para mostrar a barra */
