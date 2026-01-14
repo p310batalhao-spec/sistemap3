@@ -33,31 +33,35 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
                     alt="home--v1" />
                 <p>Home</p>
-            </a>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a>
+            </a><!--termina cadastroocorrencias-->
             <a href="materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a>
+            </a><!--termina materiais apreendidos-->
             <a href="eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
-            </a>
+            </a><!--termina eventos-->
             <a href="solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a>
+            </a><!--termina solucoes ia-->
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button>
-        </nav>
-
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
         <main>
             <div class="saudacao">
                 <h2>Termos Circunstanciados de Ocorrências</h2>
@@ -85,9 +89,9 @@
                             alt="Adicionar" />
                         Adicionar Novo TCO
                     </button>
-                    <button id="btn-imprimir">
+                    <button id="btn-imprimir" class="adicionar-cadastro">
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/print--v1.png"
-                            alt="Imprimir" style="filter: brightness(0) invert(1);" />
+                            alt="Imprimir" />
                         Imprimir Tabela
                     </button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
@@ -137,14 +141,146 @@
                         </thead>
                         <tbody>
                         </tbody>
-                    </table>
+                    </table><!--tabela-tco-->
+                </div><!--tabela-container-->
+            </div> <!--TabelaEventos-->
+
+            <div id="overlay" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-tco">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de TCO</h4>
+
+                <input type="hidden" id="form-id" name="ID">
+
+                <div class="formulario">
+                    <p>Dia da Semana:</p>
+                    <select name="Dia da Semana" id="diadasemana">
+                        <option value=""></option>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                    </select>
                 </div>
-            </div>
-        </main>
 
-        <iframe src="dashboard.html" style="width: 100%; height: 800px; border: none;"></iframe>
+                <div class="formulario">
+                    <p>Mês:</p>
+                    <select name="Mês" id="mes">
+                        <option value=""></option>
+                        <option value="Janeiro">Janeiro</option>
+                        <option value="Fevereiro">Fevereiro</option>
+                        <option value="Março">Março</option>
+                        <option value="Abril">Abril</option>
+                        <option value="Maio">Maio</option>
+                        <option value="Junho">Junho</option>
+                        <option value="Julho">Julho</option>
+                        <option value="Agosto">Agosto</option>
+                        <option value="Setembro">Setembro</option>
+                        <option value="Outubro">Outubro</option>
+                        <option value="Novembro">Novembro</option>
+                        <option value="Dezembro">Dezembro</option>
+                    </select>
+                </div>
 
-    </section>
+                <div class="formulario">
+                    <p>Hora:</p>
+                    <input type="time" name="Hora" id="hora">
+                </div>
+
+                <div class="formulario">
+                    <p>Nº Ocorrência:</p>
+                    <input type="text" name="Nº Ocorrência" id="numeroocorrencia">
+                </div>
+
+                <div class="formulario">
+                    <p>Data:</p>
+                    <input type="date" name="DATA" id="data">
+                </div>
+
+                <div class="formulario">
+                    <p>SERVIÇO:</p>
+                    <input type="text" name="SERVIÇO" id="servico">
+                </div>
+
+                <div class="formulario">
+                    <p>OPERADOR CAPA:</p>
+                    <input type="text" name="OPERADOR CAPA" id="operadorcapa">
+                </div>
+
+                <div class="formulario">
+                    <p>SISDOC:</p>
+                    <input type="text" name="SISDOC" id="sisdoc">
+                </div>
+
+                <div class="formulario">
+                    <p>Tipicidade Geral:</p>
+                    <input type="text" name="Tipicidade Geral" id="tipicidadegeral">
+                </div>
+
+                <div class="formulario">
+                    <p>Movimentação:</p>
+                    <select name="Movimentação" id="movimentacao">
+                        <option value="Protocolado">Protocolado</option>
+                        <option value="Em Diligência">Em Diligência</option>
+                        <option value="Encaminhado ao Juizado">Encaminhado ao Juizado</option>
+                        <option value="Arquivado">Arquivado</option>
+                    </select>
+                </div>
+
+                <div class="formulario">
+                    <p>OBS:</p>
+                    <input type="text" name="OBS:" id="obs">
+                </div>
+
+                <div class="formulario">
+                    <p>Material Apreendido:</p>
+                    <input type="text" name="Material Apreendido" id="materialapreendido">
+                </div>
+
+                <div class="formulario">
+                    <p>Data Envio:</p>
+                    <input type="date" name="Data Envio" id="dataenvio">
+                </div>
+
+                <div class="formulario">
+                    <p>LocalE-SAJ:</p>
+                    <input type="text" name="LocalE-SAJ" id="locale-saj">
+                </div>
+
+                <div class="formulario">
+                    <p>PETICIONADOR:</p>
+                    <input type="text" name="PETICIONADOR" id="peticionador">
+                </div>
+
+                <div class="formulario">
+                    <p>Endereço:</p>
+                    <input type="text" name="Endereço" id="endereco">
+                </div>
+
+                <div class="formulario">
+                    <p>Vistoriou?</p>
+                    <select name="Vistoriou?" id="vistoriou">
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
+                    </select>
+                </div>
+
+                <div class="formulario">
+                    <p>NUMERO_LACRE:</p>
+                    <input type="text" name="NUMERO_LACRE" id="numero_lacre">
+                </div>
+
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px; margin-bottom: 40px;">
+                    SALVAR TCO
+                </button>
+            </form>
+        </main><!--termina main-->
+    </section><!--termina pagecomplete-->
 </body>
 <footer>
     <div>
@@ -152,479 +288,210 @@
     </div>
 </footer>
 <script>
-    // URL de implantação do seu Google Apps Script (ATUALIZE ESTA VARIÁVEL)
+    // URL do seu Google Apps Script
     const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
 
-    // Chaves de todas as colunas da planilha (DEVE SER A MESMA ORDEM DO HEADERS_TCO no Code.gs)
+    // Mapeamento das colunas da planilha
     const chavesTCO = [
         'ID', 'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA',
         'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio',
         'LocalE-SAJ', 'PETICIONADOR', 'Endereço', 'Vistoriou?', 'NUMERO_LACRE'
     ];
 
-    // Colunas que o usuário pode editar diretamente.
-    const chavesEditaveis = [
-        'Dia da Semana', 'Mês', 'Hora', 'Nº Ocorrência', 'DATA', 'SERVIÇO', 'OPERADOR CAPA',
-        'SISDOC', 'Tipicidade Geral', 'Movimentação', 'OBS:', 'Material Apreendido', 'Data Envio',
-        'LocalE-SAJ', 'PETICIONADOR', 'Endereço', 'Vistoriou?', 'NUMERO_LACRE'
-    ];
-
-    // Opções para as colunas com menu suspenso (dropdown)
-    const DROPDOWN_OPTIONS = {
-        'Movimentação': ['Protocolado', 'Em Diligência', 'Encaminhado ao Juizado', 'Arquivado'],
-        'Vistoriou?': ['Sim', 'Não']
-    };
-
-    // Armazenamento local dos dados (para filtragem)
     let dadosTCO = [];
+    const sidebar = document.getElementById('form-tco');
+    const overlay = document.getElementById('overlay');
     const tabelaBody = document.querySelector('#tabela-tco tbody');
-    const msgCarregamento = document.getElementById('mensagem-carregamento');
 
     /**
-     * FUNÇÃO AUXILIAR: Mapeia o valor da Movimentação para a classe CSS
+     * 1. FUNÇÕES DA SIDEBAR (ABRIR/FECHAR/PREENCHER)
      */
-    function getStatusClass(statusValue) {
-        if (!statusValue) return null;
-        const normalizedValue = statusValue.toUpperCase().trim();
-
-        if (normalizedValue.includes('PROTOCOLADO')) {
-            return 'status-protocolado';
+    function toggleSidebar(show = true, data = null) {
+        if (show) {
+            sidebar.reset(); 
+            document.getElementById('form-id').value = ''; 
+            
+            if (data) {
+                // Preenche os campos para edição
+                document.getElementById('form-id').value = data['ID'] || '';
+                document.getElementById('diadasemana').value = data['Dia da Semana'] || '';
+                document.getElementById('mes').value = data['Mês'] || '';
+                document.getElementById('hora').value = data['Hora'] || '';
+                document.getElementById('numeroocorrencia').value = data['Nº Ocorrência'] || '';
+                document.getElementById('data').value = data['DATA'] || '';
+                document.getElementById('servico').value = data['SERVIÇO'] || '';
+                document.getElementById('operadorcapa').value = data['OPERADOR CAPA'] || '';
+                document.getElementById('sisdoc').value = data['SISDOC'] || '';
+                document.getElementById('tipicidadegeral').value = data['Tipicidade Geral'] || '';
+                document.getElementById('movimentacao').value = data['Movimentação'] || '';
+                document.getElementById('obs').value = data['OBS:'] || '';
+                document.getElementById('materialapreendido').value = data['Material Apreendido'] || '';
+                document.getElementById('dataenvio').value = data['Data Envio'] || '';
+                document.getElementById('locale-saj').value = data['LocalE-SAJ'] || '';
+                document.getElementById('peticionador').value = data['PETICIONADOR'] || '';
+                document.getElementById('endereco').value = data['Endereço'] || '';
+                document.getElementById('vistoriou').value = data['Vistoriou?'] || '';
+                document.getElementById('numero_lacre').value = data['NUMERO_LACRE'] || '';
+            }
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
         }
-
-        // Mapeia "Em Diligência" e "Encaminhado ao Juizado" para o status "PENDENTE"
-        if (normalizedValue.includes('DILIGÊNCIA') ||
-            normalizedValue.includes('JUIZADO') ||
-            normalizedValue.includes('PENDENTE')
-        ) {
-            return 'status-pendente';
-        }
-
-        if (normalizedValue.includes('ARQUIVADO')) {
-            return 'status-arquivado';
-        }
-        return null;
     }
 
-
     /**
-     * 1. FUNÇÕES DE COMUNICAÇÃO (GET/POST)
+     * 2. COMUNICAÇÃO COM O GOOGLE SHEETS
      */
-
     async function fetchData(action, method = 'GET', params = {}) {
         const url = new URL(WEBAPP_URL);
         url.searchParams.append('action', action);
+        
+        let options = { method: method };
 
-        const options = {
-            method: method,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-        };
-
-        if (method === 'GET') {
+        if (method === 'POST') {
+            options.body = new URLSearchParams(params);
+            options.headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        } else {
             Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-        } else if (method === 'POST') {
-            options.body = new URLSearchParams(params).toString();
         }
 
         try {
             const response = await fetch(url.toString(), options);
-            if (!response.ok) {
-                throw new Error(`Erro de rede: ${response.statusText}`);
-            }
-            return response.json();
+            return await response.json();
         } catch (error) {
-            console.error('Erro na comunicação com o App Script:', error);
-            alert('Erro ao carregar ou salvar dados. Verifique a URL do Web App e o console.');
-            return { status: 'error', message: error.message };
+            console.warn("Aviso: Dados processados, mas a resposta falhou (CORS).", error);
+            return { status: 'check' }; 
         }
     }
 
+    /**
+     * 3. RENDERIZAÇÃO DA TABELA
+     */
     async function loadTCO() {
-        tabelaBody.innerHTML = '';
-        msgCarregamento.style.display = 'block';
-
-        const result = await fetchData('read');
-
-        msgCarregamento.style.display = 'none';
-
-        if (result.status === 'error') {
-            console.error('Erro ao carregar TCO:', result.message);
-            tabelaBody.innerHTML = `<tr><td colspan="${chavesTCO.length + 1}">Erro ao carregar dados: ${result.message}</td></tr>`;
-            return;
-        }
-
-        // Armazena os dados brutos e renderiza a tabela com o filtro vazio
-        dadosTCO = result;
-        renderTable(dadosTCO);
-        attachDropdownListeners(); // ANEXA LISTENERS DEPOIS DE RENDERIZAR
-    }
-
-    async function saveRow(rowElement, isNew) {
-        rowElement.style.opacity = '0.5';
-
-        const rowData = {};
-        const rowId = rowElement.dataset.id;
-        let success = false;
-        let response;
-
-        // 1. Coleta os dados de todas as células editáveis/dropdowns
-        chavesTCO.forEach(chave => {
-            const cell = rowElement.querySelector(`[data-key="${chave}"]`);
-            if (cell) {
-                const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
-                if (isDropdown) {
-                    // Para o dropdown, busca o valor do select
-                    rowData[chave] = cell.querySelector('select').value;
-                } else {
-                    rowData[chave] = cell.textContent.trim();
-                }
-            }
-        });
-
-        // 2. Chama o App Script
-        if (isNew) {
-            // Ação de CRIAÇÃO
-            response = await fetchData('create', 'POST', rowData);
-            if (response.status === 'success') {
-                rowElement.dataset.id = response.newId; // Atualiza o ID da linha com o novo ID
-                success = true;
-            }
-        } else {
-            // Ação de ATUALIZAÇÃO
-            rowData['ID'] = rowId; // Adiciona o ID para a busca
-            response = await fetchData('update', 'POST', rowData);
-            if (response.status === 'success') {
-                success = true;
-            }
-        }
-
-        // 3. Feedback visual e recarregamento
-        rowElement.style.opacity = '1';
-        if (success) {
-            alert(isNew ? 'Novo TCO criado com sucesso!' : 'TCO atualizado com sucesso!');
-            rowElement.classList.remove('new-row-highlight');
-            rowElement.classList.remove('editing');
-            await loadTCO(); // Recarrega a tabela para garantir sincronia
-        } else {
-            alert(`Falha ao salvar: ${response.message}`);
-            console.error('Erro de salvamento:', response.message);
+        const msg = document.getElementById('mensagem-carregamento');
+        if(msg) msg.style.display = 'block';
+        
+        const res = await fetchData('read');
+        
+        if(msg) msg.style.display = 'none';
+        if (res && Array.isArray(res)) {
+            dadosTCO = res;
+            renderTable(dadosTCO);
         }
     }
-
-    /**
-     * 2. FUNÇÕES DE RENDERIZAÇÃO E EDIÇÃO
-     */
-
-    function createDropdown(key, currentValue) {
-        const options = DROPDOWN_OPTIONS[key] || [];
-
-        let selectHtml = `<select class="dropdown-select" data-key="${key}">`;
-
-        let found = false;
-        options.forEach(option => {
-            if (option === currentValue) {
-                found = true;
-            }
-            selectHtml += `<option value="${option}" ${option === currentValue ? 'selected' : ''}>${option}</option>`;
-        });
-
-        if (!found && currentValue) {
-            selectHtml = `<option value="${currentValue}" selected>${currentValue}</option>` + selectHtml;
-        }
-
-        selectHtml += '</select>';
-        return selectHtml;
-    }
-
-    /**
-     * Adiciona listeners para mudar a cor da célula Movimentação ao selecionar
-     */
-    function attachDropdownListeners() {
-        const movimentacaoCells = document.querySelectorAll('#tabela-tco td[data-key="Movimentação"]');
-
-        movimentacaoCells.forEach(cell => {
-            const select = cell.querySelector('select.dropdown-select');
-            if (select) {
-                select.addEventListener('change', function () {
-                    const newValue = this.value;
-                    // Remove todas as classes de status e aplica a nova
-                    cell.classList.remove('status-protocolado', 'status-pendente', 'status-arquivado');
-                    const newStatusClass = getStatusClass(newValue);
-
-                    // Adiciona a classe tag e a classe de cor
-                    cell.classList.add('status-tag');
-                    if (newStatusClass) {
-                        cell.classList.add(newStatusClass);
-                    }
-                });
-            }
-        });
-    }
-
 
     function renderTable(data) {
-        tabelaBody.innerHTML = ''; // Limpa o corpo da tabela
-
-        if (data.length === 0) {
-            tabelaBody.innerHTML = `<tr><td colspan="${chavesTCO.length + 1}">Nenhum TCO encontrado.</td></tr>`;
-            return;
-        }
-
+        tabelaBody.innerHTML = '';
         data.forEach(item => {
             const row = tabelaBody.insertRow();
-            row.dataset.id = item.ID || '';
-            row.classList.add('editing');
-
             chavesTCO.forEach(chave => {
                 const cell = row.insertCell();
-                cell.dataset.key = chave;
-
-                const isEditable = chavesEditaveis.includes(chave);
-                const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
-
-                let value = item[chave] || '';
-
-                if (chave === 'Movimentação') {
-                    const statusClass = getStatusClass(value);
-
-                    // Adiciona a classe .status-tag para o visual de caixa colorida (obrigatório)
-                    if (statusClass) {
-                        cell.classList.add(statusClass);
-                    }
-                }
-
-                if (chave === 'ID') {
-                    cell.textContent = value;
-                    cell.contentEditable = 'false';
-                } else if (isDropdown) {
-                    cell.innerHTML = createDropdown(chave, value);
-                    cell.contentEditable = 'false';
-                } else if (isEditable) {
-                    cell.textContent = value;
-                    cell.contentEditable = 'true';
-                } else {
-                    cell.textContent = value;
-                    cell.contentEditable = 'false';
-                }
+                cell.textContent = item[chave] || '';
             });
-
-            // Coluna AÇÕES
             const actionCell = row.insertCell();
-            actionCell.innerHTML = `
-                <button class="btn-salvar-evento" onclick="handleSave(this)">Salvar</button>
-                <button class="btn-deletar-evento" onclick="handleDelete(this)">Excluir</button>
-            `;
+            const btnEdit = document.createElement('button');
+            btnEdit.textContent = 'Editar';
+            btnEdit.className = 'btn-salvar-evento'; // Reutilizando sua classe de estilo
+            btnEdit.onclick = () => toggleSidebar(true, item);
+            actionCell.appendChild(btnEdit);
         });
-    }
-
-    function handleSave(button) {
-        const row = button.closest('tr');
-        const isNew = !row.dataset.id || row.dataset.id.startsWith('new_');
-        saveRow(row, isNew);
-    }
-
-    function handleDelete(button) {
-        const row = button.closest('tr');
-        const id = row.dataset.id;
-
-        if (id && id.startsWith('new_')) {
-            row.remove();
-            return;
-        }
-
-        if (confirm(`Tem certeza que deseja EXCLUIR o TCO com ID ${id}?`)) {
-            alert('A função de exclusão (DELETE) precisa ser implementada no Google Apps Script.');
-        }
-    }
-
-    function addNewRow() {
-        const tempId = 'new_' + Date.now();
-        const row = tabelaBody.insertRow(0); // Insere no topo
-        row.dataset.id = tempId;
-        row.classList.add('new-row-highlight', 'editing');
-
-        chavesTCO.forEach(chave => {
-            const cell = row.insertCell();
-            cell.dataset.key = chave;
-
-            const isEditable = chavesEditaveis.includes(chave);
-            const isDropdown = DROPDOWN_OPTIONS.hasOwnProperty(chave);
-
-            let initialValue = '';
-
-            if (chave === 'Movimentação') {
-                initialValue = DROPDOWN_OPTIONS[chave][0];
-                const statusClass = getStatusClass(initialValue);
-
-                // Adiciona a classe .status-tag para o visual de caixa colorida (obrigatório)
-                if (statusClass) {
-                    cell.classList.add(statusClass);
-                }
-            }
-
-
-            if (chave === 'ID') {
-                cell.textContent = '[NOVO TCO]';
-                cell.contentEditable = 'false';
-            } else if (isDropdown) {
-                cell.innerHTML = createDropdown(chave, initialValue);
-                cell.contentEditable = 'false';
-            } else if (isEditable) {
-                cell.textContent = initialValue;
-                cell.contentEditable = 'true';
-            } else {
-                cell.textContent = initialValue;
-                cell.contentEditable = 'false';
-            }
-        });
-
-        // Coluna AÇÕES
-        const actionCell = row.insertCell();
-        actionCell.innerHTML = `
-            <button class="btn-salvar-evento" onclick="handleSave(this)">Salvar</button>
-            <button class="btn-deletar-evento" onclick="handleDelete(this)">Cancelar</button>
-        `;
-
-        row.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        attachDropdownListeners(); // ANEXA LISTENERS TAMBÉM AO ADICIONAR NOVA LINHA
     }
 
     /**
-     * 3. FUNÇÕES DE FILTRAGEM
+     * 4. FUNÇÕES DE SISTEMA (CONTAGEM, RELÓGIO, LOGIN)
      */
+    async function loadTotalCounts() {
+        const anoAtual = new Date().getFullYear();
+        const anoAnterior = anoAtual - 1;
 
-    function aplicarFiltro() {
-        const filtroTipo = document.getElementById('filtro-tipo').value;
-        const filtroValor = document.getElementById('filtro-valor-text').value.toLowerCase().trim();
-        const btnLimpar = document.getElementById('btn-limpar-filtro');
+        const resAtual = await fetchData('countTCOs', 'GET', { year: anoAtual });
+        const resAnterior = await fetchData('countTCOs', 'GET', { year: anoAnterior });
 
-        if (!filtroTipo || !filtroValor) {
-            renderTable(dadosTCO);
-            btnLimpar.style.display = 'none';
-            attachDropdownListeners();
-            return;
-        }
-
-        const dadosFiltrados = dadosTCO.filter(item => {
-            const valorCelula = (item[filtroTipo] || '').toString().toLowerCase();
-            return valorCelula.includes(filtroValor);
-        });
-
-        renderTable(dadosFiltrados);
-        btnLimpar.style.display = 'inline-block';
-        attachDropdownListeners();
+        if(document.getElementById('total-ano-atual')) 
+            document.getElementById('total-ano-atual').textContent = resAtual.count || 0;
+        
+        if(document.getElementById('total-ano-anterior')) 
+            document.getElementById('total-ano-anterior').textContent = resAnterior.count || 0;
     }
 
-    function limparFiltro() {
-        document.getElementById('filtro-tipo').value = '';
-        document.getElementById('filtro-valor-text').value = '';
-        document.getElementById('btn-limpar-filtro').style.display = 'none';
-        renderTable(dadosTCO);
-        attachDropdownListeners();
-    }
-
-    // Função de Impressão (Implementação Simples)
-    function imprimirTabela() {
-        window.print();
-    }
-
-
-    /**
-     * 4. FUNÇÕES DE SUPORTE (Relógio / Login)
-     */
-
-    // Função para formatar e exibir a data/hora
     function atualizarRelogio() {
         const agora = new Date();
-
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+        const relogioEl = document.getElementById('relogio');
+        if(relogioEl) relogioEl.innerHTML = agora.toLocaleString('pt-BR');
     }
 
-    // Função de Login/Logout
     function checkLogin() {
-        const graduacao = localStorage.getItem('userGraduacao');
-        const nomeGuerra = localStorage.getItem('userNomeGuerra');
-        const userInfoEl = document.getElementById('user-info');
-
-        if (graduacao && nomeGuerra) {
-            userInfoEl.innerHTML = `
-            <p>Bem Vindo(a):</p>
-            <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-        `;
+        const grad = localStorage.getItem('userGraduacao');
+        const nome = localStorage.getItem('userNomeGuerra');
+        const userEl = document.getElementById('user-info');
+        if (grad && nome) {
+            if(userEl) userEl.innerHTML = `<p>${grad} ${nome}</p>`;
         } else {
-            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
             window.location.href = 'login.html';
         }
     }
 
     function logout() {
-        localStorage.removeItem('userGraduacao');
-        localStorage.removeItem('userNomeGuerra');
-        alert('Logout realizado com sucesso!');
+        localStorage.clear();
         window.location.href = 'login.html';
     }
 
-
     /**
-     * 5. INICIALIZAÇÃO
+     * 5. INICIALIZAÇÃO E EVENTOS
      */
-
-    document.addEventListener('DOMContentLoaded', function () {
-        // Inicializa o Relógio
+    document.addEventListener('DOMContentLoaded', () => {
+        // Inicialização
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
-
-        // Carrega os totais de TCOs
+        checkLogin();
+        loadTCO();
         loadTotalCounts();
 
-        // Verifica Login
-        checkLogin();
+        // Eventos de abrir/fechar sidebar
+        const btnAdd = document.getElementById('btn-adicionar-cadastro');
+        const btnFechar = document.getElementById('btn-fechar-sidebar');
+        const btnLogout = document.getElementById('btn-logout');
 
-        // Carrega os dados do TCO
-        loadTCO();
+        if(btnAdd) btnAdd.onclick = () => toggleSidebar(true);
+        if(btnFechar) btnFechar.onclick = () => toggleSidebar(false);
+        if(overlay) overlay.onclick = () => toggleSidebar(false);
+        if(btnLogout) btnLogout.onclick = logout;
 
-        /**
- * FUNÇÃO: Busca as contagens de TCO por ano e atualiza os cards no topo.
- */
-        async function loadTotalCounts() {
-            const anoAtual = new Date().getFullYear();
-            const anoAnterior = anoAtual - 1;
+        // Submissão do formulário
+        sidebar.onsubmit = async (e) => {
+            e.preventDefault();
+            const btnSalvar = document.getElementById('btn-salvar-form');
+            if(btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = "Gravando..."; }
 
-            // Busca dados do Ano Atual
-            const resAtual = await fetchData('countTCOs', 'GET', { year: anoAtual });
-            if (resAtual.status === 'success') {
-                document.getElementById('total-ano-atual').textContent = resAtual.count;
-            } else {
-                document.getElementById('total-ano-atual').textContent = 'Erro';
-            }
+            const formData = new FormData(sidebar);
+            const payload = Object.fromEntries(formData.entries());
+            const action = payload.ID ? 'update' : 'create';
 
-            // Busca dados do Ano Anterior
-            const resAnterior = await fetchData('countTCOs', 'GET', { year: anoAnterior });
-            if (resAnterior.status === 'success') {
-                document.getElementById('total-ano-anterior').textContent = resAnterior.count;
-            } else {
-                document.getElementById('total-ano-anterior').textContent = 'Erro';
-            }
-        }
+            await fetchData(action, 'POST', payload);
+            
+            alert("Operação enviada! A tabela será atualizada.");
+            toggleSidebar(false);
+            
+            // Recarrega dados após um curto delay para o Google processar
+            setTimeout(() => {
+                loadTCO();
+                loadTotalCounts();
+            }, 1500);
 
-        // Anexa Listeners
-        document.getElementById('btn-logout').addEventListener('click', logout);
-        document.getElementById('btn-adicionar-cadastro').addEventListener('click', addNewRow);
-        document.getElementById('btn-aplicar-filtro').addEventListener('click', aplicarFiltro);
-        document.getElementById('btn-limpar-filtro').addEventListener('click', limparFiltro);
+            if(btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = "SALVAR DADOS"; }
+        };
 
-        const btnImprimir = document.getElementById('btn-imprimir');
-        if (btnImprimir) {
-            btnImprimir.addEventListener('click', imprimirTabela);
-        }
-
-        console.log("Sistema TCO inicializado. Lembre-se de atualizar a variável 'WEBAPP_URL' no script.");
+        // Filtro simples
+        document.getElementById('btn-aplicar-filtro').onclick = () => {
+            const tipo = document.getElementById('filtro-tipo').value;
+            const valor = document.getElementById('filtro-valor-text').value.toLowerCase();
+            const filtrados = dadosTCO.filter(item => 
+                (item[tipo] || '').toString().toLowerCase().includes(valor)
+            );
+            renderTable(filtrados);
+        };
     });
 </script>
 

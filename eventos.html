@@ -19,7 +19,7 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -32,30 +32,35 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
                     alt="home--v1" />
                 <p>Home</p>
-            </a>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a>
+            </a><!--termina cadastroocorrencias-->
             <a href="materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a>
+            </a><!--termina materiais apreendidos-->
             <a href="eventos.html" class="active">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
-            </a>
+            </a><!--termina eventos-->
             <a href="solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a>
+            </a><!--termina solucoes ia-->
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button>
-        </nav>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
 
         <main>
             <div class="TabelaEventos">
@@ -447,55 +452,55 @@
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
 
-            // --- CÓDIGO PARA LOGIN/LOGOUT ---
+    // --- CÓDIGO PARA LOGIN/LOGOUT ---
 
-        // 1. Função para verificar o login e exibir a info
-        function checkLogin() {
-            // Assume que as informações de sessão (graduação e nome de guerra)
-            // foram salvas no localStorage após o login bem-sucedido no login.html
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
+    // 1. Função para verificar o login e exibir a info
+    function checkLogin() {
+        // Assume que as informações de sessão (graduação e nome de guerra)
+        // foram salvas no localStorage após o login bem-sucedido no login.html
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
 
-            if (graduacao && nomeGuerra) {
-                // Usuário logado: Exibe as informações
-                userInfoEl.innerHTML = `
+        if (graduacao && nomeGuerra) {
+            // Usuário logado: Exibe as informações
+            userInfoEl.innerHTML = `
                 <p>Bem Vindo(a):</p>
                 <p class="user-nome">${graduacao} ${nomeGuerra}</p>
             `;
-            } else {
-                // Usuário não logado: Redireciona para o login
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                window.location.href = 'login.html';
-            }
-        }
-
-        // 2. Função de Logout
-        function logout() {
-            // Remove as informações de sessão
-            localStorage.removeItem('userGraduacao');
-            localStorage.removeItem('userNomeGuerra');
-
-            // Redireciona para a tela de login
-            alert('Logout realizado com sucesso!');
+        } else {
+            // Usuário não logado: Redireciona para o login
+            alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
             window.location.href = 'login.html';
         }
+    }
 
-        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin(); // Garante que a página só é exibida se houver login
+    // 2. Função de Logout
+    function logout() {
+        // Remove as informações de sessão
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
 
-            const btnLogout = document.getElementById('btn-logout');
+        // Redireciona para a tela de login
+        alert('Logout realizado com sucesso!');
+        window.location.href = 'login.html';
+    }
 
-            if (btnLogout) {
-                // O botão foi encontrado no DOM, anexa o evento
-                btnLogout.addEventListener('click', logout);
-                console.log("Logout Listener anexado com sucesso.");
-            } else {
-                // O botão NÃO foi encontrado, exibe erro no console
-                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
-            }
-        });
+    // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
+    document.addEventListener('DOMContentLoaded', function () {
+        checkLogin(); // Garante que a página só é exibida se houver login
+
+        const btnLogout = document.getElementById('btn-logout');
+
+        if (btnLogout) {
+            // O botão foi encontrado no DOM, anexa o evento
+            btnLogout.addEventListener('click', logout);
+            console.log("Logout Listener anexado com sucesso.");
+        } else {
+            // O botão NÃO foi encontrado, exibe erro no console
+            console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
+        }
+    });
 </script>
 
 </html>

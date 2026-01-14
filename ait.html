@@ -32,40 +32,34 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
                     alt="home--v1" />
                 <p>Home</p>
-            </a>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook"/>
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a>
+            </a><!--termina cadastroocorrencias-->
             <a href="materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a>
+            </a><!--termina materiais apreendidos-->
             <a href="eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
-            </a>
-            <a href="tco.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/document--v1.png"
-                    alt="tco-icon" />
-                <p>TCO</p>
-            </a>
-            <a href="ait.html" class="active">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/police-badge.png"
-                    alt="ait-icon" />
-                <p>AIT</p>
-            </a>
+            </a><!--termina eventos-->
             <a href="solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a
+            </a><!--termina solucoes ia-->
             <button id="btn-logout" class="btn-logout">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/exit.png" alt="exit" />
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button>
-        </nav>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
 
         <main>
             <div class="TabelaEventos">
@@ -73,8 +67,8 @@
 
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
-                        <img width="16" height="16"
-                            src="https://img.icons8.com/material-rounded/24/plus-math--v1.png" alt="Adicionar">
+                        <img width="16" height="16" src="https://img.icons8.com/material-rounded/24/plus-math--v1.png"
+                            alt="Adicionar">
                         Adicionar Novo AIT
                     </button>
                     <button id="btn-imprimir">
@@ -121,12 +115,13 @@
                             </tr>
                         </thead>
                         <tbody>
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
-            </div>
-        </main>
-    </section>
+            </div> <!--TabelaEventos-->
+        </main> <!--TabelaEventos-->
+
+    </section><!--pagecomplete-->
 
     <footer>
         <p>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</p>
@@ -228,10 +223,10 @@
                 const dateA = parseDate(a['DATA DO AIT']);
                 const dateB = parseDate(b['DATA DO AIT']);
 
-                if (!dateA) return 1; 
+                if (!dateA) return 1;
                 if (!dateB) return -1;
-                
-                return dateB - dateA; 
+
+                return dateB - dateA;
             });
 
             renderTable(dadosAIT);
@@ -243,7 +238,7 @@
             const rowData = {};
             let success = false;
             let response;
-            
+
             // 1. Coleta os dados de todas as células editáveis/dropdowns
             chavesAIT.forEach(chave => {
                 const cell = rowElement.querySelector(`[data-key="${chave}"]`);
@@ -256,7 +251,7 @@
                     }
                 }
             });
-            
+
             const chaveValor = rowData[CHAVE_PRIMARIA];
 
             if (!chaveValor || chaveValor === VALOR_INICIAL_CHAVE) {
@@ -284,7 +279,7 @@
                 console.error('Erro de salvamento:', response.message);
             }
         }
-        
+
         async function deleteRow(rowElement) {
             const chaveValor = rowElement.dataset.chave; // Usamos o NUMERO_AIT para a exclusão
 
@@ -296,11 +291,11 @@
 
             if (confirm(`Tem certeza que deseja EXCLUIR o AIT Nº ${chaveValor}? Esta ação é irreversível!`)) {
                 rowElement.style.opacity = '0.5';
-                
+
                 const response = await fetchData('delete', 'POST', { [CHAVE_PRIMARIA]: chaveValor });
-                
+
                 rowElement.style.opacity = '1';
-                
+
                 if (response.status === 'success') {
                     alert('AIT excluído com sucesso!');
                     await loadAIT();
@@ -348,7 +343,7 @@
             data.forEach(item => {
                 const row = tabelaBody.insertRow();
                 // O atributo data-chave usará o NUMERO_AIT para identificação
-                row.dataset.chave = item[CHAVE_PRIMARIA] || ''; 
+                row.dataset.chave = item[CHAVE_PRIMARIA] || '';
                 row.classList.add('editing');
 
                 chavesAIT.forEach(chave => {
@@ -366,11 +361,11 @@
                     } else if (isEditable) {
                         cell.textContent = value;
                         cell.contentEditable = 'true';
-                        
+
                         // Garante que o NUMERO_AIT (chave primária) não seja editado após o salvamento
                         if (chave === CHAVE_PRIMARIA && row.dataset.chave) {
-                             cell.contentEditable = 'false'; 
-                             cell.classList.add('chave-primaria'); // Estilo visual para chave
+                            cell.contentEditable = 'false';
+                            cell.classList.add('chave-primaria'); // Estilo visual para chave
                         }
                     } else {
                         cell.textContent = value;
@@ -443,14 +438,14 @@
         /**
          * 3. FUNÇÕES DE FILTRAGEM
          */
-        
+
         function aplicarFiltro() {
             const filtroTipo = document.getElementById('filtro-tipo').value;
             const filtroValor = document.getElementById('filtro-valor-text').value.toLowerCase().trim();
             const btnLimpar = document.getElementById('btn-limpar-filtro');
 
             if (!filtroTipo || !filtroValor) {
-                renderTable(dadosAIT); 
+                renderTable(dadosAIT);
                 btnLimpar.style.display = 'none';
                 return;
             }
@@ -468,7 +463,7 @@
             document.getElementById('filtro-tipo').value = '';
             document.getElementById('filtro-valor-text').value = '';
             document.getElementById('btn-limpar-filtro').style.display = 'none';
-            renderTable(dadosAIT); 
+            renderTable(dadosAIT);
         }
 
         function imprimirTabela() {
