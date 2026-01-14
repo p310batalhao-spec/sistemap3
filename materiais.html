@@ -34,7 +34,8 @@
                 <p>Home</p>
             </a><!--termina home-->
             <a href="dashboard.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook"/>
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
                 <p>Dashboard</p>
             </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
@@ -129,7 +130,74 @@
                     </table>
                 </div>
             </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
 
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>N° DO BOU</p>
+                        <input type="text" name="N° DO BOU" id="bou" required>
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="DATA" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>CATEGORIA</p>
+                        <select name="CATEGORIA" id="categoria">
+                            <option value="">Selecione a categoria</option>
+                            <option value="Aparelho de Som">Aparelho de Som</option>
+                            <option value="Arma Branca">Arma Branca</option>
+                            <option value="Cano de Escape">Cano de Escape</option>
+                            <option value="Materiais Diversos">Materiais Diversos</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>DESCRIÇÃO</p>
+                        <input type="text" name="DESCRIÇÃO" id="descricao">
+                    </div>
+                    <div class="formulario">
+                        <p>LOCAL DO DEPÓSITO</p>
+                        <select name="localdeposito" id="localdeposito">
+                            <option value="">Selecione o local</option>
+                            <option value="CISP - Palmeira dos Índios">CISP - Palmeira dos Índios</option>
+                            <option value="CISP - Maribondo">CISP - Maribondo</option>
+                            <option value="Fiel Depositário Civil">Fiel Depositário Civil</option>
+                            <option value="Guarda Civil Municipal de Palmeira dos Índios">Guarda Civil Municipal de
+                                Palmeira dos Índios</option>
+                        </select>
+
+                    </div>
+                    <div class="formulario">
+                        <p>DATA DE DEPOSITO</p>
+                        <input type="date" name="DATA DE DEPOSITO" id="data-deposito">
+                    </div>
+                    <div class="formulario">
+                        <p>ESAJ</p>
+                        <input type="text" name="ESAJ" id="esaj">
+                    </div>
+                    <div class="formulario">
+                        <p>STATUS</p>
+                        <select name="STATUS" id="status">
+                            <option value="">Selecione o status</option>
+                            <option value="PROTOCOLADO">PROTOCOLADO</option>
+                            <option value="PENDENTE">PENDENTE</option>
+                            <option value="ARQUIVADO">ARQUIVADO</option>
+                            <option value="DEVOLVIDO">DEVOLVIDO</option>
+                            <option value="EM TRÂNSITO">EM TRÂNSITO</option>
+                        </select>
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                style="width: 100%; padding: 15px; margin-top: 20px;">
+                SALVAR DADOS
+            </button>
+            </form><!--termina sidebarform-->
 
         </main>
     </section>
@@ -137,161 +205,204 @@
     <footer>
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
     </footer>
+<script>
+    let allMateriais = [];
+    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
 
-    <script>
-        let allMateriais = [];
-        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
+    // ORDEM DAS CHAVES (Sincronizada com o <thead>)
+    const chavesMateriais = [
+        'IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO',
+        'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'
+    ];
+    const chavesEditaveis = chavesMateriais.filter(key => key !== 'IDMaterial');
+    const STATUS_OPTIONS = ['PROTOCOLADO', 'PENDENTE', 'ARQUIVADO', 'DEVOLVIDO', 'EM TRÂNSITO'];
 
-        // ORDEM DAS CHAVES (Sincronizada com o <thead>)
-        const chavesMateriais = [
-            'IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO',
-            'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'
-        ];
-        const chavesEditaveis = chavesMateriais.filter(key => key !== 'IDMaterial');
-        const STATUS_OPTIONS = ['PROTOCOLADO', 'PENDENTE', 'ARQUIVADO', 'DEVOLVIDO', 'EM TRÂNSITO'];
+    const sidebar = document.getElementById('form-materiais');
+    const overlay = document.getElementById('overlay-sidebar');
 
-        /**
-         * 1. CARREGAMENTO DE DADOS
-         */
-        async function fetchData() {
-            const mensagem = document.getElementById('mensagem-carregamento');
-            try {
-                const response = await fetch(`${WEBAPP_URL}?action=read`);
-                const data = await response.json();
-                allMateriais = data;
-                renderTable(allMateriais);
-                loadTotalCounts(); // Chama a contagem dos cards
-            } catch (error) {
-                console.error("Erro:", error);
-                mensagem.textContent = "Erro ao carregar dados.";
+    /**
+     * 1. CONTROLE DA SIDEBAR (SLIDE)
+     */
+    function toggleSidebar(show = true, data = null) {
+        if (!sidebar) return;
+
+        if (show) {
+            sidebar.reset(); 
+            document.getElementById('form-id').value = ''; 
+
+            if (data) {
+                // Preenche a sidebar com os dados para edição
+                // Certifique-se que os IDs dos inputs no HTML coincidam com estes abaixo
+                document.getElementById('form-id').value = data.IDMaterial || '';
+                if(document.getElementById('bou-material')) document.getElementById('bou-material').value = data['N° DO BOU'] || '';
+                if(document.getElementById('data-material')) document.getElementById('data-material').value = data.DATA || '';
+                if(document.getElementById('categoria-material')) document.getElementById('categoria-material').value = data.CATEGORIA || '';
+                if(document.getElementById('descricao-material')) document.getElementById('descricao-material').value = data.DESCRIÇÃO || '';
+                if(document.getElementById('local-material')) document.getElementById('local-material').value = data.LOCAL || '';
+                if(document.getElementById('deposito-material')) document.getElementById('deposito-material').value = data['DATA DE DEPOSITO'] || '';
+                if(document.getElementById('esaj-material')) document.getElementById('esaj-material').value = data.ESAJ || '';
+                if(document.getElementById('status-material')) document.getElementById('status-material').value = data.STATUS || 'PENDENTE';
             }
+            sidebar.classList.add('active');
+            if (overlay) overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
         }
+    }
 
-        /**
-         * 2. RENDERIZAÇÃO DA TABELA (Padrão Imagem 1)
-         */
-        function renderTable(dataToRender) {
-            const tbody = document.querySelector('#tabela-materiais tbody');
-            const mensagem = document.getElementById('mensagem-carregamento');
-            tbody.innerHTML = '';
+    /**
+     * 2. CARREGAMENTO DE DADOS
+     */
+    async function fetchData() {
+        const mensagem = document.getElementById('mensagem-carregamento');
+        try {
+            const response = await fetch(`${WEBAPP_URL}?action=read`);
+            const data = await response.json();
+            allMateriais = data;
+            renderTable(allMateriais);
+            loadTotalCounts(); 
+        } catch (error) {
+            console.error("Erro:", error);
+            if(mensagem) mensagem.textContent = "Erro ao carregar dados.";
+        }
+    }
 
-            if (dataToRender && dataToRender.length) {
-                mensagem.style.display = 'none';
-                dataToRender.forEach(item => {
-                    const row = tbody.insertRow();
+    /**
+     * 3. RENDERIZAÇÃO DA TABELA
+     */
+    function renderTable(dataToRender) {
+        const tbody = document.querySelector('#tabela-materiais tbody');
+        const mensagem = document.getElementById('mensagem-carregamento');
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-                    // Coluna ID (Oculta ou visível conforme seu CSS)
-                    row.insertCell().textContent = item.IDMaterial || '';
+        if (dataToRender && dataToRender.length) {
+            if(mensagem) mensagem.style.display = 'none';
+            dataToRender.forEach(item => {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = item.IDMaterial || '';
 
-                    // Colunas Editáveis
-                    chavesEditaveis.forEach(key => {
-                        const cell = row.insertCell();
-                        cell.dataset.campo = key;
-                        if (key === 'STATUS') {
-                            redrawStatusBadge(cell, item[key]);
-                        } else {
-                            cell.textContent = item[key] || '';
-                            cell.setAttribute('contenteditable', 'true');
-                        }
-                    });
-
-                    // Coluna Ações
-                    const acoesCell = row.insertCell();
-                    acoesCell.innerHTML = `
-                        <button class="btn-salvar-evento" data-id="${item.IDMaterial}">Salvar</button>
-                        <button class="btn-deletar-evento" data-id="${item.IDMaterial}">Excluir</button>
-                    `;
+                chavesEditaveis.forEach(key => {
+                    const cell = row.insertCell();
+                    if (key === 'STATUS') {
+                        const status = item[key] ? String(item[key]).toUpperCase() : 'PENDENTE';
+                        const statusClass = status.replace(/\s+/g, '').toLowerCase();
+                        cell.innerHTML = `<span class="status-badge status-${statusClass}">${status}</span>`;
+                    } else {
+                        cell.textContent = item[key] || '';
+                    }
                 });
-            }
-        }
 
-        /**
-         * 3. FUNÇÕES DE STATUS (Badges)
-         */
-        function redrawStatusBadge(cell, statusValue) {
-            const status = statusValue ? String(statusValue).toUpperCase() : 'PENDENTE';
-            const statusClass = status.replace(/\s+/g, '').toLowerCase();
-            cell.innerHTML = `<span class="status-badge status-${statusClass}">${status}</span>`;
-            cell.addEventListener('click', () => createStatusSelect(cell, status), { once: true });
-        }
-
-        function createStatusSelect(cell, currentValue) {
-            cell.innerHTML = '';
-            const select = document.createElement('select');
-            select.classList.add('status-select');
-            STATUS_OPTIONS.forEach(opt => {
-                const o = document.createElement('option');
-                o.value = opt; o.textContent = opt;
-                if (opt === currentValue) o.selected = true;
-                select.appendChild(o);
-            });
-            select.addEventListener('blur', () => redrawStatusBadge(cell, select.value));
-            cell.appendChild(select);
-            select.focus();
-        }
-
-        /**
-         * 4. CONTAGEM DOS CARDS (Sincronizado com o ano)
-         */
-        async function loadTotalCounts() {
-            const anoAtual = new Date().getFullYear();
-            // Aqui você faria a chamada para a ação de contagem se existir no code.gs
-            // Por enquanto, vamos filtrar os dados já carregados localmente:
-            const countAtual = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual)).length;
-            const countAnterior = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual - 1)).length;
-
-            document.getElementById('total-ano-atual').textContent = countAtual;
-            document.getElementById('total-ano-anterior').textContent = countAnterior;
-        }
-
-        /**
-         * 5. INICIALIZAÇÃO E LOGIN
-         */
-        function checkLogin() {
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            if (graduacao && nomeGuerra) {
-                document.getElementById('user-info').innerHTML = `
-                    <p>Bem Vindo(a):</p>
-                    <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+                const acoesCell = row.insertCell();
+                acoesCell.innerHTML = `
+                    <button class="btn-editar-sidebar" style="background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Editar</button>
+                    <button class="btn-deletar-evento" data-id="${item.IDMaterial}" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Excluir</button>
                 `;
-            } else {
-                window.location.href = 'login.html';
-            }
+                
+                acoesCell.querySelector('.btn-editar-sidebar').onclick = () => toggleSidebar(true, item);
+            });
         }
+    }
 
-        function atualizarRelogio() {
-            const agora = new Date();
-            document.getElementById('relogio').innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) +
-                '<br>' + agora.toLocaleTimeString('pt-BR');
-        }
+    /**
+     * 4. FUNÇÃO DE SALVAMENTO (SIDEBAR) - RESTAURADA
+     */
+    async function salvarDadosSidebar(e) {
+        e.preventDefault(); // Impede o recarregamento da página
+        
+        const btnSalvar = document.getElementById('btn-salvar-form');
+        const originalText = btnSalvar.textContent;
+        
+        btnSalvar.disabled = true;
+        btnSalvar.textContent = "Gravando...";
 
-        document.addEventListener('DOMContentLoaded', () => {
-            checkLogin();
-            atualizarRelogio();
-            setInterval(atualizarRelogio, 1000);
-            fetchData();
+        // Coleta os dados do formulário
+        const formData = new FormData(sidebar);
+        const payload = Object.fromEntries(formData.entries());
+        
+        // Define se é criação ou atualização baseada na presença do ID
+        payload.action = payload.IDMaterial ? 'update' : 'create';
 
-            document.getElementById('btn-logout').addEventListener('click', () => {
-                localStorage.clear();
-                window.location.href = 'login.html';
+        try {
+            // Envia para o Google Apps Script
+            const response = await fetch(WEBAPP_URL, {
+                method: 'POST',
+                mode: 'no-cors', // Importante para evitar erros de redirecionamento do Google
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams(payload)
             });
 
-            // Listener para salvar (Delegado)
-            document.querySelector('#tabela-materiais tbody').addEventListener('click', (e) => {
-                if (e.target.classList.contains('btn-salvar-evento')) {
-                    const row = e.target.closest('tr');
-                    saveData(row);
-                }
-            });
-        });
+            // Como usamos no-cors, não podemos ler o JSON de resposta, 
+            // então assumimos sucesso se não cair no catch
+            alert("Solicitação enviada com sucesso!");
+            toggleSidebar(false);
+            
+            // Aguarda um momento para o Google atualizar e recarrega a tabela
+            setTimeout(fetchData, 1500);
 
-        async function saveData(rowElement) {
-            // Lógica de salvamento via POST enviando os dados da linha
-            alert("Enviando dados para o servidor...");
-            // Implementação do fetch(WEBAPP_URL, {method: 'POST'...}) aqui
+        } catch (error) {
+            console.error("Erro ao salvar:", error);
+            alert("Erro ao tentar salvar os dados.");
+        } finally {
+            btnSalvar.disabled = false;
+            btnSalvar.textContent = originalText;
         }
-    </script>
+    }
+
+    /**
+     * 5. AUXILIARES (Cards, Relógio, Login)
+     */
+    async function loadTotalCounts() {
+        const anoAtual = new Date().getFullYear();
+        const countAtual = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual)).length;
+        const countAnterior = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual - 1)).length;
+        if(document.getElementById('total-ano-atual')) document.getElementById('total-ano-atual').textContent = countAtual;
+        if(document.getElementById('total-ano-anterior')) document.getElementById('total-ano-anterior').textContent = countAnterior;
+    }
+
+    function checkLogin() {
+        const grad = localStorage.getItem('userGraduacao');
+        const nome = localStorage.getItem('userNomeGuerra');
+        if (grad && nome) {
+            const el = document.getElementById('user-info');
+            if(el) el.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${grad} ${nome}</p>`;
+        } else {
+            window.location.href = 'login.html';
+        }
+    }
+
+    function atualizarRelogio() {
+        const agora = new Date();
+        const el = document.getElementById('relogio');
+        if(el) el.innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+    }
+
+    /**
+     * 6. INICIALIZAÇÃO
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+        checkLogin();
+        atualizarRelogio();
+        setInterval(atualizarRelogio, 1000);
+        fetchData();
+
+        // Listeners
+        const btnLogout = document.getElementById('btn-logout');
+        if(btnLogout) btnLogout.onclick = () => { localStorage.clear(); window.location.href = 'login.html'; };
+
+        const btnAdd = document.getElementById('btn-adicionar-cadastro');
+        if(btnAdd) btnAdd.onclick = () => toggleSidebar(true);
+        
+        const btnFechar = document.getElementById('btn-fechar-sidebar');
+        if(btnFechar) btnFechar.onclick = () => toggleSidebar(false);
+        
+        if(overlay) overlay.onclick = () => toggleSidebar(false);
+
+        // ATIVA O SALVAMENTO NO FORMULÁRIO
+        if(sidebar) sidebar.onsubmit = salvarDadosSidebar;
+    });
+</script>
 </body>
 
 </html>

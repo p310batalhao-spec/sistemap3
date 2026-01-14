@@ -1,76 +1,3 @@
-
-/* Estilização dos cards de drogas apreendidas na página drogas.html */
-.totalcards{
-    display: flex;
-    justify-content: space-around;
-    margin: 20px;
-    margin-left: 20px;
-    max-width: 90%;
-
-}
-
-.cardnumero {
-    display: flex;
-    background-color: white;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 10px;
-    font-family: Arial, Helvetica, sans-serif;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    text-align: center;
-    width: 220px; 
-    height: 90px;
-}
-
-.cardnumero:hover{
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-    transform: translateY(-5px);
-    transition: all 0.3s ease;
-    border-top: 3px solid #0a71df;
-}
-
-#iconmaconha:hover {
-    background-image: url("https://img.icons8.com/ios/50/marijuana-leaf.png");
-    background-repeat: no-repeat;
-    background-position: left;
-}
-
-#iconcrack:hover {
-    background-image: url("https://img.icons8.com/ios/50/rock.png");
-    background-repeat: no-repeat;
-    background-position: left;
-}
-
-#iconcocaina:hover {
-    background-image: url("https://img.icons8.com/external-tal-revivo-bold-tal-revivo/50/external-newborns-treated-with-a-powder-with-perfume-fertility-bold-tal-revivo.png");
-    background-repeat: no-repeat;
-    background-position: left;
-}
-
-#iconrufinol:hover {
-    background-image: url("https://img.icons8.com/parakeet-partial-filled/50/pill.png");
-    background-repeat: no-repeat;
-    background-position: left;
-}
-
-#iconlolo:hover {
-    background-image: url("https://img.icons8.com/ios-filled/50/deodorant-spray.png");
-    background-repeat: no-repeat;
-    background-position: left;
-}
-
-.cardnumero h3{
-    margin-top: 0px;
-}
-
-.cardnumero p {
-    margin-top: 10px;
-    font-size: 24px;
-    font-weight: bold;
-    color: #0a71df;
-}
-
 /* Estilização da Sidebar Form */
 /* --- CONFIGURAÇÃO DA SIDEBAR (FORMULÁRIO) --- */
 .sidbarform {
@@ -87,7 +14,6 @@
     overflow-y: auto; /* ATENÇÃO: Habilita a rolagem se houver muitos campos */
     display: flex;
     flex-direction: column;
-    font-family: Arial, Helvetica, sans-serif;
 }
 
 /* Classe ativada via JavaScript para mostrar a barra */

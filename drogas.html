@@ -77,7 +77,8 @@
                 <p>Home</p>
             </a><!--termina home-->
             <a href="dashboard.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook"/>
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
                 <p>Dashboard</p>
             </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
@@ -159,8 +160,158 @@
                         <tbody></tbody>
                     </table>
                 </div>
-            </div>
+            </div><!--termina TabelaEventos-->
+
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-drogas">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Drogas</h4>
+
+                <input type="hidden" id="form-id" name="ID">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>DATA/p>
+                            <input type="date" name="DATA" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>NÚMERO COP</p>
+                        <input type="text" name="NUMERO COP" id="numero-cop">
+                    </div>
+                    <div class="formulario">
+                        <p>FATO TÍPICO</p>
+                        <select name="fatotipico" id="fatotipico">
+                            <option value="TRÁFICO DE DROGAS">TRÁFICO DE DROGAS</option>
+                            <option value="POSSE DE DROGAS PARA CONSUMO">POSSE DE DROGAS PARA CONSUMO</option>
+                            <option value="CUMPRIMENTO DE MANDADO">CUMPRIMENTO DE MANDADO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>NOME</p>
+                        <input type="text" name="NOME" id="nome">
+                    </div>
+                    <div class="formulario">
+                        <p>RG</p>
+                        <input type="text" name="RG" id="rg">
+                    </div>
+                    <div class="formulario">
+                        <p>CPF</p>
+                        <input type="text" name="CPF" id="cpf">
+                    </div>
+                    <div class="formulario">
+                        <p>IDADE</p>
+                        <input type="number" name="IDADE" id="idade">
+                    </div>
+                    <div class="formulario">
+                        <p>ALCUNHA</p>
+                        <input type="text" name="ALCUNHA" id="alcunha">
+                    </div>
+                    <div class="formulario">
+                        <p>SEXO</p>
+                        <select name="SEXO" id="sexo">
+                            <option value="MASCULINO">MASCULINO</option>
+                            <option value="FEMININO">FEMININO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>MÃE</p>
+                        <input type="text" name="MÃE" id="mae">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p>
+                        <select name="CIDADE" id="cidade">
+                        <option value="BELÉM">BELÉM</option>
+                        <option value="CACIMBINHAS">CACIMBINHAS</option>
+                        <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
+                        <option value="IGACI">IGACI</option>
+                        <option value="MAR VERMELHO">MAR VERMELHO</option>
+                        <option value="MARIBONDO">MARIBONDO</option>
+                        <option value="MINADOR DO NEGRÃO">MINADOR DO NEGRÃO</option>
+                        <option value="PAULO JACINTO">PAULO JACINTO</option>
+                        <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
+                        <option value="QUEBRANGULO">QUEBRANGULO</option>
+                        <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>ESTADO</p>
+                        <input type="text" name="ESTADO" id="estado" value="ALAGOAS">
+                    </div>
+                    <div class="formulario">
+                        <p>BAIRRO</p>
+                        <input type="text" name="BAIRRO" id="bairro">
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO REF</p>
+                        <input type="text" name="PONTO REF" id="ponto-ref">
+                    </div>
+                    <div class="formulario">
+                        <p>ENDEREÇO</p>
+                        <input type="text" name="ENDEREÇO" id="endereco">
+                    </div>
+                    <div class="formulario">
+                        <p>MÊS</p>
+                        <select name="MÊS" id="mes">
+                            <option value="JANEIRO">JANEIRO</option>
+                            <option value="FEVEREIRO">FEVEREIRO</option>
+                            <option value="MARÇO">MARÇO</option>
+                            <option value="ABRIL">ABRIL</option>
+                            <option value="MAIO">MAIO</option>
+                            <option value="JUNHO">JUNHO</option>
+                            <option value="JULHO">JULHO</option>
+                            <option value="AGOSTO">AGOSTO</option>
+                            <option value="SETEMBRO">SETEMBRO</option>
+                            <option value="OUTUBRO">OUTUBRO</option>
+                            <option value="NOVEMBRO">NOVEMBRO</option>
+                            <option value="DEZEMBRO">DEZEMBRO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p>
+                        <input type="time" name="HORA" id="hora">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE,LONGITUDE</p>
+                        <input type="text" name="LATITUDE" id="latitude">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPO DE DROGA</p>
+                        <select name="TIPO DE DROGA" id="tipo-droga">
+                            <option value="MACONHA">MACONHA</option>
+                            <option value="CRACK">CRACK</option>
+                            <option value="COCAINA">COCAÍNA</option>
+                            <option value="RUFINOL">RUFINOL</option>
+                            <option value="LOLÓ">LOLÓ</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>PESO (Kg)</p>
+                        <input type="number" step="0.0001" name="PESO (Kg)" id="peso">
+                    </div>
+                    <div class="formulario">
+                        <p>DADOS DA EQUIPE</p>
+                        <input type="text" name="DADOS DA EQUIPE" id="dados-equipe">
+                    </div>
+                    <div class="formulario">
+                        <p>NUMERO_LACRE</p>
+                        <input type="text" name="NUMERO_LACRE" id="numero-lacre">
+                    </div>
+                    <div class="formulario">
+                        <p>MOVIMENTAÇÃO</p>
+                        <input type="text" name="MOVIMENTAÇÃO" id="movimentacao">
+                    </div>
+                </div><!--termina formulario-scroll-->
+
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
+
         </main>
+
+
     </section>
 
     <footer>
@@ -178,6 +329,35 @@
             'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
         ];
 
+        // Elementos da Sidebar (Certifique-se que esses IDs existam no seu HTML)
+        const sidebar = document.getElementById('form-drogas');
+        const overlay = document.getElementById('overlay-sidebar');
+
+        /**
+         * FUNÇÃO DA SIDEBAR (SLIDE)
+         */
+        function toggleSidebar(show = true, data = null) {
+            if (!sidebar) return;
+
+            if (show) {
+                sidebar.reset(); // Limpa o form
+                document.getElementById('form-id').value = ''; // Limpa ID oculto
+
+                if (data) {
+                    // Preenche os campos da sidebar com os dados da linha (Edição)
+                    document.getElementById('form-id').value = data['ID'] || '';
+                    document.getElementById('data').value = data['DATA'] || '';
+                    document.getElementById('cidade').value = data['CIDADE'] || '';
+                    // Adicione aqui os demais campos conforme os IDs do seu form
+                }
+                sidebar.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
+        }
+
         // 1. CARREGAMENTO INICIAL
         async function loadDrogas() {
             const msg = document.getElementById('mensagem-carregamento');
@@ -187,18 +367,19 @@
                 allDrogas = data;
                 renderTable(allDrogas);
                 atualizarDrogasPorTipo();
-                msg.style.display = 'none';
+                if (msg) msg.style.display = 'none';
             } catch (e) {
-                msg.textContent = "Erro ao carregar dados.";
+                if (msg) msg.textContent = "Erro ao carregar dados.";
             }
         }
 
-        // 2. RENDERIZAÇÃO DA TABELA (Mantendo Design Padrão)
+        // 2. RENDERIZAÇÃO DA TABELA (Mantendo seu design)
         function renderTable(data) {
             const thead = document.getElementById('table-header-row');
             const tbody = document.querySelector('#tabela-drogas tbody');
 
-            thead.innerHTML = HEADERS.map(h => `<th>${h}</th>`).join('') + '<th>AÇÕES</th>';
+            if (thead) thead.innerHTML = HEADERS.map(h => `<th>${h}</th>`).join('') + '<th>AÇÕES</th>';
+            if (!tbody) return;
             tbody.innerHTML = '';
 
             data.forEach(item => {
@@ -211,13 +392,14 @@
 
                 const actionsCell = row.insertCell();
                 actionsCell.innerHTML = `
-                    <button class="btn-action btn-editar" onclick="editRow(this)">Editar</button>
-                    <button class="btn-action btn-excluir" onclick="deleteRow('${item.ID}')">Excluir</button>
-                `;
+                <button class="btn-action btn-editar" style="background:#2c3e50; color:white;">Editar</button>
+            `;
+                // Ao clicar em editar, abre a SIDEBAR em vez de editar na linha
+                actionsCell.querySelector('.btn-editar').onclick = () => toggleSidebar(true, item);
             });
         }
 
-        // 3. PESQUISA RÁPIDA (Filtro Manual para não quebrar design)
+        // 3. PESQUISA RÁPIDA
         function filtrarTabela() {
             const termo = document.getElementById('filtro-global').value.toUpperCase();
             const filtrados = allDrogas.filter(d =>
@@ -226,42 +408,39 @@
             renderTable(filtrados);
         }
 
-        // 4. EDIÇÃO NA LINHA
-        function editRow(btn) {
-            const row = btn.closest('tr');
-            const cells = row.querySelectorAll('td');
+        // 4. ENVIO DOS DADOS (POST)
+        async function salvarDados(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-salvar-form');
+            btn.disabled = true;
+            btn.textContent = "Gravando...";
 
-            // Transformar células em inputs (exceto ID e Ações)
-            for (let i = 1; i < cells.length - 1; i++) {
-                const currentVal = cells[i].textContent;
-                cells[i].innerHTML = `<input type="text" value="${currentVal}">`;
+            const formData = new FormData(sidebar);
+            const payload = Object.fromEntries(formData.entries());
+            payload.action = payload.ID ? 'update' : 'create';
+
+            try {
+                // Envio para o Google Apps Script
+                await fetch(WEBAPP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Para evitar erro de redirecionamento do Google
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams(payload)
+                });
+
+                alert("Dados enviados com sucesso!");
+                toggleSidebar(false);
+                setTimeout(loadDrogas, 1500); // Recarrega a tabela após um delay
+            } catch (err) {
+                alert("Erro ao salvar.");
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "SALVAR DADOS";
             }
-
-            const actionsCell = cells[cells.length - 1];
-            actionsCell.innerHTML = `
-                <button class="btn-action btn-salvar" onclick="saveRow(this)">Salvar</button>
-                <button class="btn-action btn-cancelar" onclick="loadDrogas()">Cancelar</button>
-            `;
         }
 
-        async function saveRow(btn) {
-            const row = btn.closest('tr');
-            const id = row.cells[0].textContent;
-            const updatedData = { action: 'update', ID: id };
-
-            HEADERS.slice(1).forEach((header, index) => {
-                const input = row.cells[index + 1].querySelector('input');
-                if (input) updatedData[header] = input.value;
-            });
-
-            // Lógica de envio (fetch POST para o seu Google Script)
-            // Aqui você deve usar o seu código de fetch/saveRecord original
-            console.log("Enviando atualização:", updatedData);
-            alert("Enviando dados para a planilha...");
-            // Após sucesso: loadDrogas();
-        }
-
-        // 5. TOTAIS DOS CARDS (Sua lógica de API mantida)
+        // 5. TOTAIS DOS CARDS (Sua lógica mantida)
         async function atualizarDrogasPorTipo() {
             const tipos = ['MACONHA', 'CRACK', 'COCAINA', 'RUFINOL', 'LOLÓ'];
             const anoAtual = new Date().getFullYear();
@@ -285,26 +464,47 @@
         // 6. UTILITÁRIOS (Relógio, Login, Logout)
         function atualizarRelogio() {
             const agora = new Date();
-            document.getElementById('relogio').innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+            const relogioEl = document.getElementById('relogio');
+            if (relogioEl) {
+                relogioEl.innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+            }
         }
 
         function checkLogin() {
             const grad = localStorage.getItem('userGraduacao');
             const nome = localStorage.getItem('userNomeGuerra');
-            if (!grad) window.location.href = 'login.html';
-            else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${grad} ${nome}</p>`;
+            const userEl = document.getElementById('user-info');
+            if (!grad) {
+                window.location.href = 'login.html';
+            } else if (userEl) {
+                userEl.innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${grad} ${nome}</p>`;
+            }
         }
 
+        // INICIALIZAÇÃO
         document.addEventListener('DOMContentLoaded', () => {
             checkLogin();
             atualizarRelogio();
             setInterval(atualizarRelogio, 1000);
             loadDrogas();
 
-            document.getElementById('btn-logout').onclick = () => {
+            // Listeners
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) btnLogout.onclick = () => {
                 localStorage.clear();
                 window.location.href = 'login.html';
             };
+
+            const btnAdd = document.getElementById('btn-adicionar-cadastro');
+            if (btnAdd) btnAdd.onclick = () => toggleSidebar(true);
+
+            const btnFechar = document.getElementById('btn-fechar-sidebar');
+            if (btnFechar) btnFechar.onclick = () => toggleSidebar(false);
+
+            if (overlay) overlay.onclick = () => toggleSidebar(false);
+
+            // Listener do Form
+            if (sidebar) sidebar.onsubmit = salvarDados;
         });
     </script>
 </body>
