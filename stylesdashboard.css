@@ -1,8 +1,10 @@
-#dashboard-iframe {
+.container-tabela {
     width: 100%;
-    height: 800px;
-    border: none;
-    margin-top: 20px;
-    border-radius: 10px;
+    overflow-x: auto; /* Permite rolar para o lado para ver todas as colunas */
+    border: 1px solid #ccc;
 }
 
+#tabela-materiais td, #tabela-materiais th {
+    white-space: nowrap; /* Impede que o texto quebre linha, mantendo a tabela organizada */
+    padding: 8px 12px;
+}

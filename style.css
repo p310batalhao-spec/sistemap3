@@ -1537,3 +1537,19 @@ footer{
     display: flex;
     align-items: center;
 }
+.container-tabela {
+    width: 100%;
+    overflow-x: auto; /* Habilita barra de rolagem horizontal */
+    margin-top: 20px;
+}
+
+#tabela-materiais {
+    min-width: 2500px; /* Garante que a tabela tenha espaço para todas as colunas */
+    border-collapse: collapse;
+}
+
+#tabela-materiais td, #tabela-materiais th {
+    white-space: nowrap; /* Impede que o texto quebre linha */
+    padding: 10px;
+    border: 1px solid #ddd;
+}

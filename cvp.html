@@ -7,10 +7,11 @@
     <title>Sistema de Gerenciamento P3 - MVI</title>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="stylescvp.css">
 </head>
 
 <body>
- <header>
+    <header>
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
@@ -19,7 +20,7 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -91,19 +92,37 @@
                     <button id="btn-aplicar-filtro">Aplicar Filtro</button>
                     <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
                 </div>
-                <div class="tabela-container">
+                <div class="container-tabela">
                     <table id="tabela-materiais">
                         <thead>
                             <tr>
-                                <th>IDMaterial</th>
-                                <th>N° DO BOU</th>
+                                <th>ID</th>
                                 <th>DATA</th>
-                                <th>CATEGORIA</th>
-                                <th>DESCRIÇÃO</th>
-                                <th>LOCAL DO DEPÓSITO</th>
-                                <th>DATA DE DEPOSITO</th>
-                                <th>ESAJ</th>
-                                <th>STATUS</th>
+                                <th>Nº COP</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ENVOLVIMENTO</th>
+                                <th>NOME</th>
+                                <th>RG</th>
+                                <th>CPF</th>
+                                <th>IDADE</th>
+                                <th>ALCUNHA</th>
+                                <th>SEXO</th>
+                                <th>MÃE</th>
+                                <th>INSTRUMENTO</th>
+                                <th>CIDADE</th>
+                                <th>BAIRRO</th>
+                                <th>PONTO REF</th>
+                                <th>ENDEREÇO</th>
+                                <th>DIA</th>
+                                <th>MÊS</th>
+                                <th>HORA</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>AUTORIA</th>
+                                <th>IDADE AUTORIA</th>
+                                <th>SEXO AUTOR</th>
+                                <th>ANTECEDENTE</th>
+                                <th>SITUAÇÃO</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
@@ -112,6 +131,159 @@
                     </table>
                 </div>
             </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="DATA" id="data" required>
+                    </div>
+                    <div class="formulario">
+                        <p>N° DO COP</p>
+                        <input type="text" name="NBOU" id="nbou" required>
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO</p>
+                        <select name="TIPIFICAÇÃO" id="Tipificação">TIPIFICAÇÃO
+                            <option value="">Selecione a tipificação</option>
+                            <option value="FURTO">Furto</option>
+                            <option value="ROUBO">Roubo</option>
+                            <option value="TENTATIVA DE ROUBO">Tentativa de Roubo</option>
+                            <option value="LATROCÍNIO">Latrocínio</option>
+                            <option value="EXTORÇÃO MEDIANTE SEQUESTRO">Extorção Mediante Sequestro</option>
+                            <option value="APROPRIAÇÃO INDÉBITA">Apropriação Indébita</option>
+                            <option value="DANO">Dano</option>
+                            <option value="DANO QUALIFICADO">Dano Qualificado</option>
+                            <option value="ESTELIONATO">Estelionato</option>
+                            <option value="TENTATIVA DE FURTO">Tentativa de Furto</option>
+                            <option value="FURTO QUALIFICADO">Furto Qualificado</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>RG</p>
+                        <input type="text" name="RG" id="RG">
+                    </div>
+                    <div class="formulario">
+                        <p>CPF</p>
+                        <input type="text" name="CPF" id="CPF">
+                    </div>
+                    <div class="formulario">
+                        <p>IDADE</p>
+                        <input type="number" name="IDADE" id="IDADE">
+                    </div>
+                    <div class="formulario">
+                        <p>ALCUNHA</p>
+                        <input type="text" name="ALCUNHA" id="ALCUNHA">
+                    </div>
+                    <div class="formulario">
+                        <p>SEXO</p>
+                        <select name="SEXO" id="SEXO">
+                            <option value="">Selecione o sexo</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>MÃE</p>
+                        <input type="text" name="MÃE" id="MAE">
+                    </div>
+                    <div class="formulario">
+                        <p>INSTRUMENTO</p>
+                        <input type="text" name="INSTRUMENTO" id="INSTRUMENTO">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p>
+                        <select name="CIDADE" id="CIDADE">CIDADE
+                            <option value="">Selecione a cidade</option>
+                            <option value="BELÉM">BELÉM</option>
+                            <option value="CACIMBINHAS">CACIMBINHAS</option>
+                            <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
+                            <option value="IGACI">IGACI</option>
+                            <option value="MAR VERMELHO">MAR VERMELHO</option>
+                            <option value="MARIBONDO">MARIBONDO</option>
+                            <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
+                            <option value="PAULO JACINTO">PAULO JACINTO</option>
+                            <option value="QUEBRANGULO">QUEBRANGULO</option>
+                            <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <P>BAIRRO</P>
+                        <input type="text" name="BAIRRO" id="BAIRRO">
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO REF</p>
+                        <input type="text" name="PONTO_REF" id="PONTO_REF">
+                    </div>
+                    <div class="formulario">
+                        <p>ENDEREÇO</p>
+                        <input type="text" name="ENDEREÇO" id="ENDEREÇO">
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p>
+                        <input type="time" name="HORA" id="HORA">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE,LONGITUDE</p>
+                        <input type="text" name="LAT_LONG" id="LAT_LONG">
+                    </div>
+                    <div class="formulario">
+                        <p>AUTORIA</p>
+                        <input type="text" name="AUTORIA" id="AUTORIA">
+                    </div>
+                    <div class="formulario">
+                        <p>IDADE AUTORIA</p>
+                        <input type="text" name="IDADE_AUTORIA" id="IDADE_AUTORIA">
+                    </div>
+                    <div class="formulario">
+                        <p>SEXO AUTOR</p>
+                        <input type="text" name="SEXO_AUTOR" id="SEXO_AUTORIA">
+                    </div>
+                    <div class="formulario">
+                        <p>ANTECEDENTE</p>
+                        <input type="text" name="ANTECEDENTE" id="ANTECEDENTE">
+                    </div>
+                    <div class="formulario">
+                        <p>SITUAÇÃO</p>
+                        <select name="SITUAÇÃO" id="SITUAÇÃO">
+                            <option value="">Selecione a Situação</option>
+                            <option value="EVADIDO">EVADIDO</option>
+                            <option value="PRESO">PRESO</option>
+                            <option value="SOCORRIDO">SOCORRIDO</option>
+                            <option value="LIBERADO">LIBERADO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>GUARNIÇÃO</p>
+                        <select name="GUARNIÇÃO" id="GUARNIÇÃO">
+                            <option value="">Selecione a Guarnição</option>
+                            <option value="TÁTICO URBANO">TÁTICO URBANO</option>
+                            <option value="TÁTICO RURAL O1">TÁTICO RURAL 01</option>
+                            <option value="TÁTICO RURAL 02">TÁTICO RURAL 02</option>
+                            <option value="RP PALMEIRA 01">RP PALMEIRA 01</option>
+                            <option value="RP PALMEIRA 02">RP PALMEIRA 02</option>
+                            <option value="RP QUEBRANGULO">RP QUEBRANGULO</option>
+                            <option value="RP IGACI">RP IGACI</option>
+                            <option value="RP MARIBONDO">RP MARIBONDO</option>
+                            <option value="RP CACIMBINHAS">RP CACIMBINHAS</option>
+                            <option value="RP ESTRELA/MINADOR">RP ESTRELA/MINADOR</option>
+                            <option value="RP MARVERMELHO/PAULO JACINTO">RP MAR VERMELHO/PAULO JACINTO</option>
+                            <option value="RP BELÉM/TANQUE D'ARCA">RP BELÉM/TANQUE D'ARCA</option>
+                        </select>
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
         </main>
     </section>
 </body>
@@ -121,75 +293,196 @@
     </div>
 </footer>
 <script>
+    // Configurações Iniciais
+    const API_URL = "https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec";
+    const sidebar = document.querySelector('.sidbarform'); // Verifique se a classe é sidbarform
+    const overlay = document.getElementById('overlay-sidebar');
+    const form = document.getElementById('form-materiais');
+    const tabelaCorpo = document.querySelector('#tabela-materiais tbody');
+    const btnAdicionar = document.getElementById('btn-adicionar-cadastro');
+    const btnFecharSidebar = document.getElementById('btn-fechar-sidebar');
 
-        // Função para formatar e exibir a data/hora
-    function atualizarRelogio() {
-        const agora = new Date();
+    // --- 1. FUNÇÕES DE ABERTURA E FECHAMENTO ---
 
-        // Opções para o formato da data em Português do Brasil
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-
-        // Opções para o formato da hora (inclui segundos)
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        // Exibe no elemento relógio, separando data e hora por uma quebra de linha
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    // Ao clicar em ADICIONAR (Novo Registro)
+    if (btnAdicionar) {
+        btnAdicionar.addEventListener('click', () => {
+            form.reset(); // Limpa campos de texto
+            document.getElementById('form-id').value = ""; // Limpa o ID (essencial para ser NOVO)
+            sidebar.classList.add('active');
+            overlay.classList.add('active');
+            console.log("Abrindo para novo registro...");
+        });
     }
 
-    // Chama a função uma vez para carregar imediatamente
-    atualizarRelogio();
-
-    //FUNÇÃO DO IFRAME PARA CARREGAR OS DADOS DO CARD NA MESMA PÁGINA.
-    // Configura para atualizar a cada 1000 milissegundos (1 segundo)
-    setInterval(atualizarRelogio, 1000);
-                // --- CÓDIGO PARA LOGIN/LOGOUT ---
-
-        // 1. Função para verificar o login e exibir a info
-        function checkLogin() {
-            // Assume que as informações de sessão (graduação e nome de guerra)
-            // foram salvas no localStorage após o login bem-sucedido no login.html
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
-
-            if (graduacao && nomeGuerra) {
-                // Usuário logado: Exibe as informações
-                userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-            `;
-            } else {
-                // Usuário não logado: Redireciona para o login
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                window.location.href = 'login.html';
-            }
-        }
-
-        // 2. Função de Logout
-        function logout() {
-            // Remove as informações de sessão
-            localStorage.removeItem('userGraduacao');
-            localStorage.removeItem('userNomeGuerra');
-
-            // Redireciona para a tela de login
-            alert('Logout realizado com sucesso!');
-            window.location.href = 'login.html';
-        }
-
-        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin(); // Garante que a página só é exibida se houver login
-
-            const btnLogout = document.getElementById('btn-logout');
-
-            if (btnLogout) {
-                // O botão foi encontrado no DOM, anexa o evento
-                btnLogout.addEventListener('click', logout);
-                console.log("Logout Listener anexado com sucesso.");
-            } else {
-                // O botão NÃO foi encontrado, exibe erro no console
-                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
-            }
+    // Ao clicar em FECHAR
+    if (btnFecharSidebar) {
+        btnFecharSidebar.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            form.reset();
         });
+    }
+
+    // Fechar ao clicar no fundo escuro
+    overlay.addEventListener('click', () => {
+        btnFecharSidebar.click();
+    });
+
+    // --- 2. CARREGAR E ORDENAR DADOS ---
+
+    async function carregarDados() {
+        try {
+            const response = await fetch(API_URL, { redirect: "follow" });
+            let dados = await response.json();
+
+            // Ordena do ID maior (mais recente) para o menor
+            dados.sort((a, b) => Number(b.ID) - Number(a.ID));
+
+            tabelaCorpo.innerHTML = "";
+
+            const colunasPlanilha = [
+                'ID', 'DATA', 'NUMERO COP', 'TIPIFICAÇÃO', 'ENVOLVIMENTO', 'NOME', 'RG', 'CPF', 
+                'IDADE', 'ALCUNHA', 'SEXO', 'MÃE', 'INSTRUMENTO', 'CIDADE', 'BAIRRO', 
+                'PONTO REF', 'ENDEREÇO', 'DIA', 'MÊS', 'HORA', 'LATITUDE', 'LONGITUDE', 
+                'AUTORIA', 'IDADE AUTORIA', 'SEXO AUTOR', 'ANTECEDENTE', 'SITUAÇÃO'
+            ];
+
+            dados.forEach(item => {
+                const linha = document.createElement('tr');
+                colunasPlanilha.forEach(col => {
+                    const td = document.createElement('td');
+                    td.textContent = item[col] || ""; 
+                    linha.appendChild(td);
+                });
+
+                const tdAcao = document.createElement('td');
+                const btnEditar = document.createElement('button');
+                btnEditar.className = 'btn-editar';
+                btnEditar.innerText = 'EDITAR';
+                btnEditar.onclick = () => preencherFormulario(item);
+                tdAcao.appendChild(btnEditar);
+                linha.appendChild(tdAcao);
+                tabelaCorpo.appendChild(linha);
+            });
+
+            document.getElementById('mensagem-carregamento').style.display = 'none';
+        } catch (error) {
+            console.error("Erro ao carregar:", error);
+        }
+    }
+
+    // --- 3. EDITAR (PREENCHER FORMULÁRIO COM DADOS DA LINHA) ---
+
+    function preencherFormulario(item) {
+        form.reset();
+        sidebar.classList.add('active');
+        overlay.classList.add('active');
+
+        // Preenche o campo oculto com o ID da linha (essencial para EDITAR)
+        document.getElementById('form-id').value = item['ID'] || "";
+
+        // Preenche os demais campos
+        document.getElementById('data').value = converterDataParaInput(item['DATA']);
+        document.getElementById('nbou').value = item['NUMERO COP'] || "";
+        document.getElementById('Tipificação').value = item['TIPIFICAÇÃO'] || "";
+        document.getElementById('Envolvimento').value = item['ENVOLVIMENTO'] || "";
+        document.getElementById('Nome').value = item['NOME'] || "";
+        document.getElementById('RG').value = item['RG'] || "";
+        document.getElementById('CPF').value = item['CPF'] || "";
+        document.getElementById('IDADE').value = item['IDADE'] || "";
+        document.getElementById('ALCUNHA').value = item['ALCUNHA'] || "";
+        document.getElementById('SEXO').value = item['SEXO'] || "";
+        document.getElementById('MAE').value = item['MÃE'] || "";
+        document.getElementById('INSTRUMENTO').value = item['INSTRUMENTO'] || "";
+        document.getElementById('CIDADE').value = item['CIDADE'] || "";
+        document.getElementById('BAIRRO').value = item['BAIRRO'] || "";
+        document.getElementById('PONTO_REF').value = item['PONTO REF'] || "";
+        document.getElementById('ENDEREÇO').value = item['ENDEREÇO'] || "";
+        document.getElementById('HORA').value = item['HORA'] || "";
+        
+        // Trata Latitude e Longitude se vierem juntas ou separadas
+        const lat = item['LATITUDE'] || "";
+        const long = item['LONGITUDE'] || "";
+        document.getElementById('LAT_LONG').value = lat && long ? `${lat},${long}` : "";
+
+        document.getElementById('AUTORIA').value = item['AUTORIA'] || "";
+        document.getElementById('IDADE_AUTORIA').value = item['IDADE AUTORIA'] || "";
+        document.getElementById('SEXO_AUTORIA').value = item['SEXO AUTOR'] || "";
+        document.getElementById('ANTECEDENTE').value = item['ANTECEDENTE'] || "";
+        document.getElementById('SITUAÇÃO').value = item['SITUAÇÃO'] || "";
+        
+        console.log("Modo edição ativado para o ID: " + item['ID']);
+    }
+
+    // --- 4. SALVAR (NOVO OU EDIÇÃO) ---
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btnSalvar = document.getElementById('btn-salvar-form');
+        btnSalvar.innerText = "Processando...";
+        btnSalvar.disabled = true;
+
+        const formData = new FormData(form);
+        const idParaEnvio = document.getElementById('form-id').value;
+
+        const dados = {
+            ID: idParaEnvio, // Se estiver vazio, o GS cria novo. Se tiver valor, o GS edita.
+            DATA: formData.get('DATA'),
+            NBOU: formData.get('NBOU'),
+            TIPIFICACAO: formData.get('TIPIFICAÇÃO'),
+            ENVOLVIMENTO: formData.get('ENVOLVIMENTO'),
+            NOME: formData.get('NOME'),
+            RG: formData.get('RG'),
+            CPF: formData.get('CPF'),
+            IDADE: formData.get('IDADE'),
+            ALCUNHA: formData.get('ALCUNHA'),
+            SEXO: formData.get('SEXO'),
+            MAE: formData.get('MÃE'),
+            INSTRUMENTO: formData.get('INSTRUMENTO'),
+            CIDADE: formData.get('CIDADE'),
+            BAIRRO: formData.get('BAIRRO'),
+            PONTO_REF: formData.get('PONTO_REF'),
+            ENDERECO: formData.get('ENDEREÇO'),
+            HORA: formData.get('HORA'),
+            LAT_LONG: formData.get('LAT_LONG'),
+            AUTORIA: formData.get('AUTORIA'),
+            IDADE_AUTORIA: formData.get('IDADE_AUTORIA'),
+            SEXO_AUTOR: formData.get('SEXO_AUTOR'),
+            ANTECEDENTE: formData.get('ANTECEDENTE'),
+            SITUACAO: formData.get('SITUAÇÃO')
+        };
+
+        try {
+            const res = await fetch(API_URL, {
+                method: "POST",
+                body: JSON.stringify(dados),
+                redirect: "follow"
+            });
+            
+            alert("Operação concluída com sucesso!");
+            form.reset();
+            document.getElementById('form-id').value = "";
+            carregarDados();
+            btnFecharSidebar.click();
+        } catch (err) {
+            alert("Erro ao processar: " + err);
+        } finally {
+            btnSalvar.innerText = "SALVAR DADOS";
+            btnSalvar.disabled = false;
+        }
+    });
+
+    // Utilitários
+    function converterDataParaInput(dataStr) {
+        if (!dataStr) return "";
+        const partes = dataStr.split('/');
+        if (partes.length !== 3) return "";
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', carregarDados);
+    
+    // Funções de Relógio e Login (Insira as suas aqui...)
 </script>
