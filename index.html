@@ -158,7 +158,7 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
-    <script>
+<script>
         // ********************************************************************
         // ** ATENÇÃO: SUBSTITUA AS URLs ABAIXO PELAS SUAS URLs REAIS **
         // ********************************************************************
@@ -166,8 +166,8 @@
         const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
         const WEBAPP_URL_DROGAS = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
         const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
-        const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec'; // <-- NOVO: URL do Apps Script de Materiais
-
+        const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec'; // URL do Apps Script de Materiais
+        const API_URL = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
 
         // --- FUNÇÕES DE UTILIDADE (MANTIDAS) ---
 
@@ -205,10 +205,6 @@
 
         // --- FUNÇÃO OTIMIZADA PARA CONTADORES (GERAL) ---
 
-        /**
-         * Função genérica para buscar e exibir a contagem no dashboard.
-         * Usada para contagens que retornam apenas um número inteiro (campo 'count').
-         */
         function updateCount(url, action, elementId) {
             const currentYear = new Date().getFullYear();
             $(`#${elementId}`).text('...');
@@ -236,20 +232,35 @@
             });
         }
 
+        // --- NOVA FUNÇÃO: CONTAGEM DE HOMICÍDIOS (MVI) ---
+        async function atualizarCardMVI() {
+            try {
+                // Chama o script pedindo a ação específica para o servidor processar
+                const response = await fetch(`${API_URL}?action=countHomicidios`);
+                const resultado = await response.json();
+                
+                const elementoMvi = document.getElementById('numeromvi');
+                if (elementoMvi) {
+                    // Se o servidor retornar o total, exibe, senão coloca 0
+                    elementoMvi.innerText = resultado.total !== undefined ? resultado.total : 0;
+                }
+            } catch (error) {
+                console.error("Erro ao carregar contagem MVI:", error);
+                if(document.getElementById('numeromvi')) {
+                    document.getElementById('numeromvi').innerText = "0";
+                }
+            }
+        }
 
-        /**
-         * FUNÇÃO ESPECÍFICA PARA DROGAS (Soma o Peso Anual)
-         * Esta é a função que você corrigiu anteriormente.
-         */
+
+        // --- FUNÇÃO ESPECÍFICA PARA DROGAS (Soma o Peso Anual) ---
         async function atualizarDrogas() {
             if (typeof WEBAPP_URL_DROGAS === 'undefined') {
                 console.error("ERRO: A variável 'WEBAPP_URL_DROGAS' não está definida.");
                 return;
             }
 
-            // TENTA ENCONTRAR O ELEMENTO ONDE VAI O NÚMERO
             const elementoContador = document.getElementById('numerodrogas');
-            // TENTA ENCONTRAR O ELEMENTO ONDE VAI O NOME ("Drogas Apreendidas")
             const elementoTitulo = elementoContador ? elementoContador.previousElementSibling : null;
 
             if (elementoContador) {
@@ -267,11 +278,9 @@
                     const totalFormatado = String(data.total).replace('.', ',');
 
                     if (elementoTitulo) {
-                        // AÇÃO CRUCIAL: Mudar o título do card para a descrição da soma.
                         elementoTitulo.textContent = 'Peso Total (Ano Atual)';
                     }
                     if (elementoContador) {
-                        // Exibe a soma e a unidade (ex: 15,45 Kg)
                         elementoContador.textContent = `${totalFormatado} Kg`;
                     }
 
@@ -292,22 +301,17 @@
         let lastCountAIT = localStorage.getItem('lastCountAIT') || 0;
 
         function checkNewNotifications() {
-            // Exemplo para AIT (Repita para TCO, Materiais, etc.)
             fetch(WEBAPP_URL_AIT + "?action=countAITs")
                 .then(res => res.json())
                 .then(data => {
                     const currentCount = data.numeroait;
-
                     if (currentCount > lastCountAIT && lastCountAIT != 0) {
                         const novos = currentCount - lastCountAIT;
                         addNotification(`Existem ${novos} novas inclusões de AIT.`);
-
-                        // Atualiza o badge
                         const badge = document.getElementById('notif-count');
                         badge.innerText = novos;
                         badge.style.display = 'block';
                     }
-                    // Não atualizamos o lastCountAIT aqui para que a notificação persista até ele abrir
                 });
         }
 
@@ -322,17 +326,12 @@
             container.prepend(item);
         }
 
-        // Lógica para abrir/fechar o menu
         document.getElementById('bell-icon').addEventListener('click', () => {
             const dropdown = document.getElementById('notif-dropdown');
             dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-
-            // Ao abrir, podemos "zerar" o badge e atualizar o lastCount
             document.getElementById('notif-count').style.display = 'none';
-            // Aqui você atualizaria o localStorage com o valor que buscou no fetch
         });
 
-        // Verifica a cada 1 minuto (60000ms)
         setInterval(checkNewNotifications, 60000);
 
 
@@ -352,8 +351,8 @@
                 btnLogout.addEventListener('click', logout);
             }
 
-            // CARREGA OS CONTADORES
-
+            // CARREGA OS CONTADORES DO DASHBOARD
+            
             // 1. Contagem AIT 
             updateCount(WEBAPP_URL_AIT, 'countAITs', 'numeroait');
 
@@ -363,12 +362,13 @@
             // 3. Contagem TCO
             updateCount(WEBAPP_URL_TCO, 'countTCOs', 'numerotco');
 
-            // 4. Contagem Materiais Apreendidos (NOVO)
-            if (WEBAPP_URL_MATERIAIS && WEBAPP_URL_MATERIAIS !== 'SUA_URL_DO_WEBAPP_MATERIAIS_AQUI') {
-                // Usa a ação 'countMateriais' que implementamos para subtrair os 'DEVOLVIDO'
+            // 4. Contagem MVI (Homicídios) - NOVA IMPLEMENTAÇÃO
+            atualizarCardMVI();
+
+            // 5. Contagem Materiais Apreendidos
+            if (WEBAPP_URL_MATERIAIS && !WEBAPP_URL_MATERIAIS.includes('SUA_URL')) {
                 updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
             } else {
-                // Alerta visual para o usuário configurar a URL se o placeholder estiver lá
                 $('#numeromateriais').text('Set URL');
             }
         });

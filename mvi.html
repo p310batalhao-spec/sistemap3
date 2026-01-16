@@ -6,11 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - MVI</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stylesmvi.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
 </head>
 
 <body>
- <header>
+    <header>
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
@@ -19,7 +20,7 @@
             </div>
         </div>
 
-         <div class="header-info-right">
+        <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -34,7 +35,8 @@
                 <p>Home</p>
             </a><!--termina home-->
             <a href="dashboard.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook"/>
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
                 <p>Dashboard</p>
             </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
@@ -95,27 +97,128 @@
                     <button id="btn-aplicar-filtro">Aplicar Filtro</button>
                     <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
                 </div>
-                <div class="tabela-container">
+                <div class="container-tabela">
                     <table id="tabela-materiais">
                         <thead>
                             <tr>
-                                <th>IDMaterial</th>
-                                <th>N° DO BOU</th>
+                                <th>Nº OCORRÊNCIA</th>
                                 <th>DATA</th>
-                                <th>CATEGORIA</th>
-                                <th>DESCRIÇÃO</th>
-                                <th>LOCAL DO DEPÓSITO</th>
-                                <th>DATA DE DEPOSITO</th>
-                                <th>ESAJ</th>
-                                <th>STATUS</th>
+                                <th>HORA</th>
+                                <th>SOLICITANTE</th>
+                                <th>TELEFONE</th>
+                                <th>LOGRADOURO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>PONTO REF.</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ESTABELECIMENTO</th>
+                                <th>SOLUÇÃO</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
                         <tbody>
                         </tbody>
                     </table>
-                </div>
-            </div>
+                </div><!--termina container-tabela-->
+            </div><!--termina tabelaEventos-->
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID_OCORRENCIA">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>Nº OCORRÊNCIA</p>
+                        <input type="text" name="NUMEROOCORRENCIA" id="NUMEROOCORRENCIA">
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="data" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p>
+                        <input type="time" name="HORA" id="HORA">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE</p>
+                        <input type="text" name="SOLICITANTE" id="SOLICITANTE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE (TELEFONE)</p>
+                        <input type="tel" name="SOLICITANTETELEFONE" id="SOLICITANTETELEFONE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>LOGRADOURO</p>
+                        <input type="text" name="LOGRADOURO" id="LOGRADOURO">
+                    </div>
+                    <div class="formulario">
+                        <p>BAIRRO</p>
+                        <input type="text" name="BAIRRO" id="BAIRRO">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p>
+                        <select name="CIDADE" id="CIDADE">
+                            <option value="">Selecione a Cidade</option>
+                            <option value="Belém">Belém</option>
+                            <option value="Cacimbinhas">Cacimbinhas</option>
+                            <option value="Estrela de Alagoas">Estrela de Alagoas</option>
+                            <option value="Igaci">Igaci</option>
+                            <option value="Mar Vermelho">Mar Vermelho</option>
+                            <option value="Maribondo">Maribondo</option>
+                            <option value="Paulo Jacinto">Paulo Jacinto</option>
+                            <option value="Palmeira dos Índios">Palmeira dos Índios</option>
+                            <option value="Quebrangulo">Quebrangulo</option>
+                            <option value="Tanque D'arca">Tanque D'Arca</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO DE REFERENCIA</p>
+                        <input type="text" name="PONTO_REF" id="PONTO_REF">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE</p>
+                        <input type="text" name="LATITUDE" id="LATITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>LONGITUDE</p>
+                        <input type="text" name="LONGITUDE" id="LONGITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO GERAL</p>
+                        <select name="TIPIFICAÇÃO GERAL" id="TIPIFICAÇÃO GERAL">
+                            <option value="">Selecione a Tipificação</option>
+                            <option value="HOMICÍDIO">HOMICÍDIO</option>
+                            <option value="FEMINICÍDIO">FEMINICÍDIO</option>
+                            <option value="INFANTICÍDIO">IFANTICÍDIO</option>
+                            <option value="TENTATIVA DE HOMICÍDIO">TENTATIVA DE HOMICÍDIO</option>
+                            <option value="TENTATIVA DE FEMINICÍDIO">TENTATIVA DE FEMINICÍDIO</option>
+                            <option value="TENTATIVA DE INFANTICÍDIO">TENTATIVA DE INFANTICÍDIO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>ESTABELECIMENTO</p>
+                        <input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO DA OCORRÊNCIA</p>
+                        <input type="text" name="SOLUÇÃO DA OCORRÊNCIA" id="SOLUÇÃO DA OCORRÊCIA">
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
+
         </main>
     </section>
 </body>
@@ -125,75 +228,183 @@
     </div>
 </footer>
 <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
+    const sidebar = document.querySelector('.sidbarform');
+    const overlay = document.getElementById('overlay-sidebar');
+    const form = document.getElementById('form-materiais');
 
-        // Função para formatar e exibir a data/hora
-    function atualizarRelogio() {
-        const agora = new Date();
+    // --- CONTROLE DE ABERTURA/FECHAMENTO ---
+    document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
+        form.reset();
+        if(document.getElementById('form-id')) document.getElementById('form-id').value = "";
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
+    });
 
-        // Opções para o formato da data em Português do Brasil
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+    const fecharSidebar = () => {
+        sidebar.classList.remove('active');
+        overlay.style.display = 'none';
+        form.reset();
+    };
 
-        // Opções para o formato da hora (inclui segundos)
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+    overlay.addEventListener('click', fecharSidebar);
 
-        // Exibe no elemento relógio, separando data e hora por uma quebra de linha
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    // --- CARREGAR DADOS ---
+    async function carregarDados() {
+        try {
+            const res = await fetch(API_URL);
+            const dados = await res.json();
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            tbody.innerHTML = "";
+
+            dados.reverse().forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${item['Nº Ocorrência'] || ""}</td>
+                    <td>${item['DATA'] || ""}</td>
+                    <td>${item['HORA'] || ""}</td>
+                    <td>${item['Solicitante (Nome)'] || ""}</td>
+                    <td>${item['Solicitante (Telefone)'] || ""}</td>
+                    <td>${item['Logradouro'] || ""}</td>
+                    <td>${item['Bairro'] || ""}</td>
+                    <td>${item['Cidade'] || ""}</td>
+                    <td>${item['Ponto de Referência'] || ""}</td>
+                    <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
+                    <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
+                    <td>${item['Tipificação Geral'] || ""}</td>
+                    <td>${item['Estabelecimento'] || ""}</td>
+                    <td>${item['Solução da Ocorrência'] || ""}</td>
+                    <td id="acao-${item['Nº Ocorrência']}"></td>
+                `;
+                
+                // Botão de editar criado de forma segura
+                const btnEditar = document.createElement('button');
+                btnEditar.className = 'btn-editar';
+                btnEditar.innerText = 'EDITAR';
+                btnEditar.onclick = () => preencherParaEditar(item);
+                
+                tbody.appendChild(tr);
+                tr.querySelector(`[id="acao-${item['Nº Ocorrência']}"]`).appendChild(btnEditar);
+            });
+            document.getElementById('mensagem-carregamento').style.display = 'none';
+        } catch (e) {
+            console.error("Erro ao carregar:", e);
+        }
     }
 
-    // Chama a função uma vez para carregar imediatamente
-    atualizarRelogio();
+    // --- PREENCHER PARA EDITAR (COM PROTEÇÃO CONTRA ERROS) ---
+    window.preencherParaEditar = (item) => {
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
 
-    //FUNÇÃO DO IFRAME PARA CARREGAR OS DADOS DO CARD NA MESMA PÁGINA.
-    // Configura para atualizar a cada 1000 milissegundos (1 segundo)
-    setInterval(atualizarRelogio, 1000);
-                // --- CÓDIGO PARA LOGIN/LOGOUT ---
-
-        // 1. Função para verificar o login e exibir a info
-        function checkLogin() {
-            // Assume que as informações de sessão (graduação e nome de guerra)
-            // foram salvas no localStorage após o login bem-sucedido no login.html
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
-
-            if (graduacao && nomeGuerra) {
-                // Usuário logado: Exibe as informações
-                userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-            `;
+        // Função interna para preencher apenas se o ID existir no HTML
+        const preencher = (id, valor) => {
+            const campo = document.getElementById(id);
+            if (campo) {
+                campo.value = valor || "";
             } else {
-                // Usuário não logado: Redireciona para o login
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                window.location.href = 'login.html';
+                console.warn("Campo não encontrado no HTML: " + id);
             }
+        };
+
+        // Mapeamento dos campos conforme os IDs do seu formulário no mvi.html
+        preencher('form-id', item['Nº Ocorrência']);
+        preencher('DATA', converterDataParaInput(item['DATA']));
+        preencher('HORA', item['HORA']);
+        preencher('SOLICITANTE_NOME', item['Solicitante (Nome)']);
+        preencher('SOLICITANTE_FONE', item['Solicitante (Telefone)']);
+        preencher('LOGRADOURO', item['Logradouro']);
+        preencher('BAIRRO', item['Bairro']);
+        preencher('CIDADE', item['Cidade']);
+        preencher('PONTO_REF', item['Ponto de Referência']);
+        preencher('LATITUDE', item['Latitude (Abertura de Ocor.)']);
+        preencher('LONGITUDE', item['Longitude (Abertura de Ocor.)']);
+        preencher('TIPIFICACAO_GERAL', item['Tipificação Geral']);
+        preencher('ESTABELECIMENTO', item['Estabelecimento']);
+        preencher('SOLUCAO_OCORRENCIA', item['Solução da Ocorrência']);
+    };
+
+    // --- SALVAR DADOS ---
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-salvar-form');
+        btn.innerText = "Salvando...";
+        btn.disabled = true;
+        
+        const formData = new FormData(form);
+        const objetoDados = {
+            ID_OCORRENCIA: document.getElementById('form-id') ? document.getElementById('form-id').value : "",
+            DATA: formData.get('DATA'),
+            HORA: formData.get('HORA'),
+            SOLICITANTE_NOME: formData.get('SOLICITANTE_NOME'),
+            SOLICITANTE_FONE: formData.get('SOLICITANTE_FONE'),
+            LOGRADOURO: formData.get('LOGRADOURO'),
+            BAIRRO: formData.get('BAIRRO'),
+            CIDADE: formData.get('CIDADE'),
+            PONTO_REF: formData.get('PONTO_REF'),
+            LATITUDE: formData.get('LATITUDE'),
+            LONGITUDE: formData.get('LONGITUDE'),
+            TIPIFICACAO_GERAL: formData.get('TIPIFICACAO_GERAL'),
+            ESTABELECIMENTO: formData.get('ESTABELECIMENTO'),
+            SOLUCAO_OCORRENCIA: formData.get('SOLUCAO_OCORRENCIA')
+        };
+
+        try {
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(objetoDados),
+                redirect: "follow"
+            });
+            alert("Sucesso!");
+            fecharSidebar();
+            carregarDados();
+        } catch (err) {
+            alert("Erro ao salvar: " + err);
+        } finally {
+            btn.innerText = "SALVAR DADOS";
+            btn.disabled = false;
         }
+    });
 
-        // 2. Função de Logout
-        function logout() {
-            // Remove as informações de sessão
-            localStorage.removeItem('userGraduacao');
-            localStorage.removeItem('userNomeGuerra');
+    function converterDataParaInput(d) {
+        if(!d || !d.includes('/')) return d;
+        const p = d.split('/');
+        return `${p[2]}-${p[1]}-${p[0]}`;
+    }
 
-            // Redireciona para a tela de login
-            alert('Logout realizado com sucesso!');
+    // --- FUNÇÕES DE INTERFACE (RELÓGIO E LOGIN) ---
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    }
+    setInterval(atualizarRelogio, 1000);
+
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
+        if (graduacao && nomeGuerra) {
+            userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        } else {
             window.location.href = 'login.html';
         }
+    }
 
-        // 3. Adiciona o Listener ao botão de Logout e chama checkLogin
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin(); // Garante que a página só é exibida se houver login
+    function logout() {
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
+        window.location.href = 'login.html';
+    }
 
-            const btnLogout = document.getElementById('btn-logout');
-
-            if (btnLogout) {
-                // O botão foi encontrado no DOM, anexa o evento
-                btnLogout.addEventListener('click', logout);
-                console.log("Logout Listener anexado com sucesso.");
-            } else {
-                // O botão NÃO foi encontrado, exibe erro no console
-                console.error("ERRO: O elemento de botão de logout (id='btn-logout') não foi encontrado no HTML.");
-            }
-        });
+    document.addEventListener('DOMContentLoaded', () => {
+        checkLogin();
+        carregarDados();
+        atualizarRelogio();
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) btnLogout.addEventListener('click', logout);
+    });
 </script>
