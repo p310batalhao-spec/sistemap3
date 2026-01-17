@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gerenciamento P3 - MVI</title>
+    <title>Sistema de Gerenciamento P3 - PERTURBAÇÃO DO SOSSEGO</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stylesperturbacao.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="stylescvp.css">
 </head>
 
 <body>
@@ -15,7 +15,7 @@
         <div class="header-info-left">
             <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
-                <h1>SISTEMA DE GERENCIAMENTO P3|CVP</h1>
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
             </div>
         </div>
@@ -33,44 +33,48 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
                     alt="home--v1" />
                 <p>Home</p>
-            </a>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
             <a href="cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a>
+            </a><!--termina cadastroocorrencias-->
             <a href="materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a>
+            </a><!--termina materiais apreendidos-->
             <a href="eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
-            </a>
+            </a><!--termina eventos-->
             <a href="solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a>
+            </a><!--termina solucoes ia-->
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button>
-        </nav>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
 
         <main>
             <div class="saudacao">
-                <h2>Crimes Violentos Contra o Patrimônio</h2>
-                <p>Furto, Roubo, Tentativa de Roubo, Latrocínio, Extorção Mediante Sequestro</p>
+                <h2>Perturbação do Sossego Alheio</h2>
             </div>
             <div class="TabelaEventos">
-                <h3>Cadastro de CVP</h3>
+                <h3>Cadastro de Perturbação do Sossego</h3>
 
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
                             alt="Adicionar" />
-                        Adicionar Novo CVP
+                        Adicionar Nova Ocorrência
                     </button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
                 </div>
@@ -116,8 +120,8 @@
                         <tbody>
                         </tbody>
                     </table>
-                </div>
-            </div>
+                </div><!--termina container-tabela-->
+            </div><!--termina tabelaEventos-->
             <div id="overlay-sidebar" class="overlay-sidebar"></div>
 
             <form class="sidbarform" id="form-materiais">
@@ -191,16 +195,8 @@
                         <p>TIPIFICAÇÃO GERAL</p>
                         <select name="TIPIFICAÇÃO GERAL" id="TIPIFICAÇÃO GERAL">
                             <option value="">Selecione a Tipificação</option>
-                            <option value="FURTO">FURTO</option>
-                            <option value="APROPRIAÇÃO INDÉBITA">APROPRIAÇÃO INDÉBITA</option>
-                            <option value="TENTATIVA DE FURTO">TENTATIVA DE FURTO</option>
-                            <option value="FURTO QUALIFICADO">FURTO QUALIFICADO</option>
-                            <option value="LATROCÍNIO">LATROCÍNIO</option>
-                            <option value="DANO">DANO</option>
-                            <option value="EXTORÇÃO MEDIANTE SEQUESTRO">EXTORÇÃO MEDIANTE SEQUESTRO</option>
-                            <option value="DANO QUALIFICADO">DANO QUALIFICADO</option>
-                            <option value="ROUBO">ROUBO</option>
-                            <option value="TENTATIVA DE ROUBO">TENTATIVA DE ROUBO</option>
+                            <option value="PERTURBAÇÃO DO SOSSEGO OU TRABALHO ALHEIO | CONTRAVENÇÕES PENAIS">PERTURBAÇÃO DO SOSSEGO OU TRABALHO ALHEIO | CONTRAVENÇÕES PENAIS</option>
+                            <option value="PERTURBAÇÃO DA TRANQUILIDADE | CONTRAVENÇÕES PENAIS">PERTURBAÇÃO DA TRANQUILIDADE | CONTRAVENÇÕES PENAIS</option>
                         </select>
                     </div>
                     <div class="formulario">
@@ -217,6 +213,7 @@
                     SALVAR DADOS
                 </button>
             </form><!--termina sidebarform-->
+
         </main>
     </section>
 </body>
@@ -226,54 +223,12 @@
     </div>
 </footer>
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec"; 
-    
+    const API_URL = "https://script.google.com/macros/s/AKfycbwpkufWkoQ483xA3t8UGgf-q7Je3r3pXrRMcN9v_3RZQA9xjnEaocDa-9jsTu_c7P37/exec";
     const sidebar = document.querySelector('.sidbarform');
     const overlay = document.getElementById('overlay-sidebar');
     const form = document.getElementById('form-materiais');
 
-    // --- FUNÇÕES DE INTERFACE ---
-    function atualizarRelogio() {
-        const agora = new Date();
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
-    }
-
-    function checkLogin() {
-        const graduacao = localStorage.getItem('userGraduacao');
-        const nomeGuerra = localStorage.getItem('userNomeGuerra');
-        const userInfoEl = document.getElementById('user-info');
-        if (graduacao && nomeGuerra) {
-            userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
-        } else { window.location.href = 'login.html'; }
-    }
-
-    function logout() {
-        localStorage.removeItem('userGraduacao');
-        localStorage.removeItem('userNomeGuerra');
-        window.location.href = 'login.html';
-    }
-
-    // --- CONTROLE SIDEBAR ---
-    document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
-        form.reset();
-        document.getElementById('form-id').value = ""; 
-        sidebar.classList.add('active');
-        overlay.style.display = 'block';
-    });
-
-    const fecharSidebar = () => {
-        sidebar.classList.remove('active');
-        overlay.style.display = 'none';
-        form.reset();
-    };
-
-    document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
-    overlay.addEventListener('click', fecharSidebar);
-
-    // --- CARREGAR DADOS ---
+    // --- CARREGAR DADOS NA TABELA ---
     async function carregarDados() {
         try {
             const res = await fetch(API_URL);
@@ -283,36 +238,36 @@
 
             dados.reverse().forEach(item => {
                 const tr = document.createElement('tr');
-                // MAPEAMENTO: item['NOME NA PLANILHA']
                 tr.innerHTML = `
-                    <td>${item['Nº Ocorrência'] || ""}</td>
-                    <td>${item['DATA'] || ""}</td>
-                    <td>${item['HORA'] || ""}</td>
-                    <td>${item['Solicitante (Nome)'] || ""}</td>
-                    <td>${item['Solicitante (Telefone)'] || ""}</td>
-                    <td>${item['Logradouro'] || ""}</td>
-                    <td>${item['Bairro'] || ""}</td>
-                    <td>${item['Cidade'] || ""}</td>
-                    <td>${item['Ponto de Referência'] || ""}</td>
-                    <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Tipificação Geral'] || ""}</td>
-                    <td>${item['Estabelecimento'] || ""}</td>
-                    <td>${item['Solução da Ocorrência'] || ""}</td>
+                    <td>${item['Nº Ocorrência']}</td>
+                    <td>${item['DATA']}</td>
+                    <td>${item['HORA']}</td>
+                    <td>${item['Solicitante (Nome)']}</td>
+                    <td>${item['Solicitante (Telefone)']}</td>
+                    <td>${item['Logradouro']}</td>
+                    <td>${item['Bairro']}</td>
+                    <td>${item['Cidade']}</td>
+                    <td>${item['Ponto de Referência']}</td>
+                    <td>${item['Latitude (Abertura de Ocor.)']}</td>
+                    <td>${item['Longitude (Abertura de Ocor.)']}</td>
+                    <td>${item['Tipificação Geral']}</td>
+                    <td>${item['Estabelecimento']}</td>
+                    <td>${item['Solução da Ocorrência']}</td>
                     <td><button class="btn-editar">EDITAR</button></td>
                 `;
                 tr.querySelector('.btn-editar').onclick = () => preencherParaEditar(item);
                 tbody.appendChild(tr);
             });
             document.getElementById('mensagem-carregamento').style.display = 'none';
-        } catch (e) { console.error("Erro:", e); }
+        } catch (e) { console.error("Erro ao carregar:", e); }
     }
 
-    // --- PREENCHER PARA EDITAR ---
+    // --- PREENCHER SIDEBAR PARA EDITAR ---
     window.preencherParaEditar = (item) => {
         sidebar.classList.add('active');
         overlay.style.display = 'block';
 
+        // Mapeamento exato com os IDs do seu HTML de Perturbação
         document.getElementById('form-id').value = item['Nº Ocorrência'];
         document.getElementById('NUMEROOCORRENCIA').value = item['Nº Ocorrência'];
         document.getElementById('data').value = converterDataParaInput(item['DATA']);
@@ -330,12 +285,13 @@
         document.getElementById('SOLUÇÃO DA OCORRÊCIA').value = item['Solução da Ocorrência'];
     };
 
-    // --- SALVAR ---
+    // --- SALVAR DADOS (NOVO OU EDIÇÃO) ---
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btn-salvar-form');
-        btn.innerText = "Salvando..."; btn.disabled = true;
-
+        btn.innerText = "Salvando...";
+        btn.disabled = true;
+        
         const objetoDados = {
             ID_OCORRENCIA: document.getElementById('form-id').value,
             DATA: document.getElementById('data').value,
@@ -348,29 +304,69 @@
             PONTO_REF: document.getElementById('PONTO_REF').value,
             LATITUDE: document.getElementById('LATITUDE').value,
             LONGITUDE: document.getElementById('LONGITUDE').value,
-            TIPIFICACAO: document.getElementById('TIPIFICAÇÃO GERAL').value,
+            TIPIFICACAO_GERAL: document.getElementById('TIPIFICAÇÃO GERAL').value,
             ESTABELECIMENTO: document.getElementById('ESTABELECIMENTO').value,
-            SOLUCAO_FINAL: document.getElementById('SOLUÇÃO DA OCORRÊCIA').value
+            SOLUCAO_OCORRENCIA: document.getElementById('SOLUÇÃO DA OCORRÊCIA').value
         };
 
         try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify(objetoDados) });
+            await fetch(API_URL, {
+                method: 'POST',
+                body: JSON.stringify(objetoDados)
+            });
             alert("Sucesso!");
-            fecharSidebar(); carregarDados();
+            fecharSidebar();
+            carregarDados();
         } catch (err) { alert("Erro ao salvar."); }
-        finally { btn.innerText = "SALVAR DADOS"; btn.disabled = false; }
+        finally { 
+            btn.innerText = "SALVAR DADOS"; 
+            btn.disabled = false;
+        }
     });
 
+    // --- FUNÇÕES DE INTERFACE ---
     function converterDataParaInput(d) {
         if(!d || !d.includes('/')) return d;
         const p = d.split('/');
         return `${p[2]}-${p[1]}-${p[0]}`;
     }
 
+    const fecharSidebar = () => {
+        sidebar.classList.remove('active');
+        overlay.style.display = 'none';
+        form.reset();
+    };
+
+    document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
+        form.reset();
+        document.getElementById('form-id').value = ""; 
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
+    });
+
+    document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+    overlay.addEventListener('click', fecharSidebar);
+
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        document.getElementById('relogio').innerHTML = `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+    }
+
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        if (graduacao && nomeGuerra) {
+            document.getElementById('user-info').innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        } else { window.location.href = 'login.html'; }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
-        checkLogin(); carregarDados(); atualizarRelogio();
+        checkLogin();
+        carregarDados();
+        atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
         const btnLogout = document.getElementById('btn-logout');
-        if (btnLogout) btnLogout.onclick = logout;
+        if (btnLogout) btnLogout.onclick = () => { localStorage.clear(); window.location.href = 'login.html'; };
     });
 </script>

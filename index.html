@@ -100,7 +100,7 @@
                 <a href="violenciadomestica.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/windows/32/hand.png" alt="hand" />
                     <p>Violência Doméstica</p>
-                    <p id="violenciadomestica" class="numero">--</p>
+                    <p id="numeroviolenciadomestica" class="numero">--</p>
                 </a> <!--termina violencia domestica-->
 
                 <div class="btn">
@@ -136,14 +136,14 @@
                     <p>Cumprimentos de Mandados</p>
                     <p id="numeromandados" class="numero">--</p>
                 </a><!--termina mandados-->
-
-                <div class="btn">
+                <a href="perturbacao.html" class="btn">
                     <img width="50" height="50"
                         src="https://img.icons8.com/external-xnimrodx-lineal-xnimrodx/64/external-boombox-music-xnimrodx-lineal-xnimrodx.png"
                         alt="external-boombox-music-xnimrodx-lineal-xnimrodx" />
                     <p>Perturbação do Sossego</p>
                     <p id="numeroperturbacaodosossego" class="numero">--</p>
-                </div><!--termina perturbação do sossego-->
+                </a><!--termina perturbacao-->
+
 
             </section>
         </main>
@@ -158,18 +158,20 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
-<script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script>
         // ********************************************************************
-        // ** ATENÇÃO: SUBSTITUA AS URLs ABAIXO PELAS SUAS URLs REAIS **
+        // ** CONFIGURAÇÕES DE URLs **
         // ********************************************************************
-        // Usando um nome mais claro para a URL de cada App
         const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
         const WEBAPP_URL_DROGAS = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
         const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
-        const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec'; // URL do Apps Script de Materiais
-        const API_URL = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
-
-        // --- FUNÇÕES DE UTILIDADE (MANTIDAS) ---
+        const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
+        const API_URL_MVI = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
+        const WEBAPP_URL_PERTURBACAO = "https://script.google.com/macros/s/AKfycbwpkufWkoQ483xA3t8UGgf-q7Je3r3pXrRMcN9v_3RZQA9xjnEaocDa-9jsTu_c7P37/exec";
+        const WEBAPP_URL_CVP = 'https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec';
+        const WEBAPP_URL_VD = 'https://script.google.com/macros/s/AKfycbyyqS93ST2mawBpEEjmbgMHYBhh7nMJXv8_yTelXtNxZ2BhS03KfAlBGqpTjXCp3scbQQ/exec';
+        // --- FUNÇÕES DE UTILIDADE ---
 
         function atualizarRelogio() {
             const agora = new Date();
@@ -185,12 +187,8 @@
             const userInfoEl = document.getElementById('user-info');
 
             if (graduacao && nomeGuerra) {
-                userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-            `;
+                userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
             } else {
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
                 window.location.href = 'login.html';
             }
         }
@@ -198,113 +196,67 @@
         function logout() {
             localStorage.removeItem('userGraduacao');
             localStorage.removeItem('userNomeGuerra');
-            alert('Logout realizado com sucesso!');
             window.location.href = 'login.html';
         }
 
-
-        // --- FUNÇÃO OTIMIZADA PARA CONTADORES (GERAL) ---
+        // --- FUNÇÃO DE CONTAGEM UNIFICADA (Resolve Erro de Comunicação) ---
 
         function updateCount(url, action, elementId) {
             const currentYear = new Date().getFullYear();
-            $(`#${elementId}`).text('...');
+            const $el = $(`#${elementId}`);
+            $el.text('...');
 
             $.ajax({
                 url: url,
                 type: 'GET',
-                data: {
-                    action: action,
-                    year: currentYear
-                },
+                data: { action: action, year: currentYear },
                 dataType: 'json',
                 success: function (response) {
-                    if (response.status === 'success' && response.count !== undefined) {
-                        $(`#${elementId}`).text(response.count);
+                    // Suporte para response.count (padrão) ou response.total (usado no MVI)
+                    let valor = response.count !== undefined ? response.count : response.total;
+
+                    if (valor !== undefined) {
+                        $el.text(valor);
                     } else {
-                        $(`#${elementId}`).text('ERRO');
-                        console.error(`Erro ao carregar contagem ${elementId}: ${response.message || 'Erro de comunicação.'}`);
+                        $el.text('0');
+                        console.warn(`Resposta sem contagem para ${elementId}:`, response);
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
-                    $(`#${elementId}`).text('FALHA');
-                    console.error(`Erro na comunicação com o Apps Script (${elementId}):`, textStatus, errorThrown);
+                    $el.text('!');
+                    console.error(`Erro na comunicação (${elementId}):`, textStatus, errorThrown);
                 }
             });
         }
 
-        // --- NOVA FUNÇÃO: CONTAGEM DE HOMICÍDIOS (MVI) ---
-        async function atualizarCardMVI() {
-            try {
-                // Chama o script pedindo a ação específica para o servidor processar
-                const response = await fetch(`${API_URL}?action=countHomicidios`);
-                const resultado = await response.json();
-                
-                const elementoMvi = document.getElementById('numeromvi');
-                if (elementoMvi) {
-                    // Se o servidor retornar o total, exibe, senão coloca 0
-                    elementoMvi.innerText = resultado.total !== undefined ? resultado.total : 0;
-                }
-            } catch (error) {
-                console.error("Erro ao carregar contagem MVI:", error);
-                if(document.getElementById('numeromvi')) {
-                    document.getElementById('numeromvi').innerText = "0";
-                }
-            }
-        }
-
-
-        // --- FUNÇÃO ESPECÍFICA PARA DROGAS (Soma o Peso Anual) ---
+        // --- FUNÇÃO ESPECÍFICA PARA DROGAS (Soma de Peso) ---
         async function atualizarDrogas() {
-            if (typeof WEBAPP_URL_DROGAS === 'undefined') {
-                console.error("ERRO: A variável 'WEBAPP_URL_DROGAS' não está definida.");
-                return;
-            }
-
-            const elementoContador = document.getElementById('numerodrogas');
-            const elementoTitulo = elementoContador ? elementoContador.previousElementSibling : null;
-
-            if (elementoContador) {
-                elementoContador.textContent = '...';
-            }
+            const $el = $('#numerodrogas');
+            if (!$el.length) return;
+            $el.text('...');
 
             const currentYear = new Date().getFullYear();
-            const url = `${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${currentYear}`;
-
             try {
-                const response = await fetch(url);
+                const response = await fetch(`${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${currentYear}`);
                 const data = await response.json();
-
                 if (data.status === 'success') {
                     const totalFormatado = String(data.total).replace('.', ',');
-
-                    if (elementoTitulo) {
-                        elementoTitulo.textContent = 'Peso Total (Ano Atual)';
-                    }
-                    if (elementoContador) {
-                        elementoContador.textContent = `${totalFormatado} Kg`;
-                    }
-
-                } else {
-                    console.error('Erro ao carregar soma de peso de drogas:', data.message);
-                    if (elementoContador) {
-                        elementoContador.textContent = 'ERRO';
-                    }
-                }
+                    $el.text(`${totalFormatado} Kg`);
+                } else { $el.text('0 Kg'); }
             } catch (error) {
-                console.error('Erro na requisição da soma de drogas:', error);
-                if (elementoContador) {
-                    elementoContador.textContent = 'FALHA';
-                }
+                $el.text('Erro');
+                console.error('Erro Drogas:', error);
             }
         }
 
+        // --- NOTIFICAÇÕES ---
         let lastCountAIT = localStorage.getItem('lastCountAIT') || 0;
 
         function checkNewNotifications() {
             fetch(WEBAPP_URL_AIT + "?action=countAITs")
                 .then(res => res.json())
                 .then(data => {
-                    const currentCount = data.numeroait;
+                    const currentCount = data.count || data.numeroait;
                     if (currentCount > lastCountAIT && lastCountAIT != 0) {
                         const novos = currentCount - lastCountAIT;
                         addNotification(`Existem ${novos} novas inclusões de AIT.`);
@@ -312,7 +264,7 @@
                         badge.innerText = novos;
                         badge.style.display = 'block';
                     }
-                });
+                }).catch(e => console.log("Erro Notificações:", e));
         }
 
         function addNotification(text) {
@@ -332,45 +284,42 @@
             document.getElementById('notif-count').style.display = 'none';
         });
 
-        setInterval(checkNewNotifications, 60000);
-
-
         // --- INICIALIZAÇÃO GERAL ---
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Inicializa o Relógio
             atualizarRelogio();
             setInterval(atualizarRelogio, 1000);
-
-            // Verifica Login
             checkLogin();
 
-            // Anexa Listener de Logout
             const btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', logout);
-            }
+            if (btnLogout) btnLogout.addEventListener('click', logout);
 
-            // CARREGA OS CONTADORES DO DASHBOARD
-            
-            // 1. Contagem AIT 
+            // 1. AIT
             updateCount(WEBAPP_URL_AIT, 'countAITs', 'numeroait');
 
-            // 2. Contagem Drogas
+            // 2. Drogas
             atualizarDrogas();
 
-            // 3. Contagem TCO
+            // 3. TCO
             updateCount(WEBAPP_URL_TCO, 'countTCOs', 'numerotco');
 
-            // 4. Contagem MVI (Homicídios) - NOVA IMPLEMENTAÇÃO
-            atualizarCardMVI();
+            // 4. MVI (Homicídios) - Agora via updateCount
+            updateCount(API_URL_MVI, 'countHomicidios', 'numeromvi');
 
-            // 5. Contagem Materiais Apreendidos
-            if (WEBAPP_URL_MATERIAIS && !WEBAPP_URL_MATERIAIS.includes('SUA_URL')) {
-                updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
-            } else {
-                $('#numeromateriais').text('Set URL');
-            }
+            // 5. Materiais Apreendidos
+            updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
+
+            // 6. Perturbação do Sossego
+            updateCount(WEBAPP_URL_PERTURBACAO, 'countPerturbacao', 'numeroperturbacaodosossego');
+
+            // 7. CVP (NOVO) - contagem CVP:
+            updateCount(WEBAPP_URL_CVP, 'countCVPs', 'numerocvp');
+
+            // 8. VIOLENCIA DOMESTICA
+            updateCount(WEBAPP_URL_VD, 'countVD', 'numeroviolenciadomestica')
+
+            // Inicia monitoramento de notificações
+            setInterval(checkNewNotifications, 60000);
         });
     </script>
 
