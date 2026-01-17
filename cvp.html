@@ -226,8 +226,8 @@
     </div>
 </footer>
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec"; 
-    
+    const API_URL = "https://script.google.com/macros/s/AKfycbzWTpXyjtkxLAoza1VedGNLxlhqmjhIC2I7WJYCn-Ztp2YuPkbTLo3usZ4XP09O5PE/exec";
+
     const sidebar = document.querySelector('.sidbarform');
     const overlay = document.getElementById('overlay-sidebar');
     const form = document.getElementById('form-materiais');
@@ -259,7 +259,7 @@
     // --- CONTROLE SIDEBAR ---
     document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
         form.reset();
-        document.getElementById('form-id').value = ""; 
+        document.getElementById('form-id').value = "";
         sidebar.classList.add('active');
         overlay.style.display = 'block';
     });
@@ -277,35 +277,39 @@
     async function carregarDados() {
         try {
             const res = await fetch(API_URL);
+            if (!res.ok) throw new Error("Erro na rede");
             const dados = await res.json();
             const tbody = document.querySelector('#tabela-materiais tbody');
             tbody.innerHTML = "";
 
-            dados.reverse().forEach(item => {
+            dados.forEach(item => {
                 const tr = document.createElement('tr');
-                // MAPEAMENTO: item['NOME NA PLANILHA']
+                // IMPORTANTE: Use exatamente os nomes das colunas da planilha
                 tr.innerHTML = `
-                    <td>${item['Nº Ocorrência'] || ""}</td>
-                    <td>${item['DATA'] || ""}</td>
-                    <td>${item['HORA'] || ""}</td>
-                    <td>${item['Solicitante (Nome)'] || ""}</td>
-                    <td>${item['Solicitante (Telefone)'] || ""}</td>
-                    <td>${item['Logradouro'] || ""}</td>
-                    <td>${item['Bairro'] || ""}</td>
-                    <td>${item['Cidade'] || ""}</td>
-                    <td>${item['Ponto de Referência'] || ""}</td>
-                    <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Tipificação Geral'] || ""}</td>
-                    <td>${item['Estabelecimento'] || ""}</td>
-                    <td>${item['Solução da Ocorrência'] || ""}</td>
-                    <td><button class="btn-editar">EDITAR</button></td>
-                `;
+                <td>${item['Nº Ocorrência'] || ""}</td>
+                <td>${item['DATA'] || ""}</td>
+                <td>${item['HORA'] || ""}</td>
+                <td>${item['Solicitante (Nome)'] || ""}</td>
+                <td>${item['Solicitante (Telefone)'] || ""}</td>
+                <td>${item['Logradouro'] || ""}</td>
+                <td>${item['Bairro'] || ""}</td>
+                <td>${item['Cidade'] || ""}</td>
+                <td>${item['Ponto de Referência'] || ""}</td>
+                <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
+                <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
+                <td>${item['Tipificação Geral'] || ""}</td>
+                <td>${item['Estabelecimento'] || ""}</td>
+                <td>${item['Solução da Ocorrência'] || ""}</td>
+                <td><button class="btn-editar">EDITAR</button></td>
+            `;
                 tr.querySelector('.btn-editar').onclick = () => preencherParaEditar(item);
                 tbody.appendChild(tr);
             });
             document.getElementById('mensagem-carregamento').style.display = 'none';
-        } catch (e) { console.error("Erro:", e); }
+        } catch (e) {
+            console.error("Erro:", e);
+            alert("Erro ao carregar dados. Verifique o console.");
+        }
     }
 
     // --- PREENCHER PARA EDITAR ---
@@ -362,7 +366,7 @@
     });
 
     function converterDataParaInput(d) {
-        if(!d || !d.includes('/')) return d;
+        if (!d || !d.includes('/')) return d;
         const p = d.split('/');
         return `${p[2]}-${p[1]}-${p[0]}`;
     }
