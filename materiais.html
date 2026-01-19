@@ -209,39 +209,42 @@
     let allMateriais = [];
     const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
 
-    // ORDEM DAS CHAVES (Sincronizada com o <thead>)
+    // Ordem exata das colunas na planilha Google
     const chavesMateriais = [
         'IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO',
         'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'
     ];
     const chavesEditaveis = chavesMateriais.filter(key => key !== 'IDMaterial');
-    const STATUS_OPTIONS = ['PROTOCOLADO', 'PENDENTE', 'ARQUIVADO', 'DEVOLVIDO', 'EM TRÂNSITO'];
 
     const sidebar = document.getElementById('form-materiais');
     const overlay = document.getElementById('overlay-sidebar');
 
     /**
-     * 1. CONTROLE DA SIDEBAR (SLIDE)
+     * 1. CONTROLE DA SIDEBAR (Preenchimento corrigido)
      */
     function toggleSidebar(show = true, data = null) {
         if (!sidebar) return;
 
         if (show) {
             sidebar.reset(); 
+            // Limpa o campo oculto de ID
             document.getElementById('form-id').value = ''; 
 
             if (data) {
-                // Preenche a sidebar com os dados para edição
-                // Certifique-se que os IDs dos inputs no HTML coincidam com estes abaixo
+                console.log("Preenchendo formulário com:", data);
+                
+                // Preenche o ID oculto (essencial para o Update)
                 document.getElementById('form-id').value = data.IDMaterial || '';
-                if(document.getElementById('bou-material')) document.getElementById('bou-material').value = data['N° DO BOU'] || '';
-                if(document.getElementById('data-material')) document.getElementById('data-material').value = data.DATA || '';
-                if(document.getElementById('categoria-material')) document.getElementById('categoria-material').value = data.CATEGORIA || '';
-                if(document.getElementById('descricao-material')) document.getElementById('descricao-material').value = data.DESCRIÇÃO || '';
-                if(document.getElementById('local-material')) document.getElementById('local-material').value = data.LOCAL || '';
-                if(document.getElementById('deposito-material')) document.getElementById('deposito-material').value = data['DATA DE DEPOSITO'] || '';
-                if(document.getElementById('esaj-material')) document.getElementById('esaj-material').value = data.ESAJ || '';
-                if(document.getElementById('status-material')) document.getElementById('status-material').value = data.STATUS || 'PENDENTE';
+
+                // MAPEAMENTO: Planilha -> ID exato do seu HTML
+                document.getElementById('bou').value = data['N° DO BOU'] || '';
+                document.getElementById('data').value = formatarDataParaInput(data.DATA);
+                document.getElementById('categoria').value = data.CATEGORIA || '';
+                document.getElementById('descricao').value = data.DESCRIÇÃO || '';
+                document.getElementById('localdeposito').value = data.LOCAL || '';
+                document.getElementById('data-deposito').value = formatarDataParaInput(data['DATA DE DEPOSITO']);
+                document.getElementById('esaj').value = data.ESAJ || '';
+                document.getElementById('status').value = data.STATUS || '';
             }
             sidebar.classList.add('active');
             if (overlay) overlay.classList.add('active');
@@ -251,8 +254,15 @@
         }
     }
 
+    // Auxiliar para converter DD/MM/AAAA para YYYY-MM-DD (que o input date exige)
+    function formatarDataParaInput(dataStr) {
+        if (!dataStr || !dataStr.includes('/')) return dataStr;
+        const partes = dataStr.split('/');
+        return `${partes[2]}-${partes[1]}-${partes[0]}`;
+    }
+
     /**
-     * 2. CARREGAMENTO DE DADOS
+     * 2. CARREGAMENTO E RENDERIZAÇÃO
      */
     async function fetchData() {
         const mensagem = document.getElementById('mensagem-carregamento');
@@ -263,100 +273,105 @@
             renderTable(allMateriais);
             loadTotalCounts(); 
         } catch (error) {
-            console.error("Erro:", error);
+            console.error("Erro ao buscar dados:", error);
             if(mensagem) mensagem.textContent = "Erro ao carregar dados.";
         }
     }
 
-    /**
-     * 3. RENDERIZAÇÃO DA TABELA
-     */
     function renderTable(dataToRender) {
         const tbody = document.querySelector('#tabela-materiais tbody');
-        const mensagem = document.getElementById('mensagem-carregamento');
         if (!tbody) return;
         tbody.innerHTML = '';
 
-        if (dataToRender && dataToRender.length) {
-            if(mensagem) mensagem.style.display = 'none';
-            dataToRender.forEach(item => {
-                const row = tbody.insertRow();
-                row.insertCell().textContent = item.IDMaterial || '';
+        dataToRender.forEach(item => {
+            const row = tbody.insertRow();
+            
+            // Coluna ID
+            row.insertCell().textContent = item.IDMaterial || '';
 
-                chavesEditaveis.forEach(key => {
-                    const cell = row.insertCell();
-                    if (key === 'STATUS') {
-                        const status = item[key] ? String(item[key]).toUpperCase() : 'PENDENTE';
-                        const statusClass = status.replace(/\s+/g, '').toLowerCase();
-                        cell.innerHTML = `<span class="status-badge status-${statusClass}">${status}</span>`;
-                    } else {
-                        cell.textContent = item[key] || '';
-                    }
-                });
+            // Colunas de dados com ajuste de espaçamento
+            chavesEditaveis.forEach(key => {
+                const cell = row.insertCell();
+                let valor = item[key] || '';
 
-                const acoesCell = row.insertCell();
-                acoesCell.innerHTML = `
-                    <button class="btn-editar-sidebar" style="background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Editar</button>
-                    <button class="btn-deletar-evento" data-id="${item.IDMaterial}" style="background:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Excluir</button>
-                `;
-                
-                acoesCell.querySelector('.btn-editar-sidebar').onclick = () => toggleSidebar(true, item);
+                if (key === 'STATUS') {
+                    const statusClass = String(valor).replace(/\s+/g, '').toLowerCase();
+                    cell.innerHTML = `<span class="status-badge status-${statusClass}">${valor}</span>`;
+                } else if (key === 'DESCRIÇÃO') {
+                    // Limita largura para não quebrar o layout
+                    cell.style.maxWidth = "200px";
+                    cell.style.whiteSpace = "nowrap";
+                    cell.style.overflow = "hidden";
+                    cell.style.textOverflow = "ellipsis";
+                    cell.textContent = valor;
+                    cell.title = valor; // Tooltip com texto completo
+                } else {
+                    cell.textContent = valor;
+                }
             });
-        }
+
+            const acoesCell = row.insertCell();
+            acoesCell.innerHTML = `<button class="btn-editar-sidebar" style="background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Editar</button>`;
+            acoesCell.querySelector('.btn-editar-sidebar').onclick = () => toggleSidebar(true, item);
+        });
     }
 
     /**
-     * 4. FUNÇÃO DE SALVAMENTO (SIDEBAR) - RESTAURADA
+     * 3. FUNÇÃO SALVAR (POST)
      */
-    async function salvarDadosSidebar(e) {
-        e.preventDefault(); // Impede o recarregamento da página
-        
-        const btnSalvar = document.getElementById('btn-salvar-form');
-        const originalText = btnSalvar.textContent;
-        
-        btnSalvar.disabled = true;
-        btnSalvar.textContent = "Gravando...";
+    async function salvarDados(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-salvar-form');
+        btn.disabled = true;
+        btn.textContent = "Processando...";
 
-        // Coleta os dados do formulário
-        const formData = new FormData(sidebar);
-        const payload = Object.fromEntries(formData.entries());
-        
-        // Define se é criação ou atualização baseada na presença do ID
-        payload.action = payload.IDMaterial ? 'update' : 'create';
+        const idMaterial = document.getElementById('form-id').value;
+        const payload = {
+            action: idMaterial ? 'update' : 'create',
+            IDMaterial: idMaterial,
+            'N° DO BOU': document.getElementById('bou').value,
+            'DATA': document.getElementById('data').value,
+            'CATEGORIA': document.getElementById('categoria').value,
+            'DESCRIÇÃO': document.getElementById('descricao').value,
+            'LOCAL': document.getElementById('localdeposito').value,
+            'DATA DE DEPOSITO': document.getElementById('data-deposito').value,
+            'ESAJ': document.getElementById('esaj').value,
+            'STATUS': document.getElementById('status').value
+        };
 
         try {
-            // Envia para o Google Apps Script
-            const response = await fetch(WEBAPP_URL, {
+            await fetch(WEBAPP_URL, {
                 method: 'POST',
-                mode: 'no-cors', // Importante para evitar erros de redirecionamento do Google
+                mode: 'no-cors',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams(payload)
             });
 
-            // Como usamos no-cors, não podemos ler o JSON de resposta, 
-            // então assumimos sucesso se não cair no catch
-            alert("Solicitação enviada com sucesso!");
+            alert("Operação realizada com sucesso!");
             toggleSidebar(false);
-            
-            // Aguarda um momento para o Google atualizar e recarrega a tabela
             setTimeout(fetchData, 1500);
-
         } catch (error) {
-            console.error("Erro ao salvar:", error);
-            alert("Erro ao tentar salvar os dados.");
+            alert("Erro ao salvar.");
+            console.error(error);
         } finally {
-            btnSalvar.disabled = false;
-            btnSalvar.textContent = originalText;
+            btn.disabled = false;
+            btn.textContent = "SALVAR DADOS";
         }
     }
 
     /**
-     * 5. AUXILIARES (Cards, Relógio, Login)
+     * 4. CONTADORES E SISTEMA
      */
-    async function loadTotalCounts() {
-        const anoAtual = new Date().getFullYear();
-        const countAtual = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual)).length;
-        const countAnterior = allMateriais.filter(item => item.DATA && item.DATA.includes(anoAtual - 1)).length;
+    function loadTotalCounts() {
+        const anoAtual = new Date().getFullYear().toString();
+        const anoAnterior = (new Date().getFullYear() - 1).toString();
+
+        // Filtra para contar apenas o que NÃO foi devolvido
+        const ativos = allMateriais.filter(item => String(item.STATUS).toUpperCase() !== 'DEVOLVIDO');
+
+        const countAtual = ativos.filter(item => String(item.DATA).includes(anoAtual)).length;
+        const countAnterior = ativos.filter(item => String(item.DATA).includes(anoAnterior)).length;
+
         if(document.getElementById('total-ano-atual')) document.getElementById('total-ano-atual').textContent = countAtual;
         if(document.getElementById('total-ano-anterior')) document.getElementById('total-ano-anterior').textContent = countAnterior;
     }
@@ -364,11 +379,11 @@
     function checkLogin() {
         const grad = localStorage.getItem('userGraduacao');
         const nome = localStorage.getItem('userNomeGuerra');
-        if (grad && nome) {
+        if (!grad || !nome) {
+            window.location.href = 'login.html';
+        } else {
             const el = document.getElementById('user-info');
             if(el) el.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${grad} ${nome}</p>`;
-        } else {
-            window.location.href = 'login.html';
         }
     }
 
@@ -378,29 +393,17 @@
         if(el) el.innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
     }
 
-    /**
-     * 6. INICIALIZAÇÃO
-     */
     document.addEventListener('DOMContentLoaded', () => {
         checkLogin();
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
         fetchData();
 
-        // Listeners
-        const btnLogout = document.getElementById('btn-logout');
-        if(btnLogout) btnLogout.onclick = () => { localStorage.clear(); window.location.href = 'login.html'; };
-
-        const btnAdd = document.getElementById('btn-adicionar-cadastro');
-        if(btnAdd) btnAdd.onclick = () => toggleSidebar(true);
-        
-        const btnFechar = document.getElementById('btn-fechar-sidebar');
-        if(btnFechar) btnFechar.onclick = () => toggleSidebar(false);
-        
-        if(overlay) overlay.onclick = () => toggleSidebar(false);
-
-        // ATIVA O SALVAMENTO NO FORMULÁRIO
-        if(sidebar) sidebar.onsubmit = salvarDadosSidebar;
+        document.getElementById('btn-logout').onclick = () => { localStorage.clear(); window.location.href = 'login.html'; };
+        document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);
+        document.getElementById('btn-fechar-sidebar').onclick = () => toggleSidebar(false);
+        overlay.onclick = () => toggleSidebar(false);
+        sidebar.onsubmit = salvarDados;
     });
 </script>
 </body>
