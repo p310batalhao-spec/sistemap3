@@ -171,6 +171,7 @@
         const WEBAPP_URL_PERTURBACAO = "https://script.google.com/macros/s/AKfycbwpkufWkoQ483xA3t8UGgf-q7Je3r3pXrRMcN9v_3RZQA9xjnEaocDa-9jsTu_c7P37/exec";
         const WEBAPP_URL_CVP = 'https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec';
         const WEBAPP_URL_VD = 'https://script.google.com/macros/s/AKfycbyyqS93ST2mawBpEEjmbgMHYBhh7nMJXv8_yTelXtNxZ2BhS03KfAlBGqpTjXCp3scbQQ/exec';
+        const WEBAPP_URL_MANDADOS = 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec'; // Use a URL da nova implantação
         // --- FUNÇÕES DE UTILIDADE ---
 
         function atualizarRelogio() {
@@ -316,7 +317,10 @@
             updateCount(WEBAPP_URL_CVP, 'countCVPs', 'numerocvp');
 
             // 8. VIOLENCIA DOMESTICA
-            updateCount(WEBAPP_URL_VD, 'countVD', 'numeroviolenciadomestica')
+            updateCount(WEBAPP_URL_VD, 'countVD', 'numeroviolenciadomestica');
+
+            // 9. MANDADOS JUDICIAIS
+            updateCount(WEBAPP_URL_MANDADOS, 'countMandados', 'numeromandados');
 
             // Inicia monitoramento de notificações
             setInterval(checkNewNotifications, 60000);

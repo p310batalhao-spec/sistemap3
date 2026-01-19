@@ -1,0 +1,141 @@
+/* Estilização da Sidebar Form */
+/* --- CONFIGURAÇÃO DA SIDEBAR (FORMULÁRIO) --- */
+.sidbarform {
+    position: fixed;
+    top: 0;
+    right: -450px; /* Escondido inicialmente à direita */
+    width: 400px;
+    height: 100vh; /* Ocupa toda a altura da tela */
+    background-color: #ffffff;
+    box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+    transition: right 0.4s ease-in-out; /* Efeito de deslize suave */
+    z-index: 2000; /* Garante que fique acima de tudo */
+    padding: 25px;
+    overflow-y: auto; /* ATENÇÃO: Habilita a rolagem se houver muitos campos */
+    display: flex;
+    flex-direction: column;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Classe ativada via JavaScript para mostrar a barra */
+.sidbarform.active {
+    right: 0;
+}
+
+/* --- OVERLAY (Fundo escurecido) --- */
+.overlay-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 1500;
+}
+
+.overlay-sidebar.active {
+    display: block;
+}
+
+/* --- ESTILIZAÇÃO DOS CAMPOS INTERNOS --- */
+.sidbarform h4 {
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 2px solid #0056b3;
+    padding-bottom: 10px;
+    font-size: 1.2rem;
+}
+
+.formulario {
+    margin-bottom: 15px; /* Espaçamento entre os blocos de campos */
+    width: 100%;
+}
+
+.formulario p {
+    margin: 0 0 5px 0;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.formulario input, 
+.formulario select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Garante que o padding não aumente a largura */
+}
+
+/* --- BOTÕES --- */
+.btn-fechar {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 12px;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    width: 100%;
+    transition: background 0.3s;
+}
+
+.btn-fechar:hover {
+    background-color: #cc0000;
+}
+
+.btn-salvar-evento {
+    background-color: #0056b3;
+    color: white;
+    border: none;
+    padding: 15px;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 4px;
+    width: 100%;
+    margin-top: 10px;
+    margin-bottom: 30px; /* Espaço no final para não sumir ao rolar */
+}
+
+.btn-salvar-evento:hover {
+    background-color: #004494;
+}
+/* 1. Garante que o container da tabela permita o scroll */
+.tabela-container {
+    width: 95%;
+    height: 500px;
+    overflow-x: auto; /* Cria a barra de rolagem horizontal */
+    overflow-y: hidden;
+    margin-top: 20px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+/* 2. Impede que a tabela se esprema */
+#tabela-materiais {
+    width: auto; /* Deixa a tabela crescer conforme o conteúdo */
+    min-width: 100%; /* Mas no mínimo ocupa a tela toda */
+    border-collapse: collapse;
+}
+
+/* 3. Estiliza as células para não quebrarem linha */
+#tabela-materiais th, 
+#tabela-materiais td {
+    white-space: nowrap; /* ESSENCIAL: impede o texto de "amontoar" */
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+    font-size: 13px;
+}
+
+/* 4. Cabeçalho fixo visualmente */
+#tabela-materiais th {
+    background-color: #1a3c6d;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
