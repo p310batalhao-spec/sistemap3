@@ -172,10 +172,8 @@
                         // =======================================================
                         // CRÍTICO: SALVANDO A SESSÃO NO LOCALSTORAGE (CÓDIGO ADICIONADO!)
                         // O `result.user` vem do seu Apps Script (Code.gs)
-                        sessionStorage.setItem('isLoggedIn', 'true'); // Marcador de login
-                        sessionStorage.setItem('userGraduacao', result.user.graduacao);
-                        sessionStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
-                        sessionStorage.setItem('lastActivity', Date.now()); // Guarda o momento do login
+                        localStorage.setItem('userGraduacao', result.user.graduacao);
+                        localStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
                         // =======================================================
 
                         alert(result.message);
