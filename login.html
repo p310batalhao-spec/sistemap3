@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="auth.js"></script>
     <title>Sistema de Gerenciamento P3 | Login/Cadastro</title>
     <link rel="stylesheet" href="style.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
@@ -172,8 +173,10 @@
                         // =======================================================
                         // CRÍTICO: SALVANDO A SESSÃO NO LOCALSTORAGE (CÓDIGO ADICIONADO!)
                         // O `result.user` vem do seu Apps Script (Code.gs)
-                        localStorage.setItem('userGraduacao', result.user.graduacao);
-                        localStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
+                        sessionStorage.setItem('isLoggedIn', 'true'); // Marcador de login
+                        sessionStorage.setItem('userGraduacao', result.user.graduacao);
+                        sessionStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
+                        sessionStorage.setItem('lastActivity', Date.now()); // Guarda o momento do login
                         // =======================================================
 
                         alert(result.message);

@@ -190,3 +190,80 @@
 .btn-salvar-evento:hover {
     background-color: #004494;
 }
+@media print {
+    /* Esconde tudo que não for o relatório */
+    body * { display: none !important; } 
+    
+    /* Mostra a área de impressão */
+    #print-area, #print-area * { 
+        display: block !important; 
+    }
+
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        color: #000;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+
+    th, td {
+        border: 1px solid #000;
+        padding: 8px;
+        text-align: left;
+    }
+
+    th {
+        background-color: #e0e0e0 !important;
+        -webkit-print-color-adjust: exact; /* Chrome/Safari */
+        print-color-adjust: exact;         /* Padrão moderno */
+    }
+}
+  /* Ajuste para garantir que a tabela ocupe o espaço correto sem quebrar o design */
+        .tabela-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        #tabela-materias input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        .btn-action {
+            padding: 5px 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin: 2px;
+            font-size: 12px;
+        }
+
+        .btn-editar {
+            background-color: #f0ad4e;
+            color: white;
+        }
+
+        .btn-salvar {
+            background-color: #5cb85c;
+            color: white;
+        }
+
+        .btn-cancelar {
+            background-color: #d9534f;
+            color: white;
+        }
+
+        .btn-excluir {
+            background-color: #333;
+            color: white;
+        }

@@ -2,11 +2,11 @@
 /* Estilização dos cards de drogas apreendidas na página drogas.html */
 .totalcards{
     display: flex;
-    justify-content:center;
-    gap: 30px;
+    justify-content: space-around;
     margin: 20px;
-    margin-left: 35px;
+    margin-left: 20px;
     max-width: 90%;
+
 }
 
 .cardnumero {
@@ -30,9 +30,40 @@
     border-top: 3px solid #0a71df;
 }
 
+#iconmaconha:hover {
+    background-image: url("https://img.icons8.com/ios/50/marijuana-leaf.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconcrack:hover {
+    background-image: url("https://img.icons8.com/ios/50/rock.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconcocaina:hover {
+    background-image: url("https://img.icons8.com/external-tal-revivo-bold-tal-revivo/50/external-newborns-treated-with-a-powder-with-perfume-fertility-bold-tal-revivo.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconrufinol:hover {
+    background-image: url("https://img.icons8.com/parakeet-partial-filled/50/pill.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
+#iconlolo:hover {
+    background-image: url("https://img.icons8.com/ios-filled/50/deodorant-spray.png");
+    background-repeat: no-repeat;
+    background-position: left;
+}
+
 .cardnumero h3{
     margin-top: 0px;
 }
+
 .cardnumero p {
     margin-top: 10px;
     font-size: 24px;
@@ -158,4 +189,33 @@
 
 .btn-salvar-evento:hover {
     background-color: #004494;
+}
+  /* No arquivo stylesmateriais.css */
+
+.tabela-container table {
+    width: 100%;
+    table-layout: fixed; /* Força a tabela a respeitar as larguras definidas */
+    border-collapse: collapse;
+}
+
+#tabela-corpo td {
+    white-space: nowrap;      /* Impede quebra de linha automática */
+    overflow: hidden;         /* Esconde o que sobra */
+    text-overflow: ellipsis;  /* Adiciona "..." ao final do texto longo */
+    padding: 10px;
+    border: 1px solid #ddd;
+}
+
+/* Definindo larguras específicas para colunas críticas */
+#tabela-materias th:nth-child(1) { width: 50px; }  /* ID */
+#tabela-materias th:nth-child(5) { width: 250px; } /* DESCRIÇÃO (maior) */
+#tabela-materias th:nth-child(9) { width: 120px; } /* STATUS */
+
+/* Permite ver o conteúdo completo ao passar o mouse */
+#tabela-corpo td:hover {
+    white-space: normal;
+    overflow: visible;
+    position: relative;
+    background-color: #f9f9f9;
+    z-index: 1;
 }

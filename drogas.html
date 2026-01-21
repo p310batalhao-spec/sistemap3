@@ -4,54 +4,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="auth.js"></script>
     <title>Sistema de Gerenciamento P3 - Drogas Apreendidas</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="styledrogas.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
-    <style>
-        /* Ajuste para garantir que a tabela ocupe o espaço correto sem quebrar o design */
-        .tabela-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 20px;
-        }
-
-        #tabela-drogas input {
-            width: 100%;
-            padding: 4px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .btn-action {
-            padding: 5px 10px;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            margin: 2px;
-            font-size: 12px;
-        }
-
-        .btn-editar {
-            background-color: #f0ad4e;
-            color: white;
-        }
-
-        .btn-salvar {
-            background-color: #5cb85c;
-            color: white;
-        }
-
-        .btn-cancelar {
-            background-color: #d9534f;
-            color: white;
-        }
-
-        .btn-excluir {
-            background-color: #333;
-            color: white;
-        }
-    </style>
 </head>
 
 <body>
@@ -136,31 +93,79 @@
 
             <div class="TabelaEventos">
                 <h3>Tabela de Registros</h3>
-                <div class="adicionar-cadastro-container">
+
+                <div class="adicionar-cadastro-container"
+                    style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                     <button id="btn-adicionar-cadastro">
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Add" />
                         Adicionar Novo Registro
                     </button>
+
+                    <button id="btn-abrir-filtro-relatorio"
+                        style="background-color: #1a3d5d; color: white; display: flex; align-items: center; gap: 8px; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer;">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/print.png"
+                            style="filter: invert(1);" alt="Print" />
+                        Gerar Relatório Profissional
+                    </button>
+
                     <p id="mensagem-carregamento">Carregando dados...</p>
                 </div>
 
+                <div id="modal-filtro-relatorio" class="modal-relatorio"
+                    style="display:none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6);">
+                    <div
+                        style="background: white; width: 350px; margin: 10% auto; padding: 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                        <h3 style="margin-top: 0; color: #1a3d5d;">Parâmetros do Relatório</h3>
+                        <label style="display:block; margin-top:10px;">Data Início:</label>
+                        <input type="date" id="rel-inicio"
+                            style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;">
+
+                        <label style="display:block;">Data Fim:</label>
+                        <input type="date" id="rel-fim"
+                            style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px;">
+
+                        <label style="display:block;">Tipo de Droga:</label>
+                        <select id="rel-tipo"
+                            style="width: 100%; padding: 8px; margin-bottom: 20px; border: 1px solid #ccc; border-radius: 4px;">
+                            <option value="TODOS">TODOS</option>
+                            <option value="TRÁFICO DE DROGAS">TRÁFICO DE DROGAS</option>
+                            <option value="POSSE DE DROGAS PARA CONSUMO">POSSE DE DROGAS PARA CONSUMO</option>
+                            <option value="CUMPRIMENTO DE MANDADO">CUMPRIMENTO DE MANDADO</option>
+                        </select>
+
+                        <button onclick="gerarRelatorio()"
+                            style="width: 100%; background: #28a745; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; font-weight: bold;">GERAR
+                            RELATÓRIO</button>
+                        <button onclick="document.getElementById('modal-filtro-relatorio').style.display='none'"
+                            style="width: 100%; background: #dc3545; color: white; border: none; padding: 10px; border-radius: 4px; cursor: pointer; margin-top: 5px;">CANCELAR</button>
+                    </div>
+                </div>
+
+                <div id="modal-relatorio" class="modal-relatorio"
+                    style="display:none; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8);">
+                    <div class="modal-content"
+                        style="width: 95%; height: 95%; margin: 1% auto; background: white; position: relative;">
+                        <button onclick="fecharModalRelatorio()" class="btn-cancelar"
+                            style="position: absolute; right: 10px; top: 10px; z-index: 10001;">FECHAR X</button>
+                        <iframe id="iframe-relatorio" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+                    </div>
+                </div>
+
                 <div class="filtros-container">
-                    <label>Pesquisa Rápida:</label>
+                    <label>Pesquisa Rápida na Tabela:</label>
                     <input type="text" id="filtro-global" placeholder="Digite para filtrar..."
                         onkeyup="filtrarTabela()">
-                    <button class="btn-secondary" onclick="window.print()">Imprimir</button>
                 </div>
 
                 <div class="tabela-container">
                     <table id="tabela-drogas">
                         <thead>
-                            <tr id="table-header-row">
-                            </tr>
+                            <tr id="table-header-row"></tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
-            </div><!--termina TabelaEventos-->
+            </div>
 
             <div id="overlay-sidebar" class="overlay-sidebar"></div>
 
@@ -221,17 +226,17 @@
                     <div class="formulario">
                         <p>CIDADE</p>
                         <select name="CIDADE" id="cidade">
-                        <option value="BELÉM">BELÉM</option>
-                        <option value="CACIMBINHAS">CACIMBINHAS</option>
-                        <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
-                        <option value="IGACI">IGACI</option>
-                        <option value="MAR VERMELHO">MAR VERMELHO</option>
-                        <option value="MARIBONDO">MARIBONDO</option>
-                        <option value="MINADOR DO NEGRÃO">MINADOR DO NEGRÃO</option>
-                        <option value="PAULO JACINTO">PAULO JACINTO</option>
-                        <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
-                        <option value="QUEBRANGULO">QUEBRANGULO</option>
-                        <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
+                            <option value="BELÉM">BELÉM</option>
+                            <option value="CACIMBINHAS">CACIMBINHAS</option>
+                            <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
+                            <option value="IGACI">IGACI</option>
+                            <option value="MAR VERMELHO">MAR VERMELHO</option>
+                            <option value="MARIBONDO">MARIBONDO</option>
+                            <option value="MINADOR DO NEGRÃO">MINADOR DO NEGRÃO</option>
+                            <option value="PAULO JACINTO">PAULO JACINTO</option>
+                            <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
+                            <option value="QUEBRANGULO">QUEBRANGULO</option>
+                            <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
                         </select>
                     </div>
                     <div class="formulario">
@@ -319,7 +324,10 @@
     </footer>
 
     <script>
-        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+        // Substitua pela sua URL correta se for diferente
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+        const WEBAPP_URL = API_URL;
+
         let allDrogas = [];
 
         const HEADERS = [
@@ -329,26 +337,20 @@
             'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
         ];
 
-        // Elementos da Sidebar (Certifique-se que esses IDs existam no seu HTML)
+        // Elementos da Sidebar
         const sidebar = document.getElementById('form-drogas');
         const overlay = document.getElementById('overlay-sidebar');
 
-        /**
-         * FUNÇÃO DA SIDEBAR (SLIDE)
-         */
         function toggleSidebar(show = true, data = null) {
             if (!sidebar) return;
-
             if (show) {
-                sidebar.reset(); // Limpa o form
-                document.getElementById('form-id').value = ''; // Limpa ID oculto
-
+                sidebar.reset();
+                document.getElementById('form-id').value = '';
                 if (data) {
-                    // Preenche os campos da sidebar com os dados da linha (Edição)
                     document.getElementById('form-id').value = data['ID'] || '';
                     document.getElementById('data').value = data['DATA'] || '';
                     document.getElementById('cidade').value = data['CIDADE'] || '';
-                    // Adicione aqui os demais campos conforme os IDs do seu form
+                    // Adicione outros campos se necessário
                 }
                 sidebar.classList.add('active');
                 if (overlay) overlay.classList.add('active');
@@ -358,7 +360,6 @@
             }
         }
 
-        // 1. CARREGAMENTO INICIAL
         async function loadDrogas() {
             const msg = document.getElementById('mensagem-carregamento');
             try {
@@ -373,33 +374,24 @@
             }
         }
 
-        // 2. RENDERIZAÇÃO DA TABELA (Mantendo seu design)
         function renderTable(data) {
             const thead = document.getElementById('table-header-row');
             const tbody = document.querySelector('#tabela-drogas tbody');
-
             if (thead) thead.innerHTML = HEADERS.map(h => `<th>${h}</th>`).join('') + '<th>AÇÕES</th>';
             if (!tbody) return;
             tbody.innerHTML = '';
-
             data.forEach(item => {
                 const row = tbody.insertRow();
                 HEADERS.forEach(header => {
                     const cell = row.insertCell();
                     cell.textContent = item[header] || '';
-                    cell.dataset.header = header;
                 });
-
                 const actionsCell = row.insertCell();
-                actionsCell.innerHTML = `
-                <button class="btn-action btn-editar" style="background:#2c3e50; color:white;">Editar</button>
-            `;
-                // Ao clicar em editar, abre a SIDEBAR em vez de editar na linha
+                actionsCell.innerHTML = `<button class="btn-action btn-editar" style="background:#2c3e50; color:white;">Editar</button>`;
                 actionsCell.querySelector('.btn-editar').onclick = () => toggleSidebar(true, item);
             });
         }
 
-        // 3. PESQUISA RÁPIDA
         function filtrarTabela() {
             const termo = document.getElementById('filtro-global').value.toUpperCase();
             const filtrados = allDrogas.filter(d =>
@@ -408,50 +400,42 @@
             renderTable(filtrados);
         }
 
-        // 4. ENVIO DOS DADOS (POST)
         async function salvarDados(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-salvar-form');
             btn.disabled = true;
             btn.textContent = "Gravando...";
-
             const formData = new FormData(sidebar);
             const payload = Object.fromEntries(formData.entries());
             payload.action = payload.ID ? 'update' : 'create';
-
             try {
-                // Envio para o Google Apps Script
                 await fetch(WEBAPP_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Para evitar erro de redirecionamento do Google
+                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: new URLSearchParams(payload)
                 });
-
                 alert("Dados enviados com sucesso!");
                 toggleSidebar(false);
-                setTimeout(loadDrogas, 1500); // Recarrega a tabela após um delay
+                setTimeout(loadDrogas, 1500);
             } catch (err) {
                 alert("Erro ao salvar.");
-                console.error(err);
             } finally {
                 btn.disabled = false;
                 btn.textContent = "SALVAR DADOS";
             }
         }
 
-        // 5. TOTAIS DOS CARDS (Sua lógica mantida)
         async function atualizarDrogasPorTipo() {
             const tipos = ['MACONHA', 'CRACK', 'COCAINA', 'RUFINOL', 'LOLÓ'];
             const anoAtual = new Date().getFullYear();
-
             try {
                 const response = await fetch(`${WEBAPP_URL}?action=sumPesoByDrugTypeAndYear&year=${anoAtual}`);
                 const data = await response.json();
-
                 if (data.totals) {
                     tipos.forEach(tipo => {
-                        const el = document.getElementById(`total-${tipo.toLowerCase().replace('ó', 'o').replace('í', 'i')}`);
+                        const idElemento = `total-${tipo.toLowerCase().replace('ó', 'o').replace('í', 'i')}`;
+                        const el = document.getElementById(idElemento);
                         if (el) {
                             const un = (tipo === 'RUFINOL' || tipo === 'LOLÓ') ? 'Un' : 'Kg';
                             el.textContent = `${data.totals[tipo] || '0,0000'} ${un}`;
@@ -461,7 +445,6 @@
             } catch (e) { console.error("Erro nos cards:", e); }
         }
 
-        // 6. UTILITÁRIOS (Relógio, Login, Logout)
         function atualizarRelogio() {
             const agora = new Date();
             const relogioEl = document.getElementById('relogio');
@@ -481,30 +464,58 @@
             }
         }
 
-        // INICIALIZAÇÃO
+        // Função única para gerar o relatório
+        function gerarRelatorio() {
+            const inicio = document.getElementById('rel-inicio').value; // Ex: 2026-01-01
+            const fim = document.getElementById('rel-fim').value;      // Ex: 2026-01-18
+            const tipo = document.getElementById('rel-tipo').value;
+
+            // IMPORTANTE: Substitua 'SUA_URL_AQUI' pela URL do seu Script implantado
+            const url = `https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec?action=pageRelatorio&inicio=${inicio}&fim=${fim}&tipo=${tipo}`;
+
+            document.getElementById('iframe-relatorio').src = url;
+            document.getElementById('modal-relatorio').style.display = 'block';
+            document.getElementById('modal-filtro-relatorio').style.display = 'none';
+        }
+
+        function fecharModalRelatorio() {
+            document.getElementById('modal-relatorio').style.display = 'none';
+            document.getElementById('iframe-relatorio').src = ''; // Limpa o iframe ao fechar
+        }
+
+
+        // --- INICIALIZAÇÃO SEGURA ---
         document.addEventListener('DOMContentLoaded', () => {
             checkLogin();
             atualizarRelogio();
             setInterval(atualizarRelogio, 1000);
             loadDrogas();
 
-            // Listeners
+            // Listener Logout
             const btnLogout = document.getElementById('btn-logout');
             if (btnLogout) btnLogout.onclick = () => {
                 localStorage.clear();
                 window.location.href = 'login.html';
             };
 
+            // Listener Adicionar
             const btnAdd = document.getElementById('btn-adicionar-cadastro');
             if (btnAdd) btnAdd.onclick = () => toggleSidebar(true);
+
+            // Listener Abrir Filtro Relatório (CORREÇÃO DO ERRO NULL AQUI)
+            const btnRel = document.getElementById('btn-abrir-relatorio-modal') || document.getElementById('btn-abrir-filtro-relatorio');
+            if (btnRel) {
+                btnRel.onclick = () => {
+                    document.getElementById('modal-filtro-relatorio').style.display = 'block';
+                };
+            }
 
             const btnFechar = document.getElementById('btn-fechar-sidebar');
             if (btnFechar) btnFechar.onclick = () => toggleSidebar(false);
 
             if (overlay) overlay.onclick = () => toggleSidebar(false);
-
-            // Listener do Form
             if (sidebar) sidebar.onsubmit = salvarDados;
+
         });
     </script>
 </body>
