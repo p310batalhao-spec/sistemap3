@@ -99,6 +99,7 @@
                         <option value="DATA">Data</option>
                         <option value="CATEGORIA">Categoria</option>
                         <option value="STATUS">Status</option>
+                        <option value="LOCAL">Local</option>
                     </select>
 
                     <input type="text" id="filtro-valor-text" placeholder="Digite o valor...">
@@ -361,25 +362,23 @@
             const anoAtual = agora.getFullYear().toString();
             const anoAnterior = (agora.getFullYear() - 1).toString();
 
-            // 1. Total de Materiais (Todos os registros na base)
-            const totalGeral = allMateriais.length;
+            // 1. Total de Materiais (Todos exceto DEVOLVIDO)
+            const materiaisAtivosGeral = allMateriais.filter(item => {
+                return String(item.STATUS || "").toUpperCase() !== 'DEVOLVIDO';
+            });
             const elTotal = document.getElementById('total-materiais');
-            if (elTotal) elTotal.textContent = totalGeral;
+            if (elTotal) elTotal.textContent = materiaisAtivosGeral.length;
 
-            // 2. Total do Ano (Apenas ativos do ano atual)
-            const ativosAnoAtual = allMateriais.filter(item => {
-                const status = String(item.STATUS || "").toUpperCase();
-                const data = String(item.DATA || "");
-                return status !== 'DEVOLVIDO' && data.indexOf(anoAtual) > -1;
+            // 2. Total do Ano (Ativos do ano atual)
+            const ativosAnoAtual = materiaisAtivosGeral.filter(item => {
+                return String(item.DATA || "").indexOf(anoAtual) > -1;
             });
             const elAnoAtual = document.getElementById('total-ano-atual');
             if (elAnoAtual) elAnoAtual.textContent = ativosAnoAtual.length;
 
-            // 3. Total Ano Anterior (Apenas ativos do ano anterior)
-            const ativosAnoAnterior = allMateriais.filter(item => {
-                const status = String(item.STATUS || "").toUpperCase();
-                const data = String(item.DATA || "");
-                return status !== 'DEVOLVIDO' && data.indexOf(anoAnterior) > -1;
+            // 3. Total Ano Anterior (Ativos do ano anterior)
+            const ativosAnoAnterior = materiaisAtivosGeral.filter(item => {
+                return String(item.DATA || "").indexOf(anoAnterior) > -1;
             });
             const elAnoAnterior = document.getElementById('total-ano-anterior');
             if (elAnoAnterior) elAnoAnterior.textContent = ativosAnoAnterior.length;
