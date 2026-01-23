@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Termo de Devolução - P3</title>
+    <style>
+        body { font-family: 'Times New Roman', serif; padding: 50px; line-height: 1.6; color: #000; }
+        .cabecalho { text-align: center; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
+        .titulo { text-align: center; text-decoration: underline; font-size: 18px; font-weight: bold; margin: 40px 0; }
+        .texto { text-align: justify; text-indent: 50px; margin-bottom: 25px; }
+        table { width: 100%; border-collapse: collapse; margin: 30px 0; }
+        th, td { border: 1px solid black; padding: 8px; text-align: center; font-size: 14px; }
+        th { background-color: #f2f2f2; }
+        .assinaturas { margin-top: 60px; }
+        .campo-assinatura { margin-top: 50px; border-top: 1px solid black; width: 400px; text-align: center; margin-left: auto; margin-right: auto; }
+        .data-local { text-align: right; margin-top: 60px; font-weight: bold; margin-bottom: 10px; }
+        @media print { .no-print { display: none; } }
+        footer{display: flex;      align-items: center; gap: 10px;   margin-top: 0;  }
+        .brasao{height: 30px;};
+    </style>
+</head>
+<body>
+    <div class="cabecalho">
+        POLÍCIA MILITAR DE ALAGOAS <br>
+        COMANDO DE POLICIAMENTO DA REGIÃO AGRESTE <br>
+        10° BATALHÃO DE POLÍCIA MILITAR
+    </div>
+
+    <div class="titulo">TERMO DE DEVOLUÇÃO DE MATERIAL APREENDIDO</div>
+
+    <div class="texto">
+        Declara-se, para os devidos fins, que foram recebidos do órgão supracitado os materiais apreendidos no dia <span id="data-apreensao">___/___/____</span>, conforme devidamente descriminados, relacionados aos fatos constantes no Termo Circunstanciado de Ocorrência nº <span id="tco-num">__________</span>, em cumprimento à Decisão Judicial proferida nos autos do Processo <span id="esaj-num">____________________</span>.
+    </div>
+
+    <div class="texto">
+        No ato da entrega, foi realizada a devida conferência e vistoria, constatando-se que os bens se encontram em perfeito estado de conservação e funcionamento, não havendo qualquer discordância. Fica, assim, o órgão responsável isento de qualquer responsabilidade futura quanto à integridade dos objetos a partir desta data, lavrando-se o presente termo para que produza seus devidos efeitos legais.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>TCO Nº / BOU</th>
+                <th>CATEGORIA</th>
+                <th>DESCRIÇÃO</th>
+                <th>LOCAL DO DEPÓSITO</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td id="tab-tco"></td>
+                <td id="tab-cat"></td>
+                <td id="tab-desc"></td>
+                <td id="tab-local"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="assinaturas">
+        <p>Recebedor: __________________________________________________________________</p>
+        <div class="campo-assinatura">Assinatura</div>
+        <p>CPF: __________________________________________</p>
+    </div>
+
+    <p class="data-local">
+        Quartel em Palmeira dos Índios, <span id="data-atual"></span>.
+    </p>
+    <footer>
+        <img src="brasao.png" class="brasao" alt="brasão">
+        <h4>Seção de Planejamento, Ensino e Instrução - P3/10ºBPM</h4>
+    </footer>
+    <div class="no-print" style="margin-top: 30px; text-align: center;">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer;">Imprimir Documento</button>
+    </div>
+
+
+    <script>
+        window.onload = function() {
+            // Recupera os dados salvos no localStorage pelo botão TERMO do materiais.html
+            const data = JSON.parse(localStorage.getItem('dadosTermo'));
+            
+            if (data) {
+                // Preenche o corpo do texto
+                document.getElementById('data-apreensao').textContent = data['DATA'] || '___/___/____';
+                document.getElementById('tco-num').textContent = data['N° DO BOU'] || '__________';
+                document.getElementById('esaj-num').textContent = data['ESAJ'] || '____________________';
+                
+                // Preenche a tabela
+                document.getElementById('tab-tco').textContent = data['N° DO BOU'] || '';
+                document.getElementById('tab-cat').textContent = data['CATEGORIA'] || '';
+                document.getElementById('tab-desc').textContent = data['DESCRIÇÃO'] || '';
+                document.getElementById('tab-local').textContent = data['LOCAL'] || '';
+
+                // Gera a data atual por extenso
+                const hoje = new Date();
+                const opcoes = { day: '2-digit', month: 'long', year: 'numeric' };
+                document.getElementById('data-atual').textContent = hoje.toLocaleDateString('pt-BR', opcoes);
+            }
+        };
+    </script>
+</body>
+</html>

@@ -193,6 +193,7 @@
                             <option value="PROTOCOLADO">PROTOCOLADO</option>
                             <option value="PENDENTE">PENDENTE</option>
                             <option value="ARQUIVADO">ARQUIVADO</option>
+                            <option value="A DEVOLVER">A DEVOLVER</option>
                             <option value="DEVOLVIDO">DEVOLVIDO</option>
                             <option value="EM TRÂNSITO">EM TRÂNSITO</option>
                         </select>
@@ -268,23 +269,50 @@
             const tbody = document.querySelector('#tabela-materiais tbody');
             if (!tbody) return;
             tbody.innerHTML = '';
+
             dataToRender.forEach(function (item) {
-                var row = tbody.insertRow();
+                const row = tbody.insertRow();
                 row.insertCell().textContent = item.IDMaterial || '';
+
                 chavesEditaveis.forEach(function (key) {
-                    var cell = row.insertCell();
-                    var valor = item[key] || '';
+                    const cell = row.insertCell();
+                    const valor = item[key] || '';
                     if (key === 'STATUS') {
-                        var sClass = String(valor).replace(/\s+/g, '').toLowerCase();
+                        const sClass = String(valor).replace(/\s+/g, '').toLowerCase();
                         cell.innerHTML = '<span class="status-badge status-' + sClass + '">' + valor + '</span>';
                     } else {
                         cell.textContent = valor;
                     }
                 });
-                var acoesCell = row.insertCell();
-                acoesCell.innerHTML = '<button class="btn-editar-sidebar" style="background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Editar</button>';
-                acoesCell.querySelector('.btn-editar-sidebar').onclick = function () { toggleSidebar(true, item); };
+
+                const acoesCell = row.insertCell();
+                acoesCell.style.display = 'flex';
+                acoesCell.style.gap = '5px';
+
+                // Botão Editar (Sempre visível)
+                const btnEditar = document.createElement('button');
+                btnEditar.className = 'btn-editar-sidebar';
+                btnEditar.style.cssText = 'background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;';
+                btnEditar.textContent = 'Editar';
+                btnEditar.onclick = () => toggleSidebar(true, item);
+                acoesCell.appendChild(btnEditar);
+
+                // Botão TERMO (Apenas se o status for "A DEVOLVER")
+                if (String(item.STATUS).toUpperCase() === 'A DEVOLVER') {
+                    const btnTermo = document.createElement('button');
+                    btnTermo.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
+                    btnTermo.textContent = 'TERMO';
+                    btnTermo.onclick = () => gerarTermo(item);
+                    acoesCell.appendChild(btnTermo);
+                }
             });
+        }
+
+        function gerarTermo(item) {
+            // Salva os dados do item selecionado para o termo
+            localStorage.setItem('dadosTermo', JSON.stringify(item));
+            // Abre a nova página do termo
+            window.open('termo_devolucao.html', '_blank');
         }
 
         // --- 3. FILTROS ---
