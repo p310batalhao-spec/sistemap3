@@ -5,7 +5,9 @@
     <title>Termo de Devolução - P3</title>
     <style>
         body { font-family: 'Times New Roman', serif; padding: 50px; line-height: 1.6; color: #000; }
-        .cabecalho { text-align: center; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
+        .cabecalhogeral{ display: flex; align-items: center; justify-content: center; gap: 20px;}
+        .brasaocabecalho{ height: 80px;}
+        .cabecalho { text-align: left; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
         .titulo { text-align: center; text-decoration: underline; font-size: 18px; font-weight: bold; margin: 40px 0; }
         .texto { text-align: justify; text-indent: 50px; margin-bottom: 25px; }
         table { width: 100%; border-collapse: collapse; margin: 30px 0; }
@@ -13,17 +15,21 @@
         th { background-color: #f2f2f2; }
         .assinaturas { margin-top: 60px; }
         .campo-assinatura { margin-top: 50px; border-top: 1px solid black; width: 400px; text-align: center; margin-left: auto; margin-right: auto; }
-        .data-local { text-align: right; margin-top: 60px; font-weight: bold; margin-bottom: 10px; }
-        @media print { .no-print { display: none; } }
-        footer{display: flex;      align-items: center; gap: 10px;   margin-top: 0;  }
+        .data-local { text-align: right; margin-top: 60px; font-weight: bold; }
+        footer{display: flex; align-items: center; gap: 10px; border-top: solid 1px #000;  }
         .brasao{height: 30px;};
+        @media print { .no-print { display: none; } }
+
     </style>
 </head>
 <body>
-    <div class="cabecalho">
-        POLÍCIA MILITAR DE ALAGOAS <br>
-        COMANDO DE POLICIAMENTO DA REGIÃO AGRESTE <br>
-        10° BATALHÃO DE POLÍCIA MILITAR
+    <div class="cabecalhogeral">
+        <img class="brasaocabecalho" src="brasao.png" alt="brasao">
+        <div class="cabecalho">
+            POLÍCIA MILITAR DE ALAGOAS <br>
+            COMANDO DE POLICIAMENTO DA REGIÃO AGRESTE <br>
+            10° BATALHÃO DE POLÍCIA MILITAR
+        </div>
     </div>
 
     <div class="titulo">TERMO DE DEVOLUÇÃO DE MATERIAL APREENDIDO</div>
