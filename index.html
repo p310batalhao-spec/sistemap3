@@ -232,24 +232,28 @@
 
         // --- FUNÇÃO ESPECÍFICA PARA DROGAS (Soma de Peso) ---
         async function atualizarDrogas() {
-            const $el = $('#numerodrogas');
-            if (!$el.length) return;
-            $el.text('...');
+            const anoAtual = new Date().getFullYear();
+            const url = `${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${anoAtual}`;
 
-            const currentYear = new Date().getFullYear();
             try {
-                const response = await fetch(`${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${currentYear}`);
+                const response = await fetch(url);
                 const data = await response.json();
-                if (data.status === 'success') {
-                    const totalFormatado = String(data.total).replace('.', ',');
-                    $el.text(`${totalFormatado} Kg`);
-                } else { $el.text('0 Kg'); }
+
+                if (data.status === 'success' && data.totals) {
+                    const somaGeral = Object.values(data.totals).reduce((acc, val) => {
+                        return acc + parseFloat(val.replace(',', '.'));
+                    }, 0);
+
+                    // ALVO: Seu ID original
+                    const elTotal = document.getElementById('numerodrogas');
+                    if (elTotal) {
+                        elTotal.textContent = somaGeral.toFixed(3).replace('.', ',') + " Kg";
+                    }
+                }
             } catch (error) {
-                $el.text('Erro');
-                console.error('Erro Drogas:', error);
+                console.error("Erro no fetch do index:", error);
             }
         }
-
         // --- NOTIFICAÇÕES ---
         let lastCountAIT = localStorage.getItem('lastCountAIT') || 0;
 

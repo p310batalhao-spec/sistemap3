@@ -1,6 +1,5 @@
-
 /* Estilização dos cards de drogas apreendidas na página drogas.html */
-.totalcards{
+.totalcards {
     display: flex;
     justify-content: space-around;
     margin: 20px;
@@ -19,11 +18,11 @@
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     text-align: center;
-    width: 220px; 
+    width: 220px;
     height: 90px;
 }
 
-.cardnumero:hover{
+.cardnumero:hover {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     transform: translateY(-5px);
     transition: all 0.3s ease;
@@ -60,7 +59,7 @@
     background-position: left;
 }
 
-.cardnumero h3{
+.cardnumero h3 {
     margin-top: 0px;
 }
 
@@ -76,15 +75,20 @@
 .sidbarform {
     position: fixed;
     top: 0;
-    right: -450px; /* Escondido inicialmente à direita */
+    right: -450px;
+    /* Escondido inicialmente à direita */
     width: 400px;
-    height: 100vh; /* Ocupa toda a altura da tela */
+    height: 100vh;
+    /* Ocupa toda a altura da tela */
     background-color: #ffffff;
-    box-shadow: -5px 0 15px rgba(0,0,0,0.3);
-    transition: right 0.4s ease-in-out; /* Efeito de deslize suave */
-    z-index: 2000; /* Garante que fique acima de tudo */
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.3);
+    transition: right 0.4s ease-in-out;
+    /* Efeito de deslize suave */
+    z-index: 2000;
+    /* Garante que fique acima de tudo */
     padding: 25px;
-    overflow-y: auto; /* ATENÇÃO: Habilita a rolagem se houver muitos campos */
+    overflow-y: auto;
+    /* ATENÇÃO: Habilita a rolagem se houver muitos campos */
     display: flex;
     flex-direction: column;
     font-family: Arial, Helvetica, sans-serif;
@@ -102,7 +106,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     display: none;
     z-index: 1500;
 }
@@ -121,7 +125,8 @@
 }
 
 .formulario {
-    margin-bottom: 15px; /* Espaçamento entre os blocos de campos */
+    margin-bottom: 15px;
+    /* Espaçamento entre os blocos de campos */
     width: 100%;
 }
 
@@ -132,13 +137,14 @@
     font-size: 0.9rem;
 }
 
-.formulario input{
+.formulario input {
     width: 100%;
     padding: 10px;
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
-    box-sizing: border-box; /* Garante que o padding não aumente a largura */
+    box-sizing: border-box;
+    /* Garante que o padding não aumente a largura */
 }
 
 .formulario select {
@@ -147,7 +153,8 @@
     border: 1px solid #ccc;
     border-radius: 4px;
     font-size: 1rem;
-    box-sizing: border-box; /* Garante que o padding não aumente a largura */
+    box-sizing: border-box;
+    /* Garante que o padding não aumente a largura */
 }
 
 .formulario option {
@@ -184,19 +191,25 @@
     border-radius: 4px;
     width: 100%;
     margin-top: 10px;
-    margin-bottom: 30px; /* Espaço no final para não sumir ao rolar */
+    margin-bottom: 30px;
+    /* Espaço no final para não sumir ao rolar */
 }
 
 .btn-salvar-evento:hover {
     background-color: #004494;
 }
+
 @media print {
+
     /* Esconde tudo que não for o relatório */
-    body * { display: none !important; } 
-    
+    body * {
+        display: none !important;
+    }
+
     /* Mostra a área de impressão */
-    #print-area, #print-area * { 
-        display: block !important; 
+    #print-area,
+    #print-area * {
+        display: block !important;
     }
 
     #print-area {
@@ -213,7 +226,8 @@
         margin-top: 20px;
     }
 
-    th, td {
+    th,
+    td {
         border: 1px solid #000;
         padding: 8px;
         text-align: left;
@@ -221,49 +235,53 @@
 
     th {
         background-color: #e0e0e0 !important;
-        -webkit-print-color-adjust: exact; /* Chrome/Safari */
-        print-color-adjust: exact;         /* Padrão moderno */
+        -webkit-print-color-adjust: exact;
+        /* Chrome/Safari */
+        print-color-adjust: exact;
+        /* Padrão moderno */
     }
 }
-  /* Ajuste para garantir que a tabela ocupe o espaço correto sem quebrar o design */
-        .tabela-container {
-            width: 100%;
-            overflow-x: auto;
-            margin-top: 20px;
-        }
 
-        #tabela-materias input {
-            width: 100%;
-            padding: 4px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+/* Ajuste para garantir que a tabela ocupe o espaço correto sem quebrar o design */
+.tabela-container {
+    width: 100%;
+    overflow-x: auto;
+    margin-top: 20px;
+}
 
-        .btn-action {
-            padding: 5px 10px;
-            cursor: pointer;
-            border: none;
-            border-radius: 4px;
-            margin: 2px;
-            font-size: 12px;
-        }
+#tabela-materias input {
+    width: 100%;
+    padding: 4px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
 
-        .btn-editar {
-            background-color: #f0ad4e;
-            color: white;
-        }
+.btn-action {
+    padding: 5px 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 4px;
+    margin: 2px;
+    font-size: 12px;
+}
 
-        .btn-salvar {
-            background-color: #5cb85c;
-            color: white;
-        }
+.btn-editar {
+    background-color: #f0ad4e;
+    color: white;
+}
 
-        .btn-cancelar {
-            background-color: #d9534f;
-            color: white;
-        }
+.btn-salvar {
+    background-color: #5cb85c;
+    color: white;
+}
 
-        .btn-excluir {
-            background-color: #333;
-            color: white;
-        }
+.btn-cancelar {
+    background-color: #d9534f;
+    color: white;
+}
+
+.btn-excluir {
+    background-color: #333;
+    color: white;
+}
+

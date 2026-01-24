@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Requisição de Exame Pericial - P3</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', serif;
+            padding: 50px;
+            line-height: 1.5;
+            color: #000;
+        }
+
+        .cabecalho {
+            text-align: center;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+        }
+
+        .oficio-num {
+            font-weight: bold;
+            margin-bottom: 30px;
+        }
+
+        .destinatario {
+            margin-bottom: 30px;
+        }
+
+        .texto {
+            text-align: justify;
+            text-indent: 50px;
+            margin-bottom: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 6px;
+            text-align: center;
+            font-size: 12px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .perguntas {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+
+        .assinatura-espaco {
+            margin-top: 60px;
+            text-align: center;
+            border-top: 1px solid black;
+            width: 350px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="cabecalho">
+        POLÍCIA MILITAR DE ALAGOAS <br>
+        COMANDO DE POLICIAMENTO DA REGIÃO AGRESTE <br>
+        10° BATALHÃO DE POLÍCIA MILITAR
+    </div>
+
+    <div class="oficio-num">Ofício n° __________/2026-P3/10ºBPM</div>
+
+    <div class="destinatario">
+        Ao Senhor <br>
+        <strong>Wellington Costa Melo Filho</strong> <br>
+        Chefe Especial do Instituto de Criminalística <br>
+        Polícia Científica do Estado de Alagoas
+    </div>
+
+    <div class="texto"><strong>Assunto: REQUISIÇÃO DE EXAME PERICIAL - TOXICOLÓGICO EM MATERIAL</strong></div>
+
+    <div class="texto">
+        Requisito à POLÍCIA CIENTÍFICA - AL a realização de exame químico nas substâncias análogas aos entorpecentes
+        apensadas, encontradas em posse do autor abaixo qualificado, conforme tabela:
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nº do Lacre</th>
+                <th>Nº do TCO</th>
+                <th>NOME DO AUTOR</th>
+                <th>DATA</th>
+                <th>SUBSTÂNCIA ANÁLOGA A:</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td id="res-lacre"></td>
+                <td id="res-tco"></td>
+                <td id="res-autor"></td>
+                <td id="res-data"></td>
+                <td id="res-substancia"></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="texto">
+        Solicito que seja confeccionado Laudo Definitivo Individual, devendo os peritos responderem aos seguintes
+        questionamentos:
+    </div>
+    <div class="perguntas">
+        1. Qual a quantidade, peso e condicionamento do material? <br>
+        2. Qual o aspecto físico, cor e consistência? <br>
+        3. O material se assemelha a alguma substância entorpecente? Qual?
+    </div>
+
+    <div class="assinatura-espaco" style="margin-top: 80px;">
+        Comandante do 10º BPM
+    </div>
+
+    <div class="no-print" style="margin-top: 40px; text-align: center;">
+        <button onclick="window.print()" style="padding: 10px 20px;">Imprimir Requisição</button>
+    </div>
+
+    <script>
+        window.onload = function () {
+            const item = JSON.parse(localStorage.getItem('dadosRequerimento'));
+            if (item) {
+                document.getElementById('res-lacre').textContent = item.NUMERO_LACRE || '';
+                document.getElementById('res-tco').textContent = item.NUMERO_TCO || '';
+                document.getElementById('res-autor').textContent = item.NOME_AUTOR || '';
+                document.getElementById('res-data').textContent = item.DATA || '';
+
+                // Formatação da substância e peso
+                const substancia = item.TIPO_DROGA || '';
+                const peso = item.PESO || '0';
+                document.getElementById('res-substancia').textContent = `${substancia}, pesando aprox. ${peso} Kg`;
+            }
+        };
+    </script>
+</body>
+
+</html>

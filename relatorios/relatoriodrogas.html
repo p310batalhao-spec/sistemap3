@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Drogas - P3</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+        th, td { border: 1px solid #000; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h2 { margin: 0; }
+        .footer { border-top: 1px solid #333; margin-top: 20px; padding-top: 10px; font-size: 10px; text-align: center; }
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>10º BATALHÃO DE POLÍCIA MILITAR</h2>
+        <h3>Relatório de Drogas Apreendidas</h3>
+    </div>
+
+    <div id="tabela-destino"></div>
+
+    <div class="footer">
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const dadosRaw = localStorage.getItem('dadosRelatorioDrogas');
+            if (dadosRaw) {
+                const dados = JSON.parse(dadosRaw);
+                let html = '<table><thead><tr>' +
+                    '<th>DATA</th><th>COP</th><th>NOME</th><th>CIDADE</th><th>TIPO</th><th>PESO (Kg)</th><th>EQUIPE</th>' +
+                    '</tr></thead><tbody>';
+                
+                dados.forEach(item => {
+                    html += `<tr>
+                        <td>${item['DATA'] || ''}</td>
+                        <td>${item['NUMERO COP'] || ''}</td>
+                        <td>${item['NOME'] || ''}</td>
+                        <td>${item['CIDADE'] || ''}</td>
+                        <td>${item['TIPO DE DROGA'] || ''}</td>
+                        <td>${item['PESO (Kg)'] || ''}</td>
+                        <td>${item['DADOS DA EQUIPE'] || ''}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('tabela-destino').innerHTML = html;
+                
+                setTimeout(() => {
+                    window.print();
+                    // Opcional: window.close();
+                }, 800);
+            } else {
+                document.body.innerHTML = "<h3>Nenhum dado encontrado para gerar o relatório.</h3>";
+            }
+        };
+    </script>
+</body>
+</html>

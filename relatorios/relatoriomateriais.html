@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Materiais - P3</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
+        footer {border-top: 1px solid #333; margin-top: 10px;}
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>10º BATALHÃO DE POLÍCIA MILITAR</h2>
+        <h3>Relatório de Materiais Apreendidos</h3>
+    </div>
+    <div id="tabela-destino"></div>
+
+    <footer>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </footer>
+
+    <script>
+        window.onload = function() {
+            var dadosRaw = localStorage.getItem('dadosParaImpressao');
+            if (dadosRaw) {
+                var dados = JSON.parse(dadosRaw);
+                var html = '<table><thead><tr><th>BOU</th><th>DATA</th><th>CATEGORIA</th><th>DESCRIÇÃO</th><th>LOCAL DO DEPÓSITO</th><th>STATUS</th></tr></thead><tbody>';
+                
+                dados.forEach(function(item) {
+                    html += '<tr>' +
+                        '<td>' + (item['N° DO BOU'] || '') + '</td>' +
+                        '<td>' + (item['DATA'] || '') + '</td>' +
+                        '<td>' + (item['CATEGORIA'] || '') + '</td>' +
+                        '<td>' + (item['DESCRIÇÃO'] || '') + '</td>' +
+                        '<td>' + (item['LOCAL'] || '') + '</td>' + 
+                        '<td>' + (item['STATUS'] || '') + '</td>' +
+                        '</tr>';
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('tabela-destino').innerHTML = html;
+                
+                // Dispara a impressão e fecha após concluir
+                setTimeout(function() {
+                    window.print();
+                    window.close();
+                }, 500);
+            }
+        };
+    </script>
+</body>
+</html>

@@ -208,7 +208,7 @@
 
 /* Definindo larguras específicas para colunas críticas */
 #tabela-materias th:nth-child(1) { width: 50px; }  /* ID */
-#tabela-materias th:nth-child(5) { width: 250px; } /* DESCRIÇÃO (maior) */
+#tabela-materias th:nth-child(5) { width: 600px;} /* DESCRIÇÃO (maior) */
 #tabela-materias th:nth-child(9) { width: 120px; } /* STATUS */
 
 /* Permite ver o conteúdo completo ao passar o mouse */
