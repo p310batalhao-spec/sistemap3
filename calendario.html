@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Calendário de Eventos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="styleseventos.css">
+    <link rel="stylesheet" href="stylescalendario.css">
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+                <a href="calendario.html" class="active">
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/calendar--v1.png" alt="calendar--v1"/>
+                    <p>Calendário de Eventos</p>
+                </a>
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <div id="calendar-container">
+            <div id="calendar"></div>
+        </div>
+    </section>
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/pt-br.js'></script>
+
+    <script>
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec";
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'pt-br',
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listMonth'
+                },
+                events: async function (info, successCallback, failureCallback) {
+                    try {
+                        const response = await fetch(WEB_APP_URL + "?action=read", {
+                            method: "GET",
+                            mode: "cors",
+                            redirect: "follow"
+                        });
+                        const data = await response.json();
+
+                        // Mapeia os dados da planilha para o formato do calendário
+                        const events = data.map(item => {
+                            // Converte data dd/mm/yyyy para yyyy-mm-dd
+                            const partes = item.DATA.split('/');
+                            const dataIso = `${partes[2]}-${partes[1]}-${partes[0]}`;
+
+                            // Define cor baseada no público (Regra 500/1000)
+                            const publico = parseInt(item['ESTIMATIVA DE PÚBLICO']) || 0;
+                            let classe = 'event-pequeno';
+                            if (publico > 500 && publico <= 1000) classe = 'event-medio';
+                            if (publico > 1000) classe = 'event-grande';
+
+                            return {
+                                id: item.ID,
+                                title: `${item['HORÁRIO DE INÍCIO']} - ${item['NOME DO EVENTO']}`,
+                                start: dataIso,
+                                className: classe,
+                                extendedProps: { cidade: item.CIDADE, local: item['LOCAL DO EVENTO'] }
+                            };
+                        });
+                        successCallback(events);
+                    } catch (err) {
+                        console.error("Erro ao carregar calendário:", err);
+                        failureCallback(err);
+                    }
+                },
+                eventClick: function (info) {
+                    // Ao clicar no evento, abre a OPO correspondente
+                    const id = info.event.id;
+                    window.open(`relatorios/gerar_opo.html?id=${id}`, '_blank');
+                }
+            });
+            calendar.render();
+            function checkLogin() {
+                const graduacao = localStorage.getItem('userGraduacao');
+                const nomeGuerra = localStorage.getItem('userNomeGuerra');
+                const userInfoEl = document.getElementById('user-info');
+
+                if (graduacao && nomeGuerra) {
+                    if (userInfoEl) {
+                        userInfoEl.innerHTML = `
+                    <p>Bem Vindo(a):</p>
+                    <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+                `;
+                    }
+                } else {
+                    alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                    window.location.href = 'login.html';
+                }
+            }
+
+            function logout() {
+                localStorage.removeItem('userGraduacao');
+                localStorage.removeItem('userNomeGuerra');
+                alert('Logout realizado com sucesso!');
+                window.location.href = 'login.html';
+            }
+
+            /**
+             * 2. RELÓGIO EM TEMPO REAL
+             */
+            function atualizarRelogio() {
+                const agora = new Date();
+                const el = document.getElementById('relogio');
+                if (el) {
+                    el.innerHTML = agora.toLocaleDateString('pt-BR', {
+                        weekday: 'short', day: '2-digit', month: 'long', year: 'numeric'
+                    }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

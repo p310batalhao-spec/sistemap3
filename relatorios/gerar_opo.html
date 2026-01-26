@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: "Times New Roman", serif;
+            background-color: #555;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .folha-a4 {
+            background: white;
+            width: 210mm;
+            min-height: 297mm;
+            padding: 20mm;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            position: relative;
+            color: #000;
+            line-height: 1.3;
+            font-size: 14px;
+        }
+
+        .protocolo {
+            text-align: left;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .tab-mestra {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .tab-mestra td {
+            border: 1px solid black;
+            padding: 5px;
+        }
+
+        .titulo-tab {
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            background: #e9e9e9;
+            text-transform: uppercase;
+        }
+
+        .secao-titulo {
+            font-weight: bold;
+            margin-top: 15px;
+            text-transform: uppercase;
+            text-decoration: underline;
+        }
+
+        .editavel {
+            outline: none;
+            text-align: justify;
+            margin: 5px 0;
+        }
+
+        .editavel:focus {
+            background: #f0f7ff;
+        }
+
+        .tabela-efetivo {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .tabela-efetivo th,
+        .tabela-efetivo td {
+            border: 1px solid black;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .no-print {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-add {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        @media print {
+            .no-print {
+                display: none;
+            }
+
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .folha-a4 {
+                box-shadow: none;
+                margin: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="no-print">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-weight: bold;">IMPRIMIR
+            OPO</button>
+        <button class="btn-add" onclick="addRow()">➕ ADICIONAR RECURSO</button>
+    </div>
+
+    <div class="folha-a4">
+        <div class="protocolo">P3/10°BPM - OPO N° <span contenteditable="true">____</span>/2025</div>
+
+        <p>O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de
+            Policiamento Ostensivo:</p>
+
+        <table class="tab-mestra">
+            <tr>
+                <td colspan="2" class="titulo-tab">ORDEM DE POLICIAMENTO OSTENSIVO</td>
+            </tr>
+            <tr>
+                <td width="30%"><b>Evento/OPO</b></td>
+                <td id="e-nome" contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td><b>Data</b></td>
+                <td id="e-data" contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td><b>Local</b></td>
+                <td id="e-local" contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td><b>Cidade</b></td>
+                <td id="e-cidade" contenteditable="true"></td>
+            </tr>
+            <tr>
+                <td><b>Horário</b></td>
+                <td contenteditable="true"><span id="e-inicio"></span> às <span id="e-fim"></span></td>
+            </tr>
+        </table>
+
+        <div class="secao-titulo">EFETIVO E MEIOS</div>
+        <table class="tabela-efetivo">
+            <thead>
+                <tr style="background: #f2f2f2;">
+                    <th>OPM / RECURSO</th>
+                    <th>VTR (QTD)</th>
+                    <th>PRAÇAS (TOTAL)</th>
+                    <th class="no-print">AÇÃO</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-efetivo"></tbody>
+            <tfoot>
+                <tr style="font-weight: bold; background: #eee;">
+                    <td>TOTAL GERAL</td>
+                    <td id="total-vtrs">0</td>
+                    <td id="total-pracas">0</td>
+                    <td class="no-print"></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="secao-titulo">1. ORIENTAÇÕES INICIAIS</div>
+        <div class="editavel" contenteditable="true">
+            O policiamento se destina ao cumprimento do artigo 144 da Constituição Federal c/c com o
+            art. 5º, incisos X e XI, da Lei 14;751/2023.
+            A presente OPO foi confeccionada com o objetivo de <span id="ia-objetivo"></span>.
+            Todo o policiamento deverá ser feito com as luzes vermelhas intermitentes (rotativos) ligados, a fim de que
+            sejam vistas pela população e como forma de maior prevenção como preceitua a missão constitucional da
+            Polícia Militar.
+            Durante as abordagens pessoais e veiculares, as guarnições deverão realizar as consultas
+            veiculares pelo aplicativo QUIMERA ou através do COPOM do 10º BPM. Em caso de
+            consulta de indivíduo, a guarnição procederá a consulta através do COPOM do 10º BPM
+            que a realizará através dos sistemas integrados do CAD e do BNMP - MJ.
+        </div>
+
+        <div class="secao-titulo">2. MODALIDADES DO POLICIAMENTO EMPREGADO</div>
+        <div class="editavel" contenteditable="true">
+            Policiamento rádio-motorizado.
+        </div>
+
+        <div class="secao-titulo">3. APREENSÕES</div>
+        <div class="editavel" contenteditable="true">
+            O comandante da guarnição ficará responsável por possíveis materiais apreendidos por
+            seus comandados. O material apreendido deverá ser encaminhado à delegacia plantonista.
+            Em caso de apreensão de equipamentos sonoros que sejam objetos de flagrante delito de
+            contravenção penal de perturbação do sossego previsto no art. 42 da Lei 3688/41, a
+            guarnição policial deverá proceder a lavratura do Termo Circunstanciado de Ocorrência,
+            tirando fotos do equipamento, catalogar o material apreendido, confeccionar o Termo de
+            Apreensão de Objeto e encaminhar todo o equipamento à sede do 10º BPM a fim de ser
+            custodiado.
+            Se houver dificuldades quanto à conexão com a internet ou risco à segurança, a guarnição
+            deverá se encaminhar à sede da 10º BPM.
+            Caso o sistema QUIMERA não funcione ou apresente bugs, a guarnição deverá lavrar o
+            termo físico por escrito, que posteriormente será adicionado ao CAD e peticionado pela
+            equipe da P3/10ºBPM.
+        </div>
+        <div class="secao-titulo">4. PRESCRIÇÕES DIVERSAS</div>
+        <div class="editavel" contenteditable="true">
+            As guarnições escaladas deverão se apresentar ao COPOM no início da operação
+            informando os dados dos HTs digitais móveis e da viatura, para acompanhamento, controle
+            e apoio do policiamento.
+            Todas as ocorrências deverão imediatamente ser comunicadas ao COPOM para que sejam
+            gerados os Boletins de Ocorrência.
+            Em caso de flagrante serão adotadas as medidas pertinentes à apresentação do infrator na
+            delegacia plantonista, para lavratura do auto.
+            Todo o material encontrado com indícios de procedência duvidosa, deverá ser apreendido,
+            conduzido juntamente com o detentor de tal material à Delegacia Plantonista e entregue
+            mediante recibo.
+        </div>
+
+
+        <div style="margin-top: 60px; text-align: center;">
+            ____________________________________________________<br>
+            <b>ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - MAJ QOEM PM</b><br>
+            Comandante do 10º BPM
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const ID = urlParams.get('id');
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec";
+
+        window.onload = function () {
+            fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('e-nome').innerText = data['NOME DO EVENTO'].toUpperCase();
+                    document.getElementById('e-data').innerText = data['DATA'];
+                    document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'];
+                    document.getElementById('e-cidade').innerText = data['CIDADE'];
+                    document.getElementById('e-inicio').innerText = data['HORÁRIO DE INÍCIO'];
+                    document.getElementById('e-fim').innerText = data['HORÁRIO DE TÉRMINO'];
+                    document.getElementById('ia-objetivo').innerText = data.SUGESTAO_IA.objetivo;
+
+                    const formatarHora = (valor) => {
+                        if (!valor) return "00:00";
+                        // Se o valor for muito longo (objeto de data), tenta extrair apenas o HH:mm
+                        if (valor.length > 8) {
+                            const d = new Date(valor);
+                            return d.getHours().toString().padStart(2, '0') + ":" +
+                                d.getMinutes().toString().padStart(2, '0');
+                        }
+                        return valor; // Se já vier como "15:00", apenas retorna
+                    };
+                    document.getElementById('e-inicio').innerText = formatarHora(data['HORÁRIO DE INÍCIO']);
+                    document.getElementById('e-fim').innerText = formatarHora(data['HORÁRIO DE TÉRMINO']);
+
+                    const ia = data.SUGESTAO_IA;
+                    if (ia.ft > 0) addRow("FORÇA TAREFA", ia.ft);
+                    if (ia.vtrsFixas > 0) addRow("POLIC. CIDADE", ia.vtrsFixas);
+                    if (ia.pelopes > 0) addRow("PELOPES", ia.pelopes);
+                });
+        };
+
+        function addRow(nome = "NOVO RECURSO", qtd = 0) {
+            const tbody = document.getElementById('corpo-efetivo');
+            const row = tbody.insertRow();
+            row.innerHTML = `
+            <td contenteditable="true" style="text-align: left;">${nome}</td>
+            <td><input type="number" value="${qtd}" oninput="calc()" style="width:50px; text-align:center; border:none; font-family:serif; font-size:14px;"></td>
+            <td class="pracas-row">${qtd * 3}</td>
+            <td class="no-print"><button onclick="this.parentElement.parentElement.remove();calc()" style="color:red; background:none; border:none; cursor:pointer;">✖</button></td>
+        `;
+            calc();
+        }
+
+        function calc() {
+            let vtrs = 0, pracas = 0;
+            document.querySelectorAll('#corpo-efetivo tr').forEach(row => {
+                let n = parseInt(row.querySelector('input').value) || 0;
+                row.querySelector('.pracas-row').innerText = n * 3;
+                vtrs += n; pracas += (n * 3);
+            });
+            document.getElementById('total-vtrs').innerText = vtrs;
+            document.getElementById('total-pracas').innerText = pracas;
+        }
+    </script>
+</body>
+
+</html>

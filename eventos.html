@@ -93,7 +93,7 @@
                         <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
                         <option value="PAULO JACINTO">PAULO JACINTO</option>
                         <option value="QUEBRANGULO">QUEBRANGULO</option>
-                        <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>                        
+                        <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
                     </select>
                 </div>
                 <div class="formulario">
@@ -151,6 +151,7 @@
                     </button>
                     <a href="https://script.google.com/macros/s/AKfycbw7PcNaoXUERn9ZuIBdiWG5_JeZZf-r0B1xjAKZU7fz-k-7Pg8PtNFIvyZIF091nbtkTg/exec"
                         target="_blank" class="btnQuadroEventos">Gerar Quadro de Eventos</a>
+                    <a href="calendario.html" class="btnQuadroEventos">Calendário de Eventos</a>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
                 </div>
 
@@ -230,7 +231,7 @@
         const graduacao = localStorage.getItem('userGraduacao');
         const nomeGuerra = localStorage.getItem('userNomeGuerra');
         const userInfoEl = document.getElementById('user-info');
-        
+
         if (graduacao && nomeGuerra) {
             if (userInfoEl) {
                 userInfoEl.innerHTML = `
@@ -258,8 +259,8 @@
         const agora = new Date();
         const el = document.getElementById('relogio');
         if (el) {
-            el.innerHTML = agora.toLocaleDateString('pt-BR', { 
-                weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' 
+            el.innerHTML = agora.toLocaleDateString('pt-BR', {
+                weekday: 'short', day: '2-digit', month: 'long', year: 'numeric'
             }) + '<br>' + agora.toLocaleTimeString('pt-BR');
         }
     }
@@ -269,15 +270,15 @@
      */
     function toggleSidebar(show = true, data = null) {
         if (show) {
-            sidebar.reset(); 
-            document.getElementById('form-id').value = ''; 
-            
+            sidebar.reset();
+            document.getElementById('form-id').value = '';
+
             if (data) {
                 // Preenchimento dos campos para edição
                 document.getElementById('form-id').value = data.ID || '';
                 document.getElementById('protocolo').value = data.PROTOCOLO || '';
                 document.getElementById('data-evento').value = data.DATA || '';
-                
+
                 // CORREÇÃO CIDADE: Ajusta o Select para o valor vindo da planilha
                 const cidadeSelect = document.getElementById('cidade-evento');
                 if (data.CIDADE) {
@@ -317,18 +318,25 @@
     function renderTable(dataToRender) {
         const tbody = document.querySelector('#tabela-eventos tbody');
         const mensagem = document.getElementById('mensagem-carregamento');
-        tbody.innerHTML = ''; 
+
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
         if (dataToRender && dataToRender.length) {
-            if(mensagem) mensagem.style.display = 'none';
+            if (mensagem) mensagem.style.display = 'none';
+
             dataToRender.forEach(item => {
                 const row = tbody.insertRow();
-                const classif = getClassificacao(item['ESTIMATIVA DE PÚBLICO']);
 
+                // Coluna ID
                 row.insertCell().textContent = item.ID || '';
+
+                // Coluna Porte
+                const classif = getClassificacao(item['ESTIMATIVA DE PÚBLICO']);
                 const porteCell = row.insertCell();
                 porteCell.innerHTML = `<span class="porte-badge ${classif.classe}">${classif.nome}</span>`;
 
+                // Colunas de Dados
                 const chavesDisplay = [
                     'PROTOCOLO', 'DATA', 'CIDADE', 'NOME DO EVENTO', 'LOCAL DO EVENTO',
                     'HORÁRIO DE INÍCIO', 'HORÁRIO DE TÉRMINO', 'ESTIMATIVA DE PÚBLICO',
@@ -339,31 +347,65 @@
                     row.insertCell().textContent = item[key] || '';
                 });
 
+                // Coluna de Ações
                 const acoesCell = row.insertCell();
+                acoesCell.style.whiteSpace = 'nowrap';
+
+                // Botão Editar
                 const btnEdit = document.createElement('button');
                 btnEdit.textContent = 'Editar';
-                btnEdit.className = 'btn-editar-evento'; // Use a classe do seu CSS
-                btnEdit.style.cssText = "background-color: #2c3e50; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;";
+                btnEdit.className = 'btn-editar-evento';
+                btnEdit.style.cssText = "background-color: #2c3e50; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px;";
                 btnEdit.onclick = () => toggleSidebar(true, item);
                 acoesCell.appendChild(btnEdit);
+
+                // Botão Gerar OPO
+                const btnOPO = document.createElement('button');
+                btnOPO.innerHTML = '📄 OPO';
+                btnOPO.className = 'btn-opo';
+                btnOPO.style.cssText = "background-color: #17a2b8; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;";
+
+                btnOPO.onclick = () => {
+                    const url = `relatorios/gerar_opo.html?id=${encodeURIComponent(item.ID)}`;
+                    window.open(url, '_blank');
+                };
+
+                // CORREÇÃO: Usando acoesCell que foi definida acima
+                acoesCell.appendChild(btnOPO);
             });
+        } else {
+            if (mensagem) {
+                mensagem.style.display = 'block';
+                mensagem.textContent = "Nenhum evento encontrado.";
+            }
         }
     }
 
+    // Certifique-se de que a função fetchData fecha corretamente
+    async function fetchData() {
+        try {
+            const response = await fetch(WEB_APP_URL + "?action=read");
+            const data = await response.json();
+            allEventos = data;
+            renderTable(data);
+        } catch (err) {
+            console.error("Erro ao buscar dados:", err);
+        }
+    }
     /**
      * 5. COMUNICAÇÃO COM O GOOGLE SHEETS
      */
     async function fetchData() {
         const mensagem = document.getElementById('mensagem-carregamento');
         try {
-            if(mensagem) mensagem.style.display = 'block';
+            if (mensagem) mensagem.style.display = 'block';
             const response = await fetch(`${WEBAPP_URL}?action=read`);
             allEventos = await response.json();
             renderTable(allEventos);
         } catch (error) {
             console.error("Erro ao buscar dados:", error);
         } finally {
-            if(mensagem) mensagem.style.display = 'none';
+            if (mensagem) mensagem.style.display = 'none';
         }
     }
 
@@ -424,14 +466,14 @@
                 renderTable(allEventos);
                 return;
             }
-            const filtrados = allEventos.filter(item => 
+            const filtrados = allEventos.filter(item =>
                 String(item[tipo] || '').toUpperCase().includes(valor)
             );
             renderTable(filtrados);
             document.getElementById('btn-limpar-filtro').style.display = 'inline-block';
         };
 
-        document.getElementById('btn-limpar-filtro').onclick = function() {
+        document.getElementById('btn-limpar-filtro').onclick = function () {
             renderTable(allEventos);
             this.style.display = 'none';
             document.getElementById('filtro-valor-text').value = '';

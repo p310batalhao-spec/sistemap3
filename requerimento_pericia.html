@@ -62,7 +62,7 @@
             margin-top: 60px;
             text-align: center;
             border-top: 1px solid black;
-            width: 350px;
+            width: 450px;
             margin-left: auto;
             margin-right: auto;
         }
@@ -72,6 +72,8 @@
                 display: none;
             }
         }
+        footer{display: flex; align-items: center; gap: 10px; border-top: solid 1px #000; margin: top 200px; }
+        .brasao{height: 30px;};
     </style>
 </head>
 
@@ -129,14 +131,19 @@
         3. O material se assemelha a alguma substância entorpecente? Qual?
     </div>
 
-    <div class="assinatura-espaco" style="margin-top: 80px;">
-        Comandante do 10º BPM
+    <div class="assinatura-espaco" style="margin-top: 80px; text-align: center;">
+        JONATA APOLINARIO CALHEIROS - 1º TEN QOEM PM <br>
+        Mat. 1138-0<br>
+        Oficial Gestor do TCO
     </div>
 
     <div class="no-print" style="margin-top: 40px; text-align: center;">
         <button onclick="window.print()" style="padding: 10px 20px;">Imprimir Requisição</button>
     </div>
-
+    <footer>
+        <img src="brasao.png" class="brasao" alt="brasão">
+        <h4>Seção de Planejamento, Ensino e Instrução - P3/10ºBPM</h4>
+    </footer>
     <script>
         window.onload = function () {
             const item = JSON.parse(localStorage.getItem('dadosRequerimento'));

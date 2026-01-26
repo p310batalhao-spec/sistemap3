@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: "Times New Roman", serif; padding: 20px; display: flex; flex-direction: column; align-items: center; background: #555; }
+        .folha-a4 { background: white; width: 210mm; min-height: 297mm; padding: 15mm 20mm; box-shadow: 0 0 10px rgba(0,0,0,0.5); position: relative; font-size: 13px; line-height: 1.2; }
+        .tab-mestra { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .tab-mestra td { border: 1px solid black; padding: 6px; }
+        .titulo-tab { text-align: center; font-weight: bold; font-size: 16px; background: #f2f2f2; }
+        .secao { font-weight: bold; text-decoration: underline; text-transform: uppercase; margin-top: 15px; }
+        .editavel { text-align: justify; outline: none; margin: 5px 0; }
+        .tab-efetivo { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .tab-efetivo td { border: 1px solid black; padding: 4px; text-align: center; }
+        @media print { .no-print { display: none; } body { background: white; padding: 0; } .folha-a4 { box-shadow: none; margin: 0; } }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="margin-bottom: 20px;">
+        <button onclick="window.print()" style="padding: 10px; cursor: pointer; font-weight: bold;">IMPRIMIR OPO JOGO</button>
+    </div>
+
+    <div class="folha-a4">
+        <div class="protocolo">P3/10°BPM - OPO N° <span contenteditable="true">____</span>/2026</div>
+        <table class="tab-mestra">
+            <tr><td colspan="2" class="titulo-tab">ORDEM DE POLICIAMENTO OSTENSIVO</td></tr>
+            <tr><td width="30%"><b>EVENTO/OPO</b></td><td id="e-nome" contenteditable="true"></td></tr>
+            <tr><td><b>DATA</b></td><td id="e-data" contenteditable="true"></td></tr>
+            <tr><td><b>LOCAL</b></td><td id="e-local" contenteditable="true"></td></tr>
+            <tr><td><b>APRESENTAÇÃO</b></td><td contenteditable="true">15:00h - Local do Evento</td></tr>
+            <tr><td><b>COMANDANTE</b></td><td contenteditable="true">Oficial de Operações</td></tr>
+        </table>
+
+        <div class="secao">1. MISSÃO</div>
+        <div id="ia-missao" class="editavel" contenteditable="true"></div>
+
+        <div class="secao">2. EXECUÇÃO</div>
+        <div class="editavel" contenteditable="true">
+            O policiamento será distribuído nos setores internos (gramado e arquibancadas) e externos (portões e entorno), visando a segurança de torcedores e arbitragem conforme Estatuto do Torcedor.
+        </div>
+
+        <div class="secao">3. EFETIVO EMPREGADO</div>
+        <table class="tab-efetivo">
+            <thead><tr style="background:#eee"><th>OPM / RECURSO</th><th>VTR</th><th>PRAÇAS</th></tr></thead>
+            <tbody id="corpo-efetivo"></tbody>
+        </table>
+
+        <div style="margin-top: 60px; text-align: center;">
+            ____________________________________________________<br>
+            <b>ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - TC PM</b><br>Comandante do 10º BPM
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const ID = urlParams.get('id');
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec";
+
+        window.onload = function() {
+            fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' })
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('e-nome').innerText = data['NOME DO EVENTO'].toUpperCase();
+                    document.getElementById('e-data').innerText = data['DATA'];
+                    document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'];
+
+                    const ia = data.SUGESTAO_IA;
+                    document.getElementById('ia-missao').innerText = ia.missao;
+
+                    const tbody = document.getElementById('corpo-efetivo');
+                    if(ia.ft > 0) tbody.innerHTML += `<tr><td>FORÇA TAREFA</td><td>${ia.ft}</td><td>${ia.ft*3}</td></tr>`;
+                    if(ia.pelopes > 0) tbody.innerHTML += `<tr><td>PELOPES</td><td>${ia.pelopes}</td><td>${ia.pelopes*3}</td></tr>`;
+                });
+        };
+    </script>
+</body>
+</html>
