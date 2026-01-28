@@ -219,3 +219,11 @@
     background-color: #f9f9f9;
     z-index: 1;
 }
+.texto-legal ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        .texto-legal li {
+            margin-bottom: 3px;
+            text-align: justify;
+        }

@@ -230,7 +230,7 @@
                         <p>PONTO REF</p><input type="text" name="PONTO REF" id="PONTO REF">
                     </div>
                     <div class="formulario">
-                        <p>ENDEREÇO</p><input type="text" name="ENDERECO" id="ENDERECO">
+                        <p>ENDEREÇO</p><input type="text" name="ENDEREÇO" id="ENDEREÇO">
                     </div>
                     <div class="formulario">
                         <p>HORA</p><input type="time" name="HORA" id="HORA">
@@ -244,13 +244,14 @@
                         <select name="TIPO DE DROGA">
                             <option value="MACONHA">MACONHA</option>
                             <option value="CRACK">CRACK</option>
-                            <option value="COCAINA">COCAÍNA</option>
+                            <option value="COCAÍNA">COCAÍNA</option>
                             <option value="RUFINOL">RUFINOL</option>
                             <option value="LOLÓ">LOLÓ</option>
                         </select>
                     </div>
                     <div class="formulario">
-                        <p>PESO (Kg)</p><input type="number" step="0.0001" name="PESO (Kg)">
+                        <p>PESO (Kg)</p>
+                        <input type="number" step="0.0001" name="PESO_KG" id="input-peso" required>
                     </div>
                     <div class="formulario">
                         <p>DADOS DA EQUIPE</p><select name="DADOS DA EQUIPE" id="DADOS DA EQUIPE">
@@ -287,7 +288,7 @@
             'ID', 'DATA', 'NUMERO COP', 'FATO TÍPICO', 'NOME', 'RG', 'CPF', 'IDADE',
             'ALCUNHA', 'SEXO', 'MÃE', 'CIDADE', 'ESTADO', 'BAIRRO', 'PONTO REF',
             'ENDEREÇO', 'HORA', 'LATITUDE', 'LONGITUDE',
-            'TIPO DE DROGA', 'PESO (Kg)', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
+            'TIPO DE DROGA', 'PESO_KG', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
         ];
 
         let allDrogas = [];
@@ -376,7 +377,7 @@
                             NOME_AUTOR: item['NOME'] || '',
                             DATA: item['DATA'] || '',
                             TIPO_DROGA: item['TIPO DE DROGA'] || '',
-                            PESO: item['PESO (Kg)'] || ''
+                            PESO: item['PESO_KG)'] || ''
                         };
                         localStorage.setItem('dadosRequerimento', JSON.stringify(dadosParaRequerimento));
                         window.open('requerimento_pericia.html', '_blank');
@@ -388,14 +389,14 @@
 
         // --- 3. SOMA POR TIPO E TOTAL ---
         function atualizarCardsContagem(data) {
-            const totais = { 'MACONHA': 0, 'CRACK': 0, 'COCAINA': 0, 'RUFINOL': 0, 'LOLÓ': 0 };
+            const totais = { 'MACONHA': 0, 'CRACK': 0, 'COCAÍNA': 0, 'RUFINOL': 0, 'LOLÓ': 0 };
             const anoAtual = new Date().getFullYear().toString();
 
             data.forEach(item => {
                 const dataItem = String(item['DATA'] || "");
                 if (dataItem.includes(anoAtual)) {
                     const tipo = String(item['TIPO DE DROGA'] || '').toUpperCase().trim();
-                    let peso = parseFloat(String(item['PESO (Kg)'] || '0').replace(',', '.'));
+                    let peso = parseFloat(String(item['PESO_KG'] || '0').replace(',', '.'));
 
                     if (!isNaN(peso) && totais.hasOwnProperty(tipo)) {
                         totais[tipo] += peso;
@@ -407,7 +408,7 @@
             const mapaIDs = {
                 'MACONHA': 'total-maconha',
                 'CRACK': 'total-crack',
-                'COCAINA': 'total-cocaina',
+                'COCAÍNA': 'total-cocaina',
                 'RUFINOL': 'total-rufinol',
                 'LOLÓ': 'total-lolo'
             };
@@ -451,44 +452,88 @@
         }
 
         // --- 5. SALVAMENTO E SIDEBAR ---
+        // --- 5. SALVAMENTO E SIDEBAR ---
         async function salvarDados(e) {
             e.preventDefault();
             const btn = document.getElementById('btn-salvar-form');
             const idVal = document.getElementById('form-id').value;
-            btn.disabled = true; btn.textContent = "Gravando...";
 
+            btn.disabled = true;
+            btn.textContent = "PROCESSANDO...";
+
+            // Coleta os dados do formulário
             const formData = new FormData(e.target);
-            const payload = new URLSearchParams();
-            payload.append('action', idVal ? 'update' : 'create');
-            payload.append('ID', idVal);
-            for (const [key, value] of formData.entries()) { payload.append(key, value); }
+            const params = new URLSearchParams();
+
+            // Adiciona a ação e o ID
+            params.append('action', idVal ? 'update' : 'create');
+            params.append('ID', idVal);
+
+            // Adiciona o restante dos campos
+            for (const [key, value] of formData.entries()) {
+                if (key !== 'ID') {
+                    params.append(key, value);
+                }
+            }
 
             try {
-                await fetch(API_URL, { method: 'POST', mode: 'no-cors', body: payload });
-                alert("Operação concluída com sucesso!");
-                toggleSidebar(false);
-                setTimeout(loadDrogas, 1500);
-            } catch (err) { alert("Erro ao salvar."); }
-            finally { btn.disabled = false; btn.textContent = "SALVAR DADOS"; }
-        }
+                // O segredo está em não usar 'no-cors' e enviar como POST
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: params,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                });
 
-        function toggleSidebar(show, data = null) {
-            const sidebar = document.getElementById('form-drogas'), overlay = document.getElementById('overlay-sidebar');
-            if (show) {
-                sidebar.reset();
-                if (data) {
-                    document.getElementById('form-id').value = data['ID'] || '';
-                    sidebar.querySelectorAll('input, select, textarea').forEach(c => {
-                        const n = c.getAttribute('name');
-                        if (n && data[n] !== undefined) c.value = data[n];
-                    });
-                }
-                sidebar.classList.add('active'); overlay.classList.add('active');
-            } else {
-                sidebar.classList.remove('active'); overlay.classList.remove('active');
+                // O Google Apps Script redireciona, o fetch segue o redirecionamento
+                // Se chegar aqui sem erro de rede, funcionou.
+                alert("Dados enviados com sucesso!");
+                toggleSidebar(false);
+
+                // Recarrega os dados após um pequeno delay para a planilha atualizar
+                setTimeout(loadDrogas, 1500);
+
+            } catch (err) {
+                // Se der erro de CORS, muitas vezes o dado FOI salvo, mas o navegador bloqueou a resposta
+                console.warn("Possível bloqueio de resposta (CORS), mas os dados podem ter sido salvos.", err);
+                alert("Verifique a tabela em instantes.");
+                toggleSidebar(false);
+                setTimeout(loadDrogas, 2000);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "SALVAR DADOS";
             }
         }
 
+        function toggleSidebar(show, data = null) {
+            const sidebar = document.getElementById('form-drogas');
+            const overlay = document.getElementById('overlay-sidebar');
+
+            if (show) {
+                sidebar.reset();
+                // Limpa o ID oculto para garantir que novos cadastros não herdem IDs antigos
+                document.getElementById('form-id').value = '';
+
+                if (data) {
+                    // Define o ID para modo de edição
+                    document.getElementById('form-id').value = data['ID'] || '';
+
+                    sidebar.querySelectorAll('input, select, textarea').forEach(c => {
+                        const n = c.getAttribute('name');
+                        if (n && data[n] !== undefined) {
+                            let valor = data[n];
+                            c.value = valor;
+                        }
+                    });
+                }
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        }
         document.addEventListener('DOMContentLoaded', () => {
             checkLogin();
             atualizarRelogio();

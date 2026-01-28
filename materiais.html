@@ -195,6 +195,7 @@
                             <option value="ARQUIVADO">ARQUIVADO</option>
                             <option value="A DEVOLVER">A DEVOLVER</option>
                             <option value="DEVOLVIDO">DEVOLVIDO</option>
+                            <option value="FIEL DEPOSITÁRIO">FIEL DEPOSITÁRIO</option>
                             <option value="EM TRÂNSITO">EM TRÂNSITO</option>
                         </select>
                     </div>
@@ -289,7 +290,7 @@
                 acoesCell.style.display = 'flex';
                 acoesCell.style.gap = '5px';
 
-                // Botão Editar (Sempre visível)
+                // 1. Botão Editar (Sempre visível) 
                 const btnEditar = document.createElement('button');
                 btnEditar.className = 'btn-editar-sidebar';
                 btnEditar.style.cssText = 'background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;';
@@ -297,13 +298,26 @@
                 btnEditar.onclick = () => toggleSidebar(true, item);
                 acoesCell.appendChild(btnEditar);
 
-                // Botão TERMO (Apenas se o status for "A DEVOLVER")
+                // 2. Botão TERMO (Status: A DEVOLVER) 
                 if (String(item.STATUS).toUpperCase() === 'A DEVOLVER') {
                     const btnTermo = document.createElement('button');
                     btnTermo.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
                     btnTermo.textContent = 'TERMO';
                     btnTermo.onclick = () => gerarTermo(item);
                     acoesCell.appendChild(btnTermo);
+                }
+
+                // 3. NOVO: Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO) [cite: 13, 17]
+                if (String(item.STATUS).toUpperCase() === 'FIEL DEPOSITÁRIO') {
+                    const btnFiel = document.createElement('button');
+                    btnFiel.style.cssText = 'background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
+                    btnFiel.textContent = 'FIEL DEPOSITÁRIO';
+                    btnFiel.onclick = () => {
+                        // Salva os dados no localStorage para serem lidos pela nova página
+                        localStorage.setItem('dadosTermoFiel', JSON.stringify(item));
+                        window.open('termo_fiel.html', '_blank');
+                    };
+                    acoesCell.appendChild(btnFiel);
                 }
             });
         }

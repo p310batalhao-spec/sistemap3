@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="stylesmateriais.css">
+    <title>Termo de Fiel Depositário - Profissional</title>
+    <style>
+        /* CONFIGURAÇÕES GERAIS */
+        body { font-family: Arial, sans-serif; font-size: 11px; margin: 0; padding: 20px; line-height: 1.3; color: #000; }
+        .brasao { width: 55px; height: auto; margin-bottom: 5px; }
+        .header { text-align: center; margin-bottom: 15px; }
+        .titulo { font-weight: bold; font-size: 13px; text-decoration: underline; margin-top: 5px; text-transform: uppercase; }
+        
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 5px; text-align: left; vertical-align: top; }
+        
+        .label { font-weight: bold; font-size: 9px; display: block; text-transform: uppercase; margin-bottom: 2px; }
+        
+        /* CAMPOS EDITÁVEIS */
+        .editavel { min-height: 14px; outline: none; transition: background 0.3s; }
+        .editavel:hover { background-color: #f0f7ff; }
+        .editavel:focus { background-color: #fffdec; border: 1px dashed #999; }
+        
+        .secao-titulo { font-weight: bold; background-color: #f2f2f2; padding: 4px; border: 1px solid black; border-bottom: none; font-size: 10px; }
+        .texto-legal { text-align: justify; margin: 15px 0; font-size: 11px; border: 1px transparent solid; }
+
+        /* ASSINATURAS */
+        .assinatura-container { margin-top: 30px; display: flex; justify-content: space-around; text-align: center; }
+        .assinatura-box { width: 45%; }
+        .linha { border-top: 1px solid black; margin-top: 40px; margin-bottom: 5px; }
+
+        /* BARRA DE FERRAMENTAS (NÃO SAI NA IMPRESSÃO) */
+        .barra-ferramentas { 
+            position: sticky; top: 0; left: 0; right: 0; 
+            background: #2c3e50; padding: 12px; 
+            display: flex; gap: 15px; justify-content: center;
+            margin: -20px -20px 20px -20px;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .btn { padding: 8px 20px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        .btn-print { background: #27ae60; }
+        .btn-clear { background: #e74c3c; }
+
+        /* REGRA MÁGICA DE IMPRESSÃO */
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; margin: 0; }
+            .editavel:hover, .editavel:focus { background-color: transparent; border: none; }
+            table, th, td { border: 1px solid black !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="barra-ferramentas no-print">
+        <button class="btn btn-print" onclick="window.print()">IMPRIMIR TERMO (PDF)</button>
+        <button class="btn btn-clear" onclick="if(confirm('Isso resetará as edições manuais. Continuar?')) location.reload()">RESETAR INFORMAÇÕES</button>
+        <span style="color: #ecf0f1; align-self: center; font-size: 11px;">
+            DICA: Clique em qualquer texto para editar antes de imprimir.
+        </span>
+    </div>
+
+    <div class="header">
+        <img src="brasao.png" alt="Brasão" class="brasao">
+        <div style="font-weight: bold;">ESTADO DE ALAGOAS<br>SECRETARIA DE ESTADO DA SEGURANÇA PÚBLICA<br>POLÍCIA MILITAR DE ALAGOAS</div>
+        <div class="titulo" contenteditable="true">TERMO DE FIEL DEPOSITÁRIO PROVISÓRIO DE BENS</div>
+    </div>
+
+    <table>
+        <tr>
+            <td style="width: 40%;"><span class="label">Documento de Origem (BOU)</span><div class="editavel" id="view-bou" contenteditable="true"></div></td>
+            <td style="width: 20%;"><span class="label">Tipo</span><div class="editavel" contenteditable="true">BOU</div></td>
+            <td style="width: 40%;"><span class="label">Local/Data/Hora Apreensão</span><div class="editavel" id="view-data" contenteditable="true"></div></td>
+        </tr>
+    </table>
+
+    <div class="secao-titulo">IDENTIFICAÇÃO DO FIEL DEPOSITÁRIO / AUTOR</div>
+    <table>
+        <tr>
+            <td colspan="3"><span class="label">Nome</span><div class="editavel" contenteditable="true"></div></td>
+        </tr>
+        <tr>
+            <td><span class="label">CPF/CNPJ</span><div class="editavel" contenteditable="true"></div></td>
+            <td><span class="label">Data de Nasc.</span><div class="editavel" contenteditable="true"></div></td>
+            <td><span class="label">RG / UF</span><div class="editavel" contenteditable="true"></div></td>
+        </tr>
+        <tr>
+            <td colspan="2"><span class="label">Pai</span><div class="editavel" contenteditable="true"></div></td>
+            <td><span class="label">Mãe</span><div class="editavel" contenteditable="true"></div></td>
+        </tr>
+        <tr>
+            <td colspan="2"><span class="label">Endereço (Logradouro, Bairro)</span><div class="editavel" contenteditable="true"></div></td>
+            <td><span class="label">Município / UF</span><div class="editavel" contenteditable="true"></div></td>
+        </tr>
+    </table>
+
+    <div class="secao-titulo">IDENTIFICAÇÃO DO OBJETO</div>
+    <table>
+        <thead>
+            <tr style="background: #f9f9f9;">
+                <th style="width: 45%;"><span class="label">Descrição / Categoria</span></th>
+                <th style="width: 25%;"><span class="label">Local de Depósito Anterior</span></th>
+                <th style="width: 30%;"><span class="label">ESAJ / STATUS</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><div class="editavel" id="view-descricao" contenteditable="true"></div></td>
+                <td><div class="editavel" id="view-local" contenteditable="true"></div></td>
+                <td><div class="editavel" id="view-status" contenteditable="true"></div></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="secao-titulo">COMPROMISSO E ORIENTAÇÕES LEGAIS</div>
+    <div class="texto-legal" contenteditable="true" style="border: 1px solid black; padding: 10px; background-color: #fdfdfd;">
+        <p><strong>DECLARAÇÃO:</strong> Declaro que, nesta data, fui nomeado <strong>FIEL DEPOSITÁRIO</strong> do(s) bem(ns) acima descrito(s), assumindo a guarda provisória dos mesmos. Declaro ainda que <strong>assisti ao vídeo orientativo</strong> sobre as obrigações deste encargo, compreendendo integralmente minhas responsabilidades.</p>
+        
+        <p><strong>ORIENTAÇÕES AO DEPOSITÁRIO (Resumo da Legislação):</strong></p>
+        <ul style="margin-bottom: 5px;">
+            <li><strong>Obrigações (Art. 629 e 648, Código Civil):</strong> Você deve guardar e conservar o bem com o mesmo cuidado que teria se fosse seu, e restituí-lo imediatamente quando solicitado pela autoridade.</li>
+            <li><strong>Proibições:</strong> É expressamente proibido vender, alugar, emprestar, doar, descaracterizar ou utilizar o bem para fins diversos, salvo autorização judicial expressa.</li>
+            <li><strong>Penalidades (Art. 168, Código Penal):</strong> A apropriação de bem de que tem a posse em razão do cargo ou função pode configurar crime de <strong>Apropriação Indébita</strong>, com pena de reclusão e multa.</li>
+            <li><strong>Responsabilidade Civil:</strong> Caso o bem sofra danos por negligência ou mau uso, o depositário responderá pelo prejuízo causado (Art. 159 e 640 do Código Civil).</li>
+        </ul>
+        <p style="text-align: center; font-weight: bold; margin-top: 5px;">ESTOU CIENTE DE QUE O DESCUMPRIMENTO DESTE TERMO PODE ACARRETAR PRISÃO E PROCESSO JUDICIAL.</p>
+    </div>
+
+    <div class="assinatura-container">
+        <div class="assinatura-box">
+            <div class="linha"></div>
+            <span class="label">Assinatura do Fiel Depositário</span>
+            <div class="editavel" contenteditable="true" style="font-size: 10px;">Nome:</div>
+        </div>
+        <div class="assinatura-box">
+            <div class="linha"></div>
+            <span class="label">Responsável pela Apreensão</span>
+            <div class="editavel" contenteditable="true" style="font-size: 10px;">Posto/Grad: <br>Matrícula:</div>
+        </div>
+    </div>
+
+    <div class="assinatura-container">
+        <div class="assinatura-box" style="width: 80%;">
+            <div class="linha"></div>
+            <span class="label">Testemunha</span>
+            <div class="editavel" contenteditable="true">Nome / Identidade:</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dados = JSON.parse(localStorage.getItem('dadosTermoFiel'));
+            
+            if (dados) {
+                // Preenchimento automático com os dados da sua planilha
+                document.getElementById('view-bou').textContent = dados['N° DO BOU'] || '';
+                document.getElementById('view-data').textContent = dados['DATA'] || '';
+                document.getElementById('view-descricao').textContent = (dados['CATEGORIA'] || '') + " - " + (dados['DESCRIÇÃO'] || '');
+                document.getElementById('view-local').textContent = dados['LOCAL'] || '';
+                document.getElementById('view-status').textContent = (dados['ESAJ'] || '') + " / " + (dados['STATUS'] || '');
+            }
+        });
+    </script>
+</body>
+</html>
