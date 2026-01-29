@@ -208,7 +208,10 @@ footer{
     background-color: white;
     font-family: Arial, Helvetica, sans-serif;
     padding: 20px; 
-    width: 70%; /* Ocupa a largura total do main, ajustando-se à tela */
+    width: 95%;/* Ocupa a largura total do main, ajustando-se à tela */
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .orgupload{
@@ -813,7 +816,7 @@ footer{
 
 /* PROTOCOLADO: Verde */
 .status-protocolado {
-    background-color: #28a745; /* Verde */
+    background-color: #03a316; /* Verde */
     color: white;
     border: 1px solid #1e7e34; /* Detalhe diferente */
 }

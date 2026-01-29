@@ -310,8 +310,8 @@
                 // 3. NOVO: Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO) [cite: 13, 17]
                 if (String(item.STATUS).toUpperCase() === 'FIEL DEPOSITÁRIO') {
                     const btnFiel = document.createElement('button');
-                    btnFiel.style.cssText = 'background:#27ae60; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
-                    btnFiel.textContent = 'FIEL DEPOSITÁRIO';
+                    btnFiel.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
+                    btnFiel.textContent = 'TERMO FIEL DEP.';
                     btnFiel.onclick = () => {
                         // Salva os dados no localStorage para serem lidos pela nova página
                         localStorage.setItem('dadosTermoFiel', JSON.stringify(item));
