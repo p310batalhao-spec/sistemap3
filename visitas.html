@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Visitas</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stylesvisitas.css">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="visitas.html" class="active">
+                <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png"
+                    alt="police-car" />
+                <p>Visitas Orientativas</p>
+            </a><!--termina visitas-->
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <main>
+            <div class="saudacao">
+                <h2>Análise de Visitas Orientativas</h2>
+                <p>Análise criminal focada em potencial de escalada da violência.</p>
+            </div>
+
+            <div class="ConteudoCadastro">
+                <div class="filtro-periodo">
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <label style="font-size:0.8em; font-weight:bold;">DATA INICIAL</label>
+                        <input type="date" id="data-inicio"
+                            style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <label style="font-size:0.8em; font-weight:bold;">DATA FINAL</label>
+                        <input type="date" id="data-fim" style="padding:8px; border-radius:5px; border:1px solid #ccc;">
+                    </div>
+                    <button class="btn-analisar" onclick="carregarVisitas()">ANALISAR OCORRÊNCIAS</button>
+                    <button class="btn-imprimir" onclick="window.print()"
+                        style="padding:10px; border-radius:5px; border:1px solid #333; cursor:pointer;">🖨️</button>
+                </div>
+
+                <div id="mensagem-status" style="text-align: center; display:none; font-weight: bold; color: #666;">
+                    🔄 Processando inteligência criminal no período selecionado...
+                </div>
+
+                <div id="lista-visitas" class="container-visitas"></div>
+            </div>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script>
+        const URL_API = "https://script.google.com/macros/s/AKfycbzQUm5MKNwgJq-f5vEpPLreR2qlv58z5m7j8N0beFsK6CMMdCtprMGZXgWcirOwcHGHcA/exec";
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            document.getElementById('relogio').innerHTML = `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+        }
+        setInterval(atualizarRelogio, 1000);
+        atualizarRelogio();
+
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            if (!graduacao || !nomeGuerra) window.location.href = 'login.html';
+            else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        }
+
+function carregarVisitas() {
+        const inicio = document.getElementById('data-inicio').value;
+        const fim = document.getElementById('data-fim').value;
+        const statusMsg = document.getElementById('mensagem-status');
+        const container = document.getElementById('lista-visitas');
+
+        if (!inicio || !fim) {
+            alert("Por favor, selecione o período inicial e final para análise.");
+            return;
+        }
+
+        statusMsg.style.display = 'block';
+        statusMsg.innerText = "🔄 Analisando inteligência criminal no período selecionado...";
+        container.innerHTML = "";
+
+        fetch(`${URL_API}?inicio=${inicio}&fim=${fim}`)
+            .then(res => res.json())
+            .then(dados => {
+                statusMsg.style.display = 'none';
+
+                if (!dados || dados.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 30px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; margin: 20px;">
+                            ⚠️ Nenhuma ocorrência relevante encontrada entre ${inicio.split('-').reverse().join('/')} e ${fim.split('-').reverse().join('/')}.
+                        </div>`;
+                    return;
+                }
+
+                dados.forEach(oc => {
+                    const card = document.createElement('div');
+                    card.className = 'card-visita';
+                    // IMPORTANTE: Exibimos oc.data diretamente como texto, sem converter para Date
+                    card.innerHTML = `
+                        <div class="info-lado-esquerdo">
+                            <span class="badge-alerta">⚠️ RISCO DE ESCALADA</span>
+                            <div class="cop-label">COP Nº ${oc.cop}</div>
+                            <p><strong>👤 SOLICITANTE:</strong> ${oc.solicitante}</p>
+                            <p><strong>📂 NATUREZA:</strong> ${oc.natureza}</p>
+                            <p><strong>📅 DATA:</strong> ${oc.data}</p>
+                            <p><strong>📍 LOCAL:</strong> ${oc.endereco}</p>
+                            <p><strong>📋 DESFECHO:</strong> ${oc.solucao}</p>
+                            <div class="detalhe-criminal">
+                                <strong>HISTÓRICO ANALISADO:</strong><br>
+                                ${oc.resumo}
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                });
+            })
+            .catch(err => {
+                statusMsg.innerText = "❌ Erro ao conectar com o servidor.";
+                console.error(err);
+            });
+    }
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin();
+
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', () => {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
