@@ -155,7 +155,7 @@
                     </div>
                     <div class="formulario">
                         <p>SOLICITANTE (TELEFONE)</p>
-                        <input type="tel" name="SOLICITANTETELEFONE" id="SOLICITANTETELEFONE">
+                        <input type="tel" name="TELEFONE" id="TELEFONE">
                     </div>
                     <div class="formulario">
                         <p>SOLUÇÃO</p>
@@ -199,7 +199,7 @@
                     </div>
                     <div class="formulario">
                         <p>TIPIFICAÇÃO GERAL</p>
-                        <select name="TIPIFICAÇÃO GERAL" id="TIPIFICAÇÃO GERAL">
+                        <select name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
                             <option value="">Selecione a Tipificação</option>
                             <option value="CUMPRIMENTO DE MANDADO JUDICIAL | OCORRÊNCIA SEM ILICITUDE">CUMPRIMENTO DE MANDADO JUDICIAL | OCORRÊNCIA SEM ILICITUDE</option>
                         </select>
@@ -210,7 +210,7 @@
                     </div>
                     <div class="formulario">
                         <p>SOLUÇÃO DA OCORRÊNCIA</p>
-                        <input type="text" name="SOLUÇÃO DA OCORRÊNCIA" id="SOLUÇÃO DA OCORRÊCIA">
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
                     </div>
                 </div><!--termina formulario-scroll-->
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -272,17 +272,17 @@
                     <td>${item['Nº Ocorrência'] || ""}</td>
                     <td>${item['DATA'] || ""}</td>
                     <td>${item['HORA'] || ""}</td>
-                    <td>${item['Solicitante (Nome)'] || ""}</td>
-                    <td>${item['Solicitante (Telefone)'] || ""}</td>
-                    <td>${item['Logradouro'] || ""}</td>
-                    <td>${item['Bairro'] || ""}</td>
-                    <td>${item['Cidade'] || ""}</td>
-                    <td>${item['Ponto de Referência'] || ""}</td>
-                    <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Tipificação Geral'] || ""}</td>
-                    <td>${item['Estabelecimento'] || ""}</td>
-                    <td>${item['Solução da Ocorrência'] || ""}</td>
+                    <td>${item['SOLICITANTE'] || ""}</td>
+                    <td>${item['TELEFONE'] || ""}</td>
+                    <td>${item['LOGRADOURO'] || ""}</td>
+                    <td>${item['BAIRRO'] || ""}</td>
+                    <td>${item['CIDADE'] || ""}</td>
+                    <td>${item['PONTO REF.'] || ""}</td>
+                    <td>${item['LATITUDE'] || ""}</td>
+                    <td>${item['LONGITUDE'] || ""}</td>
+                    <td>${item['TIPIFICAÇÃO'] || ""}</td>
+                    <td>${item['ESTABELECIMENTO'] || ""}</td>
+                    <td>${item['SOLUÇÃO'] || ""}</td>
                     <td><button class="btn-editar">EDITAR</button></td>
                 `;
                 tr.querySelector('.btn-editar').onclick = () => preencherParaEditar(item);
@@ -300,17 +300,17 @@
         document.getElementById('NUMEROOCORRENCIA').value = item['Nº Ocorrência'];
         document.getElementById('data').value = converterDataParaInput(item['DATA']);
         document.getElementById('HORA').value = item['HORA'];
-        document.getElementById('SOLICITANTE').value = item['Solicitante (Nome)'];
-        document.getElementById('SOLICITANTETELEFONE').value = item['Solicitante (Telefone)'];
-        document.getElementById('LOGRADOURO').value = item['Logradouro'];
-        document.getElementById('BAIRRO').value = item['Bairro'];
-        document.getElementById('CIDADE').value = item['Cidade'];
-        document.getElementById('PONTO_REF').value = item['Ponto de Referência'];
-        document.getElementById('LATITUDE').value = item['Latitude (Abertura de Ocor.)'];
-        document.getElementById('LONGITUDE').value = item['Longitude (Abertura de Ocor.)'];
-        document.getElementById('TIPIFICAÇÃO GERAL').value = item['Tipificação Geral'];
-        document.getElementById('ESTABELECIMENTO').value = item['Estabelecimento'];
-        document.getElementById('SOLUÇÃO DA OCORRÊCIA').value = item['Solução da Ocorrência'];
+        document.getElementById('SOLICITANTE').value = item['SOLICITANTE'];
+        document.getElementById('TELEFONE').value = item['TELEFONE'];
+        document.getElementById('LOGRADOURO').value = item['LOGRADOURO'];
+        document.getElementById('BAIRRO').value = item['BAIRRO'];
+        document.getElementById('CIDADE').value = item['CIDADE'];
+        document.getElementById('PONTO_REF').value = item['PONTO REF.'];
+        document.getElementById('LATITUDE').value = item['LATITUDE'];
+        document.getElementById('LONGITUDE').value = item['LONGITUDE'];
+        document.getElementById('TIPIFICAÇÃO').value = item['TIPIFICAÇÃO'];
+        document.getElementById('ESTABELECIMENTO').value = item['ESTABELECIMENTO'];
+        document.getElementById('SOLUÇÃO').value = item['SOLUÇÃO'];
     };
 
     // Salvar
@@ -324,16 +324,16 @@
             DATA: document.getElementById('data').value,
             HORA: document.getElementById('HORA').value,
             SOLICITANTE_NOME: document.getElementById('SOLICITANTE').value,
-            SOLICITANTE_FONE: document.getElementById('SOLICITANTETELEFONE').value,
+            SOLICITANTE_FONE: document.getElementById('TELEFONE').value,
             LOGRADOURO: document.getElementById('LOGRADOURO').value,
             BAIRRO: document.getElementById('BAIRRO').value,
             CIDADE: document.getElementById('CIDADE').value,
             PONTO_REF: document.getElementById('PONTO_REF').value,
             LATITUDE: document.getElementById('LATITUDE').value,
             LONGITUDE: document.getElementById('LONGITUDE').value,
-            TIPIFICACAO: document.getElementById('TIPIFICAÇÃO GERAL').value,
+            TIPIFICACAO: document.getElementById('TIPIFICAÇÃO').value,
             ESTABELECIMENTO: document.getElementById('ESTABELECIMENTO').value,
-            SOLUCAO_FINAL: document.getElementById('SOLUÇÃO DA OCORRÊCIA').value
+            SOLUCAO_FINAL: document.getElementById('SOLUÇÃO').value
         };
 
         try {

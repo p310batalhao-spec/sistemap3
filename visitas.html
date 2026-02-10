@@ -120,61 +120,61 @@
             else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
         }
 
-function carregarVisitas() {
-        const inicio = document.getElementById('data-inicio').value;
-        const fim = document.getElementById('data-fim').value;
-        const statusMsg = document.getElementById('mensagem-status');
-        const container = document.getElementById('lista-visitas');
+        function carregarVisitas() {
+            const inicio = document.getElementById('data-inicio').value;
+            const fim = document.getElementById('data-fim').value;
+            const statusMsg = document.getElementById('mensagem-status');
+            const container = document.getElementById('lista-visitas');
 
-        if (!inicio || !fim) {
-            alert("Por favor, selecione o período inicial e final para análise.");
-            return;
-        }
+            if (!inicio || !fim) {
+                alert("Por favor, selecione o período inicial e final para análise.");
+                return;
+            }
 
-        statusMsg.style.display = 'block';
-        statusMsg.innerText = "🔄 Analisando inteligência criminal no período selecionado...";
-        container.innerHTML = "";
+            statusMsg.style.display = 'block';
+            statusMsg.innerText = "🔄 Analisando inteligência criminal no período selecionado...";
+            container.innerHTML = "";
 
-        fetch(`${URL_API}?inicio=${inicio}&fim=${fim}`)
-            .then(res => res.json())
-            .then(dados => {
-                statusMsg.style.display = 'none';
+            fetch(`${URL_API}?inicio=${inicio}&fim=${fim}`)
+                .then(res => res.json())
+                .then(dados => {
+                    statusMsg.style.display = 'none';
 
-                if (!dados || dados.length === 0) {
-                    container.innerHTML = `
+                    if (!dados || dados.length === 0) {
+                        container.innerHTML = `
                         <div style="text-align: center; padding: 30px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; margin: 20px;">
                             ⚠️ Nenhuma ocorrência relevante encontrada entre ${inicio.split('-').reverse().join('/')} e ${fim.split('-').reverse().join('/')}.
                         </div>`;
-                    return;
-                }
+                        return;
+                    }
 
-                dados.forEach(oc => {
-                    const card = document.createElement('div');
-                    card.className = 'card-visita';
-                    // IMPORTANTE: Exibimos oc.data diretamente como texto, sem converter para Date
-                    card.innerHTML = `
-                        <div class="info-lado-esquerdo">
-                            <span class="badge-alerta">⚠️ RISCO DE ESCALADA</span>
-                            <div class="cop-label">COP Nº ${oc.cop}</div>
-                            <p><strong>👤 SOLICITANTE:</strong> ${oc.solicitante}</p>
-                            <p><strong>📂 NATUREZA:</strong> ${oc.natureza}</p>
-                            <p><strong>📅 DATA:</strong> ${oc.data}</p>
-                            <p><strong>📍 LOCAL:</strong> ${oc.endereco}</p>
-                            <p><strong>📋 DESFECHO:</strong> ${oc.solucao}</p>
-                            <div class="detalhe-criminal">
-                                <strong>HISTÓRICO ANALISADO:</strong><br>
-                                ${oc.resumo}
+                    dados.forEach(oc => {
+                        const card = document.createElement('div');
+                        card.className = 'card-visita';
+                        // IMPORTANTE: Exibimos oc.data diretamente como texto, sem converter para Date
+                        card.innerHTML = `
+                            <div class="info-lado-esquerdo">
+                                <span class="badge-alerta">⚠️ RISCO DE ESCALADA</span>
+                                <div class="cop-label">COP Nº ${oc.cop}</div>
+                                <p><strong>👤 SOLICITANTE:</strong> ${oc.solicitante}</p>
+                                <p><strong>📂 NATUREZA:</strong> ${oc.natureza}</p>
+                                <p><strong>📅 DATA:</strong> ${oc.data}</p>
+                                <p><strong>📍 LOCAL:</strong> ${oc.logradouro}</p>
+                                <p><strong>📋 DESFECHO:</strong> ${oc.solucao}</p>
+                                <div class="detalhe-criminal">
+                                    <strong>HISTÓRICO ANALISADO:</strong><br>
+                                    ${oc.resumo}
+                                </div>
                             </div>
-                        </div>
                     `;
-                    container.appendChild(card);
+                        container.appendChild(card);
+                    });
+                })
+                .catch(err => {
+                    statusMsg.innerText = "❌ Erro ao conectar com o servidor.";
+                    console.error(err);
                 });
-            })
-            .catch(err => {
-                statusMsg.innerText = "❌ Erro ao conectar com o servidor.";
-                console.error(err);
-            });
-    }
+        }
         document.addEventListener('DOMContentLoaded', function () {
             checkLogin();
 

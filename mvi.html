@@ -149,8 +149,8 @@
                         <input type="text" name="SOLICITANTE" id="SOLICITANTE">
                     </div>
                     <div class="formulario">
-                        <p>SOLICITANTE (TELEFONE)</p>
-                        <input type="tel" name="SOLICITANTETELEFONE" id="SOLICITANTETELEFONE">
+                        <p>TELEFONE</p>
+                        <input type="tel" name="TELEFONE" id="TELEFONE">
                     </div>
                     <div class="formulario">
                         <p>SOLUÇÃO</p>
@@ -194,7 +194,7 @@
                     </div>
                     <div class="formulario">
                         <p>TIPIFICAÇÃO GERAL</p>
-                        <select name="TIPIFICAÇÃO GERAL" id="TIPIFICAÇÃO GERAL">
+                        <select name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
                             <option value="">Selecione a Tipificação</option>
                             <option value="HOMICÍDIO">HOMICÍDIO</option>
                             <option value="FEMINICÍDIO">FEMINICÍDIO</option>
@@ -209,8 +209,8 @@
                         <input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
                     </div>
                     <div class="formulario">
-                        <p>SOLUÇÃO DA OCORRÊNCIA</p>
-                        <input type="text" name="SOLUÇÃO DA OCORRÊNCIA" id="SOLUÇÃO DA OCORRÊCIA">
+                        <p>SOLUÇÃO</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
                     </div>
                 </div><!--termina formulario-scroll-->
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -264,17 +264,17 @@
                     <td>${item['Nº Ocorrência'] || ""}</td>
                     <td>${item['DATA'] || ""}</td>
                     <td>${item['HORA'] || ""}</td>
-                    <td>${item['Solicitante (Nome)'] || ""}</td>
-                    <td>${item['Solicitante (Telefone)'] || ""}</td>
-                    <td>${item['Logradouro'] || ""}</td>
-                    <td>${item['Bairro'] || ""}</td>
-                    <td>${item['Cidade'] || ""}</td>
-                    <td>${item['Ponto de Referência'] || ""}</td>
-                    <td>${item['Latitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Longitude (Abertura de Ocor.)'] || ""}</td>
-                    <td>${item['Tipificação Geral'] || ""}</td>
-                    <td>${item['Estabelecimento'] || ""}</td>
-                    <td>${item['Solução da Ocorrência'] || ""}</td>
+                    <td>${item['SOLICITANTE'] || ""}</td>
+                    <td>${item['TELEFONE'] || ""}</td>
+                    <td>${item['LOGRADOURO'] || ""}</td>
+                    <td>${item['BAIRRO'] || ""}</td>
+                    <td>${item['CIDADE'] || ""}</td>
+                    <td>${item['PONTO_REF'] || ""}</td>
+                    <td>${item['Latitude'] || ""}</td>
+                    <td>${item['Longitude'] || ""}</td>
+                    <td>${item['TIPIFICAÇÃO'] || ""}</td>
+                    <td>${item['ESTABELECIMENTO'] || ""}</td>
+                    <td>${item['SOLUÇÃO'] || ""}</td>
                     <td id="acao-${item['Nº Ocorrência']}"></td>
                 `;
                 
@@ -312,17 +312,17 @@
         preencher('form-id', item['Nº Ocorrência']);
         preencher('DATA', converterDataParaInput(item['DATA']));
         preencher('HORA', item['HORA']);
-        preencher('SOLICITANTE_NOME', item['Solicitante (Nome)']);
-        preencher('SOLICITANTE_FONE', item['Solicitante (Telefone)']);
-        preencher('LOGRADOURO', item['Logradouro']);
-        preencher('BAIRRO', item['Bairro']);
-        preencher('CIDADE', item['Cidade']);
-        preencher('PONTO_REF', item['Ponto de Referência']);
-        preencher('LATITUDE', item['Latitude (Abertura de Ocor.)']);
-        preencher('LONGITUDE', item['Longitude (Abertura de Ocor.)']);
-        preencher('TIPIFICACAO_GERAL', item['Tipificação Geral']);
-        preencher('ESTABELECIMENTO', item['Estabelecimento']);
-        preencher('SOLUCAO_OCORRENCIA', item['Solução da Ocorrência']);
+        preencher('SOLICITANTE', item['SOLICITANTE']);
+        preencher('TELEFONE', item['TELEFONE']);
+        preencher('LOGRADOURO', item['LOGRADOURO']);
+        preencher('BAIRRO', item['BAIRRO']);
+        preencher('CIDADE', item['CIDADE']);
+        preencher('PONTO_REF', item['PONTO_REF']);
+        preencher('LATITUDE', item['Latitude']);
+        preencher('LONGITUDE', item['Longitude']);
+        preencher('TIPIFICAÇÃO', item['TIPIFICAÇÃO']);
+        preencher('ESTABELECIMENTO', item['ESTABELECIMENTO']);
+        preencher('SOLUÇÃPO', item['SOLUÇÃO']);
     };
 
     // --- SALVAR DADOS ---
@@ -337,17 +337,17 @@
             ID_OCORRENCIA: document.getElementById('form-id') ? document.getElementById('form-id').value : "",
             DATA: formData.get('DATA'),
             HORA: formData.get('HORA'),
-            SOLICITANTE_NOME: formData.get('SOLICITANTE_NOME'),
-            SOLICITANTE_FONE: formData.get('SOLICITANTE_FONE'),
+            SOLICITANTE_NOME: formData.get('SOLICITANTE'),
+            SOLICITANTE_FONE: formData.get('TELEFONE'),
             LOGRADOURO: formData.get('LOGRADOURO'),
             BAIRRO: formData.get('BAIRRO'),
             CIDADE: formData.get('CIDADE'),
             PONTO_REF: formData.get('PONTO_REF'),
             LATITUDE: formData.get('LATITUDE'),
             LONGITUDE: formData.get('LONGITUDE'),
-            TIPIFICACAO_GERAL: formData.get('TIPIFICACAO_GERAL'),
+            TIPIFICACAO_GERAL: formData.get('TIPIFICAÇÃO'),
             ESTABELECIMENTO: formData.get('ESTABELECIMENTO'),
-            SOLUCAO_OCORRENCIA: formData.get('SOLUCAO_OCORRENCIA')
+            SOLUCAO_OCORRENCIA: formData.get('SOLUÇÃPO')
         };
 
         try {
