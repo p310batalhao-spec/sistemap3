@@ -103,11 +103,11 @@
                     <p id="numeroviolenciadomestica" class="numero">--</p>
                 </a> <!--termina violencia domestica-->
 
-                <div class="btn">
+                <a href="armas.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/gun.png" alt="gun" />
-                    <p>Armas Apreenndidas</p>
+                    <p>Armas Apreendidas</p>
                     <p id="armasapreendidas" class="numero">--</p>
-                </div> <!--termina armas apreendidas-->
+                </a> <!--termina armas apreendidas-->
 
                 <a href="drogas.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/marijuana-leaf.png"
@@ -144,7 +144,8 @@
                     <p id="numeroperturbacaodosossego" class="numero">--</p>
                 </a><!--termina perturbacao-->
                 <a href="visitas.html" class="btn">
-                    <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png" alt="police-car"/>
+                    <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png"
+                        alt="police-car" />
                     <p>Visitas Orientativas</p>
                     <p id="numerovistiasorientativas" class="numero">--</p>
                 </a><!--termina visitas-->
@@ -176,6 +177,8 @@
         const WEBAPP_URL_PERTURBACAO = "https://script.google.com/macros/s/AKfycbwpkufWkoQ483xA3t8UGgf-q7Je3r3pXrRMcN9v_3RZQA9xjnEaocDa-9jsTu_c7P37/exec";
         const WEBAPP_URL_CVP = 'https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec';
         const WEBAPP_URL_VD = 'https://script.google.com/macros/s/AKfycbyyqS93ST2mawBpEEjmbgMHYBhh7nMJXv8_yTelXtNxZ2BhS03KfAlBGqpTjXCp3scbQQ/exec';
+        const WEBAPP_URL_VISITAS = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
+        const WEBAPP_URL_ARMAS = 'https://script.google.com/macros/s/AKfycbwYFUIiT7n0SCjK2kUY_6a68XC_rcvWkuPOkf1uDcvfKEN-cMyHw0TcovSoBv81E3So/exec';
         const WEBAPP_URL_MANDADOS = 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec'; // Use a URL da nova implantação
         // --- FUNÇÕES DE UTILIDADE ---
 
@@ -330,6 +333,12 @@
 
             // 9. MANDADOS JUDICIAIS
             updateCount(WEBAPP_URL_MANDADOS, 'countMandados', 'numeromandados');
+
+            // 10. VISITAS ORIENTATIVAS
+            updateCount(WEBAPP_URL_VISITAS, 'countVisitas', 'numerovistiasorientativas');
+
+            // 11. ARMAS APREENDIDAS
+            updateCount(WEBAPP_URL_ARMAS, 'countArmas', 'armasapreendidas');
 
             // Inicia monitoramento de notificações
             setInterval(checkNewNotifications, 60000);
