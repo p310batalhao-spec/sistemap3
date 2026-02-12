@@ -79,7 +79,8 @@
                         Adicionar Nova Visita
                     </button>
                     <a id="btn-visitas" href="gerarvisitas.html">
-                        <img width="20" height="20" src="https://img.icons8.com/dotty/80/fine-print.png" alt="fine-print"/>
+                        <img width="20" height="20" src="https://img.icons8.com/dotty/80/fine-print.png"
+                            alt="fine-print" />
                         Gerar Visitas Orientativas
                     </a>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
@@ -255,9 +256,9 @@
         const API_URL = "https://script.google.com/macros/s/AKfycbzQUm5MKNwgJq-f5vEpPLreR2qlv58z5m7j8N0beFsK6CMMdCtprMGZXgWcirOwcHGHcA/exec";
 
         // Captura de elementos com segurança
-        const sidebar = document.getElementById('sidebar');
-        const form = document.getElementById('form-material');
-        const overlay = document.getElementById('overlay');
+        const sidebar = document.getElementById('form-materiais'); // Seu form É a sidebar
+        const form = document.getElementById('form-materiais');
+        const overlay = document.getElementById('overlay-sidebar'); // O ID correto é 'overlay-sidebar'
 
         // Função auxiliar para evitar o erro de "null"
         const safeSetVal = (id, val) => {
@@ -328,9 +329,10 @@
         }
 
         window.preencherParaEditar = (item) => {
-            if (form) form.reset();
-            if (sidebar) sidebar.classList.add('active');
-            if (overlay) overlay.style.display = 'block';
+            form.reset();
+            sidebar.classList.add('active'); // Agora vai encontrar o elemento
+            overlay.classList.add('active'); // Adiciona active ao overlay para ele aparecer
+            overlay.style.display = 'block';
 
             // Preenchimento baseado na ordem exata das suas colunas
             safeSetVal('form-id', item['Nº OCORRENCIA']);
@@ -354,9 +356,10 @@
         };
 
         function fecharSidebar() {
-            if (sidebar) sidebar.classList.remove('active');
-            if (overlay) overlay.style.display = 'none';
-            if (form) form.reset();
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+            overlay.style.display = 'none';
+            form.reset();
         }
 
         // --- EVENTOS (DOM CONTENT LOADED) ---
@@ -369,10 +372,11 @@
             const btnAdd = document.getElementById('btn-adicionar-cadastro');
             if (btnAdd) {
                 btnAdd.addEventListener('click', () => {
-                    if (form) form.reset();
+                    form.reset();
                     safeSetVal('form-id', "");
-                    if (sidebar) sidebar.classList.add('active');
-                    if (overlay) overlay.style.display = 'block';
+                    sidebar.classList.add('active');
+                    overlay.classList.add('active');
+                    overlay.style.display = 'block';
                 });
             }
 
