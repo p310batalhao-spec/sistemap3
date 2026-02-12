@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Visitas</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="stylesvisitas.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="brasao.png" alt="brasão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="visitas.html" class="active">
+                <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png"
+                    alt="police-car" />
+                <p>Visitas Orientativas</p>
+            </a><!--termina visitas-->
+            <a href="materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+            <a href="solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <main>
+            <div class="saudacao">
+                <h2>Cadastro de Visitas Orientativas</h2>
+                <p>Visitas Orientativas, Visitas Comunitárias (Base do Sossego), Maria da Penha e Interior Seguro.</p>
+            </div>
+            <div class="TabelaEventos">
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Nova Visita
+                    </button>
+                    <a id="btn-visitas" href="gerarvisitas.html">
+                        <img width="20" height="20" src="https://img.icons8.com/dotty/80/fine-print.png" alt="fine-print"/>
+                        Gerar Visitas Orientativas
+                    </a>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="DATA">DATA</option>
+                        <option value="SOLICITANTE">SOLICITANTE</option>
+                        <option value="CIDADE">CIDADE</option>
+                        <option value="TIPIFICAÇÃO">TIPIFICAÇÃO</option>
+                        <option value="SOLUÇÃO">SOLUÇÃO</option>
+                        <option value="Nº OCORRÊNCIA">Nº OCORRÊNCIA</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                </div>
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>Nº OCORRÊNCIA</th>
+                                <th>DATA</th>
+                                <th>HORA</th>
+                                <th>SOLICITANTE</th>
+                                <th>TELEFONE</th>
+                                <th>LOGRADOURO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>PONTO DE REF.</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ESTABELECIMENTO</th>
+                                <th>SOLUÇÃO</th>
+                                <th>ATENDIMENTO INICIAL</th>
+                                <th>TEXTO DO DESPACHANTE</th>
+                                <th>NOME DO AUTOR</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID_OCORRENCIA">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>Nº OCORRÊNCIA</p>
+                        <input type="text" name="NUMEROOCORRENCIA" id="NUMEROOCORRENCIA">
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="data" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p>
+                        <input type="time" name="HORA" id="HORA">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE</p>
+                        <input type="text" name="SOLICITANTE" id="SOLICITANTE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE (TELEFONE)</p>
+                        <input type="tel" name="TELEFONE" id="TELEFONE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>LOGRADOURO</p>
+                        <input type="text" name="LOGRADOURO" id="LOGRADOURO">
+                    </div>
+                    <div class="formulario">
+                        <p>BAIRRO</p>
+                        <input type="text" name="BAIRRO" id="BAIRRO">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p>
+                        <select name="CIDADE" id="CIDADE">
+                            <option value="">Selecione a Cidade</option>
+                            <option value="Belém">Belém</option>
+                            <option value="Cacimbinhas">Cacimbinhas</option>
+                            <option value="Estrela de Alagoas">Estrela de Alagoas</option>
+                            <option value="Igaci">Igaci</option>
+                            <option value="Mar Vermelho">Mar Vermelho</option>
+                            <option value="Maribondo">Maribondo</option>
+                            <option value="Paulo Jacinto">Paulo Jacinto</option>
+                            <option value="Palmeira dos Índios">Palmeira dos Índios</option>
+                            <option value="Quebrangulo">Quebrangulo</option>
+                            <option value="Tanque D'arca">Tanque D'Arca</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO DE REFERENCIA</p>
+                        <input type="text" name="PONTO_REF" id="PONTO_REF">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE</p>
+                        <input type="text" name="LATITUDE" id="LATITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>LONGITUDE</p>
+                        <input type="text" name="LONGITUDE" id="LONGITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO GERAL</p>
+                        <select name="TIPIFICAÇÃO" id="TIPIFICACAO_GERAL">
+                            <option value="">Selecione a Tipificação</option>
+                            <option value="AMEAÇA">AMEAÇA</option>
+                            <option value="CALÚNIA">CALÚNIA</option>
+                            <option value="DANO">DANO</option>
+                            <option value="DESCUMPRIMENTO DE MEDIDA PROTETIVA">DESCUMPRIMENTO DE MEDIDA PROTETIVA
+                            </option>
+                            <option value="DIFAMAÇÃO">DIFAMAÇÃO</option>
+                            <option value="INJÚRIA">INJÚRIA</option>
+                            <option value="LESÃO CORPORAL">LESÃO CORPORAL</option>
+                            <option value="PERSEGUIÇÃO">PERSEGUIÇÃO</option>
+                            <option value="VIOLÊNCIA CONTRA A MULHER">VIOLÊNCIA CONTRA A MULHER</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>ESTABELECIMENTO</p>
+                        <input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>ATENDIMENTO INICIAL</p>
+                        <input type="text" name="ATENDIMENTO INICIAL" id="ATENDIMENTO INICIAL">
+                    </div>
+                    <div class="formulario">
+                        <p>TEXTO DO DESPACHANTE</p>
+                        <input type="text" name="TEXTO DO DESPACHANTE" id="TEXTO DO DESPACHANTE">
+                    </div>
+                    <div class="formulario">
+                        <p>NOME DO AUTOR</p>
+                        <input type="text" name="NOME_AUTOR" id="NOME_AUTOR">
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
+        </main> <!--termina main-->
+    </section> <!--termina pagecomplete-->
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script>
+        const API_URL = "https://script.google.com/macros/s/AKfycbzQUm5MKNwgJq-f5vEpPLreR2qlv58z5m7j8N0beFsK6CMMdCtprMGZXgWcirOwcHGHcA/exec";
+
+        // Captura de elementos com segurança
+        const sidebar = document.getElementById('sidebar');
+        const form = document.getElementById('form-material');
+        const overlay = document.getElementById('overlay');
+
+        // Função auxiliar para evitar o erro de "null"
+        const safeSetVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || "";
+        };
+
+        // --- RELÓGIO E LOGIN ---
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            const rel = document.getElementById('relogio');
+            if (rel) rel.innerHTML = `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+        }
+        setInterval(atualizarRelogio, 1000);
+
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const info = document.getElementById('user-info');
+            if (!graduacao || !nomeGuerra) window.location.href = 'login.html';
+            else if (info) info.innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        }
+
+        // --- CRUD ---
+        async function carregarDados() {
+            const mensagem = document.getElementById('mensagem-carregamento');
+            try {
+                const res = await fetch(`${API_URL}?action=read`);
+                const dados = await res.json();
+                const tbody = document.querySelector('#tabela-materiais tbody');
+
+                if (!tbody) return;
+                tbody.innerHTML = "";
+
+                dados.forEach(item => {
+                    const tr = document.createElement('tr');
+                    // Criamos exatamente 21 colunas para alinhar com o cabeçalho (thead)
+                    tr.innerHTML = `
+                        <td>${item['Nº OCORRENCIA'] || ""}</td>
+                        <td>${item['DATA'] || ""}</td>
+                        <td>${item['HORA'] || ""}</td>
+                        <td>${item['SOLICITANTE'] || ""}</td>
+                        <td>${item['TELEFONE'] || ""}</td>
+                        <td>${item['LOGRADOURO'] || ""}</td>
+                        <td>${item['BAIRRO'] || ""}</td>
+                        <td>${item['CIDADE'] || ""}</td>
+                        <td>${item['PONTO DE REF'] || ""}</td>
+                        <td>${item['LATITUDE'] || ""}</td>
+                        <td>${item['LONGITUDE'] || ""}</td>
+                        <td>${item['TIPIFICAÇÃO'] || ""}</td>
+                        <td>${item['ESTABELECIMENTO'] || ""}</td>
+                        <td>${item['SOLUÇÃO'] || ""}</td>
+                        <td>${item['ATENDIMENTO INICIAL'] || ""}</td>
+                        <td>${item['TEXTO DO DESPACHANTE'] || ""}</td>
+                        <td>${item['NOME DO AUTOR'] || ""}</td>
+                        <td><button class="btn-editar">EDITAR</button></td>
+            `;
+                    tr.querySelector('.btn-editar').onclick = () => preencherParaEditar(item);
+                    tbody.appendChild(tr);
+                });
+
+                if (mensagem) mensagem.style.display = 'none';
+            } catch (e) {
+                console.error("Erro ao carregar dados:", e);
+                if (mensagem) mensagem.innerText = "Erro ao carregar dados.";
+            }
+        }
+
+        window.preencherParaEditar = (item) => {
+            if (form) form.reset();
+            if (sidebar) sidebar.classList.add('active');
+            if (overlay) overlay.style.display = 'block';
+
+            // Preenchimento baseado na ordem exata das suas colunas
+            safeSetVal('form-id', item['Nº OCORRENCIA']);
+            safeSetVal('NUMEROOCORRENCIA', item['Nº OCORRENCIA']);
+            safeSetVal('data', converterDataParaInput(item['DATA']));
+            safeSetVal('HORA', item['HORA']);
+            safeSetVal('SOLICITANTE', item['SOLICITANTE']);
+            safeSetVal('TELEFONE', item['TELEFONE']);
+            safeSetVal('LOGRADOURO', item['LOGRADOURO']);
+            safeSetVal('BAIRRO', item['BAIRRO']);
+            safeSetVal('CIDADE', item['CIDADE']);
+            safeSetVal('PONTO_REF', item['PONTO DE REF']);
+            safeSetVal('LATITUDE', item['LATITUDE']);
+            safeSetVal('LONGITUDE', item['LONGITUDE']);
+            safeSetVal('TIPIFICACAO', item['TIPIFICAÇÃO']);
+            safeSetVal('ESTABELECIMENTO', item['ESTABELECIMENTO']);
+            safeSetVal('SOLUÇÃO', item['SOLUÇÃO']);
+            safeSetVal('ATENDIMENTO_INICIAL', item['ATENDIMENTO INICIAL']);
+            safeSetVal('TEXTO_DESPACHANTE', item['TEXTO DO DESPACHANTE']);
+            safeSetVal('NOME_AUTOR', item['NOME DO AUTOR']);
+        };
+
+        function fecharSidebar() {
+            if (sidebar) sidebar.classList.remove('active');
+            if (overlay) overlay.style.display = 'none';
+            if (form) form.reset();
+        }
+
+        // --- EVENTOS (DOM CONTENT LOADED) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            checkLogin();
+            atualizarRelogio();
+            carregarDados();
+
+            // Só adiciona os eventos se os elementos existirem
+            const btnAdd = document.getElementById('btn-adicionar-cadastro');
+            if (btnAdd) {
+                btnAdd.addEventListener('click', () => {
+                    if (form) form.reset();
+                    safeSetVal('form-id', "");
+                    if (sidebar) sidebar.classList.add('active');
+                    if (overlay) overlay.style.display = 'block';
+                });
+            }
+
+            const btnClose = document.getElementById('btn-fechar-sidebar');
+            if (btnClose) btnClose.addEventListener('click', fecharSidebar);
+
+            if (overlay) overlay.addEventListener('click', fecharSidebar);
+
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', () => {
+                    localStorage.clear();
+                    window.location.href = 'login.html';
+                });
+            }
+
+            if (form) {
+                form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const btnSalvar = document.getElementById('btn-salvar-form');
+                    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.innerText = "Salvando..."; }
+
+                    const payload = {
+                        action: document.getElementById('form-id').value ? "update" : "create",
+                        "Nº OCORRENCIA": document.getElementById('NUMEROOCORRENCIA').value,
+                        "DATA": document.getElementById('data').value,
+                        "HORA": document.getElementById('HORA').value,
+                        "SOLICITANTE": document.getElementById('SOLICITANTE').value,
+                        "TELEFONE": document.getElementById('TELEFONE').value,
+                        "LOGRADOURO": document.getElementById('LOGRADOURO').value,
+                        "BAIRRO": document.getElementById('BAIRRO').value,
+                        "CIDADE": document.getElementById('CIDADE').value,
+                        "PONTO DE REF": document.getElementById('PONTO_REF').value,
+                        "LATITUDE": document.getElementById('LATITUDE').value,
+                        "LONGITUDE": document.getElementById('LONGITUDE').value,
+                        "TIPIFICAÇÃO": document.getElementById('TIPIFICACAO').value,
+                        "ESTABELECIMENTO": document.getElementById('ESTABELECIMENTO').value,
+                        "SOLUÇÃO": document.getElementById('SOLUÇÃO').value,
+                        "ATENDIMENTO INICIAL": document.getElementById('ATENDIMENTO_INICIAL').value,
+                        "TEXTO DO DESPACHANTE": document.getElementById('TEXTO_DESPACHANTE').value,
+                        "NOME DO AUTOR": document.getElementById('NOME_AUTOR').value
+                    };
+
+                    try {
+                        const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify(payload) });
+                        const res = await response.json();
+                        if (res.status === 'success') {
+                            alert("Salvo!");
+                            fecharSidebar();
+                            carregarDados();
+                        }
+                    } catch (err) { alert("Erro ao salvar."); }
+                    finally {
+                        if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.innerText = "SALVAR DADOS"; }
+                    }
+                });
+            }
+        });
+
+        function converterDataParaInput(d) {
+            if (!d || !d.includes('/')) return d;
+            const p = d.split('/');
+            return `${p[2]}-${p[1]}-${p[0]}`;
+        }
+    </script>
+</body>
+
+</html>
