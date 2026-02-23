@@ -227,11 +227,11 @@
                     </div>
                     <div class="formulario">
                         <p>ATENDIMENTO INICIAL</p>
-                        <input type="text" name="ATENDIMENTO INICIAL" id="ATENDIMENTO INICIAL">
+                        <input type="text" name="ATENDIMENTO_INICIAL" id="ATENDIMENTO_INICIAL">
                     </div>
                     <div class="formulario">
                         <p>TEXTO DO DESPACHANTE</p>
-                        <input type="text" name="TEXTO DO DESPACHANTE" id="TEXTO DO DESPACHANTE">
+                        <input type="text" name="TEXTO_DESPACHANTE" id="TEXTO_DESPACHANTE">
                     </div>
                     <div class="formulario">
                         <p>NOME DO AUTOR</p>
@@ -384,8 +384,8 @@
                 <td style="font-weight:bold; color:purple;">${doc.TIPIFICAÇÃO || doc.TIPIFICACAO || ""}</td>
                 <td>${doc.ESTABELECIMENTO || ""}</td>
                 <td>${doc.SOLUÇÃO || doc.SOLUCAO || doc['SOLUÇÃO DA OCORRÊNCIA'] || ""}</td>
-                <td style="font-weight:bold; color:BLUE;">${doc['ATENDIMENTO INICIAL'] || ""}</td>
-                <td>${doc['TEXTO DO DESPACHANTE'] || ""}</td>
+                <td style="font-weight:bold; color:BLUE;">${doc['ATENDIMENTO_INICIAL'] || ""}</td>
+                <td>${doc['TEXTO_DESPACHANTE'] || ""}</td>
                 <td>${doc.NOME_AUTOR || ""}</td>
                 <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
             `;
@@ -426,6 +426,9 @@
             preencher('TIPIFICAÇÃO GERAL', doc.TIPIFICAÇÃO || doc.TIPIFICACAO);
             preencher('ESTABELECIMENTO', doc.ESTABELECIMENTO);
             preencher('SOLUÇÃO DA OCORRÊCIA', doc['SOLUÇÃO DA OCORRÊNCIA'] || doc.SOLUCAO || doc.SOLUÇÃO);
+            preencher('ATENDIMENTO_INICIAL', doc['ATENDIMENTO_INICIAL']);
+            preencher('TEXTO_DESPACHANTE', doc['TEXTO_DESPACHANTE']);
+            preencher('NOME_AUTOR', doc.NOME_AUTOR);
         };
 
         //PARA SALVAR OS DADOS EDITADOS
