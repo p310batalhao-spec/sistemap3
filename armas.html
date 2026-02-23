@@ -101,22 +101,15 @@
                     <table id="tabela-materiais">
                         <thead>
                             <tr>
-                                <th>Nº OCORRÊNCIA</th>
+                                <th>BOLETIM</th>
                                 <th>DATA</th>
                                 <th>HORA</th>
-                                <th>SOLICITANTE</th>
-                                <th>TELEFONE</th>
-                                <th>LOGRADOURO</th>
                                 <th>BAIRRO</th>
                                 <th>CIDADE</th>
-                                <th>PONTO DE REF.</th>
-                                <th>LATITUDE</th>
-                                <th>LONGITUDE</th>
-                                <th>TIPIFICAÇÃO</th>
-                                <th>ESTABELECIMENTO</th>
-                                <th>SOLUÇÃO</th>
-                                <th>ATENDIMENTO INICIAL</th>
-                                <th>TEXTO DO DESPACHANTE</th>
+                                <th>TIPO DE ARMA</th>
+                                <th>CALIBRE</th>
+                                <th>MARCA</th>
+                                <th>SÉRIE</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
@@ -135,8 +128,8 @@
 
                 <div class="formulario-scroll">
                     <div class="formulario">
-                        <p>Nº OCORRÊNCIA</p>
-                        <input type="text" name="NUMEROOCORRENCIA" id="NUMEROOCORRENCIA">
+                        <p>BOLETIM</p>
+                        <input type="text" name="BOLETIM" id="BOLETIM">
                     </div>
                     <div class="formulario">
                         <p>DATA</p>
@@ -145,22 +138,6 @@
                     <div class="formulario">
                         <p>HORA</p>
                         <input type="time" name="HORA" id="HORA">
-                    </div>
-                    <div class="formulario">
-                        <p>SOLICITANTE</p>
-                        <input type="text" name="SOLICITANTE" id="SOLICITANTE">
-                    </div>
-                    <div class="formulario">
-                        <p>SOLICITANTE (TELEFONE)</p>
-                        <input type="tel" name="TELEFONE" id="TELEFONE">
-                    </div>
-                    <div class="formulario">
-                        <p>SOLUÇÃO</p>
-                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
-                    </div>
-                    <div class="formulario">
-                        <p>LOGRADOURO</p>
-                        <input type="text" name="LOGRADOURO" id="LOGRADOURO">
                     </div>
                     <div class="formulario">
                         <p>BAIRRO</p>
@@ -183,48 +160,20 @@
                         </select>
                     </div>
                     <div class="formulario">
-                        <p>PONTO DE REFERENCIA</p>
-                        <input type="text" name="PONTO_REF" id="PONTO_REF">
+                        <p>TIPO DE ARMA</p>
+                        <input type="text" name="TIPO_ARMA" id="TIPO_ARMA">
                     </div>
                     <div class="formulario">
-                        <p>LATITUDE</p>
-                        <input type="text" name="LATITUDE" id="LATITUDE">
+                        <p>CALIBRE</p>
+                        <input type="text" name="CALIBRE" id="CALIBRE">
                     </div>
                     <div class="formulario">
-                        <p>LONGITUDE</p>
-                        <input type="text" name="LONGITUDE" id="LONGITUDE">
+                        <p>MARCA</p>
+                        <input type="text" name="MARCA" id="MARCA">
                     </div>
                     <div class="formulario">
-                        <p>TIPIFICAÇÃO GERAL</p>
-                        <select name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
-                            <option value="">Selecione a Tipificação</option>
-                            <option value="AMEAÇA">AMEAÇA</option>
-                            <option value="CALÚNIA">CALÚNIA</option>
-                            <option value="DANO">DANO</option>
-                            <option value="DESCUMPRIMENTO DE MEDIDA PROTETIVA">DESCUMPRIMENTO DE MEDIDA PROTETIVA
-                            </option>
-                            <option value="DIFAMAÇÃO">DIFAMAÇÃO</option>
-                            <option value="INJÚRIA">INJÚRIA</option>
-                            <option value="LESÃO CORPORAL">LESÃO CORPORAL</option>
-                            <option value="PERSEGUIÇÃO">PERSEGUIÇÃO</option>
-                            <option value="VIOLÊNCIA CONTRA A MULHER">VIOLÊNCIA CONTRA A MULHER</option>
-                        </select>
-                    </div>
-                    <div class="formulario">
-                        <p>ESTABELECIMENTO</p>
-                        <input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
-                    </div>
-                    <div class="formulario">
-                        <p>SOLUÇÃO</p>
-                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
-                    </div>
-                    <div class="formulario">
-                        <p>ATENDIMENTO INICIAL</p>
-                        <input type="text" name="ATENDIMENTO INICIAL" id="ATENDIMENTO INICIAL">
-                    </div>
-                    <div class="formulario">
-                        <p>TEXTO DO DESPACHANTE</p>
-                        <input type="text" name="TEXTO DO DESPACHANTE" id="TEXTO DO DESPACHANTE">
+                        <p>SÉRIE</p>
+                        <input type="text" name="SERIE" id="SERIE">
                     </div>
                 </div><!--termina formulario-scroll-->
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -242,7 +191,8 @@
 </footer>
 <script>
     // URL da sua implantação do Apps Script (Mantenha a sua URL atual)
-    const API_URL = "https://script.google.com/macros/s/AKfycbwYFUIiT7n0SCjK2kUY_6a68XC_rcvWkuPOkf1uDcvfKEN-cMyHw0TcovSoBv81E3So/exec";
+    const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/"; // Substitua pela sua URL do RTDB
+    const NODE_NAME = "arma";
 
     const sidebar = document.querySelector('.sidbarform');
     const overlay = document.getElementById('overlay-sidebar');
@@ -308,115 +258,127 @@
 
     // --- CARREGAR DADOS (MANTENDO A ORDEM DA PLANILHA) ---
     async function carregarDados() {
-        const msgCarregamento = document.getElementById('mensagem-carregamento');
         try {
-            // Certifique-se de que API_URL é a URL da NOVA implantação
-            const res = await fetch(API_URL);
+            const res = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
+            const data = await res.json();
 
-            if (!res.ok) throw new Error('Falha na resposta do servidor');
-
-            const dados = await res.json();
             const tbody = document.querySelector('#tabela-materiais tbody');
             tbody.innerHTML = "";
 
-            dados.forEach(item => {
+            if (!data) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;">Nenhum registro de armas encontrado.</td></tr>`;
+                if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
+                return;
+            }
+
+            // Converter objeto em Array e ordenar por data (mais recente primeiro)
+            let resultados = Object.keys(data).map(id => ({
+                id: id,
+                ...data[id]
+            }));
+
+            resultados.sort((a, b) => {
+                const dataA = new Date((a.DATA || "") + 'T' + (a.HORA || '00:00'));
+                const dataB = new Date((b.DATA || "") + 'T' + (b.HORA || '00:00'));
+                return dataB - dataA;
+            });
+
+            resultados.forEach(doc => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                <td>${item['Nº OCORRENCIA'] || item['Nº Ocorrência'] || ""}</td>
-                <td>${item['DATA'] || ""}</td>
-                <td>${item['HORA'] || ""}</td>
-                <td>${item['SOLICITANTE'] || ""}</td>
-                <td>${item['TELEFONE'] || ""}</td>
-                <td>${item['LOGRADOURO'] || ""}</td>
-                <td>${item['BAIRRO'] || ""}</td>
-                <td>${item['CIDADE'] || ""}</td>
-                <td>${item['PONTO DE REF.'] || ""}</td>
-                <td>${item['LATITUDE'] || ""}</td>
-                <td>${item['LONGITUDE'] || ""}</td>
-                <td>${item['TIPIFICAÇÃO'] || ""}</td>
-                <td>${item['ESTABELECIMENTO'] || ""}</td>
-                <td>${item['SOLUÇÃO'] || ""}</td>
-                <td>${item['ATENDIMENTO INICIAL'] || ""}</td>
-                <td>${item['TEXTO DO DESPACHANTE'] || ""}</td>
-                <td><button class="btn-editar">EDITAR</button></td>
+                <td>${doc.BOLETIM || ""}</td>
+                <td>${doc.DATA || ""}</td>
+                <td>${doc.HORA || ""}</td>
+                <td>${doc.BAIRRO || ""}</td>
+                <td>${doc.CIDADE || ""}</td>
+                <td>${doc.TIPO_ARMA || ""}</td>
+                <td>${doc.CALIBRE || ""}</td>
+                <td>${doc.MARCA || ""}</td>
+                <td>${doc.SERIE || ""}</td>
+                <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
             `;
-                tr.querySelector('.btn-editar').onclick = () => preencherParaEditar(item);
                 tbody.appendChild(tr);
             });
 
-            if (msgCarregamento) msgCarregamento.style.display = 'none';
-        } catch (e) {
-            console.error("Erro ao carregar dados:", e);
-            if (msgCarregamento) msgCarregamento.innerText = "Erro de conexão (CORS/API). Verifique a URL.";
+            if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
+
+        } catch (err) {
+            console.error("Erro ao carregar armas do RTDB:", err);
         }
     }
 
     // --- PREENCHER SIDEBAR PARA EDIÇÃO ---
-    window.preencherParaEditar = (item) => {
+    window.preencherParaEditar = (doc) => {
         sidebar.classList.add('active');
         overlay.style.display = 'block';
+        document.getElementById('form-id').value = doc.id;
 
-        document.getElementById('form-id').value = item['Nº Ocorrência'];
-        document.getElementById('NUMEROOCORRENCIA').value = item['Nº Ocorrência'];
-        document.getElementById('data').value = converterDataParaInput(item['DATA']);
-        document.getElementById('HORA').value = item['HORA'];
-        document.getElementById('SOLICITANTE').value = item['SOLICITANTE'];
-        document.getElementById('TELEFONE').value = item['TELEFONE'];
-        document.getElementById('LOGRADOURO').value = item['LOGRADOURO'];
-        document.getElementById('BAIRRO').value = item['BAIRRO'];
-        document.getElementById('CIDADE').value = item['CIDADE'];
-        document.getElementById('PONTO REF.').value = item['PONTO DE REF.'];
-        document.getElementById('LATITUDE').value = item['LATITUDE'];
-        document.getElementById('LONGITUDE').value = item['LONGITUDE'];
-        document.getElementById('TIPIFICAÇÃO').value = item['TIPIFICAÇÃO'];
-        document.getElementById('ESTABELECIMENTO').value = item['ESTABELECIMENTO'];
-        document.getElementById('SOLUÇÃO').value = item['SOLUÇÃO'];
-        document.getElementById('ATENDIMENTO INICIAL').value = item['ATENDIMENTO INICIAL'];
-        document.getElementById('TEXTO DO DESPACHANTE').value = item['TEXTO DO DESPACHANTE'] || ""; // Garantir que não seja undefined
+        // Mapeamento direto dos IDs do formulário para as chaves do objeto
+        const campos = {
+            'BOU': doc.BOLETIM,
+            'DATA': doc.DATA,
+            'HORA': doc.HORA,
+            'BAIRRO': doc.BAIRRO,
+            'CIDADE': doc.CIDADE,
+            'TIPO_ARMA': doc.TIPO_ARMA,
+            'CALIBRE': doc.CALIBRE,
+            'MARCA': doc.MARCA,
+            'SERIE': doc.SERIE
+        };
+
+        for (let id in campos) {
+            const el = document.getElementById(id);
+            if (el) el.value = campos[id] || "";
+        }
     };
 
     // --- SALVAR DADOS (POST) ---
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const id = document.getElementById('form-id').value;
         const btn = document.getElementById('btn-salvar-form');
-        btn.innerText = "Salvando..."; btn.disabled = true;
 
+        btn.innerText = "SALVANDO...";
+        btn.disabled = true;
+
+        // Coleta os dados manualmente para garantir que as chaves correspondam ao banco
         const objetoDados = {
-            ID_OCORRENCIA: document.getElementById('form-id').value,
-            DATA: document.getElementById('data').value,
+            BOLETIM: document.getElementById('BOU').value,
+            DATA: document.getElementById('DATA').value,
             HORA: document.getElementById('HORA').value,
-            SOLICITANTE_NOME: document.getElementById('SOLICITANTE').value,
-            SOLICITANTE_FONE: document.getElementById('TELEFONE').value,
-            LOGRADOURO: document.getElementById('LOGRADOURO').value,
             BAIRRO: document.getElementById('BAIRRO').value,
             CIDADE: document.getElementById('CIDADE').value,
-            PONTO_REF: document.getElementById('PONTO DE REF').value,
-            LATITUDE: document.getElementById('LATITUDE').value,
-            LONGITUDE: document.getElementById('LONGITUDE').value,
-            TIPIFICACAO: document.getElementById('TIPIFICAÇÃO').value,
-            ESTABELECIMENTO: document.getElementById('ESTABELECIMENTO').value,
-            SOLUCAO_FINAL: document.getElementById('SOLUÇÃO').value,
-            ATENDIMENTO_INICIAL: document.getElementById('ATENDIMENTO INICIAL').value,
-            TEXTO_DO_DESPACHANTE: document.getElementById('TEXTO DO DESPACHANTE').value
+            TIPO_ARMA: document.getElementById('TIPO_ARMA').value,
+            CALIBRE: document.getElementById('CALIBRE').value,
+            MARCA: document.getElementById('MARCA').value,
+            SERIE: document.getElementById('SERIE').value
         };
 
+        const url = id
+            ? `${DATABASE_URL}/${NODE_NAME}/${id}.json`
+            : `${DATABASE_URL}/${NODE_NAME}.json`;
+
+        const method = id ? 'PATCH' : 'POST';
+
         try {
-            await fetch(API_URL, { method: 'POST', body: JSON.stringify(objetoDados) });
-            alert("Salvo com sucesso!");
-            fecharSidebar();
-            carregarDados();
-        } catch (err) { alert("Erro ao salvar."); }
-        finally {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(objetoDados)
+            });
+
+            if (res.ok) {
+                alert("Dados de armas salvos com sucesso!");
+                fecharSidebar();
+                carregarDados();
+            }
+        } catch (err) {
+            alert("Erro ao salvar no Realtime Database.");
+        } finally {
             btn.innerText = "SALVAR DADOS";
             btn.disabled = false;
         }
     });
-
-    function converterDataParaInput(d) {
-        if (!d || !d.includes('/')) return d;
-        const p = d.split('/');
-        return `${p[2]}-${p[1]}-${p[0]}`;
-    }
 
     // --- INICIALIZAÇÃO ---
     document.addEventListener('DOMContentLoaded', () => {

@@ -8,6 +8,70 @@
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="stylesvisitas.css">
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+
+<style>
+/* --- ESTILO NA TELA (Sempre visível) --- */
+.detalhe-criminal {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    line-height: 1.5;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-left: 4px solid #ffc107;
+    margin-top: 10px;
+    display: block !important;
+}
+
+/* --- AJUSTES PARA IMPRESSÃO --- */
+@media print {
+    html, body {
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .pagecomplete, main, #lista-visitas {
+        height: auto !important;
+        overflow: visible !important;
+        display: block !important;
+        position: static !important;
+    }
+
+    header, .navegacao, .filtros, #btn-logout, .mensagem-status, .no-print, button {
+        display: none !important;
+    }
+
+    .card-visita {
+        width: 100% !important;
+        max-width: 100% !important;
+        border: 1px solid #000 !important;
+        margin-bottom: 20px !important;
+        display: block !important;
+        position: relative !important;
+        background-color: #fff !important;
+        box-shadow: none !important;
+        page-break-inside: auto !important; /* Permite que o card mude de página se o texto for longo */
+    }
+
+    .detalhe-criminal {
+        page-break-inside: auto !important; /* Permite que o texto do histórico quebre entre páginas */
+        border: 1px solid #ccc !important;
+    }
+
+    p, h3, .cop-label {
+        page-break-after: avoid; /* Evita títulos sozinhos no fim da página */
+    }
+
+    @page {
+        size: auto;
+        margin: 1.5cm;
+    }
+}
+</style>
 </head>
 
 <body>
@@ -41,7 +105,7 @@
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
             </a><!--termina cadastroocorrencias-->
-            <a href="visitas.html" class="active">
+            <a href="exibirvisitas.html" class="active">
                 <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png"
                     alt="police-car" />
                 <p>Visitas Orientativas</p>
@@ -110,91 +174,86 @@
         </div>
     </footer>
 
-    <script>
-        const URL_API = "https://script.google.com/macros/s/AKfycbzQUm5MKNwgJq-f5vEpPLreR2qlv58z5m7j8N0beFsK6CMMdCtprMGZXgWcirOwcHGHcA/exec";
+<script src="logica_visitas.js"></script>
 
-        function atualizarRelogio() {
-            const agora = new Date();
-            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-            document.getElementById('relogio').innerHTML = `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+<script>
+    // 2. Declare as constantes APENAS UMA VEZ aqui
+    const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/"; // <--- Ajuste sua URL
+    const NODE_GERAL = "geral";
+    const NODE_VISITAS = "visita_comunitaria";
+
+    // Mantenha suas funções de interface
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const relogioEl = document.getElementById('relogio');
+        if(relogioEl) relogioEl.innerHTML = `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+    }
+    setInterval(atualizarRelogio, 1000);
+    atualizarRelogio();
+
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        if (!graduacao || !nomeGuerra) window.location.href = 'login.html';
+        else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+    }
+
+    // --- FUNÇÃO QUE CHAMA A LÓGICA DO ARQUIVO EXTERNO ---
+    async function carregarVisitas() {
+        const inicio = document.getElementById('data-inicio').value;
+        const fim = document.getElementById('data-fim').value;
+        const statusMsg = document.getElementById('mensagem-status');
+        const container = document.getElementById('lista-visitas');
+
+        if (!inicio || !fim) {
+            alert("Por favor, selecione o período inicial e final.");
+            return;
         }
-        setInterval(atualizarRelogio, 1000);
-        atualizarRelogio();
 
-        function checkLogin() {
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            if (!graduacao || !nomeGuerra) window.location.href = 'login.html';
-            else document.getElementById('user-info').innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
-        }
+        statusMsg.style.display = 'block';
+        statusMsg.innerText = "🔄 Analisando inteligência criminal...";
+        container.innerHTML = "";
 
-        function carregarVisitas() {
-            const inicio = document.getElementById('data-inicio').value;
-            const fim = document.getElementById('data-fim').value;
-            const statusMsg = document.getElementById('mensagem-status');
-            const container = document.getElementById('lista-visitas');
+        try {
+            // Chama a função que está dentro do logica_visitas.js
+            const dados = await buscarOcorrenciasParaVisita(inicio, fim);
+            
+            statusMsg.style.display = 'none';
 
-            if (!inicio || !fim) {
-                alert("Por favor, selecione o período inicial e final para análise.");
+            if (!dados || dados.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:20px; background:#fff3cd; border-radius:8px;">⚠️ Nenhuma ocorrência relevante encontrada.</div>`;
                 return;
             }
 
-            statusMsg.style.display = 'block';
-            statusMsg.innerText = "🔄 Analisando inteligência criminal no período selecionado...";
-            container.innerHTML = "";
-
-            fetch(`${URL_API}?inicio=${inicio}&fim=${fim}`)
-                .then(res => res.json())
-                .then(dados => {
-                    statusMsg.style.display = 'none';
-
-                    if (!dados || dados.length === 0) {
-                        container.innerHTML = `
-                        <div style="text-align: center; padding: 30px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba; border-radius: 8px; margin: 20px;">
-                            ⚠️ Nenhuma ocorrência relevante encontrada entre ${inicio.split('-').reverse().join('/')} e ${fim.split('-').reverse().join('/')}.
-                        </div>`;
-                        return;
-                    }
-
-                    dados.forEach(oc => {
-                        const card = document.createElement('div');
-                        card.className = 'card-visita';
-                        // IMPORTANTE: Exibimos oc.data diretamente como texto, sem converter para Date
-                        card.innerHTML = `
-                            <div class="info-lado-esquerdo">
-                                <span class="badge-alerta">⚠️ RISCO DE ESCALADA</span>
-                                <div class="cop-label">COP Nº ${oc.cop}</div>
-                                <p><strong>👤 SOLICITANTE:</strong> ${oc.solicitante}</p>
-                                <p><strong>📂 NATUREZA:</strong> ${oc.natureza}</p>
-                                <p><strong>📅 DATA:</strong> ${oc.data}</p>
-                                <p><strong>📍 LOCAL:</strong> ${oc.logradouro}</p>
-                                <p><strong>📋 DESFECHO:</strong> ${oc.solucao}</p>
-                                <div class="detalhe-criminal">
-                                    <strong>HISTÓRICO ANALISADO:</strong><br>
-                                    ${oc.resumo}
-                                </div>
-                            </div>
-                    `;
-                        container.appendChild(card);
-                    });
-                })
-                .catch(err => {
-                    statusMsg.innerText = "❌ Erro ao conectar com o servidor.";
-                    console.error(err);
-                });
+            dados.forEach(oc => {
+                const card = document.createElement('div');
+                card.className = 'card-visita';
+                card.innerHTML = `
+                    <div class="info-lado-esquerdo">
+                        <span class="badge-alerta">⚠️ RISCO DE ESCALADA</span>
+                        <div class="cop-label">COP Nº ${oc.cop}</div>
+                        <p><strong>👤 SOLICITANTE:</strong> ${oc.solicitante}</p>
+                        <p><strong>📂 NATUREZA:</strong> ${oc.natureza}</p>
+                        <p><strong>📅 DATA:</strong> ${oc.data}</p>
+                        <p><strong>📍 LOCAL:</strong> ${oc.logradouro}</p>
+                        <p><strong>📋 DESFECHO:</strong> ${oc.solucao}</p>
+                        <div class="detalhe-criminal">
+                            <strong>HISTÓRICO ANALISADO:</strong><br>
+                            ${oc.resumo}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (err) {
+            console.error(err);
+            statusMsg.innerText = "❌ Erro ao carregar dados.";
         }
-        document.addEventListener('DOMContentLoaded', function () {
-            checkLogin();
+    }
 
-            const btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', () => {
-                    localStorage.clear();
-                    window.location.href = 'login.html';
-                });
-            }
-        });
-    </script>
+    document.addEventListener('DOMContentLoaded', checkLogin);
+</script>
 </body>
 
 </html>

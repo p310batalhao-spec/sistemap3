@@ -75,24 +75,6 @@
     cursor: pointer;
     font-weight: bold;
 }
-
-@media print {
-
-    header,
-    nav,
-    .filtro-periodo,
-    footer,
-    .saudacao {
-        display: none !important;
-    }
-
-    .card-visita {
-        border: 1px solid #ccc;
-        break-inside: avoid;
-        width: 100%;
-        margin-bottom: 10px;
-    }
-}
 .formulario input, 
 .formulario select {
     width: 100%;

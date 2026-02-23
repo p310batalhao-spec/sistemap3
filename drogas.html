@@ -108,30 +108,29 @@
                     <table id="tabela-drogas">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Nº OCORRENCIA</th>
                                 <th>DATA</th>
-                                <th>NUMERO COP</th>
-                                <th>FATO TÍPICO</th>
-                                <th>NOME</th>
-                                <th>RG</th>
-                                <th>CPF</th>
-                                <th>IDADE</th>
-                                <th>ALCUNHA</th>
-                                <th>SEXO</th>
-                                <th>MÃE</th>
-                                <th>CIDADE</th>
-                                <th>ESTADO</th>
-                                <th>BAIRRO</th>
-                                <th>PONTO REF</th>
-                                <th>ENDEREÇO</th>
                                 <th>HORA</th>
+                                <th>SOLICITANTE</th>
+                                <th>TELEFONE</th>
+                                <th>LOGRADOURO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>PONTO DE REF.</th>
                                 <th>LATITUDE</th>
                                 <th>LONGITUDE</th>
-                                <th>TIPO DE DROGA</th>
-                                <th>PESO (Kg)</th>
-                                <th>DADOS DA EQUIPE</th>
+                                <th>AUTOR</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ESTABELECIMENTO</th>
+                                <th>SOLUÇÃO</th>
+                                <th>TIPO</th>
+                                <th>QTD (KG)</th>
+                                <th>ATENDIMENTO INICIAL</th>
+                                <th>TEXTO DO DESPACHANTE</th>
+                                <th>E-SAJ</th>
                                 <th>NUMERO_LACRE</th>
                                 <th>MOVIMENTAÇÃO</th>
+                                <th>NOME DO AUTOR</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
@@ -171,38 +170,28 @@
                 <input type="hidden" id="form-id" name="ID">
                 <div class="formulario-scroll">
                     <div class="formulario">
+                        <p>ID OCORRÊNCIA</p><input type="text" name="ID OCORRÊNCIA">
+                    </div>
+                    <div class="formulario">
                         <p>DATA</p><input type="date" name="DATA">
                     </div>
                     <div class="formulario">
-                        <p>NUMERO COP</p><input type="text" name="NUMERO COP">
+                        <p>DATA</p><input type="date" name="DATA">
                     </div>
                     <div class="formulario">
-                        <p>FATO TÍPICO</p> <input type="text" name="FATO TÍPICO">
+                        <p>HORA</p><input type="time" name="HORA" id="HORA">
                     </div>
                     <div class="formulario">
-                        <p>NOME</p><input type="text" name="NOME" id="NOME">
+                        <p>SOLICITANTE</p><input type="text" name="SOLICITANTE" id="SOLICITANTE">
                     </div>
                     <div class="formulario">
-                        <p>RG</p><input type="text" name="RG" id="RG">
+                        <p>TELEFONE</p><input type="tel" name="TELEFONE" id="TELEFONE">
                     </div>
                     <div class="formulario">
-                        <p>CPF</p><input type="text" name="CPF" id="CPF">
+                        <p>LOGRADOURO</p><input type="text" name="LOGRADOURO" id="LOGRADOURO">
                     </div>
                     <div class="formulario">
-                        <p>IDADE</p><input type="text" name="IDADE" id="IDADE">
-                    </div>
-                    <div class="formulario">
-                        <p>ALCUNHA</p><input type="text" name="ALCUNHA" id="ALCUNHA">
-                    </div>
-                    <div class="formulario">
-                        <p>SEXO</p><select name="SEXO" id="SEXO">
-                            <option value="">Selecione o Sexo</option>
-                            <option value="M">MASCULINO</option>
-                            <option value="F">FEMININO</option>
-                        </select>
-                    </div>
-                    <div class="formulario">
-                        <p>MÃE</p><input type="text" name="MÃE" id="MÃE">
+                        <p>BAIRRO</p><input type="text" name="BAIRRO" id="BAIRRO">
                     </div>
                     <div class="formulario">
                         <p>CIDADE</p><select name="CIDADE" id="CIDADE">
@@ -221,27 +210,31 @@
                         </select>
                     </div>
                     <div class="formulario">
-                        <p>ESTADO</p><input type="text" name="ESTADO" id="ESTADO">
+                        <p>PONTO DE REF.</p><input type="text" name="PONTO DE REF." id="PONTO DE REF.">
                     </div>
                     <div class="formulario">
-                        <p>BAIRRO</p><input type="text" name="BAIRRO" id="BAIRRO">
+                        <p>LATITUDE</p><input type="text" name="LATITUDE" id="LATITUDE">
                     </div>
                     <div class="formulario">
-                        <p>PONTO REF</p><input type="text" name="PONTO REF" id="PONTO REF">
+                        <p>LONGITUDE</p><input type="text" name="LONGITUDE" id="LONGITUDE">
                     </div>
                     <div class="formulario">
-                        <p>ENDEREÇO</p><input type="text" name="ENDEREÇO" id="ENDEREÇO">
+                        <p>TIPIFICAÇÃO NO DESPACHO</p><input type="text" name="TIPIFICAÇÃO NO DESPACHO"
+                            id="TIPIFICAÇÃO NO DESPACHO">
                     </div>
                     <div class="formulario">
-                        <p>HORA</p><input type="time" name="HORA" id="HORA">
+                        <p>ESTABELECIMENTO</p><input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
                     </div>
                     <div class="formulario">
-                        <p>LATITUDE,LONGITUDE</p>
-                        <input type="text" name="LATITUDE,LONGITUDE" id="LATITUDE,LONGITUDE">
+                        <p>SOLUÇÃO DA OCORRENCIA</p><input type="text" name="SOLUÇÃO DA OCORRENCIA"
+                            id="SOLUÇÃO DA OCORRENCIA">
                     </div>
                     <div class="formulario">
-                        <p>TIPO DE DROGA</p>
-                        <select name="TIPO DE DROGA">
+                        <p>TIPIFICAÇÃO</p><input type="text" name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPO</p><select name="TIPO" id="TIPO">
+                            <option value="">Selecione o Tipo</option>
                             <option value="MACONHA">MACONHA</option>
                             <option value="CRACK">CRACK</option>
                             <option value="COCAÍNA">COCAÍNA</option>
@@ -250,30 +243,27 @@
                         </select>
                     </div>
                     <div class="formulario">
-                        <p>PESO (Kg)</p>
-                        <input type="number" step="0.0001" name="PESO_KG" id="input-peso" required>
+                        <p>QTD (KG)</p><input type="number" step="0.0001" name="QTD_KG" id="QTD_KG">
                     </div>
                     <div class="formulario">
-                        <p>DADOS DA EQUIPE</p><select name="DADOS DA EQUIPE" id="DADOS DA EQUIPE">
-                            <option value="">Selecione a guarnição</option>
-                            <option value="TÁTICO URBANO">TÁTICO URBANO</option>
-                            <option value="TÁTICO RURAL">TÁTICO RURAL</option>
-                            <option value="RP BELÉM/TANQUE D'ARCA">RP BELÉM/TANQUE D'ARCA</option>
-                            <option value="RP CACIMBINHAS">RP CACIMBINHAS</option>
-                            <option value="RP ESTRELA/MINADOR">RP ESTRELA/MINADOR</option>
-                            <option value="RP IGACI">RP IGACI</option>
-                            <option value="RP MAR VERMELHO/PAULO JACINTO">RP MAR VERMELHO/PAULO JACINTO</option>
-                            <option value="RP MARIBONDO">RP MARIBONDO</option>
-                            <option value="RP PALMEIRA 01">RP PALMEIRA 01</option>
-                            <option value="RP PALMEIRA 02">RP PALMEIRA 02</option>
-                            <option value="RP QUEBRANGULO">RP QUEBRANGULO</option>
-                        </select>
+                        <p>ATENDIMENTO INICIAL</p><input type="text" name="ATENDIMENTO INICIAL"
+                            id="ATENDIMENTO INICIAL">
+                    </div>
+                    <div class="formulario">
+                        <p>TEXTO DO DESPACHANTE</p><textarea name="TEXTO DO DESPACHANTE" id="TEXTO DO DESPACHANTE"
+                            rows="3"></textarea>
+                    </div>
+                    <div class="formulario">
+                        <p>E-SAJ</p><input type="text" name="E-SAJ" id="E-SAJ">
                     </div>
                     <div class="formulario">
                         <p>NUMERO_LACRE</p><input type="text" name="NUMERO_LACRE" id="NUMERO_LACRE">
                     </div>
                     <div class="formulario">
                         <p>MOVIMENTAÇÃO</p><input type="text" name="MOVIMENTAÇÃO" id="MOVIMENTAÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>NOME DO AUTOR</p><input type="text" name="NOME DO AUTOR" id="NOME DO AUTOR">
                     </div>
                 </div>
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -283,13 +273,8 @@
     </section>
 
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
-        const HEADERS = [
-            'ID', 'DATA', 'NUMERO COP', 'FATO TÍPICO', 'NOME', 'RG', 'CPF', 'IDADE',
-            'ALCUNHA', 'SEXO', 'MÃE', 'CIDADE', 'ESTADO', 'BAIRRO', 'PONTO REF',
-            'ENDEREÇO', 'HORA', 'LATITUDE', 'LONGITUDE',
-            'TIPO DE DROGA', 'PESO_KG', 'DADOS DA EQUIPE', 'NUMERO_LACRE', 'MOVIMENTAÇÃO'
-        ];
+        const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/droga/1427124_COCAINA"; // Substitua pela sua URL
+        const NODE_NAME = "droga";
 
         let allDrogas = [];
         let filtradosAtivos = null;
@@ -315,24 +300,98 @@
         // --- 2. CARREGAMENTO E TABELA ---
         async function loadDrogas() {
             try {
-                const response = await fetch(`${API_URL}?action=read`);
-                if (!response.ok) throw new Error('Erro na resposta do servidor');
+                const res = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
+                const data = await res.json();
 
-                const result = await response.json();
+                const tbody = document.querySelector('#tabela-drogas tbody');
+                tbody.innerHTML = "";
 
-                if (result.status === 'error') {
-                    console.error("Erro no Script:", result.message);
+                if (!data) {
+                    tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;">Nenhum dado encontrado no nó "droga".</td></tr>`;
                     return;
                 }
 
-                allDrogas = result; // Assume que o retorno é o array de dados
-                renderTable(allDrogas);
-                document.getElementById('mensagem-carregamento').style.display = 'none';
-            } catch (e) {
-                console.error("Erro ao carregar:", e);
-                const elTotal = document.getElementById('numerodrogas');
-                if (elTotal) elTotal.textContent = "Erro de Conexão";
+                // Objeto para armazenar as somas matemáticas
+                const resumoPesos = { "MACONHA": 0, "CRACK": 0, "COCAINA": 0 };
+                const listaOcorrencias = [];
+
+                // 1. Percorrer cada ID (aquelas chaves longas que aparecem na sua imagem)
+                Object.keys(data).forEach(idDoBanco => {
+                    const registro = data[idDoBanco];
+                    registro.id_realtime = idDoBanco; // Guardamos o ID para edição
+
+                    // 2. Lógica de Pesos baseada no TIPO_DROGA
+                    const tipo = (registro.TIPO_DROGA || "").toUpperCase();
+                    // Converte quantidade (ex: "1,500") para número (1.5)
+                    const qtd = parseFloat(String(registro.QUANTIDADE || "0").replace(',', '.'));
+
+                    if (!isNaN(qtd)) {
+                        if (tipo.includes("MACONHA")) resumoPesos["MACONHA"] += qtd;
+                        else if (tipo.includes("CRACK")) resumoPesos["CRACK"] += qtd;
+                        else if (tipo.includes("COCAINA") || tipo.includes("COCAÍNA")) resumoPesos["COCAINA"] += qtd;
+                    }
+
+                    listaOcorrencias.push(registro);
+                });
+
+                // 3. Ordenar por data (mais recente primeiro)
+                listaOcorrencias.sort((a, b) => {
+                    const dataA = new Date((a.DATA || "") + 'T' + (a.HORA || '00:00'));
+                    const dataB = new Date((b.DATA || "") + 'T' + (b.HORA || '00:00'));
+                    return dataB - dataA;
+                });
+
+                // 4. Preencher a Tabela
+                listaOcorrencias.forEach(doc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${doc.BOLETIM || ""}</td>
+                <td>${doc.DATA || ""}</td>
+                <td>${doc.HORA || ""}</td>
+                <td>${doc.SOLICITANTE || ""}</td>
+                <td>${doc.TELEFONE || ""}</td>
+                <td>${doc.LOGRADOURO || ""}</td>
+                <td>${doc.BAIRRO || ""}</td>
+                <td>${doc.CIDADE || ""}</td>
+                <td>${doc.PONTO_REF || ""}</td>
+                <td>${doc.LATITUDE || ""}</td>
+                <td>${doc.LONGITUDE || ""}</td>
+                <td style="font-weight:bold; color:green;">${doc.TIPO_DROGA || ""}</td>
+                <td>${doc.QUANTIDADE || "0"}</td>
+                <td>${doc.SOLUCAO || ""}</td>
+                <td>
+                    <button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button>
+                </td>
+            `;
+                    tbody.appendChild(tr);
+                });
+
+                // Atualiza os contadores na tela (se você tiver os elementos HTML)
+                console.log("Totais Calculados:", resumoPesos);
+                atualizarExibicaoPesos(resumoPesos);
+
+            } catch (err) {
+                console.error("Erro ao carregar dados do RTDB:", err);
             }
+        }
+
+        // Função para atualizar os valores na tela (certifique-se de ter esses IDs no seu HTML)
+        function atualizarPainelResumo(resumo) {
+            // Se você tiver elementos com esses IDs, eles serão atualizados:
+            if (document.getElementById('peso-maconha')) document.getElementById('peso-maconha').innerText = resumo.MACONHA.toFixed(3) + " kg";
+            if (document.getElementById('peso-crack')) document.getElementById('peso-crack').innerText = resumo.CRACK.toFixed(3) + " kg";
+            if (document.getElementById('peso-cocaina')) document.getElementById('peso-cocaina').innerText = resumo.COCAINA.toFixed(3) + " kg";
+
+            console.log("Totais calculados:", resumo);
+        }
+
+        // Função para exibir o resumo na tela (você pode criar uma div com id="resumo-pesos" no seu HTML)
+        function exibirResumoPesos(resumo) {
+            console.log("Resumo de Pesos:", resumo);
+            // Exemplo de como você poderia injetar isso no HTML:
+            // let html = "<ul>";
+            // for (let tipo in resumo) { html += `<li>${tipo}: ${resumo[tipo].toFixed(3)} kg/un</li>`; }
+            // document.getElementById('container-resumo').innerHTML = html + "</ul>";
         }
 
         function renderTable(data) {
@@ -373,11 +432,11 @@
                     btnReq.onclick = () => {
                         const dadosParaRequerimento = {
                             NUMERO_LACRE: lacre,
-                            NUMERO_TCO: item['NUMERO COP'] || '',
-                            NOME_AUTOR: item['NOME'] || '',
+                            NUMERO_TCO: item['Nº OCORRÊNCIA'] || '',
+                            NOME_AUTOR: item['NOME DO AUTOR'] || '',
                             DATA: item['DATA'] || '',
-                            TIPO_DROGA: item['TIPO DE DROGA'] || '',
-                            PESO: item['PESO_KG)'] || ''
+                            TIPO_DROGA: item['TIPO'] || '',
+                            PESO: item['QTD_KG)'] || ''
                         };
                         localStorage.setItem('dadosRequerimento', JSON.stringify(dadosParaRequerimento));
                         window.open('requerimento_pericia.html', '_blank');
@@ -394,9 +453,12 @@
 
             data.forEach(item => {
                 const dataItem = String(item['DATA'] || "");
+                // Verifica se o registro é do ano atual (formato DD/MM/AAAA ou AAAA-MM-DD)
                 if (dataItem.includes(anoAtual)) {
-                    const tipo = String(item['TIPO DE DROGA'] || '').toUpperCase().trim();
-                    let peso = parseFloat(String(item['PESO_KG'] || '0').replace(',', '.'));
+                    const tipo = String(item['TIPO'] || '').toUpperCase().trim();
+                    // Busca a chave de quantidade dinamicamente caso o nome varie levemente
+                    const chaveQtd = Object.keys(item).find(k => k.includes("QTD (KG)"));
+                    let peso = parseFloat(String(item[chaveQtd] || '0').replace(',', '.'));
 
                     if (!isNaN(peso) && totais.hasOwnProperty(tipo)) {
                         totais[tipo] += peso;
@@ -404,27 +466,18 @@
                 }
             });
 
-            // IDs dos cards no HTML
             const mapaIDs = {
-                'MACONHA': 'total-maconha',
-                'CRACK': 'total-crack',
-                'COCAÍNA': 'total-cocaina',
-                'RUFINOL': 'total-rufinol',
-                'LOLÓ': 'total-lolo'
+                'MACONHA': 'total-maconha', 'CRACK': 'total-crack',
+                'COCAÍNA': 'total-cocaina', 'RUFINOL': 'total-rufinol', 'LOLÓ': 'total-lolo'
             };
 
-            let somaTotalKg = 0;
             for (const [tipo, id] of Object.entries(mapaIDs)) {
                 const el = document.getElementById(id);
                 if (el) {
                     const unidade = (tipo === 'RUFINOL' || tipo === 'LOLÓ') ? ' Un' : ' Kg';
-                    el.textContent = totais[tipo].toFixed(3).replace('.', ',') + unidade;
+                    el.textContent = totais[tipo].toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + unidade;
                 }
-                somaTotalKg += totais[tipo];
             }
-
-            const elGeral = document.getElementById('numerodrogas');
-            if (elGeral) elGeral.textContent = somaTotalKg.toFixed(3).replace('.', ',') + " Kg";
         }
 
         // --- 4. FILTROS E RELATÓRIO ---
@@ -455,56 +508,50 @@
         // --- 5. SALVAMENTO E SIDEBAR ---
         async function salvarDados(e) {
             e.preventDefault();
-            const btn = document.getElementById('btn-salvar-form');
-            const idVal = document.getElementById('form-id').value;
-
-            btn.disabled = true;
-            btn.textContent = "PROCESSANDO...";
-
-            // Coleta os dados do formulário
+            const id = document.getElementById('form-id').value;
             const formData = new FormData(e.target);
-            const params = new URLSearchParams();
+            const dados = Object.fromEntries(formData.entries());
 
-            // Adiciona a ação e o ID
-            params.append('action', idVal ? 'update' : 'create');
-            params.append('ID', idVal);
+            // Se tem ID, edita o nó existente (/droga/ID.json). Se não, cria um novo (/droga.json)
+            const url = id
+                ? `${DATABASE_URL}/${NODE_NAME}/${id}.json`
+                : `${DATABASE_URL}/${NODE_NAME}.json`;
 
-            // Adiciona o restante dos campos
-            for (const [key, value] of formData.entries()) {
-                if (key !== 'ID') {
-                    params.append(key, value);
-                }
-            }
+            const method = id ? 'PATCH' : 'POST';
 
             try {
-                // O segredo está em não usar 'no-cors' e enviar como POST
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: params,
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
                 });
 
-                // O Google Apps Script redireciona, o fetch segue o redirecionamento
-                // Se chegar aqui sem erro de rede, funcionou.
-                alert("Dados enviados com sucesso!");
-                toggleSidebar(false);
-
-                // Recarrega os dados após um pequeno delay para a planilha atualizar
-                setTimeout(loadDrogas, 1500);
-
+                if (res.ok) {
+                    alert("Dados salvos com sucesso!");
+                    toggleSidebar(false);
+                    loadDrogas(); // Recarrega a tabela e o somatório
+                }
             } catch (err) {
-                // Se der erro de CORS, muitas vezes o dado FOI salvo, mas o navegador bloqueou a resposta
-                console.warn("Possível bloqueio de resposta (CORS), mas os dados podem ter sido salvos.", err);
-                alert("Verifique a tabela em instantes.");
-                toggleSidebar(false);
-                setTimeout(loadDrogas, 2000);
-            } finally {
-                btn.disabled = false;
-                btn.textContent = "SALVAR DADOS";
+                alert("Erro ao salvar dados.");
             }
         }
+
+        window.preencherParaEditar = (data) => {
+            const form = document.getElementById('form-drogas');
+            // Usamos o ID da chave que veio do Realtime
+            document.getElementById('form-id').value = data.id_realtime;
+
+            // Preenche os campos do formulário automaticamente pelo atributo 'name'
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(campo => {
+                const nome = campo.getAttribute('name');
+                if (nome && data[nome] !== undefined) {
+                    campo.value = data[nome];
+                }
+            });
+
+            toggleSidebar(true);
+        };
 
         function toggleSidebar(show, data = null) {
             const sidebar = document.getElementById('form-drogas');
@@ -512,18 +559,16 @@
 
             if (show) {
                 sidebar.reset();
-                // Limpa o ID oculto para garantir que novos cadastros não herdem IDs antigos
                 document.getElementById('form-id').value = '';
 
                 if (data) {
-                    // Define o ID para modo de edição
-                    document.getElementById('form-id').value = data['ID'] || '';
+                    // O ID na sua planilha é a primeira coluna, geralmente mapeada como 'ID' ou 'Nº OCORRENCIA'
+                    document.getElementById('form-id').value = data['ID'] || data['Nº OCORRENCIA'] || '';
 
-                    sidebar.querySelectorAll('input, select, textarea').forEach(c => {
-                        const n = c.getAttribute('name');
-                        if (n && data[n] !== undefined) {
-                            let valor = data[n];
-                            c.value = valor;
+                    sidebar.querySelectorAll('input, select, textarea').forEach(campo => {
+                        const nomeAtributo = campo.getAttribute('name');
+                        if (nomeAtributo && data[nomeAtributo] !== undefined) {
+                            campo.value = data[nomeAtributo];
                         }
                     });
                 }

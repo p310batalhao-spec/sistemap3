@@ -84,7 +84,7 @@
                     <label for="filtro-tipo">Filtrar por:</label>
                     <select id="filtro-tipo">
                         <option value="">Selecione o campo</option>
-                        <option value="N° DO BOU">N° BOU</option>
+                        <option value="BOLETIM">N° BOU</option>
                         <option value="DATA">Data</option>
                         <option value="CATEGORIA">Categoria</option>
                         <option value="ESAJ">ESAJ</option>
@@ -134,11 +134,11 @@
                 <div class="formulario-scroll">
                     <div class="formulario">
                         <p>Nº OCORRÊNCIA</p>
-                        <input type="text" name="NUMEROOCORRENCIA" id="NUMEROOCORRENCIA">
+                        <input type="text" name="BOLETIM" id="BOLETIM">
                     </div>
                     <div class="formulario">
                         <p>DATA</p>
-                        <input type="date" name="data" id="data">
+                        <input type="date" name="data" id="DATA">
                     </div>
                     <div class="formulario">
                         <p>HORA</p>
@@ -194,7 +194,7 @@
                     </div>
                     <div class="formulario">
                         <p>TIPIFICAÇÃO GERAL</p>
-                        <select name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
+                        <select name="TIPIFICAÇÃO" id="TIPIFICACAO">
                             <option value="">Selecione a Tipificação</option>
                             <option value="HOMICÍDIO">HOMICÍDIO</option>
                             <option value="FEMINICÍDIO">FEMINICÍDIO</option>
@@ -210,7 +210,7 @@
                     </div>
                     <div class="formulario">
                         <p>SOLUÇÃO</p>
-                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                        <input type="text" name="SOLUCAO" id="SOLUCAO">
                     </div>
                 </div><!--termina formulario-scroll-->
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -228,15 +228,65 @@
     </div>
 </footer>
 <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
+    // --- CONFIGURAÇÃO REALTIME DATABASE ---
+    const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/"; // Substitua pela URL do seu RTDB
+    const COLLECTION_NAME = "geral"; // Nome do nó no banco
+
+    // --- ELEMENTOS DA INTERFACE ---
     const sidebar = document.querySelector('.sidbarform');
     const overlay = document.getElementById('overlay-sidebar');
     const form = document.getElementById('form-materiais');
 
-    // --- CONTROLE DE ABERTURA/FECHAMENTO ---
+    // --- FUNÇÕES DE APOIO (MANTIDAS DO SEU ORIGINAL) ---
+    function normalizarTexto(texto) {
+        return texto
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .trim();
+    }
+
+    function getStringField(field) {
+        if (!field) return "";
+        if (field.stringValue) return field.stringValue;
+        if (field.integerValue) return field.integerValue;
+        return "";
+    }
+
+    // --- FUNÇÃO RELÓGIO ---
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    }
+
+    // --- VALIDAÇÃO DE LOGIN E LOGOUT ---
+    function verificarAutenticacao() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+
+        if (!graduacao || !nomeGuerra) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        const userInfo = document.getElementById('user-info');
+        if (userInfo) {
+            userInfo.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        }
+    }
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    });
+
+    // --- CONTROLE DA SIDEBAR ---
     document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
         form.reset();
-        if(document.getElementById('form-id')) document.getElementById('form-id').value = "";
+        document.getElementById('form-id').value = "";
         sidebar.classList.add('active');
         overlay.style.display = 'block';
     });
@@ -250,162 +300,122 @@
     document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
     overlay.addEventListener('click', fecharSidebar);
 
-    // --- CARREGAR DADOS ---
+    // --- SEU CÓDIGO DE CARREGAR TABELA (CONSERTADO POR VOCÊ) ---
     async function carregarDados() {
         try {
-            const res = await fetch(API_URL);
-            const dados = await res.json();
+            const res = await fetch(`${DATABASE_URL}/${COLLECTION_NAME}.json`);
+            const data = await res.json();
+
             const tbody = document.querySelector('#tabela-materiais tbody');
             tbody.innerHTML = "";
 
-            dados.reverse().forEach(item => {
+            if (!data) {
+                tbody.innerHTML = `<tr><td colspan="15">Nenhum dado encontrado.</td></tr>`;
+                if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
+                return;
+            }
+
+            // Converter o objeto do RTDB em array e filtrar por Homicídio
+            const resultados = Object.keys(data).map(id => ({
+                id: id,
+                ...data[id]
+            })).filter(doc => {
+                const campo = doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'] || "";
+                return normalizarTexto(campo).includes("HOMI");
+            });
+
+            resultados.reverse().forEach(doc => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${item['Nº Ocorrência'] || ""}</td>
-                    <td>${item['DATA'] || ""}</td>
-                    <td>${item['HORA'] || ""}</td>
-                    <td>${item['SOLICITANTE'] || ""}</td>
-                    <td>${item['TELEFONE'] || ""}</td>
-                    <td>${item['LOGRADOURO'] || ""}</td>
-                    <td>${item['BAIRRO'] || ""}</td>
-                    <td>${item['CIDADE'] || ""}</td>
-                    <td>${item['PONTO_REF'] || ""}</td>
-                    <td>${item['Latitude'] || ""}</td>
-                    <td>${item['Longitude'] || ""}</td>
-                    <td>${item['TIPIFICAÇÃO'] || ""}</td>
-                    <td>${item['ESTABELECIMENTO'] || ""}</td>
-                    <td>${item['SOLUÇÃO'] || ""}</td>
-                    <td id="acao-${item['Nº Ocorrência']}"></td>
-                `;
-                
-                // Botão de editar criado de forma segura
-                const btnEditar = document.createElement('button');
-                btnEditar.className = 'btn-editar';
-                btnEditar.innerText = 'EDITAR';
-                btnEditar.onclick = () => preencherParaEditar(item);
-                
+                <td>${doc.BOLETIM || ""}</td>
+                <td>${doc.DATA || ""}</td>
+                <td>${doc.HORA || ""}</td>
+                <td>${doc.SOLICITANTE || ""}</td>
+                <td>${doc.TELEFONE || ""}</td>
+                <td>${doc.LOGRADOURO || ""}</td>
+                <td>${doc.BAIRRO || doc.bairro || ""}</td>
+                <td>${doc.CIDADE || ""}</td>
+                <td>${doc.PONTO_REF || ""}</td>
+                <td>${doc.LATITUDE || ""}</td>
+                <td>${doc.LONGITUDE || ""}</td>
+                <td style="font-weight:bold; color:red;">
+                    ${doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'] || ""}
+                </td>
+                <td>${doc.ESTABELECIMENTO || ""}</td>
+                <td>${doc.SOLUCAO || doc.SOLUÇÃO || ""}</td>
+                <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
+            `;
                 tbody.appendChild(tr);
-                tr.querySelector(`[id="acao-${item['Nº Ocorrência']}"]`).appendChild(btnEditar);
             });
-            document.getElementById('mensagem-carregamento').style.display = 'none';
-        } catch (e) {
-            console.error("Erro ao carregar:", e);
+
+            if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
+
+        } catch (err) {
+            console.error("Erro ao carregar RTDB:", err);
         }
     }
 
-    // --- PREENCHER PARA EDITAR (COM PROTEÇÃO CONTRA ERROS) ---
-    window.preencherParaEditar = (item) => {
+    // --- FUNÇÃO EDITAR (PREENCHER SIDEBAR) ---
+    window.preencherParaEditar = (doc) => {
         sidebar.classList.add('active');
         overlay.style.display = 'block';
 
-        // Função interna para preencher apenas se o ID existir no HTML
-        const preencher = (id, valor) => {
-            const campo = document.getElementById(id);
-            if (campo) {
-                campo.value = valor || "";
-            } else {
-                console.warn("Campo não encontrado no HTML: " + id);
-            }
-        };
+        // O ID agora vem diretamente da propriedade que criamos no map
+        document.getElementById('form-id').value = doc.id;
 
-        // Mapeamento dos campos conforme os IDs do seu formulário no mvi.html
-        preencher('form-id', item['Nº Ocorrência']);
-        preencher('DATA', converterDataParaInput(item['DATA']));
-        preencher('HORA', item['HORA']);
-        preencher('SOLICITANTE', item['SOLICITANTE']);
-        preencher('TELEFONE', item['TELEFONE']);
-        preencher('LOGRADOURO', item['LOGRADOURO']);
-        preencher('BAIRRO', item['BAIRRO']);
-        preencher('CIDADE', item['CIDADE']);
-        preencher('PONTO_REF', item['PONTO_REF']);
-        preencher('LATITUDE', item['Latitude']);
-        preencher('LONGITUDE', item['Longitude']);
-        preencher('TIPIFICAÇÃO', item['TIPIFICAÇÃO']);
-        preencher('ESTABELECIMENTO', item['ESTABELECIMENTO']);
-        preencher('SOLUÇÃPO', item['SOLUÇÃO']);
+        // Preenchimento direto
+        const campos = [
+            'BOLETIM', 'DATA', 'HORA', 'SOLICITANTE', 'TELEFONE',
+            'LOGRADOURO', 'BAIRRO', 'CIDADE', 'PONTO_REF',
+            'LATITUDE', 'LONGITUDE', 'ESTABELECIMENTO'
+        ];
+
+        campos.forEach(campo => {
+            const el = document.getElementById(campo);
+            if (el) el.value = doc[campo] || "";
+        });
+
+        // Casos especiais de nomenclatura
+        if (document.getElementById('TIPIFICACAO')) {
+            document.getElementById('TIPIFICACAO').value = doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'] || "";
+        }
+        if (document.getElementById('SOLUCAO')) {
+            document.getElementById('SOLUCAO').value = doc.SOLUCAO || doc.SOLUÇÃO || "";
+        }
     };
-
-    // --- SALVAR DADOS ---
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const btn = document.getElementById('btn-salvar-form');
-        btn.innerText = "Salvando...";
-        btn.disabled = true;
-        
+        const id = document.getElementById('form-id').value;
         const formData = new FormData(form);
-        const objetoDados = {
-            ID_OCORRENCIA: document.getElementById('form-id') ? document.getElementById('form-id').value : "",
-            DATA: formData.get('DATA'),
-            HORA: formData.get('HORA'),
-            SOLICITANTE_NOME: formData.get('SOLICITANTE'),
-            SOLICITANTE_FONE: formData.get('TELEFONE'),
-            LOGRADOURO: formData.get('LOGRADOURO'),
-            BAIRRO: formData.get('BAIRRO'),
-            CIDADE: formData.get('CIDADE'),
-            PONTO_REF: formData.get('PONTO_REF'),
-            LATITUDE: formData.get('LATITUDE'),
-            LONGITUDE: formData.get('LONGITUDE'),
-            TIPIFICACAO_GERAL: formData.get('TIPIFICAÇÃO'),
-            ESTABELECIMENTO: formData.get('ESTABELECIMENTO'),
-            SOLUCAO_OCORRENCIA: formData.get('SOLUÇÃPO')
-        };
+        const dados = Object.fromEntries(formData.entries());
+
+        // Define a URL: se tem ID, aponta para o registro específico, senão cria novo
+        const url = id
+            ? `${DATABASE_URL}/${COLLECTION_NAME}/${id}.json`
+            : `${DATABASE_URL}/${COLLECTION_NAME}.json`;
+
+        const method = id ? 'PATCH' : 'POST';
 
         try {
-            await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify(objetoDados),
-                redirect: "follow"
+            const res = await fetch(url, {
+                method: method,
+                body: JSON.stringify(dados)
             });
-            alert("Sucesso!");
-            fecharSidebar();
-            carregarDados();
+            if (res.ok) {
+                alert("Dados salvos com sucesso!");
+                fecharSidebar();
+                carregarDados();
+            }
         } catch (err) {
-            alert("Erro ao salvar: " + err);
-        } finally {
-            btn.innerText = "SALVAR DADOS";
-            btn.disabled = false;
+            console.error("Erro ao salvar:", err);
         }
     });
 
-    function converterDataParaInput(d) {
-        if(!d || !d.includes('/')) return d;
-        const p = d.split('/');
-        return `${p[2]}-${p[1]}-${p[0]}`;
-    }
-
-    // --- FUNÇÕES DE INTERFACE (RELÓGIO E LOGIN) ---
-    function atualizarRelogio() {
-        const agora = new Date();
-        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
-    }
-    setInterval(atualizarRelogio, 1000);
-
-    function checkLogin() {
-        const graduacao = localStorage.getItem('userGraduacao');
-        const nomeGuerra = localStorage.getItem('userNomeGuerra');
-        const userInfoEl = document.getElementById('user-info');
-        if (graduacao && nomeGuerra) {
-            userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
-        } else {
-            window.location.href = 'login.html';
-        }
-    }
-
-    function logout() {
-        localStorage.removeItem('userGraduacao');
-        localStorage.removeItem('userNomeGuerra');
-        window.location.href = 'login.html';
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        checkLogin();
-        carregarDados();
+    // --- INICIALIZAÇÃO ---
+    document.addEventListener("DOMContentLoaded", () => {
+        verificarAutenticacao();
         atualizarRelogio();
-        const btnLogout = document.getElementById('btn-logout');
-        if (btnLogout) btnLogout.addEventListener('click', logout);
+        setInterval(atualizarRelogio, 1000);
+        carregarDados();
     });
-    
 </script>
