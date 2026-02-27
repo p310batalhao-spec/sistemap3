@@ -1,0 +1,305 @@
+/* --- CONFIGURAÇÕES GERAIS --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
+body {
+    background: #f3f3f5;
+    font-family: Arial, Helvetica, sans-serif;
+    overflow-x: hidden;
+}
+
+/* --- CABEÇALHO --- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+    padding: 0.5rem 1.875rem; 
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    height: 3.75rem;
+    position: sticky;
+    top: 0;
+    z-index: 1001;
+}
+
+.header-info-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem; 
+}
+
+.brasao {
+    height: 2.5rem; 
+}
+
+.cabecalhotexto h1, .cabecalhotexto h3 {
+    font-size: 1.1rem; 
+    color: white;
+    text-shadow: 0.0625rem 0.0625rem 0.125rem black;
+    margin: 0;
+}
+
+.header-info-right {
+    display: flex;
+    align-items: center;
+    gap: 1.875rem; 
+    color: white;
+}
+
+#relogio {
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+.exibirusuario {
+    font-size: 0.8rem;
+    padding-left: 1rem;
+    border-left: 0.0625rem solid rgba(255, 255, 255, 0.3);
+}
+
+/* --- ESTRUTURA DA PÁGINA --- */
+.pagecomplete {
+    display: flex; 
+    width: 100%;
+    min-height: calc(100vh - 3.75rem);
+}
+
+/* --- NAVEGAÇÃO LATERAL --- */
+.navegacao {
+    width: 4.375rem;
+    padding: 1.25rem 0.625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background-color: white; 
+    box-shadow: 0.125rem 0 0.3125rem rgba(0, 0, 0, 0.1); 
+    transition: width 0.3s ease;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.navegacao:hover {
+    width: 15.625rem;
+}
+
+.navegacao a {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    color: black; 
+    white-space: nowrap;
+    transition: 0.3s;
+}
+
+.navegacao p {
+    margin-left: 0.625rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.navegacao:hover p {
+    opacity: 1;
+}
+
+.navegacao img {
+    height: 1.5rem;
+    width: 1.5rem;
+    flex-shrink: 0;
+}
+.navegacao a:hover {
+    background-color: rgb(233, 233, 233); 
+    transform: scale(1.05); 
+}
+
+.navegacao a.active {
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    color: white;
+}
+.saudacao {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: white;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+}
+.saudacao p {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-left: 1.25rem;
+}
+/* --- CONTEÚDO PRINCIPAL --- */
+main {
+    flex-grow: 1;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    /* Impede que o main seja esticado pela tabela */
+    overflow: hidden; 
+    min-width: 0;
+}
+
+.TabelaEventos {
+    margin-top: 30px;
+    border-radius: 10px;
+    background-color: white;
+    padding: 1.25rem; /* Conforme o .TabelaEventos que você enviou */
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 62.5rem;
+}
+
+/* 1. Garante que o container da tabela permita o scroll */
+.tabela-container {
+    width: 95%;
+    height: 500px;
+    overflow-x: auto; /* Cria a barra de rolagem horizontal */
+    overflow-y: auto;
+    margin-top: 20px;
+    background-color: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+}
+
+/* 2. Impede que a tabela se esprema */
+#tabela-ait {
+    width: auto; /* Deixa a tabela crescer conforme o conteúdo */
+    min-width: 100%; /* Mas no mínimo ocupa a tela toda */
+    border-collapse: collapse;
+}
+
+/* 3. Estiliza as células para não quebrarem linha */
+#tabela-ait th, 
+#tabela-ait td {
+    white-space: nowrap; /* ESSENCIAL: impede o texto de "amontoar" */
+    padding: 12px 15px;
+    text-align: left;
+    border: 1px solid #dee2e6;
+    font-size: 13px;
+}
+
+/* 4. Cabeçalho fixo visualmente */
+#tabela-ait th {
+    background-color: #1a3c6d;
+    color: white;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+/* --- CARDS --- */
+.totalcards {
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.cardnumero {
+    background-color: white;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    width: 13.75rem;
+    height: 6.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+/* --- SIDEBAR FORM E OVERLAY --- */
+.sidbarform {
+    position: fixed;
+    top: 0;
+    right: -28.125rem;
+    width: 25rem;
+    height: 100vh;
+    background-color: #ffffff;
+    box-shadow: -0.3125rem 0 0.9375rem rgba(0,0,0,0.3);
+    transition: right 0.4s ease-in-out;
+    z-index: 2000;
+    padding: 1.5625rem;
+    overflow-y: auto;
+}
+
+.sidbarform.active {
+    right: 0;
+}
+
+.overlay-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 1999;
+}
+
+.overlay-sidebar.active {
+    display: block;
+}
+
+.adicionar-cadastro-container, .filtros-container {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.adicionar-cadastro-container button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.625rem;
+    background-color: green;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#btn-aplicar-filtro {
+    background-color: #0a448f;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+#btn-aplicar-filtro:hover {
+    background-color: darkblue;
+}
+#btn-limpar-filtro {
+    background-color: transparent;
+    color: #0a448f;
+    border: 0.0625rem solid #0a448f;
+    padding: 0.5rem 1rem;
+    border-radius: 0.625rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+#btn-limpar-filtro:hover {
+    background-color: #0a448f;
+    color: white;
+}
+.adicionar-cadastro-container button:hover {
+    background-color: darkgreen;
+}
+
+/* --- FOOTER --- */
+footer {
+    display: flex;
+    background: black;
+    color: white;
+    padding: 1.875rem;
+    justify-content: center;
+    width: 100%;
+}

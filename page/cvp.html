@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - CVP</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../css/stylescvp.css">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3|CVP</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a>
+            <a href="../page/solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao">
+                <h2>Crimes Violentos Contra o Patrimônio</h2>
+                <p>Furto, Roubo, Tentativa de Roubo, Latrocínio, Extorção Mediante Sequestro</p>
+            </div>
+            <div class="TabelaEventos">
+                <h3>Cadastro de CVP</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Novo CVP
+                    </button>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div>
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="N° DO BOU">N° BOU</option>
+                        <option value="DATA">Data</option>
+                        <option value="CATEGORIA">Categoria</option>
+                        <option value="ESAJ">ESAJ</option>
+                        <option value="STATUS">Status</option>
+                        <option value="LOCAL">Local</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                </div>
+                <div class="container-tabela">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>Nº OCORRÊNCIA</th>
+                                <th>DATA</th>
+                                <th>HORA</th>
+                                <th>SOLICITANTE</th>
+                                <th>TELEFONE</th>
+                                <th>LOGRADOURO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>PONTO REF.</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ESTABELECIMENTO</th>
+                                <th>SOLUÇÃO</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID_OCORRENCIA">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>Nº OCORRÊNCIA</p>
+                        <input type="text" name="NUMEROOCORRENCIA" id="NUMEROOCORRENCIA">
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="data" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p>
+                        <input type="time" name="HORA" id="HORA">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE</p>
+                        <input type="text" name="SOLICITANTE" id="SOLICITANTE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE (TELEFONE)</p>
+                        <input type="tel" name="TELEFONE" id="TELEFONE">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>LOGRADOURO</p>
+                        <input type="text" name="LOGRADOURO" id="LOGRADOURO">
+                    </div>
+                    <div class="formulario">
+                        <p>BAIRRO</p>
+                        <input type="text" name="BAIRRO" id="BAIRRO">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p>
+                        <select name="CIDADE" id="CIDADE">
+                            <option value="">Selecione a Cidade</option>
+                            <option value="Belém">Belém</option>
+                            <option value="Cacimbinhas">Cacimbinhas</option>
+                            <option value="Estrela de Alagoas">Estrela de Alagoas</option>
+                            <option value="Igaci">Igaci</option>
+                            <option value="Mar Vermelho">Mar Vermelho</option>
+                            <option value="Maribondo">Maribondo</option>
+                            <option value="Paulo Jacinto">Paulo Jacinto</option>
+                            <option value="Palmeira dos Índios">Palmeira dos Índios</option>
+                            <option value="Quebrangulo">Quebrangulo</option>
+                            <option value="Tanque D'arca">Tanque D'Arca</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO DE REFERENCIA</p>
+                        <input type="text" name="PONTO_REF" id="PONTO_REF">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE</p>
+                        <input type="text" name="LATITUDE" id="LATITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>LONGITUDE</p>
+                        <input type="text" name="LONGITUDE" id="LONGITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO GERAL</p>
+                        <select name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
+                            <option value="">Selecione a Tipificação</option>
+                            <option value="FURTO">FURTO</option>
+                            <option value="APROPRIAÇÃO INDÉBITA">APROPRIAÇÃO INDÉBITA</option>
+                            <option value="TENTATIVA DE FURTO">TENTATIVA DE FURTO</option>
+                            <option value="FURTO QUALIFICADO">FURTO QUALIFICADO</option>
+                            <option value="LATROCÍNIO">LATROCÍNIO</option>
+                            <option value="DANO">DANO</option>
+                            <option value="EXTORÇÃO MEDIANTE SEQUESTRO">EXTORÇÃO MEDIANTE SEQUESTRO</option>
+                            <option value="DANO QUALIFICADO">DANO QUALIFICADO</option>
+                            <option value="ROUBO">ROUBO</option>
+                            <option value="TENTATIVA DE ROUBO">TENTATIVA DE ROUBO</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>ESTABELECIMENTO</p>
+                        <input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO DA OCORRÊNCIA</p>
+                        <input type="text" name="SOLUÇÃO" id="SOLUÇÃO">
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
+        </main>
+    </section>
+</body>
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+<script>
+    // --- CONFIGURAÇÕES DO FIREBASE ---
+    // --- CONFIGURAÇÃO REALTIME DATABASE ---
+    const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/"; // Substitua pela sua URL do RTDB
+    const NODE_NAME = "cvp"; // Agora aponta diretamente para o nó cvp
+
+    // --- ELEMENTOS DA INTERFACE ---
+    const sidebar = document.querySelector('.sidbarform');
+    const overlay = document.getElementById('overlay-sidebar');
+    const form = document.getElementById('form-materiais');
+
+    // --- FUNÇÕES DE APOIO ---
+    function normalizarTexto(texto) {
+        if (!texto) return "";
+        return texto
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .trim();
+    }
+
+    function getStringField(field) {
+        if (!field) return "";
+        if (field.stringValue) return field.stringValue;
+        if (field.integerValue) return field.integerValue;
+        return "";
+    }
+
+    // Converte "DD/MM/AAAA" para objeto Date para ordenação
+    function paraDataOrdenavel(dataStr, horaStr) {
+        if (!dataStr) return new Date(0);
+        const partes = dataStr.split('/');
+        if (partes.length !== 3) return new Date(dataStr); // Caso já esteja em formato ISO
+        const isoData = `${partes[2]}-${partes[1]}-${partes[0]}`;
+        return new Date(`${isoData}T${horaStr || '00:00'}`);
+    }
+
+    // --- FUNÇÃO RELÓGIO ---
+    function atualizarRelogio() {
+        const agora = new Date();
+        const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+        const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+        const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const relogioEl = document.getElementById('relogio');
+        if (relogioEl) relogioEl.innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+    }
+
+    // --- VALIDAÇÃO DE LOGIN E LOGOUT ---
+    function checkLogin() {
+        const graduacao = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const userInfoEl = document.getElementById('user-info');
+        if (graduacao && nomeGuerra) {
+            if (userInfoEl) userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        } else {
+            window.location.href = 'login.html';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
+        window.location.href = 'login.html';
+    }
+
+    // --- CONTROLE DA SIDEBAR ---
+    document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
+        form.reset();
+        document.getElementById('form-id').value = "";
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
+    });
+
+    const fecharSidebar = () => {
+        sidebar.classList.remove('active');
+        overlay.style.display = 'none';
+        form.reset();
+    };
+
+    document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+    overlay.addEventListener('click', fecharSidebar);
+
+    // --- CARREGAR DADOS (FILTRO CVP + ORDENAÇÃO) ---
+    async function carregarDados() {
+        try {
+            const res = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
+            const data = await res.json();
+
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            tbody.innerHTML = "";
+
+            if (!data) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;">Nenhum registro de CVP encontrado.</td></tr>`;
+                document.getElementById('mensagem-carregamento').style.display = 'none';
+                return;
+            }
+
+            const termosCVP = ["ROUBO", "FURTO", "TENTATIVA DE ROUBO", "TENTATIVA DE FURTO", "ESTELIONATO", "DANO", "LATROCINIO"];
+
+            // 1. Converter objeto em Array e Filtrar por Tipificação
+            let resultados = Object.keys(data).map(id => ({
+                id: id,
+                ...data[id]
+            })).filter(doc => {
+                const campo = doc.TIPIFICAÇÃO || doc.TIPIFICACAO || "";
+                const textoNormalizado = normalizarTexto(campo);
+                return termosCVP.some(termo => textoNormalizado.includes(termo));
+            });
+
+            // 2. Ordenar (Mais recente primeiro - assumindo formato ISO ou similar no banco)
+            resultados.sort((a, b) => {
+                const dataA = new Date((a.data || a.DATA) + 'T' + (a.HORA || '00:00'));
+                const dataB = new Date((b.data || b.DATA) + 'T' + (b.HORA || '00:00'));
+                return dataB - dataA;
+            });
+
+            // 3. Renderizar Tabela
+            resultados.forEach(doc => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td>${doc.NUMEROOCORRENCIA || doc.BOLETIM || ""}</td>
+                <td>${doc.data || doc.DATA || ""}</td>
+                <td>${doc.HORA || ""}</td>
+                <td>${doc.SOLICITANTE || ""}</td>
+                <td>${doc.TELEFONE || ""}</td>
+                <td>${doc.LOGRADOURO || ""}</td>
+                <td>${doc.BAIRRO || doc.bairro || ""}</td>
+                <td>${doc.CIDADE || ""}</td>
+                <td>${doc.PONTO_REF || ""}</td>
+                <td>${doc.LATITUDE || ""}</td>
+                <td>${doc.LONGITUDE || ""}</td>
+                <td style="font-weight:bold; color:blue;">${doc.TIPIFICAÇÃO || doc.TIPIFICACAO || ""}</td>
+                <td>${doc.ESTABELECIMENTO || ""}</td>
+                <td>${doc.SOLUÇÃO || doc.SOLUCAO || ""}</td>
+                <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
+            `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('mensagem-carregamento').style.display = 'none';
+
+        } catch (err) {
+            console.error("Erro ao carregar CVP do RTDB:", err);
+        }
+    }
+
+    // --- FUNÇÃO EDITAR (PREENCHER SIDEBAR) ---
+    window.preencherParaEditar = (doc) => {
+        sidebar.classList.add('active');
+        overlay.style.display = 'block';
+
+        // O ID do RTDB (chave do nó)
+        document.getElementById('form-id').value = doc.id;
+
+        const preencher = (idEl, valor) => {
+            const el = document.getElementById(idEl);
+            if (el) el.value = valor || "";
+        };
+
+        preencher('NUMEROOCORRENCIA', doc.NUMEROOCORRENCIA || doc.BOLETIM);
+        preencher('data', doc.data || doc.DATA);
+        preencher('HORA', doc.HORA);
+        preencher('SOLICITANTE', doc.SOLICITANTE);
+        preencher('TELEFONE', doc.TELEFONE);
+        preencher('LOGRADOURO', doc.LOGRADOURO);
+        preencher('BAIRRO', doc.BAIRRO || doc.bairro);
+        preencher('CIDADE', doc.CIDADE);
+        preencher('PONTO_REF', doc.PONTO_REF);
+        preencher('LATITUDE', doc.LATITUDE);
+        preencher('LONGITUDE', doc.LONGITUDE);
+        preencher('TIPIFICAÇÃO', doc.TIPIFICAÇÃO || doc.TIPIFICACAO);
+        preencher('ESTABELECIMENTO', doc.ESTABELECIMENTO);
+        preencher('SOLUÇÃO', doc.SOLUÇÃO || doc.SOLUCAO);
+    };
+    document.addEventListener('DOMContentLoaded', () => {
+        checkLogin();
+        atualizarRelogio();
+        setInterval(atualizarRelogio, 1000);
+        carregarDados();
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) btnLogout.onclick = logout;
+    });
+    form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('form-id').value;
+    const formData = new FormData(form);
+    const dados = Object.fromEntries(formData.entries());
+
+    // Define URL: se tem ID, atualiza (PATCH), se não, cria novo (POST)
+    const url = id 
+        ? `${DATABASE_URL}/${NODE_NAME}/${id}.json` 
+        : `${DATABASE_URL}/${NODE_NAME}.json`;
+    
+    const method = id ? 'PATCH' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dados)
+        });
+
+        if(res.ok) {
+            alert("Dados de CVP salvos com sucesso!");
+            fecharSidebar();
+            carregarDados();
+        }
+    } catch (err) {
+        console.error("Erro ao salvar CVP:", err);
+        alert("Erro ao salvar os dados.");
+    }
+});
+
+</script>

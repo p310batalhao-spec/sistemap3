@@ -1,0 +1,36 @@
+#calendar-container {
+    background: white;
+    margin-left: 10px;
+    width: 90%;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+#calendar {
+    margin: 0 auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Cores por Porte */
+.event-pequeno {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.event-medio {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.event-grande {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+.fc-event-title {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 0.85em;
+}

@@ -1,0 +1,289 @@
+/* --- CONFIGURAÇÕES GERAIS --- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    text-decoration: none;
+}
+
+body {
+    background: #f3f3f5;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+/* --- CABEÇALHO AJUSTADO (MINIMALISTA) --- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+    padding: 0.5rem 1.875rem; 
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    height: 3.75rem; /* 60px */
+    position: sticky;
+    top: 0;
+    z-index: 1001;
+}
+
+.header-info-left {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem; /* 20px */
+}
+
+.brasao {
+    height: 2.5rem; /* 40px */
+}
+
+.cabecalhotexto h1, .cabecalhotexto h3 {
+    font-size: 1.1rem; 
+    color: white;
+    text-shadow: 0.0625rem 0.0625rem 0.125rem black;
+    margin: 0;
+}
+
+.header-info-right {
+    display: flex;
+    align-items: center;
+    gap: 1.875rem; /* 30px */
+    color: white;
+}
+
+#relogio {
+    font-size: 0.85rem;
+    font-weight: bold;
+    text-align: right;
+    line-height: 1.2;
+}
+
+.exibirusuario {
+    font-size: 0.8rem;
+    padding-left: 1rem;
+    border-left: 0.0625rem solid rgba(255, 255, 255, 0.3);
+}
+
+/* --- SIDEBAR LATERAL EXPANSÍVEL --- */
+.pagecomplete {
+    display: flex; 
+    min-height: calc(100vh - 3.75rem);
+}
+
+.navegacao {
+    width: 4.375rem; /* 70px */
+    padding: 1.25rem 0.625rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    background-color: white; 
+    box-shadow: 0.125rem 0 0.3125rem rgba(0, 0, 0, 0.1); 
+    transition: width 0.3s ease;
+    overflow: hidden;
+    flex-shrink: 0; /* Impede que a sidebar seja esmagada pelo conteúdo */
+}
+
+.navegacao:hover {
+    width: 15.625rem; /* 250px */
+}
+
+.navegacao a {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    color: black; 
+    white-space: nowrap;
+    transition: 0.3s;
+}
+
+.navegacao p {
+    margin-left: 0.625rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.navegacao:hover p {
+    opacity: 1;
+}
+
+.navegacao img {
+    height: 1.5rem;
+    width: 1.5rem;
+    flex-shrink: 0;
+}
+
+.navegacao a:hover, .navegacao a.active {
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+    color: white;
+}
+
+.navegacao a.active img {
+    filter: brightness(0) invert(1);
+}
+
+.btn-logout {
+    margin-top: auto;
+    background-color: transparent;
+    border: none;
+    color: #0a448f;
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+.btn-logout:hover {
+    background-color: red;
+    color: white;
+}
+
+.saudacao {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    color: white;
+    gap: 0.5rem;
+    padding: 1.25rem;
+    border-radius: 10px;
+    background: linear-gradient(90deg, rgba(10, 68, 143, 1) 0%, rgba(59, 111, 184, 1) 50%, rgba(20, 100, 181, 1) 100%);
+}
+
+.saudacao p {
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-left: 1.25rem;
+}
+/* --- CONTEÚDO DA PÁGINA (MAIN) --- */
+main {
+
+    flex-grow: 1;
+    padding: 1.25rem;
+    max-width: calc(100vw - 4.375rem); /* Garante que o conteúdo respeite a sidebar */
+    overflow-x: hidden;
+}
+
+/* --- ESTILOS ORIGINAIS DA PÁGINA DE DROGAS (RESTAURADOS) --- */
+.totalcards {
+    margin-top: 1.25rem;
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.cardnumero {
+    background-color: white;
+    padding: 0.625rem;
+    border-radius: 0.625rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+    width: 13.75rem; /* 220px */
+    height: 6.25rem; /* 100px */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: 0.3s;
+}
+
+.cardnumero:hover {
+    transform: translateY(-0.3125rem);
+    border-top: 0.1875rem solid #0a71df;
+}
+
+.cardnumero p {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #0a71df;
+}
+
+/* Containers de Filtros e Adicionar (Mantendo a estética da sua imagem) */
+.adicionar-cadastro-container, .filtros-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.adicionar-cadastro-container button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.625rem;
+    background-color: #0a448f;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* --- TABELAEVENTOS (CSS DA IMAGEM ORIGINAL) --- */
+.tabela-container {
+    width: 100%;
+    overflow-x: auto;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.1);
+    margin-top: 1.25rem;
+}
+
+.TabelaEventos {
+    background-color: white;
+    padding: 1.25rem; /* Idêntico ao seu TabelaEventos */
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 62.5rem;
+}
+
+.TabelaEventos th {
+    background-color: #0a448f;
+    border-left: 0.0625rem solid white;
+    color: white;
+    padding: 0.30rem;
+    text-align: left;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.TabelaEventos td {
+    padding: 0.10rem;
+    border-bottom: 0.0500rem solid #eee;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+/* --- SIDEBAR FORM (BLOQUEIO DE TELA) --- */
+.sidbarform {
+    position: fixed;
+    top: 0;
+    right: -28.125rem;
+    width: 25rem;
+    height: 100vh;
+    background-color: white;
+    box-shadow: -0.3125rem 0 0.9375rem rgba(0,0,0,0.3);
+    transition: right 0.4s ease;
+    z-index: 2000;
+    padding: 1.5625rem;
+}
+
+.sidbarform.active {
+    right: 0;
+}
+
+.overlay-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    z-index: 1999;
+}
+
+.overlay-sidebar.active {
+    display: block;
+}
+
+/* --- FOOTER --- */
+footer {
+    display: flex;
+    background: black;
+    color: white;
+    padding: 1.875rem;
+    justify-content: center;
+}

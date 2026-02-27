@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stylesdashboard.css">
+    <title>Sistema de Gerenciamento P3 - Dashboard Interativo</title>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* OTIMIZAÇÃO DE PERFORMANCE SIDEBAR */
+        .navegacao {
+            will-change: transform;
+            contain: content;
+        }
+
+        /* LAYOUT DOS GRÁFICOS */
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .card-grafico {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            padding: 15px;
+            transition: transform 0.2s;
+        }
+        .card-grafico:hover { transform: translateY(-2px); }
+        .card-grafico h3 {
+            color: #003366;
+            font-size: 13px;
+            margin-bottom: 15px;
+            text-align: center;
+            text-transform: uppercase;
+            border-bottom: 1px solid #f0f0f0;
+            padding-bottom: 8px;
+        }
+        .stats-topo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px;
+        }
+        .stat-box {
+            background: #003366;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+        }
+        .stat-box h2 { margin: 10px 0 0 0; font-size: 28px; }
+        .filter-badge {
+            background: #ffc107;
+            color: #000;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            display: none;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+<nav class="navegacao">
+            <a href="../index.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="../page/dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+            <a href="../page/solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <main class="content">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-right: 20px;">
+                <h2 style="margin: 20px; color: #003366;">Monitoramento CVLI - Filtros Cruzados</h2>
+                <button onclick="resetarFiltros()" style="padding: 8px 15px; cursor:pointer; background:#c62828; color:white; border:none; border-radius:5px;">Limpar Filtros</button>
+            </div>
+            
+            <div class="stats-topo">
+                <div class="stat-box">
+                    <p>Total Geral</p>
+                    <h2 id="count-total">0</h2>
+                </div>
+                <div class="stat-box">
+                    <p>Filtro Ativo: Cidade</p>
+                    <h2 id="filter-cidade-val">Todas</h2>
+                </div>
+                <div class="stat-box">
+                    <p>Filtro Ativo: Tipo</p>
+                    <h2 id="filter-tipo-val">Todos</h2>
+                </div>
+            </div>
+
+            <div class="dashboard-container">
+                <div class="card-grafico">
+                    <h3>Tipificação (Clique para filtrar)</h3>
+                    <canvas id="chartTipificacao"></canvas>
+                </div>
+                <div class="card-grafico">
+                    <h3>Cidades (Clique na barra)</h3>
+                    <canvas id="chartCidade"></canvas>
+                </div>
+                <div class="card-grafico">
+                    <h3>Série Mensal</h3>
+                    <canvas id="chartMes"></canvas>
+                </div>
+                <div class="card-grafico">
+                    <h3>Dia da Semana</h3>
+                    <canvas id="chartSemana"></canvas>
+                </div>
+                <div class="card-grafico">
+                    <h3>Mancha Horária</h3>
+                    <canvas id="chartHora"></canvas>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script>
+        const FIREBASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/geral.json";
+        
+        // ESTADO GLOBAL
+        let dadosOriginais = [];
+        let filtros = { cidade: null, tipo: null };
+        let charts = {};
+
+        async function init() {
+            try {
+                const res = await fetch(FIREBASE_URL);
+                const json = await res.json();
+                if (!json) return;
+
+                // Filtro base: apenas CVLI
+                dadosOriginais = Object.values(json).filter(item => {
+                    const t = (item.TIPIFICACAO || "").toUpperCase();
+                    return t.includes("HOMICÍDIO") || t.includes("CVLI") || t.includes("LATROCÍNIO") || t.includes("FEMINICÍDIO");
+                });
+
+                atualizarDashboard();
+            } catch (e) { console.error(e); }
+        }
+
+        function resetarFiltros() {
+            filtros = { cidade: null, tipo: null };
+            atualizarDashboard();
+        }
+
+        function atualizarDashboard() {
+            // 1. Filtragem Cruzada
+            let dadosFiltrados = dadosOriginais.filter(item => {
+                const matchCidade = !filtros.cidade || item.CIDADE.toUpperCase() === filtros.cidade;
+                const matchTipo = !filtros.tipo || item.TIPIFICACAO.toUpperCase().includes(filtros.tipo);
+                return matchCidade && matchTipo;
+            });
+
+            // 2. Atualizar UI
+            document.getElementById('count-total').innerText = dadosFiltrados.length;
+            document.getElementById('filter-cidade-val').innerText = filtros.cidade || "Todas";
+            document.getElementById('filter-tipo-val').innerText = filtros.tipo || "Todos";
+
+            // 3. Processar Agrupamentos
+            const agregados = processarDados(dadosFiltrados);
+            renderizarGraficos(agregados);
+        }
+
+        function processarDados(lista) {
+            const res = {
+                tipos: {}, cidades: {}, meses: Array(12).fill(0),
+                semana: { "Dom": 0, "Seg": 0, "Ter": 0, "Qua": 0, "Qui": 0, "Sex": 0, "Sáb": 0 },
+                horas: Array(24).fill(0)
+            };
+            const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+            lista.forEach(d => {
+                const t = d.TIPIFICACAO.toUpperCase();
+                res.tipos[t] = (res.tipos[t] || 0) + 1;
+
+                const c = d.CIDADE.toUpperCase();
+                res.cidades[c] = (res.cidades[c] || 0) + 1;
+
+                if(d.HORA) { const h = parseInt(d.HORA.split(":")[0]); if(!isNaN(h)) res.horas[h]++; }
+                if(d.DATA) { 
+                    const dt = new Date(d.DATA); 
+                    if(!isNaN(dt)) { res.meses[dt.getMonth()]++; res.semana[dias[dt.getDay()]]++; }
+                }
+            });
+            return res;
+        }
+
+        function renderizarGraficos(data) {
+            // Limpa gráficos anteriores para evitar lentidão e fantasmas
+            Object.values(charts).forEach(c => c.destroy());
+
+            const cores = ['#003366', '#c62828', '#2e7d32', '#f9a825', '#6a1b9a', '#1565c0'];
+
+            // GRAFICO TIPIFICAÇÃO (Com evento de clique)
+            charts.tip = new Chart(document.getElementById('chartTipificacao'), {
+                type: 'doughnut',
+                data: { labels: Object.keys(data.tipos), datasets: [{ data: Object.values(data.tipos), backgroundColor: cores }] },
+                options: {
+                    onClick: (evt, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            filtros.tipo = Object.keys(data.tipos)[idx];
+                            atualizarDashboard();
+                        }
+                    }
+                }
+            });
+
+            // GRAFICO CIDADE (Com evento de clique)
+            charts.cid = new Chart(document.getElementById('chartCidade'), {
+                type: 'bar',
+                data: { labels: Object.keys(data.cidades), datasets: [{ label: 'Qtd', data: Object.values(data.cidades), backgroundColor: '#003366' }] },
+                options: {
+                    indexAxis: 'y',
+                    onClick: (evt, elements) => {
+                        if (elements.length > 0) {
+                            const idx = elements[0].index;
+                            filtros.cidade = Object.keys(data.cidades)[idx];
+                            atualizarDashboard();
+                        }
+                    }
+                }
+            });
+
+            // MÊS
+            charts.mes = new Chart(document.getElementById('chartMes'), {
+                type: 'line',
+                data: { labels: ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'], datasets: [{ label: 'CVLI', data: data.meses, backgroundColor: '#c62828' }] }
+            });
+
+            // SEMANA
+            charts.sem = new Chart(document.getElementById('chartSemana'), {
+                type: 'radar',
+                data: { labels: Object.keys(data.semana), datasets: [{ label: 'Dia Semana', data: Object.values(data.semana), borderColor: '#2e7d32', backgroundColor: 'rgba(46,125,50,0.1)' }] }
+            });
+
+            // HORA
+            charts.hor = new Chart(document.getElementById('chartHora'), {
+                type: 'line',
+                data: { labels: Array.from({length:24}, (_,i)=>i+'h'), datasets: [{ label: 'Frequência Horária', data: data.horas, borderColor: '#f9a825', fill: false, tension: 0.3 }] }
+            });
+        }
+
+        // Relógio e Login (Mantidos)
+        function atualizarRelogio() {
+            document.getElementById('relogio').innerHTML = new Date().toLocaleString('pt-BR');
+        }
+        function checkLogin() {
+            const g = localStorage.getItem('userGraduacao');
+            const n = localStorage.getItem('userNomeGuerra');
+            if (g && n) document.getElementById('user-info').innerHTML = `<p>${g} ${n}</p>`;
+            else window.location.href = 'login.html';
+        }
+
+        window.onload = () => {
+            checkLogin();
+            setInterval(atualizarRelogio, 1000);
+            init();
+        };
+    </script>
+</body>
+</html>

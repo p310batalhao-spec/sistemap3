@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Materiais Apreendidos</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stylesmateriais.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="../page/dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="../page/materiais.html" class="active">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+            <a href="../page/solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <main>
+
+            <div class="totalcards">
+                <div class="cardnumero">
+                    <h4>Total de Materiais</h4>
+                    <p id="total-materiais">0</p>
+                </div>
+                <div class="cardnumero">
+                    <h4>Total Ano Anterior</h4>
+                    <p id="total-ano-anterior">0</p>
+                </div> <!-- FIM cardnumero -->
+                <div class="cardnumero">
+                    <h4>Total do Ano</h4>
+                    <p id="total-ano-atual">0</p>
+                </div><!-- FIM cardnumero -->
+            </div><!-- FIM totalcards -->
+
+            <div class="TabelaEventos">
+                <h3>Cadastro e Gerenciamento de Materiais Apreendidos</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
+                        Adicionar Novo Material
+                    </button>
+                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
+                </div> <!-- FIM adicionar-cadastro-container -->
+
+                <div class="filtros-container">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="N° DO BOU">N° BOU</option>
+                        <option value="DATA">Data</option>
+                        <option value="CATEGORIA">Categoria</option>
+                        <option value="STATUS">Status</option>
+                        <option value="LOCAL">Local</option>
+                    </select>
+
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor...">
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+
+                    <div class="actions-bar">
+                        <button id="btn-imprimir" class="action-button primary-button">
+                            <img width="24" height="24" src="https://img.icons8.com/material-outlined/24/print.png"
+                                alt="Imprimir" />
+                        </button>
+                    </div>
+                </div>
+
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>IDMaterial</th>
+                                <th>N° DO BOU</th>
+                                <th>DATA</th>
+                                <th>CATEGORIA</th>
+                                <th>DESCRIÇÃO</th>
+                                <th>LOCAL DO DEPÓSITO</th>
+                                <th>DATA DE DEPOSITO</th>
+                                <th>ESAJ</th>
+                                <th>STATUS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-materiais">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4>Cadastro de Material Apreendido</h4>
+
+                <input type="hidden" id="form-id" name="ID">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>N° DO BOU</p>
+                        <input type="text" name="N° DO BOU" id="bou" required>
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p>
+                        <input type="date" name="DATA" id="data">
+                    </div>
+                    <div class="formulario">
+                        <p>CATEGORIA</p>
+                        <select name="CATEGORIA" id="categoria">
+                            <option value="">Selecione a categoria</option>
+                            <option value="Aparelho de Som">Aparelho de Som</option>
+                            <option value="Arma Branca">Arma Branca</option>
+                            <option value="Cano de Escape">Cano de Escape</option>
+                            <option value="Materiais Diversos">Materiais Diversos</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>DESCRIÇÃO</p>
+                        <input type="text" name="DESCRIÇÃO" id="descricao">
+                    </div>
+                    <div class="formulario">
+                        <p>LOCAL DO DEPÓSITO</p>
+                        <select name="localdeposito" id="localdeposito">
+                            <option value="">Selecione o local</option>
+                            <option value="CISP - Palmeira dos Índios">CISP - Palmeira dos Índios</option>
+                            <option value="CISP - Maribondo">CISP - Maribondo</option>
+                            <option value="Fiel Depositário Civil">Fiel Depositário Civil</option>
+                            <option value="Guarda Civil Municipal de Palmeira dos Índios">Guarda Civil Municipal de
+                                Palmeira dos Índios</option>
+                        </select>
+
+                    </div>
+                    <div class="formulario">
+                        <p>DATA DE DEPOSITO</p>
+                        <input type="date" name="DATA DE DEPOSITO" id="data-deposito">
+                    </div>
+                    <div class="formulario">
+                        <p>ESAJ</p>
+                        <input type="text" name="ESAJ" id="esaj">
+                    </div>
+                    <div class="formulario">
+                        <p>STATUS</p>
+                        <select name="STATUS" id="status">
+                            <option value="">Selecione o status</option>
+                            <option value="PROTOCOLADO">PROTOCOLADO</option>
+                            <option value="PENDENTE">PENDENTE</option>
+                            <option value="ARQUIVADO">ARQUIVADO</option>
+                            <option value="A DEVOLVER">A DEVOLVER</option>
+                            <option value="DEVOLVIDO">DEVOLVIDO</option>
+                            <option value="FIEL DEPOSITÁRIO">FIEL DEPOSITÁRIO</option>
+                            <option value="EM TRÂNSITO">EM TRÂNSITO</option>
+                        </select>
+                    </div>
+                </div><!--termina formulario-scroll-->
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR DADOS
+                </button>
+            </form><!--termina sidebarform-->
+
+        </main>
+    </section>
+
+    <footer>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </footer>
+
+    <script>
+        let allMateriais = [];
+        let filtradosAtivos = null; // Variável para controlar se há filtro aplicado
+        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
+
+        const chavesMateriais = ['IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO', 'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'];
+        const chavesEditaveis = chavesMateriais.filter(function (k) { return k !== 'IDMaterial'; });
+
+        const sidebar = document.getElementById('form-materiais');
+        const overlay = document.getElementById('overlay-sidebar');
+
+        // --- 1. FUNÇÕES DE LOGIN E RELÓGIO (IGUAIS AO CADASTRO) ---
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+
+            if (graduacao && nomeGuerra) {
+                userInfoEl.innerHTML = `
+                <p>Bem Vindo(a):</p>
+                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
+            `;
+            } else {
+                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
+                window.location.href = '../page/login.html';
+            }
+        }
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
+            const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const el = document.getElementById('relogio');
+            if (el) el.innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
+        }
+
+        // --- 2. FUNÇÕES DE DADOS E TABELA ---
+        async function fetchData() {
+            try {
+                const response = await fetch(WEBAPP_URL + '?action=read');
+                const data = await response.json();
+                allMateriais = data;
+                renderTable(allMateriais);
+                loadTotalCounts();
+                if (document.getElementById('mensagem-carregamento')) {
+                    document.getElementById('mensagem-carregamento').style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+            }
+        }
+
+        function renderTable(dataToRender) {
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            dataToRender.forEach(function (item) {
+                const row = tbody.insertRow();
+                row.insertCell().textContent = item.IDMaterial || '';
+
+                chavesEditaveis.forEach(function (key) {
+                    const cell = row.insertCell();
+                    const valor = item[key] || '';
+                    if (key === 'STATUS') {
+                        const sClass = String(valor).replace(/\s+/g, '').toLowerCase();
+                        cell.innerHTML = '<span class="status-badge status-' + sClass + '">' + valor + '</span>';
+                    } else {
+                        cell.textContent = valor;
+                    }
+                });
+
+                const acoesCell = row.insertCell();
+                acoesCell.style.display = 'flex';
+                acoesCell.style.gap = '5px';
+
+                // 1. Botão Editar (Sempre visível) 
+                const btnEditar = document.createElement('button');
+                btnEditar.className = 'btn-editar-sidebar';
+                btnEditar.style.cssText = 'background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;';
+                btnEditar.textContent = 'Editar';
+                btnEditar.onclick = () => toggleSidebar(true, item);
+                acoesCell.appendChild(btnEditar);
+
+                // 2. Botão TERMO (Status: A DEVOLVER) 
+                if (String(item.STATUS).toUpperCase() === 'A DEVOLVER') {
+                    const btnTermo = document.createElement('button');
+                    btnTermo.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
+                    btnTermo.textContent = 'TERMO';
+                    btnTermo.onclick = () => gerarTermo(item);
+                    acoesCell.appendChild(btnTermo);
+                }
+
+                // 3. NOVO: Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO) [cite: 13, 17]
+                if (String(item.STATUS).toUpperCase() === 'FIEL DEPOSITÁRIO') {
+                    const btnFiel = document.createElement('button');
+                    btnFiel.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
+                    btnFiel.textContent = 'TERMO FIEL DEP.';
+                    btnFiel.onclick = () => {
+                        // Salva os dados no localStorage para serem lidos pela nova página
+                        localStorage.setItem('dadosTermoFiel', JSON.stringify(item));
+                        window.open('termo_fiel.html', '_blank');
+                    };
+                    acoesCell.appendChild(btnFiel);
+                }
+            });
+        }
+
+        function gerarTermo(item) {
+            // Salva os dados do item selecionado para o termo
+            localStorage.setItem('dadosTermo', JSON.stringify(item));
+            // Abre a nova página do termo
+            window.open('../termos/termo_devolucao.html', '_blank');
+        }
+
+        // --- 3. FILTROS ---
+        function aplicarFiltro() {
+            var campo = document.getElementById('filtro-tipo').value;
+            var busca = document.getElementById('filtro-valor-text').value.toLowerCase();
+            if (!campo || !busca) return;
+
+            filtradosAtivos = allMateriais.filter(function (i) {
+                return String(i[campo] || "").toLowerCase().indexOf(busca) > -1;
+            });
+
+            renderTable(filtradosAtivos);
+            document.getElementById('btn-limpar-filtro').style.display = 'inline-block';
+        }
+
+        function limparFiltro() {
+            document.getElementById('filtro-tipo').value = "";
+            document.getElementById('filtro-valor-text').value = "";
+            document.getElementById('btn-limpar-filtro').style.display = 'none';
+            filtradosAtivos = null; // Reseta o estado do filtro
+            renderTable(allMateriais);
+        }
+
+        // --- 4. IMPRESSÃO (FILTRADO OU TOTAL) ---
+        function imprimirTabela() {
+            // Se houver filtro aplicado, usa os filtrados, senão usa todos
+            const dadosParaImprimir = filtradosAtivos ? filtradosAtivos : allMateriais;
+
+            if (dadosParaImprimir.length === 0) return alert("Não há dados para imprimir.");
+
+            localStorage.setItem('dadosParaImpressao', JSON.stringify(dadosParaImprimir));
+            window.open('../relatorios/relatoriomateriais.html', '_blank');
+        }
+
+        // --- 5. LOGOUT E OUTROS ---
+        function efetuarLogout() {
+            localStorage.clear();
+            window.location.href = '../page/login.html';
+        }
+
+        function toggleSidebar(show, data) {
+            if (!sidebar) return;
+            if (show) {
+                sidebar.reset();
+                document.getElementById('form-id').value = '';
+                if (data) {
+                    document.getElementById('form-id').value = data.IDMaterial || '';
+                    document.getElementById('bou').value = data['N° DO BOU'] || '';
+                    document.getElementById('data').value = formatarDataParaInput(data.DATA);
+                    document.getElementById('categoria').value = data.CATEGORIA || '';
+                    document.getElementById('descricao').value = data.DESCRIÇÃO || '';
+                    document.getElementById('localdeposito').value = data.LOCAL || '';
+                    document.getElementById('data-deposito').value = formatarDataParaInput(data['DATA DE DEPOSITO']);
+                    document.getElementById('esaj').value = data.ESAJ || '';
+                    document.getElementById('status').value = data.STATUS || '';
+                }
+                sidebar.classList.add('active');
+                if (overlay) overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('active');
+                if (overlay) overlay.classList.remove('active');
+            }
+        }
+
+        function formatarDataParaInput(dataStr) {
+            if (!dataStr || !dataStr.includes('/')) return dataStr;
+            var p = dataStr.split('/');
+            return p[2] + '-' + p[1] + '-' + p[0];
+        }
+
+        // --- FUNÇÃO DE CONTAGEM ATUALIZADA ---
+        function loadTotalCounts() {
+            const agora = new Date();
+            const anoAtual = agora.getFullYear().toString();
+            const anoAnterior = (agora.getFullYear() - 1).toString();
+
+            // 1. Total de Materiais (Todos exceto DEVOLVIDO)
+            const materiaisAtivosGeral = allMateriais.filter(item => {
+                return String(item.STATUS || "").toUpperCase() !== 'DEVOLVIDO';
+            });
+            const elTotal = document.getElementById('total-materiais');
+            if (elTotal) elTotal.textContent = materiaisAtivosGeral.length;
+
+            // 2. Total do Ano (Ativos do ano atual)
+            const ativosAnoAtual = materiaisAtivosGeral.filter(item => {
+                return String(item.DATA || "").indexOf(anoAtual) > -1;
+            });
+            const elAnoAtual = document.getElementById('total-ano-atual');
+            if (elAnoAtual) elAnoAtual.textContent = ativosAnoAtual.length;
+
+            // 3. Total Ano Anterior (Ativos do ano anterior)
+            const ativosAnoAnterior = materiaisAtivosGeral.filter(item => {
+                return String(item.DATA || "").indexOf(anoAnterior) > -1;
+            });
+            const elAnoAnterior = document.getElementById('total-ano-anterior');
+            if (elAnoAnterior) elAnoAnterior.textContent = ativosAnoAnterior.length;
+        }
+
+        // --- FETCH DATA ATUALIZADO ---
+        async function fetchData() {
+            try {
+                const response = await fetch(WEBAPP_URL + '?action=read');
+                const data = await response.json();
+                allMateriais = data;
+
+                renderTable(allMateriais);
+                loadTotalCounts(); // Chama a contagem logo após carregar os dados
+
+                if (document.getElementById('mensagem-carregamento')) {
+                    document.getElementById('mensagem-carregamento').style.display = 'none';
+                }
+            } catch (error) {
+                console.error("Erro ao buscar dados:", error);
+                if (document.getElementById('mensagem-carregamento')) {
+                    document.getElementById('mensagem-carregamento').textContent = "Erro ao carregar dados.";
+                }
+            }
+        }
+
+        // --- INICIALIZAÇÃO ---
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin();
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+            fetchData();
+
+            document.getElementById('btn-logout').onclick = efetuarLogout;
+            document.getElementById('btn-adicionar-cadastro').onclick = function () { toggleSidebar(true); };
+            document.getElementById('btn-fechar-sidebar').onclick = function () { toggleSidebar(false); };
+            if (overlay) overlay.onclick = function () { toggleSidebar(false); };
+            sidebar.onsubmit = salvarDados;
+            document.getElementById('btn-aplicar-filtro').onclick = aplicarFiltro;
+            document.getElementById('btn-limpar-filtro').onclick = limparFiltro;
+            document.getElementById('btn-imprimir').onclick = imprimirTabela;
+        });
+
+        async function salvarDados(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-salvar-form');
+            btn.disabled = true;
+            btn.textContent = "Processando...";
+            const payload = {
+                action: document.getElementById('form-id').value ? 'update' : 'create',
+                IDMaterial: document.getElementById('form-id').value,
+                'N° DO BOU': document.getElementById('bou').value,
+                'DATA': document.getElementById('data').value,
+                'CATEGORIA': document.getElementById('categoria').value,
+                'DESCRIÇÃO': document.getElementById('descricao').value,
+                'LOCAL': document.getElementById('localdeposito').value,
+                'DATA DE DEPOSITO': document.getElementById('data-deposito').value,
+                'ESAJ': document.getElementById('esaj').value,
+                'STATUS': document.getElementById('status').value
+            };
+            try {
+                await fetch(WEBAPP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-form-urlencoded' },
+                    body: new URLSearchParams(payload)
+                });
+                alert("Operação realizada com sucesso!");
+                toggleSidebar(false);
+                setTimeout(fetchData, 1500);
+            } catch (error) {
+                alert("Erro ao salvar.");
+            } finally {
+                btn.disabled = false;
+                btn.textContent = "SALVAR DADOS";
+            }
+        }
+    </script>
+</body>
+
+</html>

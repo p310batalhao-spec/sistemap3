@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Drogas Apreendidas</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/styledrogas.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html"><img width="48" height="48"
+                    src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home" />
+                <p>Home</p>
+            </a>
+            <a href="../page/dashboard.html"><img width="50" height="50"
+                    src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard" />
+                <p>Dashboard</p>
+            </a>
+            <a href="../page/cadastroocorrencias.html"><img width="50" height="50"
+                    src="https://img.icons8.com/ios/50/add-file.png" alt="cadastro" />
+                <p>Cadastro</p>
+            </a>
+            <a href="../page/materiais.html"><img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png"
+                    alt="materiais" />
+                <p>Materiais</p>
+            </a>
+            <button id="btn-logout" class="btn-logout"><img width="48" height="48"
+                    src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao">
+                <h2>Gerenciamento de Registros de Drogas Apreendidas</h2>
+                <h4>Cards atualizados com totais do ano corrente por tipo.</h4>
+            </div>
+
+            <section class="totalcards">
+                <div class="cardnumero" id="iconmaconha">
+                    <h3>Maconha</h3>
+                    <p id="total-maconha" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconcrack">
+                    <h3>Crack</h3>
+                    <p id="total-crack" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconcocaina">
+                    <h3>Cocaína</h3>
+                    <p id="total-cocaina" class="numero-grande">0 Kg</p>
+                </div>
+                <div class="cardnumero" id="iconrufinol">
+                    <h3>Rufinol</h3>
+                    <p id="total-rufinol" class="numero-grande">0 Un</p>
+                </div>
+                <div class="cardnumero" id="iconlolo">
+                    <h3>Loló</h3>
+                    <p id="total-lolo" class="numero-grande">0 Un</p>
+                </div>
+            </section>
+
+            <div class="TabelaEventos">
+                <h3>Tabela de Registros</h3>
+                <div class="adicionar-cadastro-container" style="display: flex; gap: 10px; align-items: center;">
+                    <button type="button" id="btn-adicionar-cadastro">Adicionar Novo Registro</button>
+                    <div class="filtros-container"
+                        style="margin-top: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <label for="filtro-tipo">Filtrar por:</label>
+                        <select id="filtro-campo" style="padding: 8px; border-radius: 5px;">
+                            <option value="">Selecione o campo</option>
+                            <option value="NUMERO COP">N° COP</option>
+                            <option value="DATA">Data</option>
+                            <option value="NOME">Nome</option>
+                            <option value="TIPO DE DROGA">Tipo de Droga</option>
+                            <option value="CIDADE">Cidade</option>
+                        </select>
+
+                        <input type="text" id="filtro-valor" placeholder="Digite para buscar..."
+                            style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                        <button type="button" id="btn-aplicar-filtro">Aplicar Filtro</button>
+                        <button type="button" id="btn-limpar-filtro">Limpar Filtro</button>
+                        <button type="button" id="btn-abrir-filtro-relatorio" onclick="gerarRelatorio()"
+                            style="background-color: #1a3d5d; color: white; padding: 10px; border-radius: 5px; cursor: pointer;">GerarRelatório</button>
+                    </div>
+                    <p id="mensagem-carregamento">Carregando dados...</p>
+                </div>
+
+                <div class="tabela-container">
+                    <table id="tabela-drogas">
+                        <thead>
+                            <tr>
+                                <th>Nº OCORRENCIA</th>
+                                <th>DATA</th>
+                                <th>HORA</th>
+                                <th>SOLICITANTE</th>
+                                <th>TELEFONE</th>
+                                <th>LOGRADOURO</th>
+                                <th>BAIRRO</th>
+                                <th>CIDADE</th>
+                                <th>PONTO DE REF.</th>
+                                <th>LATITUDE</th>
+                                <th>LONGITUDE</th>
+                                <th>AUTOR</th>
+                                <th>TIPIFICAÇÃO</th>
+                                <th>ESTABELECIMENTO</th>
+                                <th>SOLUÇÃO</th>
+                                <th>TIPO</th>
+                                <th>QTD (KG)</th>
+                                <th>ATENDIMENTO INICIAL</th>
+                                <th>TEXTO DO DESPACHANTE</th>
+                                <th>E-SAJ</th>
+                                <th>NUMERO_LACRE</th>
+                                <th>MOVIMENTAÇÃO</th>
+                                <th>NOME DO AUTOR</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <div id="modal-filtro-relatorio"
+                style="display:none; position:fixed; z-index:1001; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8);">
+                <div
+                    style="background:white; margin:10% auto; padding:25px; width:350px; border-radius:10px; color: black; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                    <h4 style="margin-top:0;">Filtro do Relatório</h4>
+                    <label>Início:</label><input type="date" id="rel-inicio"
+                        style="width:100%; margin-bottom:15px; padding:8px;">
+                    <label>Fim:</label><input type="date" id="rel-fim"
+                        style="width:100%; margin-bottom:15px; padding:8px;">
+                    <label>Tipo:</label>
+                    <select id="rel-tipo" style="width:100%; margin-bottom:20px; padding:8px;">
+                        <option value="TODOS">TODOS</option>
+                        <option value="TRÁFICO DE DROGAS">TRÁFICO DE DROGAS</option>
+                    </select>
+                    <button type="button" onclick="gerarRelatorio()"
+                        style="width:100%; padding:12px; background:#1a3d5d; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">GERAR
+                        RELATÓRIO</button>
+                    <button type="button"
+                        onclick="document.getElementById('modal-filtro-relatorio').style.display='none'"
+                        style="width:100%; margin-top:10px; padding:8px; background:#ddd; border:none; border-radius:5px; cursor:pointer;">CANCELAR</button>
+                </div>
+            </div>
+
+            <form class="sidbarform" id="form-drogas">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR</button>
+                <h4>Cadastro/Edição</h4>
+                <input type="hidden" id="form-id" name="ID">
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>ID OCORRÊNCIA</p><input type="text" name="ID OCORRÊNCIA">
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p><input type="date" name="DATA">
+                    </div>
+                    <div class="formulario">
+                        <p>DATA</p><input type="date" name="DATA">
+                    </div>
+                    <div class="formulario">
+                        <p>HORA</p><input type="time" name="HORA" id="HORA">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLICITANTE</p><input type="text" name="SOLICITANTE" id="SOLICITANTE">
+                    </div>
+                    <div class="formulario">
+                        <p>TELEFONE</p><input type="tel" name="TELEFONE" id="TELEFONE">
+                    </div>
+                    <div class="formulario">
+                        <p>LOGRADOURO</p><input type="text" name="LOGRADOURO" id="LOGRADOURO">
+                    </div>
+                    <div class="formulario">
+                        <p>BAIRRO</p><input type="text" name="BAIRRO" id="BAIRRO">
+                    </div>
+                    <div class="formulario">
+                        <p>CIDADE</p><select name="CIDADE" id="CIDADE">
+                            <option value="">Selecione a Cidade</option>
+                            <option value="BELEM">BELÉM</option>
+                            <option value="CACIMBINHAS">CACIMBINHAS</option>
+                            <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
+                            <option value="IGACI">IGACI</option>
+                            <option value="MAR VERMELHO">MAR VERMELHO</option>
+                            <option value="MARIBONDO">MARIBONDO</option>
+                            <option value="MINADOR DO NEGRÃO">MINADOR DO NEGRÃO</option>
+                            <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
+                            <option value="PAULO JACINTO">PAULO JACINTO</option>
+                            <option value="QUEBRANGULO">QUEBRANGULO</option>
+                            <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>PONTO DE REF.</p><input type="text" name="PONTO DE REF." id="PONTO DE REF.">
+                    </div>
+                    <div class="formulario">
+                        <p>LATITUDE</p><input type="text" name="LATITUDE" id="LATITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>LONGITUDE</p><input type="text" name="LONGITUDE" id="LONGITUDE">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO NO DESPACHO</p><input type="text" name="TIPIFICAÇÃO NO DESPACHO"
+                            id="TIPIFICAÇÃO NO DESPACHO">
+                    </div>
+                    <div class="formulario">
+                        <p>ESTABELECIMENTO</p><input type="text" name="ESTABELECIMENTO" id="ESTABELECIMENTO">
+                    </div>
+                    <div class="formulario">
+                        <p>SOLUÇÃO DA OCORRENCIA</p><input type="text" name="SOLUÇÃO DA OCORRENCIA"
+                            id="SOLUÇÃO DA OCORRENCIA">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPIFICAÇÃO</p><input type="text" name="TIPIFICAÇÃO" id="TIPIFICAÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>TIPO</p><select name="TIPO" id="TIPO">
+                            <option value="">Selecione o Tipo</option>
+                            <option value="MACONHA">MACONHA</option>
+                            <option value="CRACK">CRACK</option>
+                            <option value="COCAÍNA">COCAÍNA</option>
+                            <option value="RUFINOL">RUFINOL</option>
+                            <option value="LOLÓ">LOLÓ</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>QTD (KG)</p><input type="number" step="0.0001" name="QTD_KG" id="QTD_KG">
+                    </div>
+                    <div class="formulario">
+                        <p>ATENDIMENTO INICIAL</p><input type="text" name="ATENDIMENTO INICIAL"
+                            id="ATENDIMENTO INICIAL">
+                    </div>
+                    <div class="formulario">
+                        <p>TEXTO DO DESPACHANTE</p><textarea name="TEXTO DO DESPACHANTE" id="TEXTO DO DESPACHANTE"
+                            rows="3"></textarea>
+                    </div>
+                    <div class="formulario">
+                        <p>E-SAJ</p><input type="text" name="E-SAJ" id="E-SAJ">
+                    </div>
+                    <div class="formulario">
+                        <p>NUMERO_LACRE</p><input type="text" name="NUMERO_LACRE" id="NUMERO_LACRE">
+                    </div>
+                    <div class="formulario">
+                        <p>MOVIMENTAÇÃO</p><input type="text" name="MOVIMENTAÇÃO" id="MOVIMENTAÇÃO">
+                    </div>
+                    <div class="formulario">
+                        <p>NOME DO AUTOR</p><input type="text" name="NOME DO AUTOR" id="NOME DO AUTOR">
+                    </div>
+                </div>
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">SALVAR DADOS</button>
+            </form>
+        </main>
+
+    </section>
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script>
+        const DATABASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com/";
+        const NODE_NAME = "droga";
+
+        let allDrogas = [];
+        let filtradosAtivos = null;
+
+        // --- 1. FUNÇÕES DE INTERFACE ---
+        function atualizarRelogio() {
+            const agora = new Date();
+            const el = document.getElementById('relogio');
+            if (el) el.innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+        }
+
+        function checkLogin() {
+            const grad = localStorage.getItem('userGraduacao');
+            const nome = localStorage.getItem('userNomeGuerra');
+            const userEl = document.getElementById('user-info');
+            if (grad && nome && userEl) {
+                userEl.innerHTML = `<p>Bem Vindo:</p><p class="user-nome">${grad} ${nome}</p>`;
+            } else {
+                window.location.href = 'login.html';
+            }
+        }
+
+        // --- 2. CARREGAMENTO E TABELA ---
+        async function loadDrogas() {
+            try {
+                const res = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
+                const data = await res.json();
+
+                const tbody = document.querySelector('#tabela-drogas tbody');
+                tbody.innerHTML = "";
+
+                if (!data) {
+                    tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;">Nenhum dado encontrado no nó "droga".</td></tr>`;
+                    return;
+                }
+
+                // Objeto para armazenar as somas matemáticas
+                const resumoPesos = { "MACONHA": 0, "CRACK": 0, "COCAINA": 0 };
+                const listaOcorrencias = [];
+
+                // 1. Percorrer cada ID (aquelas chaves longas que aparecem na sua imagem)
+                Object.keys(data).forEach(idDoBanco => {
+                    const registro = data[idDoBanco];
+                    registro.id_realtime = idDoBanco; // Guardamos o ID para edição
+
+                    // 2. Lógica de Pesos baseada no TIPO_DROGA
+                    const tipo = (registro.TIPO_DROGA || "").toUpperCase();
+                    // Converte quantidade (ex: "1,500") para número (1.5)
+                    const qtd = parseFloat(String(registro.QUANTIDADE || "0").replace(',', '.'));
+
+                    if (!isNaN(qtd)) {
+                        if (tipo.includes("MACONHA")) resumoPesos["MACONHA"] += qtd;
+                        else if (tipo.includes("CRACK")) resumoPesos["CRACK"] += qtd;
+                        else if (tipo.includes("COCAINA") || tipo.includes("COCAÍNA")) resumoPesos["COCAINA"] += qtd;
+                    }
+
+                    listaOcorrencias.push(registro);
+                });
+
+                // 3. Ordenar por data (mais recente primeiro)
+                listaOcorrencias.sort((a, b) => {
+                    const dataA = new Date((a.DATA || "") + 'T' + (a.HORA || '00:00'));
+                    const dataB = new Date((b.DATA || "") + 'T' + (b.HORA || '00:00'));
+                    return dataB - dataA;
+                });
+
+                // 4. Preencher a Tabela
+                listaOcorrencias.forEach(doc => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                <td>${doc.BOLETIM || ""}</td>
+                <td>${doc.DATA || ""}</td>
+                <td>${doc.HORA || ""}</td>
+                <td>${doc.SOLICITANTE || ""}</td>
+                <td>${doc.TELEFONE || ""}</td>
+                <td>${doc.LOGRADOURO || ""}</td>
+                <td>${doc.BAIRRO || ""}</td>
+                <td>${doc.CIDADE || ""}</td>
+                <td>${doc.PONTO_REF || ""}</td>
+                <td>${doc.LATITUDE || ""}</td>
+                <td>${doc.LONGITUDE || ""}</td>
+                <td style="font-weight:bold; color:green;">${doc.TIPO_DROGA || ""}</td>
+                <td>${doc.QUANTIDADE || "0"}</td>
+                <td>${doc.SOLUCAO || ""}</td>
+                <td>
+                    <button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button>
+                </td>
+            `;
+                    tbody.appendChild(tr);
+                });
+
+                // Atualiza os contadores na tela (se você tiver os elementos HTML)
+                console.log("Totais Calculados:", resumoPesos);
+                atualizarExibicaoPesos(resumoPesos);
+
+            } catch (err) {
+                console.error("Erro ao carregar dados do RTDB:", err);
+            }
+        }
+
+        // Função para atualizar os valores na tela (certifique-se de ter esses IDs no seu HTML)
+        function atualizarPainelResumo(resumo) {
+            // Se você tiver elementos com esses IDs, eles serão atualizados:
+            if (document.getElementById('peso-maconha')) document.getElementById('peso-maconha').innerText = resumo.MACONHA.toFixed(3) + " kg";
+            if (document.getElementById('peso-crack')) document.getElementById('peso-crack').innerText = resumo.CRACK.toFixed(3) + " kg";
+            if (document.getElementById('peso-cocaina')) document.getElementById('peso-cocaina').innerText = resumo.COCAINA.toFixed(3) + " kg";
+
+            console.log("Totais calculados:", resumo);
+        }
+
+        // Função para exibir o resumo na tela (você pode criar uma div com id="resumo-pesos" no seu HTML)
+        function exibirResumoPesos(resumo) {
+            console.log("Resumo de Pesos:", resumo);
+            // Exemplo de como você poderia injetar isso no HTML:
+            // let html = "<ul>";
+            // for (let tipo in resumo) { html += `<li>${tipo}: ${resumo[tipo].toFixed(3)} kg/un</li>`; }
+            // document.getElementById('container-resumo').innerHTML = html + "</ul>";
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#tabela-drogas tbody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            atualizarCardsContagem(data);
+
+            data.forEach(item => {
+                const row = tbody.insertRow();
+
+                // 1. Preenche as colunas de dados
+                HEADERS.forEach(header => {
+                    const cell = row.insertCell();
+                    const chavePlanilha = Object.keys(item).find(k => k.trim() === header.trim());
+                    cell.textContent = chavePlanilha ? item[chavePlanilha] : '';
+                });
+
+                // 2. Preenche a coluna de AÇÕES (Garante que fique dentro da tabela)
+                const actionCell = row.insertCell();
+                actionCell.style.display = "flex";
+                actionCell.style.gap = "5px";
+
+                // Botão Editar
+                const btnEditar = document.createElement('button');
+                btnEditar.textContent = 'Editar';
+                btnEditar.style.cssText = "background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;";
+                btnEditar.onclick = () => toggleSidebar(true, item);
+                actionCell.appendChild(btnEditar);
+
+                // Botão Requerimento
+                const lacre = item['NUMERO_LACRE'] || '';
+                if (lacre.toString().trim() !== "") {
+                    const btnReq = document.createElement('button');
+                    btnReq.textContent = 'REQUERIMENTO';
+                    btnReq.style.cssText = "background:#1a3d5d; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;";
+                    btnReq.onclick = () => {
+                        const dadosParaRequerimento = {
+                            NUMERO_LACRE: lacre,
+                            NUMERO_TCO: item['Nº OCORRÊNCIA'] || '',
+                            NOME_AUTOR: item['NOME DO AUTOR'] || '',
+                            DATA: item['DATA'] || '',
+                            TIPO_DROGA: item['TIPO'] || '',
+                            PESO: item['QTD_KG)'] || ''
+                        };
+                        localStorage.setItem('dadosRequerimento', JSON.stringify(dadosParaRequerimento));
+                        window.open('requerimento_pericia.html', '_blank');
+                    };
+                    actionCell.appendChild(btnReq);
+                }
+            });
+        }
+
+        // --- 3. SOMA POR TIPO E TOTAL ---
+        function atualizarCardsContagem(data) {
+            const totais = { 'MACONHA': 0, 'CRACK': 0, 'COCAÍNA': 0, 'RUFINOL': 0, 'LOLÓ': 0 };
+            const anoAtual = new Date().getFullYear().toString();
+
+            data.forEach(item => {
+                const dataItem = String(item['DATA'] || "");
+                // Verifica se o registro é do ano atual (formato DD/MM/AAAA ou AAAA-MM-DD)
+                if (dataItem.includes(anoAtual)) {
+                    const tipo = String(item['TIPO'] || '').toUpperCase().trim();
+                    // Busca a chave de quantidade dinamicamente caso o nome varie levemente
+                    const chaveQtd = Object.keys(item).find(k => k.includes("QTD (KG)"));
+                    let peso = parseFloat(String(item[chaveQtd] || '0').replace(',', '.'));
+
+                    if (!isNaN(peso) && totais.hasOwnProperty(tipo)) {
+                        totais[tipo] += peso;
+                    }
+                }
+            });
+
+            const mapaIDs = {
+                'MACONHA': 'total-maconha', 'CRACK': 'total-crack',
+                'COCAÍNA': 'total-cocaina', 'RUFINOL': 'total-rufinol', 'LOLÓ': 'total-lolo'
+            };
+
+            for (const [tipo, id] of Object.entries(mapaIDs)) {
+                const el = document.getElementById(id);
+                if (el) {
+                    const unidade = (tipo === 'RUFINOL' || tipo === 'LOLÓ') ? ' Un' : ' Kg';
+                    el.textContent = totais[tipo].toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + unidade;
+                }
+            }
+        }
+
+        // --- 4. FILTROS E RELATÓRIO ---
+        function aplicarFiltro() {
+            const campo = document.getElementById('filtro-campo').value;
+            const busca = document.getElementById('filtro-valor').value.toLowerCase();
+            if (!campo || !busca) return;
+            filtradosAtivos = allDrogas.filter(i => String(i[campo] || "").toLowerCase().includes(busca));
+            renderTable(filtradosAtivos);
+            document.getElementById('btn-limpar-filtro').style.display = 'inline-block';
+        }
+
+        function limparFiltro() {
+            document.getElementById('filtro-campo').value = "";
+            document.getElementById('filtro-valor').value = "";
+            document.getElementById('btn-limpar-filtro').style.display = 'none';
+            filtradosAtivos = null;
+            renderTable(allDrogas);
+        }
+
+        function gerarRelatorio() {
+            const dados = (filtradosAtivos && filtradosAtivos.length > 0) ? filtradosAtivos : allDrogas;
+            localStorage.setItem('dadosRelatorioDrogas', JSON.stringify(dados));
+            window.open('../relatorios/relatoriodrogas.html', '_blank');
+        }
+
+        // --- 5. SALVAMENTO E SIDEBAR ---
+        // --- 5. SALVAMENTO E SIDEBAR ---
+        async function salvarDados(e) {
+            e.preventDefault();
+            const id = document.getElementById('form-id').value;
+            const formData = new FormData(e.target);
+            const dados = Object.fromEntries(formData.entries());
+
+            // Se tem ID, edita o nó existente (/droga/ID.json). Se não, cria um novo (/droga.json)
+            const url = id
+                ? `${DATABASE_URL}/${NODE_NAME}/${id}.json`
+                : `${DATABASE_URL}/${NODE_NAME}.json`;
+
+            const method = id ? 'PATCH' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                if (res.ok) {
+                    alert("Dados salvos com sucesso!");
+                    toggleSidebar(false);
+                    loadDrogas(); // Recarrega a tabela e o somatório
+                }
+            } catch (err) {
+                alert("Erro ao salvar dados.");
+            }
+        }
+
+        window.preencherParaEditar = (data) => {
+            const form = document.getElementById('form-drogas');
+            // Usamos o ID da chave que veio do Realtime
+            document.getElementById('form-id').value = data.id_realtime;
+
+            // Preenche os campos do formulário automaticamente pelo atributo 'name'
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(campo => {
+                const nome = campo.getAttribute('name');
+                if (nome && data[nome] !== undefined) {
+                    campo.value = data[nome];
+                }
+            });
+
+            toggleSidebar(true);
+        };
+
+        function toggleSidebar(show, data = null) {
+            const sidebar = document.getElementById('form-drogas');
+            const overlay = document.getElementById('overlay-sidebar');
+
+            if (show) {
+                sidebar.reset();
+                document.getElementById('form-id').value = '';
+
+                if (data) {
+                    // O ID na sua planilha é a primeira coluna, geralmente mapeada como 'ID' ou 'Nº OCORRENCIA'
+                    document.getElementById('form-id').value = data['ID'] || data['Nº OCORRENCIA'] || '';
+
+                    sidebar.querySelectorAll('input, select, textarea').forEach(campo => {
+                        const nomeAtributo = campo.getAttribute('name');
+                        if (nomeAtributo && data[nomeAtributo] !== undefined) {
+                            campo.value = data[nomeAtributo];
+                        }
+                    });
+                }
+                sidebar.classList.add('active');
+                overlay.classList.add('active');
+            } else {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('active');
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            checkLogin();
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+            loadDrogas();
+            document.getElementById('form-drogas').onsubmit = salvarDados;
+            document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);
+            document.getElementById('btn-fechar-sidebar').onclick = () => toggleSidebar(false);
+            document.getElementById('btn-aplicar-filtro').onclick = aplicarFiltro;
+            document.getElementById('btn-limpar-filtro').onclick = limparFiltro;
+            const btnRel = document.getElementById('btn-gerar-relatorio');
+            if (btnRel) btnRel.onclick = gerarRelatorio;
+            document.getElementById('btn-logout').onclick = () => { localStorage.clear(); window.location.href = 'login.html'; };
+        });
+    </script>
+</body>
+
+</html>

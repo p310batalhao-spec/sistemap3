@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Gerador de Cartão Programa</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/jurimetria.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <style>
+        /* Estilo para o botão de imprimir no ecrã */
+        #btn-imprimir {
+            display: none;
+            /* Inicia escondido, o gerarcartao.js vai mostrar */
+            background-color: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #btn-imprimir:hover {
+            background-color: #218838;
+        }
+
+        /* LÓGICA DE IMPRESSÃO - FOCO APENAS NO CARTÃO */
+        @media print {
+
+            /* 1. Esconde tudo da página */
+            body * {
+                visibility: hidden;
+            }
+
+            /* 2. Torna o container do cartão e os seus filhos visíveis */
+            #iframe-container,
+            #iframe-container * {
+                visibility: visible;
+            }
+
+            /* 3. Posiciona o cartão no topo da folha A4 */
+            #iframe-container {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                border: none !important;
+            }
+
+            /* Esconde explicitamente elementos que podem causar páginas em branco */
+            header,
+            .sidebar,
+            .menu-lateral,
+            .filtros,
+            #btn-imprimir,
+            .header-info-left {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
+                <p>Home</p>
+            </a><!--termina home-->
+            <a href="../page/dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a><!--termina cadastroocorrencias-->
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a><!--termina materiais apreendidos-->
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <p>Eventos</p>
+            </a><!--termina eventos-->
+            <a href="../page/solucoesia.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a><!--termina solucoes ia-->
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
+
+        <main class="conteudo">
+            <div class="container-central">
+                <h2>Gerador de Cartão Programa</h2>
+
+                <div id="controls-container" style="text-align: center; margin: 20px;">
+                    <select id="select-rp" class="select-p3" style="padding: 12px; border-radius: 8px; width: 300px;">
+                        <option value="">-- SELECIONE A GUARNIÇÃO --</option>
+                        <option value="PALMEIRA DOS ÍNDIOS (RP 01)">PALMEIRA (RP 01)</option>
+                        <option value="PALMEIRA DOS ÍNDIOS (RP 02)">PALMEIRA (RP 02)</option>
+                        <option value="BELÉM (RP)">BELEM (RP)</option>
+                        <option value="CACIMBINHAS (RP)">CACIMBINHAS (RP)</option>
+                        <option value="MINADOR DO NEGRÃO (RP)">MINADOR DO NEGRÃO (RP)</option>
+                        <option value="MAR VERMELHO (RP)">MAR VERMELHO (RP)</option>
+                        <option value="PAULO JACINTO (RP)">PAULO JACINTO (RP)</option>
+                        <option value="TANQUE D'ARCA (RP)">TANQUE D'ARCA (RP)</option>
+                        <option value="MARIBONDO (RP)">MARIBONDO (RP)</option>
+                        <option value="ESTRELA DE ALAGOAS (RP)">ESTRELA (RP)</option>
+                        <option value="IGACI (RP)">IGACI (RP)</option>
+                        <option value="QUEBRANGULO (RP)">QUEBRANGULO (RP)</option>
+                    </select>
+
+                    <button onclick="clicarBotaoGerar()" class="btn-primary"
+                        style="padding: 12px 25px; cursor: pointer; border-radius: 8px; background-color: #007bff; margin-left: 10px;">
+                        GERAR CARTÃO
+                    </button>
+
+                    <button id="btn-imprimir">IMPRIMIR CARTÃO</button>
+                </div>
+
+                <div id="iframe-container"
+                    style="display:none; background: white; padding: 20px; border-radius: 8px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                </div>
+            </div>
+        </main>
+    </section>
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script src="../js/gerarcartao.js"></script>
+
+    <script>
+        // Funções de Interface (Relógio e Login)
+        function atualizarRelogio() {
+            const agora = new Date();
+            document.getElementById('relogio').innerHTML = agora.toLocaleString('pt-BR');
+        }
+
+        function checkLogin() {
+            const graduacao = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            if (!graduacao || !nomeGuerra) {
+                window.location.href = 'login.html';
+            } else {
+                document.getElementById('user-info').innerHTML = `<p>${graduacao} ${nomeGuerra}</p>`;
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'login.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            checkLogin();
+            setInterval(atualizarRelogio, 1000);
+            const btnLogout = document.getElementById('btn-logout');
+            if (btnLogout) btnLogout.addEventListener('click', logout);
+
+            // Adiciona função de impressão ao botão
+            document.getElementById('btn-imprimir').addEventListener('click', () => {
+                window.print();
+            });
+        });
+    </script>
+</body>
+
+</html>
