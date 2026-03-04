@@ -132,7 +132,7 @@
                 eventClick: function (info) {
                     // Ao clicar no evento, abre a OPO correspondente
                     const id = info.event.id;
-                    window.open(`relatorios/gerar_opo.html?id=${id}`, '_blank');
+                    window.open(`../relatorios/gerar_opo.html?id=${id}`, '_blank');
                 }
             });
             calendar.render();
@@ -150,7 +150,7 @@
                     }
                 } else {
                     alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                    window.location.href = 'login.html';
+                    window.location.href = '../page/login.html';
                 }
             }
 
@@ -158,7 +158,7 @@
                 localStorage.removeItem('userGraduacao');
                 localStorage.removeItem('userNomeGuerra');
                 alert('Logout realizado com sucesso!');
-                window.location.href = 'login.html';
+                window.location.href = '../page/login.html';
             }
 
             /**
