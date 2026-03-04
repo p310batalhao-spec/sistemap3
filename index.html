@@ -446,28 +446,34 @@
             });
         }
 
-        // --- FUNÇÃO ESPECÍFICA PARA DROGAS (Soma de Peso) ---
+        // --- FUNÇÃO DE DROGAS — soma peso direto do Firebase (nó 'droga') ---
         async function atualizarDrogas() {
-            const anoAtual = new Date().getFullYear();
-            const url = `${WEBAPP_URL_DROGAS}?action=sumDrogasPeso&year=${anoAtual}`;
-
+            const elTotal = document.getElementById('numerodrogas');
             try {
-                const response = await fetch(url);
-                const data = await response.json();
+                const response = await fetch('https://sistema-p3-default-rtdb.firebaseio.com/droga.json');
+                if (!response.ok) throw new Error('Erro ao acessar Firebase');
 
-                if (data.status === 'success' && data.totals) {
-                    const somaGeral = Object.values(data.totals).reduce((acc, val) => {
-                        return acc + parseFloat(val.replace(',', '.'));
-                    }, 0);
+                const dados = await response.json();
+                if (!dados) { elTotal.innerText = '0 g'; return; }
 
-                    // ALVO: Seu ID original
-                    const elTotal = document.getElementById('numerodrogas');
-                    if (elTotal) {
-                        elTotal.textContent = somaGeral.toFixed(3).replace('.', ',') + " Kg";
-                    }
+                let soma = 0;
+                Object.values(dados).forEach(item => {
+                    // Tenta os dois campos possíveis: QUANTIDADE e PESO
+                    const bruto = item.QUANTIDADE || item.PESO || '0';
+                    const num = parseFloat(String(bruto).replace(',', '.'));
+                    if (!isNaN(num)) soma += num;
+                });
+
+                // Exibe em gramas se < 1000g, ou em kg se >= 1000g
+                if (soma >= 1000) {
+                    elTotal.innerText = (soma / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' Kg';
+                } else {
+                    elTotal.innerText = soma.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' g';
                 }
+
             } catch (error) {
-                console.error("Erro no fetch do index:", error);
+                console.error('Erro ao somar drogas:', error);
+                if (elTotal) elTotal.innerText = '!';
             }
         }
         // --- NOTIFICAÇÕES ---

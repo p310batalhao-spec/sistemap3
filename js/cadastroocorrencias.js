@@ -170,7 +170,7 @@ document.getElementById('btn-save-cloud').onclick = async function() {
 
                 if (solucao.includes("TCO")) updates[`/tco/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("MULHER") || tipGeral.includes("DOMÉSTICA")) updates[`/violencia_domestica/${safeId}`] = dadoFinal;
-                if (tipGeral.includes("ROUBO") || tipGeral.includes("FURTO")) updates[`/cvp/${safeId}`] = dadoFinal;
+                if (tipGeral.includes("ROUBO") || tipGeral.includes("FURTO") || tipGeral.includes("EXTORÇÃO") ||tipGeral.includes("LATROCÍNIO") || (tipGeral.includes("DANO") && !tipGeral.includes("PERIGO"))) updates[`/cvp/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("HOMICIDIO") || tipGeral.includes("CVLI")) updates[`/cvli/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("SOSSEGO")) updates[`/sossego/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("MANDADO")) updates[`/mandados/${safeId}`] = dadoFinal;
