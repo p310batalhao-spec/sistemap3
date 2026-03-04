@@ -101,7 +101,7 @@ function processarDadosEstrategicos(cidadeFiltro, db) {
     } else if (guarnicaoNome.includes("PAULO JACINTO")) { 
         cronograma = [
             { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
-            { ini: "08:30", fim: "13:00", miss: "Patrulhamento Geral", det: obterRotaReal(manchas.manha) },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - MAR VERMELHO", det:"CENTRO - VIAS PRINCIPAIS"},
             { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
             { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
             { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
@@ -112,6 +112,71 @@ function processarDadosEstrategicos(cidadeFiltro, db) {
             { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
             { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
         ];    
+            } else if (guarnicaoNome.includes("MAR VERMELHO")) { 
+        cronograma = [
+            { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - Paulo Jacinto", det:"CENTRO - VIAS PRINCIPAIS"},
+            { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
+            { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "20:00", fim: "22:00", miss: "Rota Crítica Noite 1", det: obterRotaReal(manchas.noite1), h: "red" },
+            { ini: "22:00", fim: "00:00", miss: "Rota Crítica Noite 2", det: obterRotaReal(manchas.noite2), h: "red" },
+            { ini: "00:00", fim: "05:00", miss: "Descanso/Prontidão", det: "BASE OPERACIONAL." },
+            { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
+            { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
+        ]; 
+            } else if (guarnicaoNome.includes("ESTRELA DE ALAGOAS")) { 
+        cronograma = [
+            { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - Minador do Negrão", det:"CENTRO - VIAS PRINCIPAIS"},
+            { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
+            { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "20:00", fim: "22:00", miss: "Rota Crítica Noite 1", det: obterRotaReal(manchas.noite1), h: "red" },
+            { ini: "22:00", fim: "00:00", miss: "Rota Crítica Noite 2", det: obterRotaReal(manchas.noite2), h: "red" },
+            { ini: "00:00", fim: "05:00", miss: "Descanso/Prontidão", det: "BASE OPERACIONAL." },
+            { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
+            { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
+        ];
+            } else if (guarnicaoNome.includes("MINADOR DO NEGRÃO")) { 
+        cronograma = [
+            { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - ESTRELA DE ALAGOAS", det:"CENTRO - VIAS PRINCIPAIS"},
+            { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
+            { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "20:00", fim: "22:00", miss: "Rota Crítica Noite 1", det: obterRotaReal(manchas.noite1), h: "red" },
+            { ini: "22:00", fim: "00:00", miss: "Rota Crítica Noite 2", det: obterRotaReal(manchas.noite2), h: "red" },
+            { ini: "00:00", fim: "05:00", miss: "Descanso/Prontidão", det: "BASE OPERACIONAL." },
+            { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
+            { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
+        ];
+            } else if (guarnicaoNome.includes("BELÉM")) { 
+        cronograma = [
+            { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - TANQUE D'ARCA", det:"CENTRO - VIAS PRINCIPAIS"},
+            { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
+            { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "20:00", fim: "22:00", miss: "Rota Crítica Noite 1", det: obterRotaReal(manchas.noite1), h: "red" },
+            { ini: "22:00", fim: "00:00", miss: "Rota Crítica Noite 2", det: obterRotaReal(manchas.noite2), h: "red" },
+            { ini: "00:00", fim: "05:00", miss: "Descanso/Prontidão", det: "BASE OPERACIONAL." },
+            { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
+            { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
+        ];
+            } else if (guarnicaoNome.includes("TANQUE D'ARCA")) { 
+        cronograma = [
+            { ini: "08:00", fim: "08:30", miss: "Apresentação", det: "APRESENTAÇÃO E PRELEÇÃO." },
+            { ini: "08:30", fim: "13:00", miss: "Patrulhamento - BELÉM", det:"CENTRO - VIAS PRINCIPAIS"},
+            { ini: "13:00", fim: "16:30", miss: "Almoço e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "16:30", fim: "19:00", miss: "Rota Prioritária Tarde", det: obterRotaReal(manchas.tarde), h: "blue" },
+            { ini: "19:00", fim: "20:00", miss: "Janta e Prontidão", det: "BASE OPERACIONAL.", h: "yellow" },
+            { ini: "20:00", fim: "22:00", miss: "Rota Crítica Noite 1", det: obterRotaReal(manchas.noite1), h: "red" },
+            { ini: "22:00", fim: "00:00", miss: "Rota Crítica Noite 2", det: obterRotaReal(manchas.noite2), h: "red" },
+            { ini: "00:00", fim: "05:00", miss: "Descanso/Prontidão", det: "BASE OPERACIONAL." },
+            { ini: "05:00", fim: "07:00", miss: "OPO ALVORADA", det: "BARREIRAS E " + obterRotaReal(manchas.alvorada), h: "yellow" },
+            { ini: "07:00", fim: "08:00", miss: "Finalização", det: "MANUTENÇÃO DE VIATURA E RENDIÇÃO." }
+        ];                   
     } else {
         // DEMAIS RPs (INTERIOR)
         cronograma = [

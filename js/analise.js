@@ -2,7 +2,7 @@
  * analise.js - Processamento Jurimétrico com Tratamento de Erros 429
  */
 
-const API_KEY = "AIzaSyBstJktnD6FtquD6coX6l6ERA_50V8VVro"; 
+const API_KEY = "AIzaSyBsCoTlX3zsMHXM1wT8TDp2WsWI5-acv0o"; 
 
 async function chamarIAJurimetrica(contexto) {
     // Sugestão: Use gemini-1.5-flash se o 2.0 continuar dando erro 429 frequente

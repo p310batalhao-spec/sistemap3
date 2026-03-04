@@ -4,26 +4,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gerenciamento P3 - Soluções IA</title>
+    <title>Sistema P3 | TCO | Gestão de Prescrição Delitiva</title>
     <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/jurimetria.css">
+    <link rel="stylesheet" href="../css/stylestco.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
 </head>
 
 <body>
     <header>
         <div class="header-info-left">
-            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <img class="brasao" src="../img/brasao.png" alt="brasão">
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+                <h3>CONTROLE DE PRESCRIÇÃO DELITIVA</h3>
             </div>
         </div>
-
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info">
-            </div>
+            <div class="exibirusuario" id="user-info"></div>
         </div>
     </header>
 
@@ -47,13 +45,17 @@
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
             </a><!--termina materiais apreendidos-->
+            <a href="../page/tco.html" class="active">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/morale.png" alt="morale" />
+                <p>TCO</p>
+            </a>
             <a href="../page/eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
                     alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
             </a><!--termina eventos-->
-            <a href="../page/solucoesia.html" class="active">
+            <a href="../page/solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
             </a><!--termina solucoes ia-->
@@ -62,65 +64,57 @@
                 <p>Sair</p>
             </button><!--termina sair-->
         </nav><!--termina navegacao-->
+
         <main>
             <div class="saudacao">
-                <h2>Sistema de Soluções IA</h2>
-                <p>As gerações de cartões programa e análise criminal são feitas a partir dos dados dos 90 dias
-                    anteriores.</p>
+                <h2>Calculadora e Monitor de Prescrição</h2>
+                <p>Evite a extinção da punibilidade controlando os prazos do Art. 109 CP.</p>
             </div>
-            <section class="container-tabela">
-                <h2>Análise Jurimétrica de TCO</h2>
-                <div class="filtros-container">
-                    <label for="filtro-tipo">Filtrar por:</label>
-                    <select id="filtro-tipo">
-                        <option value="">Selecione o campo</option>
-                        <option value="BOLETIM">BOLETIM</option>
-                        <option value="DATA">DATA</option>
-                        <option value="TIPIFICACAO">TIPIFICAÇÃO</option>
-                        <option value="AUTOR">AUTOR</option>
-                    </select>
 
-                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
-
-                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
-                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+            <section class="totalcards">
+                <div class="cardnumero" style="border-top: 5px solid red;">
+                    <h3>Prescreve em < 90 dias</h3>
+                            <p id="count-critico">0</p>
                 </div>
-                <div id="dashboard-jurimetrico">
+                <div class="cardnumero" style="border-top: 5px solid orange;">
+                    <h3>Alerta (Até 180 dias)</h3>
+                    <p id="count-alerta">0</p>
+                </div>
+                <div class="cardnumero" style="border-top: 5px solid green;">
+                    <h3>Prazo Seguro</h3>
+                    <p id="count-seguro">0</p>
+                </div>
+            </section>
 
-                    <table class="tabela-materiais" border="1" id="tabela-ocorrencias">
+            <div class="TabelaEventos">
+                <h3>TCOs Próximos do Prazo Limite</h3>
+                <div class="tabela-container">
+                    <table id="tabela-prescricao">
                         <thead>
                             <tr>
-                                <th>Boletim</th>
-                                <th>Data</th>
-                                <th>Tipificação</th>
-                                <th>Autor</th>
-                                <th>Atipicidade (%)</th>
-                                <th>ANPP/Transação (%)</th>
-                                <th>Denúncia (%)</th>
-                                <th>Ação</th>
+                                <th>Nº Ocorrência</th>
+                                <th>Tipicidade</th>
+                                <th>Data do Fato</th>
+                                <th>Pena Máx. (Anos)</th>
+                                <th>Prazo Presc.</th>
+                                <th>Data Limite</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody id="corpo-tabela">
+                        <tbody>
                         </tbody>
                     </table>
                 </div>
-
-            </section>
-            <div id="iframe-container" style="display: none;">
-                <iframe id="cartao-programa-iframe" src="" frameborder="0"></iframe>
             </div>
         </main>
     </section>
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script src="../js/prescricao.js"></script>
 </body>
-<footer>
-    <div>
-        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
-    </div>
-</footer>
-
-
-<script src="../js/analise.js"></script>
-
-<script type="module" src="../js/jumetria_tco.js"></script>
 
 </html>

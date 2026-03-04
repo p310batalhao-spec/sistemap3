@@ -214,7 +214,9 @@ main {
 /* --- TABELAEVENTOS (CSS DA IMAGEM ORIGINAL) --- */
 .tabela-container {
     width: 100%;
+    height: 500px;
     overflow-x: auto;
+    overflow-y: auto;
     background: white;
     border-radius: 0.5rem;
     box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.1);
@@ -247,23 +249,71 @@ main {
 }
 
 /* --- SIDEBAR FORM (BLOQUEIO DE TELA) --- */
+
+/* --- SIDEBAR FORM --- */
 .sidbarform {
     position: fixed;
     top: 0;
     right: -28.125rem;
     width: 25rem;
     height: 100vh;
-    background-color: white;
+    background-color: #ffffff;
     box-shadow: -0.3125rem 0 0.9375rem rgba(0,0,0,0.3);
-    transition: right 0.4s ease;
+    transition: right 0.4s ease-in-out;
     z-index: 2000;
     padding: 1.5625rem;
+    overflow-y: auto;
 }
 
 .sidbarform.active {
     right: 0;
 }
 
+.formulario {
+    margin-bottom: 0.9375rem;
+    width: 100%;
+}
+
+.formulario p {
+    margin: 0 0 0.3125rem 0;
+    font-weight: bold;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.formulario input, .formulario select {
+    width: 100%;
+    padding: 0.625rem;
+    border: 0.0625rem solid #ccc;
+    border-radius: 0.25rem;
+    font-size: 1rem;
+}
+
+/* --- BOTÕES --- */
+.btn-salvar-evento {
+    background-color: #0a448f;
+    color: white;
+    border: none;
+    padding: 0.9375rem;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 0.25rem;
+    width: 100%;
+    margin-top: 0.625rem;
+    margin-bottom: 1.875rem;
+}
+
+.btn-fechar {
+    background-color: #ff4d4d;
+    color: white;
+    padding: 0.625rem;
+    border-radius: 0.25rem;
+    margin-bottom: 1.25rem;
+    display: block;
+    text-align: center;
+}
+
+/* --- OVERLAY --- */
 .overlay-sidebar {
     position: fixed;
     top: 0;
@@ -273,6 +323,10 @@ main {
     background: rgba(0,0,0,0.6);
     display: none;
     z-index: 1999;
+}
+
+.overlay-sidebar.active {
+    display: block;
 }
 
 .overlay-sidebar.active {

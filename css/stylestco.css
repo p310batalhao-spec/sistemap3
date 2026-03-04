@@ -238,8 +238,10 @@ main {
 
 /* --- CONTAINER DA TABELA (ESTILO DROGAS/MVI) --- */
 .tabela-container {
+    position: relative;
     width: 100%;
     overflow-x: auto;
+    overflow-y: auto;
     background: white;
     border-radius: 0.625rem;
     box-shadow: 0 0.125rem 0.3125rem rgba(0,0,0,0.1);
@@ -262,6 +264,14 @@ main {
     font-size: 0.85rem;
     text-transform: uppercase;
     border-bottom: 1px solid white;
+}
+#tabela-tco thead th {
+    position: sticky;
+    top: 0;
+    background-color: #1a3d5d; /* Cor de fundo para não ficar transparente ao rolar */
+    color: white;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.4);
 }
 .TabelaEventos td {
     padding: 0.75rem;

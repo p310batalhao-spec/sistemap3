@@ -28,7 +28,7 @@
             var dadosRaw = localStorage.getItem('dadosParaImpressao');
             if (dadosRaw) {
                 var dados = JSON.parse(dadosRaw);
-                var html = '<table><thead><tr><th>BOU</th><th>DATA</th><th>CATEGORIA</th><th>DESCRIÇÃO</th><th>LOCAL DO DEPÓSITO</th><th>STATUS</th></tr></thead><tbody>';
+                var html = '<table><thead><tr><th>BOU</th><th>DATA</th><th>CATEGORIA</th><th>DESCRIÇÃO</th><th>LOCAL DO DEPÓSITO</th><td>ESAJ</td><th>STATUS</th></tr></thead><tbody>';
                 
                 dados.forEach(function(item) {
                     html += '<tr>' +
@@ -37,6 +37,7 @@
                         '<td>' + (item['CATEGORIA'] || '') + '</td>' +
                         '<td>' + (item['DESCRIÇÃO'] || '') + '</td>' +
                         '<td>' + (item['LOCAL'] || '') + '</td>' + 
+                        '<td>' + (item['ESAJ'] || '') + '</td>' +
                         '<td>' + (item['STATUS'] || '') + '</td>' +
                         '</tr>';
                 });

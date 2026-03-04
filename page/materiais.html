@@ -112,6 +112,15 @@
                                 alt="Imprimir" />
                         </button>
                     </div>
+                    <div>
+                        <button id="btn-sincronizar-esaj" class="action-button" title="Sincronizar Status com e-SAJ"
+                            style="background-color: #1a3d5d; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                            <img width="20" height="20"
+                                src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"
+                                alt="Sincronizar" />
+                            Sincronizar e-SAJ
+                        </button>
+                    </div>
                 </div>
 
                 <div class="tabela-container">
@@ -190,13 +199,16 @@
                         <p>STATUS</p>
                         <select name="STATUS" id="status">
                             <option value="">Selecione o status</option>
-                            <option value="PROTOCOLADO">PROTOCOLADO</option>
+                            <option value="PROTOCOLADO-ESAJ">PROTOCOLADO</option>
                             <option value="PENDENTE">PENDENTE</option>
                             <option value="ARQUIVADO">ARQUIVADO</option>
                             <option value="A DEVOLVER">A DEVOLVER</option>
                             <option value="DEVOLVIDO">DEVOLVIDO</option>
                             <option value="FIEL DEPOSITÁRIO">FIEL DEPOSITÁRIO</option>
                             <option value="EM TRÂNSITO">EM TRÂNSITO</option>
+                            <option value="JULGADO-ESAJ">JULGADO-ESAJ</option>
+                            <option value="BAIXADO-ESAJ">BAIXADO-ESAJ</option>
+                            <option value="SUSPENSO-ESAJ">SUSPENSO-ESAJ</option>
                         </select>
                     </div>
                 </div><!--termina formulario-scroll-->
@@ -216,7 +228,7 @@
     <script>
         let allMateriais = [];
         let filtradosAtivos = null; // Variável para controlar se há filtro aplicado
-        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
+        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
 
         const chavesMateriais = ['IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO', 'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'];
         const chavesEditaveis = chavesMateriais.filter(function (k) { return k !== 'IDMaterial'; });
@@ -273,24 +285,44 @@
 
             dataToRender.forEach(function (item) {
                 const row = tbody.insertRow();
+
+                // 1. Coluna IDMaterial
                 row.insertCell().textContent = item.IDMaterial || '';
 
+                // 2. Colunas dinâmicas baseadas em chavesEditaveis
                 chavesEditaveis.forEach(function (key) {
                     const cell = row.insertCell();
                     const valor = item[key] || '';
+
+                    // Lógica para a coluna STATUS (Badges coloridas)
                     if (key === 'STATUS') {
                         const sClass = String(valor).replace(/\s+/g, '').toLowerCase();
                         cell.innerHTML = '<span class="status-badge status-' + sClass + '">' + valor + '</span>';
-                    } else {
+                    }
+
+                    // --- NOVO: LÓGICA DO LINK E-SAJ (Igual ao tco.js) ---
+                    else if (key === 'ESAJ' && valor) {
+                        const numLimpo = String(valor).replace(/\D/g, ''); // Remove pontos e traços
+                        cell.innerHTML = `
+                    <a href="https://www2.tjal.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&dadosConsulta.valorConsulta=${numLimpo}&numeroDigitado=${numLimpo}" 
+                       target="_blank" 
+                       style="color:#1a3d5d; font-weight:bold; text-decoration:underline;">
+                       ${valor}
+                    </a>`;
+                    }
+                    // ---------------------------------------------------
+
+                    else {
                         cell.textContent = valor;
                     }
                 });
 
+                // 3. Coluna de AÇÕES
                 const acoesCell = row.insertCell();
                 acoesCell.style.display = 'flex';
                 acoesCell.style.gap = '5px';
 
-                // 1. Botão Editar (Sempre visível) 
+                // Botão Editar (Sempre visível)
                 const btnEditar = document.createElement('button');
                 btnEditar.className = 'btn-editar-sidebar';
                 btnEditar.style.cssText = 'background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;';
@@ -298,7 +330,7 @@
                 btnEditar.onclick = () => toggleSidebar(true, item);
                 acoesCell.appendChild(btnEditar);
 
-                // 2. Botão TERMO (Status: A DEVOLVER) 
+                // Botão TERMO (Status: A DEVOLVER)
                 if (String(item.STATUS).toUpperCase() === 'A DEVOLVER') {
                     const btnTermo = document.createElement('button');
                     btnTermo.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
@@ -307,13 +339,12 @@
                     acoesCell.appendChild(btnTermo);
                 }
 
-                // 3. NOVO: Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO) [cite: 13, 17]
+                // Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO)
                 if (String(item.STATUS).toUpperCase() === 'FIEL DEPOSITÁRIO') {
                     const btnFiel = document.createElement('button');
                     btnFiel.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
                     btnFiel.textContent = 'TERMO FIEL DEP.';
                     btnFiel.onclick = () => {
-                        // Salva os dados no localStorage para serem lidos pela nova página
                         localStorage.setItem('dadosTermoFiel', JSON.stringify(item));
                         window.open('termo_fiel.html', '_blank');
                     };
@@ -446,6 +477,28 @@
                 }
             }
         }
+        // Lógica para o botão de sincronização
+        document.getElementById('btn-sincronizar-esaj').onclick = async function () {
+            const btn = this;
+            if (!confirm("Deseja atualizar os status via API DataJud? Isso pode levar alguns minutos.")) return;
+
+            btn.disabled = true;
+            btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...`;
+
+            try {
+                const url = WEBAPP_URL + "?action=sincronizar";
+                const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+                const texto = await response.text();
+                alert("✅ " + texto);
+                await fetchData();
+            } catch (e) {
+                console.error("Erro na sincronização:", e);
+                alert("Erro ao sincronizar: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizar e-SAJ`;
+            }
+        };
 
         // --- INICIALIZAÇÃO ---
         document.addEventListener('DOMContentLoaded', function () {
