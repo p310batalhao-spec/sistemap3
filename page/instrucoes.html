@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Instruções</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* ===== RESET E BASE ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; text-decoration: none; }
+        body { background: #f3f3f5; font-family: Arial, Helvetica, sans-serif; overflow-x: hidden; }
+
+        /* ===== HEADER ===== */
+        header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0.5rem 1.875rem;
+            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+            height: 3.75rem; position: sticky; top: 0; z-index: 1001;
+        }
+        .header-info-left { display: flex; align-items: center; gap: 1.25rem; }
+        .brasao { height: 2.5rem; }
+        .cabecalhotexto h1, .cabecalhotexto h3 { font-size: 1.1rem; color: white; text-shadow: 1px 1px 2px black; margin: 0; }
+        .header-info-right { display: flex; align-items: center; gap: 1.875rem; color: white; }
+        #relogio { font-size: 0.85rem; font-weight: bold; text-align: right; line-height: 1.2; }
+        .exibirusuario { font-size: 0.8rem; padding-left: 1rem; border-left: 1px solid rgba(255,255,255,0.3); }
+
+        /* ===== LAYOUT PRINCIPAL ===== */
+        .pagecomplete { display: flex; min-height: calc(100vh - 3.75rem); }
+
+        /* ===== NAVEGAÇÃO LATERAL ===== */
+        .navegacao {
+            width: 4.375rem; padding: 1.25rem 0.625rem;
+            display: flex; flex-direction: column; gap: 1.25rem;
+            background-color: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
+        }
+        .navegacao:hover { width: 15.625rem; }
+        .navegacao a {
+            display: flex; align-items: center; padding: 0.625rem;
+            border-radius: 0.625rem; color: black; white-space: nowrap; transition: 0.3s;
+        }
+        .navegacao p { margin-left: 0.625rem; opacity: 0; transition: opacity 0.2s; }
+        .navegacao:hover p { opacity: 1; }
+        .navegacao img { height: 1.5rem; width: 1.5rem; flex-shrink: 0; }
+        .navegacao a:hover, .navegacao a.active {
+            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+            color: white;
+        }
+        .navegacao a.active img { filter: brightness(0) invert(1); }
+        .btn-logout {
+            margin-top: auto; background: transparent; border: none; color: #0a448f;
+            cursor: pointer; font-size: 0.8rem; padding: 0.625rem;
+            border-radius: 0.625rem; transition: background 0.3s, color 0.3s;
+            display: flex; align-items: center; gap: 0; white-space: nowrap;
+        }
+        .btn-logout:hover { background: red; color: white; }
+        .btn-logout p { margin-left: 0.625rem; opacity: 0; transition: opacity 0.2s; }
+        .navegacao:hover .btn-logout p { opacity: 1; }
+        .btn-logout img { height: 1.5rem; width: 1.5rem; flex-shrink: 0; }
+
+        /* ===== MAIN ===== */
+        main { flex-grow: 1; padding: 1.25rem; overflow: hidden; min-width: 0; }
+
+        /* ===== BANNER SAUDAÇÃO ===== */
+        .saudacao {
+            display: flex; flex-direction: column; align-items: flex-start;
+            color: white; gap: 0.5rem; padding: 1.25rem; border-radius: 10px;
+            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+        }
+        .saudacao p { font-size: 0.9rem; font-weight: bold; margin-left: 1.25rem; }
+
+        /* ===== CARDS RESUMO ===== */
+        .cards-resumo {
+            display: flex; gap: 1rem; margin-top: 1.25rem; flex-wrap: wrap;
+        }
+        .card-resumo {
+            background: white; border-radius: 10px; padding: 1rem 1.5rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1); min-width: 140px;
+            display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+            border-top: 4px solid #0a448f; cursor: pointer; transition: transform 0.2s;
+        }
+        .card-resumo:hover { transform: translateY(-3px); }
+        .card-resumo .num { font-size: 2rem; font-weight: bold; color: #0a448f; }
+        .card-resumo .leg { font-size: 0.75rem; color: #666; text-align: center; }
+
+        /* ===== ABAS ===== */
+        .abas-container { margin-top: 1.25rem; }
+        .abas-nav {
+            display: flex; gap: 0.25rem; flex-wrap: wrap;
+            border-bottom: 2px solid #0a448f; margin-bottom: 0;
+        }
+        .aba-btn {
+            padding: 0.5rem 1rem; border: none; background: #e8eef7;
+            color: #0a448f; font-weight: bold; cursor: pointer; border-radius: 6px 6px 0 0;
+            font-size: 0.82rem; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .aba-btn:hover { background: #c8d8f0; }
+        .aba-btn.ativa { background: #0a448f; color: white; }
+        .aba-conteudo {
+            display: none; background: white; border-radius: 0 0 10px 10px;
+            padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .aba-conteudo.ativa { display: block; }
+
+        /* ===== BARRA AÇÕES ===== */
+        .barra-acoes {
+            display: flex; align-items: center; gap: 0.75rem;
+            margin-bottom: 1rem; flex-wrap: wrap;
+        }
+        .btn-verde {
+            padding: 0.5rem 1rem; border: none; border-radius: 6px;
+            background: #28a745; color: white; font-weight: bold;
+            cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-verde:hover { background: #1e7e34; }
+        .btn-azul {
+            padding: 0.5rem 1rem; border: none; border-radius: 6px;
+            background: #0a448f; color: white; font-weight: bold;
+            cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem;
+        }
+        .btn-azul:hover { background: darkblue; }
+        .btn-outline {
+            padding: 0.5rem 1rem; border: 1px solid #0a448f; border-radius: 6px;
+            background: transparent; color: #0a448f; font-weight: bold;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-outline:hover { background: #0a448f; color: white; }
+        #msg-carregamento { font-size: 0.85rem; color: #666; }
+
+        /* ===== FILTROS ===== */
+        .filtros-bar {
+            display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;
+        }
+        .filtros-bar label { font-size: 0.85rem; color: #555; font-weight: bold; }
+        .filtros-bar select, .filtros-bar input[type="text"] {
+            padding: 0.4rem 0.7rem; border: 1px solid #ccc; border-radius: 5px; font-size: 0.85rem;
+        }
+
+        /* ===== TABELAS ===== */
+        .container-tabela {
+            width: 100%; overflow-x: auto; border-radius: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1); max-height: 460px; overflow-y: auto;
+        }
+        .tabela-sistema {
+            width: 100%; border-collapse: collapse; min-width: 700px;
+        }
+        .tabela-sistema thead th {
+            background: #0a448f; color: white; padding: 0.5rem 0.75rem;
+            text-align: left; font-size: 0.8rem; text-transform: uppercase;
+            position: sticky; top: 0; z-index: 2; border-left: 1px solid rgba(255,255,255,0.2);
+        }
+        .tabela-sistema tbody td {
+            padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee;
+            font-size: 0.85rem; color: #333;
+        }
+        .tabela-sistema tbody tr:hover { background: #f0f5ff; }
+        .badge {
+            display: inline-block; padding: 2px 8px; border-radius: 20px;
+            font-size: 0.75rem; font-weight: bold;
+        }
+        .badge-verde { background: #d4edda; color: #155724; }
+        .badge-azul { background: #cce5ff; color: #004085; }
+        .badge-amarelo { background: #fff3cd; color: #856404; }
+        .badge-vermelho { background: #f8d7da; color: #721c24; }
+        .btn-acao {
+            padding: 3px 8px; border: none; border-radius: 4px; cursor: pointer;
+            font-size: 0.75rem; margin: 1px; transition: opacity 0.2s;
+        }
+        .btn-acao:hover { opacity: 0.8; }
+        .btn-editar { background: #0a448f; color: white; }
+        .btn-excluir { background: #dc3545; color: white; }
+        .btn-doc { background: #6f42c1; color: white; }
+        .btn-relatorio { background: #28a745; color: white; }
+
+        /* ===== PAINEL UPLOAD EFETIVO ===== */
+        .painel-efetivo {
+            background: white; border-radius: 10px; padding: 1rem 1.25rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 1rem;
+            border-left: 4px solid #0a448f;
+        }
+        .painel-efetivo-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
+        .painel-efetivo-header h4 { font-size: 0.9rem; color: #0a448f; margin: 0; }
+        .painel-efetivo-body { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .label-upload {
+            display: flex; align-items: center; gap: 0.5rem;
+            padding: 0.45rem 1rem; background: #0a448f; color: white;
+            border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;
+            transition: background 0.2s;
+        }
+        .label-upload:hover { background: darkblue; }
+        .label-upload input { display: none; }
+        .efetivo-status { font-size: 0.82rem; color: #555; display: flex; align-items: center; gap: 0.4rem; }
+        .efetivo-status .badge-count {
+            background: #d4edda; color: #155724; font-weight: bold;
+            padding: 2px 8px; border-radius: 20px; font-size: 0.78rem;
+        }
+
+        /* ===== BUSCA AUTOCOMPLETE ===== */
+        .busca-efetivo-wrap { position: relative; width: 100%; }
+        .busca-efetivo-wrap input {
+            width: 100%; padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 2px solid #0a448f; border-radius: 4px; font-size: 0.9rem;
+        }
+        .autocomplete-lista {
+            position: absolute; top: 100%; left: 0; right: 0;
+            background: white; border: 1px solid #ccc; border-top: none;
+            border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto;
+            z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .autocomplete-item {
+            padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem;
+            border-bottom: 1px solid #f0f0f0; transition: background 0.15s;
+            display: flex; flex-direction: column; gap: 1px;
+        }
+        .autocomplete-item:hover, .autocomplete-item.selecionado { background: #e8f0fb; }
+        .autocomplete-item .ac-linha1 { display: flex; gap: 0.5rem; align-items: baseline; }
+        .autocomplete-item .ac-grad { font-weight: bold; color: #0a448f; font-size: 0.75rem; }
+        .autocomplete-item .ac-nome { font-weight: bold; color: #222; }
+        .autocomplete-item .ac-meta { color: #888; font-size: 0.72rem; }
+        .autocomplete-vazio { padding: 0.5rem 0.75rem; font-size: 0.82rem; color: #999; font-style: italic; }
+        .btn-limpar-busca {
+            position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; cursor: pointer; color: #aaa; font-size: 1rem; display: none;
+        }
+        .aviso-sem-efetivo {
+            background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;
+            padding: 0.5rem 0.75rem; font-size: 0.82rem; color: #856404;
+            display: flex; align-items: center; gap: 0.4rem;
+        }
+
+        /* ===== SIDEBAR FORM ===== */
+        /* Barra de ação em lote */
+        .barra-lote {
+            display: none; align-items: center; gap: 1rem;
+            background: #1a3a6e; color: #fff;
+            padding: 0.6rem 1rem; border-radius: 8px;
+            margin-bottom: 0.75rem; flex-wrap: wrap;
+        }
+        .barra-lote.ativa { display: flex; }
+        .barra-lote span { font-size: 0.9rem; font-weight: 600; }
+        .barra-lote select {
+            padding: 0.3rem 0.6rem; border-radius: 5px; border: none;
+            font-size: 0.85rem; cursor: pointer;
+        }
+        .btn-lote-aplicar {
+            background: #28a745; color: #fff; border: none;
+            padding: 0.35rem 0.9rem; border-radius: 5px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+        }
+        .btn-lote-aplicar:hover { background: #218838; }
+        .btn-lote-cancelar {
+            background: transparent; color: #fff; border: 1px solid #fff;
+            padding: 0.35rem 0.7rem; border-radius: 5px;
+            font-size: 0.82rem; cursor: pointer;
+        }
+        /* Checkbox estilizado */
+        .cb-aluno { width: 16px; height: 16px; cursor: pointer; accent-color: #1a3a6e; }
+        th.th-cb, td.td-cb { width: 36px; text-align: center; padding: 4px; }
+
+        .overlay-sidebar {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: none; z-index: 1999;
+        }
+        .overlay-sidebar.ativo { display: block; }
+        .sidbarform {
+            position: fixed; top: 0; right: -35rem; width: 32rem; height: 100vh;
+            background: #fff; box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            transition: right 0.4s ease; z-index: 2000;
+            padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .sidbarform.ativo { right: 0; }
+        .sidebar-titulo {
+            font-size: 1rem; font-weight: bold; color: #0a448f;
+            border-bottom: 2px solid #0a448f; padding-bottom: 0.5rem;
+        }
+        .btn-fechar {
+            background: #dc3545; color: white; border: none; padding: 0.5rem 1rem;
+            border-radius: 5px; cursor: pointer; font-weight: bold; align-self: flex-start;
+        }
+        .formulario { display: flex; flex-direction: column; gap: 0.25rem; }
+        .formulario label { font-size: 0.82rem; font-weight: bold; color: #555; }
+        .formulario input, .formulario select, .formulario textarea {
+            padding: 0.5rem 0.75rem; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 0.9rem; font-family: Arial, sans-serif;
+        }
+        .formulario textarea { resize: vertical; min-height: 70px; }
+        .formulario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .formulario-secao {
+            font-size: 0.8rem; font-weight: bold; color: #0a448f; text-transform: uppercase;
+            margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e0e0e0;
+        }
+        .btn-salvar-evento {
+            background: #0a448f; color: white; border: none; padding: 0.875rem;
+            border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem;
+            margin-top: 0.5rem; transition: background 0.2s;
+        }
+        .btn-salvar-evento:hover { background: darkblue; }
+
+        /* ===== TABELA CONTEÚDO PROGRAMÁTICO (dentro sidebar) ===== */
+        .tabela-inline { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
+        .tabela-inline th { background: #0a448f; color: white; padding: 4px 6px; text-align: left; }
+        .tabela-inline td { padding: 3px 4px; border-bottom: 1px solid #eee; }
+        .tabela-inline input { width: 100%; padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 0.78rem; }
+        .btn-add-linha {
+            background: #28a745; color: white; border: none; padding: 4px 10px;
+            border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-top: 4px;
+        }
+
+        /* ===== FOOTER ===== */
+        footer {
+            display: flex; background: black; color: white;
+            padding: 1.875rem; justify-content: center; text-align: center;
+        }
+    </style>
+    <!-- docx.js + FileSaver para geração de .docx client-side -->
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body>
+
+<header>
+    <div class="header-info-left">
+        <img class="brasao" src="../img/brasao.png" alt="Brasão 10º BPM">
+        <div class="cabecalhotexto">
+            <h1>SISTEMA DE GERENCIAMENTO P3 | INSTRUÇÃO</h1>
+            <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+        </div>
+    </div>
+    <div class="header-info-right">
+        <div class="relogio" id="relogio"></div>
+        <div class="exibirusuario" id="user-info"></div>
+    </div>
+</header>
+
+<section class="pagecomplete">
+
+    <!-- ===== NAVEGAÇÃO LATERAL ===== -->
+    <nav class="navegacao">
+        <a href="../index.html">
+            <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
+            <p>Home</p>
+        </a>
+        <a href="../page/cadastroocorrencias.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
+            <p>Cadastro de Ocorrências</p>
+        </a>
+        <a href="../page/materiais.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
+            <p>Materiais Apreendidos</p>
+        </a>
+        <a href="../page/eventos.html">
+            <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos"/>
+            <p>Eventos</p>
+        </a>
+        <a href="../page/instrucoes.html" class="active">
+            <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução"/>
+            <p>Instrução</p>
+        </a>
+        <a href="../page/solucoesia.html">
+            <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
+            <p>Soluções IA</p>
+        </a>
+        <button id="btn-logout" class="btn-logout">
+            <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
+            <p>Sair</p>
+        </button>
+    </nav>
+
+    <!-- ===== OVERLAY ===== -->
+    <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+    <!-- ================================================================
+         SIDEBAR: CURSOS / ESTÁGIOS
+    ================================================================ -->
+    <form class="sidbarform" id="form-curso">
+        <button type="button" class="btn-fechar" id="btn-fechar-curso">✕ FECHAR / CANCELAR</button>
+        <div class="sidebar-titulo" id="titulo-form-curso">📘 NOVO CURSO / ESTÁGIO</div>
+        <input type="hidden" id="curso-id">
+
+        <div class="formulario">
+            <label>TIPO</label>
+            <select id="curso-tipo" name="TIPO">
+                <option value="CURSO">CURSO</option>
+                <option value="ESTÁGIO">ESTÁGIO</option>
+                <option value="TREINAMENTO">TREINAMENTO</option>
+                <option value="INSTRUÇÃO INTERNA">INSTRUÇÃO INTERNA</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>NOME DO CURSO / ESTÁGIO</label>
+            <input type="text" id="curso-nome" name="NOME" placeholder="Ex: Curso de Armamento e Tiro">
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>DATA DE INÍCIO</label>
+                <input type="date" id="curso-inicio" name="DATA_INICIO">
+            </div>
+            <div class="formulario">
+                <label>DATA DE TÉRMINO</label>
+                <input type="date" id="curso-termino" name="DATA_TERMINO">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>LOCAL</label>
+            <input type="text" id="curso-local" name="LOCAL" placeholder="Ex: Sede do 10º BPM">
+        </div>
+        <div class="formulario">
+            <label>INSTITUIÇÃO PROMOTORA</label>
+            <input type="text" id="curso-instituicao" name="INSTITUICAO" placeholder="Ex: DEIP / 10º BPM">
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>CARGA HORÁRIA (h/a)</label>
+                <input type="number" id="curso-carga" name="CARGA_HORARIA" placeholder="Ex: 40">
+            </div>
+            <div class="formulario">
+                <label>Nº DE VAGAS</label>
+                <input type="number" id="curso-vagas" name="VAGAS" placeholder="Ex: 20">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>NP / PROCESSO SEI</label>
+            <input type="text" id="curso-np" name="NP_SEI" placeholder="Ex: NP Nº 37477588">
+        </div>
+        <div class="formulario">
+            <label>OBJETIVO GERAL</label>
+            <textarea id="curso-objetivo" name="OBJETIVO"></textarea>
+        </div>
+        <div class="formulario">
+            <label>STATUS</label>
+            <select id="curso-status" name="STATUS">
+                <option value="PLANEJADO">PLANEJADO</option>
+                <option value="EM ANDAMENTO">EM ANDAMENTO</option>
+                <option value="CONCLUÍDO">CONCLUÍDO</option>
+                <option value="CANCELADO">CANCELADO</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-salvar-evento">💾 SALVAR CURSO / ESTÁGIO</button>
+    </form>
+
+    <!-- ================================================================
+         SIDEBAR: INSTRUTORES
+    ================================================================ -->
+    <form class="sidbarform" id="form-instrutor">
+        <button type="button" class="btn-fechar" id="btn-fechar-instrutor">✕ FECHAR / CANCELAR</button>
+        <div class="sidebar-titulo">👨‍🏫 CADASTRO DE INSTRUTOR</div>
+        <input type="hidden" id="instrutor-id">
+
+        <!-- BUSCA NO EFETIVO -->
+        <div class="formulario">
+            <label>🔍 BUSCAR NO EFETIVO (nome, matrícula ou CPF)</label>
+            <div id="aviso-sem-efetivo-instrutor" class="aviso-sem-efetivo" style="margin-bottom:0.5rem;display:none;">
+                ⚠️ Nenhum efetivo importado. Importe o XLS na aba <strong>Alunos</strong> para usar a busca.
+            </div>
+            <div class="busca-efetivo-wrap">
+                <input type="text" id="busca-efetivo-instrutor"
+                    placeholder="Digite nome, matrícula ou CPF..."
+                    autocomplete="off">
+                <button type="button" class="btn-limpar-busca" id="btn-limpar-busca-instrutor">✕</button>
+                <div class="autocomplete-lista" id="autocomplete-lista-instrutor" style="display:none;"></div>
+            </div>
+        </div>
+
+        <div class="formulario-secao" style="margin-top:0.75rem;">DADOS DO INSTRUTOR</div>
+
+        <div class="formulario">
+            <label>GRADUAÇÃO</label>
+            <select id="instrutor-grad" name="GRADUACAO">
+                <option>CEL PM</option><option>TC PM</option><option>MAJ PM</option>
+                <option>CAP PM</option><option>1º TEN PM</option><option>2º TEN PM</option>
+                <option>SUBTEN PM</option><option>1º SGT PM</option><option>2º SGT PM</option>
+                <option>3º SGT PM</option><option>CB PM</option><option>SD PM</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>NOME COMPLETO</label>
+            <input type="text" id="instrutor-nome" name="NOME">
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>NÚMERO DE ORDEM</label>
+                <input type="text" id="instrutor-ordem" name="NUM_ORDEM">
+            </div>
+            <div class="formulario">
+                <label>MATRÍCULA</label>
+                <input type="text" id="instrutor-mat" name="MATRICULA">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>ESPECIALIDADE / ÁREA</label>
+            <input type="text" id="instrutor-especialidade" name="ESPECIALIDADE" placeholder="Ex: Armamento e Tiro, Defesa Pessoal">
+        </div>
+        <div class="formulario">
+            <label>FORMAÇÃO / CURRÍCULO RESUMIDO</label>
+            <textarea id="instrutor-curriculo" name="CURRICULO" placeholder="Ex: Formado no Curso de Instrutor de Tiro - CFAP (2023)"></textarea>
+        </div>
+        <div class="formulario">
+            <label>TELEFONE (WhatsApp)</label>
+            <input type="tel" id="instrutor-tel" name="TELEFONE">
+        </div>
+        <div class="formulario">
+            <label>E-MAIL</label>
+            <input type="email" id="instrutor-email" name="EMAIL">
+        </div>
+        <button type="submit" class="btn-salvar-evento">💾 SALVAR INSTRUTOR</button>
+    </form>
+
+    <!-- ================================================================
+         SIDEBAR: ALUNOS
+    ================================================================ -->
+    <form class="sidbarform" id="form-aluno">
+        <button type="button" class="btn-fechar" id="btn-fechar-aluno">✕ FECHAR / CANCELAR</button>
+        <div class="sidebar-titulo">🎓 CADASTRO DE ALUNO / DISCENTE</div>
+        <input type="hidden" id="aluno-id">
+
+        <!-- BUSCA NO EFETIVO -->
+        <div class="formulario">
+            <label>🔍 BUSCAR NO EFETIVO (nome, matrícula ou CPF)</label>
+            <div id="aviso-sem-efetivo" class="aviso-sem-efetivo" style="margin-bottom:0.5rem;display:none;">
+                ⚠️ Nenhum efetivo importado. Importe o XLS na aba <strong>Alunos</strong> para usar a busca.
+            </div>
+            <div class="busca-efetivo-wrap">
+                <input type="text" id="busca-efetivo-input"
+                    placeholder="Digite nome, matrícula ou CPF..."
+                    autocomplete="off">
+                <button type="button" class="btn-limpar-busca" id="btn-limpar-busca-efetivo">✕</button>
+                <div class="autocomplete-lista" id="autocomplete-lista" style="display:none;"></div>
+            </div>
+        </div>
+
+        <div class="formulario-secao" style="margin-top:0.75rem;">DADOS DO MILITAR</div>
+
+        <div class="formulario">
+            <label>GRADUAÇÃO</label>
+            <select id="aluno-grad" name="GRADUACAO">
+                <option value="">Selecione...</option>
+                <option>CEL PM</option><option>TC PM</option><option>MAJ PM</option>
+                <option>CAP PM</option><option>1º TEN PM</option><option>2º TEN PM</option>
+                <option>SUBTEN PM</option><option>1º SGT PM</option><option>2º SGT PM</option>
+                <option>3º SGT PM</option><option>CB PM</option><option>SD PM</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>NOME COMPLETO</label>
+            <input type="text" id="aluno-nome" name="NOME">
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>NÚMERO DE ORDEM</label>
+                <input type="text" id="aluno-ordem" name="NUM_ORDEM">
+            </div>
+            <div class="formulario">
+                <label>MATRÍCULA</label>
+                <input type="text" id="aluno-mat" name="MATRICULA">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>CPF</label>
+            <input type="text" id="aluno-cpf" name="CPF" placeholder="Preenchido automaticamente">
+        </div>
+        <div class="formulario">
+            <label>CURSO / ESTÁGIO VINCULADO</label>
+            <select id="aluno-curso" name="CURSO_ID">
+                <option value="">Selecione o curso...</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>SITUAÇÃO</label>
+            <select id="aluno-situacao" name="SITUACAO">
+                <option value="INSCRITO">INSCRITO</option>
+                <option value="APROVADO">APROVADO</option>
+                <option value="REPROVADO">REPROVADO</option>
+                <option value="DESISTENTE">DESISTENTE</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>OPM DE ORIGEM</label>
+            <input type="text" id="aluno-opm" name="OPM" placeholder="Ex: 10º BPM / CPChoque">
+        </div>
+        <button type="submit" class="btn-salvar-evento">💾 SALVAR ALUNO</button>
+    </form>
+
+        <!-- ================================================================
+         SIDEBAR: PLANO DE INSTRUÇÃO
+    ================================================================ -->
+    <form class="sidbarform" id="form-plano">
+        <button type="button" class="btn-fechar" id="btn-fechar-plano">✕ FECHAR / CANCELAR</button>
+        <div class="sidebar-titulo">📋 PLANO DE INSTRUÇÃO</div>
+        <input type="hidden" id="plano-id">
+
+        <div class="formulario-secao">IDENTIFICAÇÃO</div>
+        <div class="formulario">
+            <label>CURSO / ESTÁGIO VINCULADO</label>
+            <select id="plano-curso" name="CURSO_ID">
+                <option value="">Selecione...</option>
+            </select>
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>NP Nº (SEI)</label>
+                <input type="text" id="plano-np" name="NP_SEI">
+            </div>
+            <div class="formulario">
+                <label>Nº DO PLANO / ANO</label>
+                <input type="text" id="plano-numero" name="NUMERO_PLANO" placeholder="Ex: 010/2026">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>NOME DO EVENTO</label>
+            <input type="text" id="plano-evento" name="NOME_EVENTO">
+        </div>
+        <div class="formulario">
+            <label>JUSTIFICATIVA</label>
+            <textarea id="plano-justificativa" name="JUSTIFICATIVA"></textarea>
+        </div>
+        <div class="formulario">
+            <label>OBJETIVO GERAL</label>
+            <textarea id="plano-obj-geral" name="OBJ_GERAL"></textarea>
+        </div>
+        <div class="formulario">
+            <label>OBJETIVOS ESPECÍFICOS</label>
+            <textarea id="plano-obj-especificos" name="OBJ_ESPECIFICOS"></textarea>
+        </div>
+        <div class="formulario">
+            <label>PÚBLICO-ALVO</label>
+            <input type="text" id="plano-publico" name="PUBLICO_ALVO">
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>Nº DE VAGAS</label>
+                <input type="number" id="plano-vagas" name="VAGAS">
+            </div>
+            <div class="formulario">
+                <label>CARGA HORÁRIA TOTAL</label>
+                <input type="text" id="plano-carga" name="CARGA_TOTAL" placeholder="Ex: 8 h/a">
+            </div>
+        </div>
+
+        <div class="formulario-secao">CONTEÚDO PROGRAMÁTICO</div>
+        <table class="tabela-inline" id="tabela-conteudo">
+            <thead>
+                <tr>
+                    <th>TEMA</th>
+                    <th>H/A</th>
+                    <th>INSTRUTOR</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="corpo-conteudo">
+                <!-- linhas geradas dinamicamente por adicionarLinhaConteudo() -->
+            </tbody>
+        </table>
+        <button type="button" class="btn-add-linha" onclick="adicionarLinhaConteudo()">+ Adicionar Tema</button>
+
+        <div class="formulario-secao">DETALHAMENTO</div>
+        <div class="formulario">
+            <label>METODOLOGIA</label>
+            <textarea id="plano-metodologia" name="METODOLOGIA" placeholder="Qual a forma a instrução será ministrada?"></textarea>
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>PERÍODO DE REALIZAÇÃO</label>
+                <input type="text" id="plano-periodo" name="PERIODO" placeholder="Ex: 02 a 06/02/2026">
+            </div>
+            <div class="formulario">
+                <label>LOCAL DE REALIZAÇÃO</label>
+                <input type="text" id="plano-local" name="LOCAL">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>MATERIAL DIDÁTICO NECESSÁRIO</label>
+            <textarea id="plano-material" name="MATERIAL"></textarea>
+        </div>
+        <div class="formulario">
+            <label>CRITÉRIO DE AVALIAÇÃO</label>
+            <textarea id="plano-avaliacao" name="AVALIACAO" placeholder="Prova objetiva/subjetiva/conceito..."></textarea>
+        </div>
+        <div class="formulario">
+            <label>PROPORÇÃO TEORIA / PRÁTICA</label>
+            <input type="text" id="plano-proporcao" name="PROPORCAO" placeholder="Ex: 20% teórica e 80% prática">
+        </div>
+
+        <div class="formulario-secao">CONTATO P3</div>
+        <div class="formulario">
+            <label>TELEFONE (WhatsApp)</label>
+            <input type="tel" id="plano-tel" name="TEL_P3">
+        </div>
+        <div class="formulario">
+            <label>E-MAIL (Gmail)</label>
+            <input type="email" id="plano-email" name="EMAIL_P3">
+        </div>
+        <button type="submit" class="btn-salvar-evento">💾 SALVAR PLANO DE INSTRUÇÃO</button>
+    </form>
+
+    <!-- ================================================================
+         SIDEBAR: PLANO DE TIRO
+    ================================================================ -->
+    <form class="sidbarform" id="form-tiro">
+        <button type="button" class="btn-fechar" id="btn-fechar-tiro">✕ FECHAR / CANCELAR</button>
+        <div class="sidebar-titulo">🎯 PLANO DE TIRO</div>
+        <input type="hidden" id="tiro-id">
+
+        <div class="formulario">
+            <label>CURSO / ESTÁGIO VINCULADO</label>
+            <select id="tiro-curso" name="CURSO_ID">
+                <option value="">Selecione...</option>
+            </select>
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>DATA DO TIRO</label>
+                <input type="date" id="tiro-data" name="DATA">
+            </div>
+            <div class="formulario">
+                <label>HORÁRIO</label>
+                <input type="time" id="tiro-horario" name="HORARIO">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>LOCAL / ESTANDE</label>
+            <input type="text" id="tiro-local" name="LOCAL">
+        </div>
+        <div class="formulario">
+            <label>TIPO DE ARMAMENTO</label>
+            <select id="tiro-armamento" name="ARMAMENTO">
+                <option value="PISTOLA">PISTOLA</option>
+                <option value="REVÓLVER">REVÓLVER</option>
+                <option value="FUZIL">FUZIL</option>
+                <option value="ESCOPETA">ESCOPETA</option>
+                <option value="PISTOLA METRALHADORA">PISTOLA METRALHADORA</option>
+            </select>
+        </div>
+        <div class="formulario-grid">
+            <div class="formulario">
+                <label>CALIBRE</label>
+                <input type="text" id="tiro-calibre" name="CALIBRE" placeholder="Ex: .40 / 9mm">
+            </div>
+            <div class="formulario">
+                <label>MUNIÇÃO (TOTAL)</label>
+                <input type="number" id="tiro-municao" name="MUNICAO">
+            </div>
+        </div>
+        <div class="formulario">
+            <label>MODALIDADE</label>
+            <select id="tiro-modalidade" name="MODALIDADE">
+                <option value="TIRO DE MANUTENÇÃO">TIRO DE MANUTENÇÃO</option>
+                <option value="TIRO DE QUALIFICAÇÃO">TIRO DE QUALIFICAÇÃO</option>
+                <option value="TIRO TÁTICO">TIRO TÁTICO</option>
+                <option value="TIRO NOTURNO">TIRO NOTURNO</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>INSTRUTOR RESPONSÁVEL</label>
+            <select id="tiro-instrutor" name="INSTRUTOR_ID">
+                <option value="">Selecione...</option>
+            </select>
+        </div>
+        <div class="formulario">
+            <label>EXERCÍCIOS / TÉCNICAS</label>
+            <textarea id="tiro-exercicios" name="EXERCICIOS" placeholder="Descreva os exercícios: distâncias, posições, sequências..."></textarea>
+        </div>
+        <div class="formulario">
+            <label>CRITÉRIO DE APROVAÇÃO</label>
+            <textarea id="tiro-criterio" name="CRITERIO" placeholder="Ex: Aprovado com ≥ 60% de acertos na série de qualificação"></textarea>
+        </div>
+        <div class="formulario">
+            <label>STATUS</label>
+            <select id="tiro-status" name="STATUS">
+                <option value="PLANEJADO">PLANEJADO</option>
+                <option value="REALIZADO">REALIZADO</option>
+                <option value="CANCELADO">CANCELADO</option>
+            </select>
+        </div>
+        <button type="submit" class="btn-salvar-evento">💾 SALVAR PLANO DE TIRO</button>
+    </form>
+
+    <!-- ================================================================
+         CONTEÚDO PRINCIPAL
+    ================================================================ -->
+    <main>
+        <!-- Banner -->
+        <div class="saudacao">
+            <h2>📚 Gerenciamento de Instrução</h2>
+            <p>Cursos · Estágios · Planos de Instrução · Planos de Tiro · Instrutores · Alunos</p>
+        </div>
+
+        <!-- Cards Resumo -->
+        <div class="cards-resumo">
+            <div class="card-resumo" onclick="ativarAba('cursos')">
+                <span class="num" id="count-cursos">0</span>
+                <span class="leg">Cursos / Estágios</span>
+            </div>
+            <div class="card-resumo" onclick="ativarAba('instrutores')">
+                <span class="num" id="count-instrutores">0</span>
+                <span class="leg">Instrutores</span>
+            </div>
+            <div class="card-resumo" onclick="ativarAba('alunos')">
+                <span class="num" id="count-alunos">0</span>
+                <span class="leg">Alunos / Discentes</span>
+            </div>
+            <div class="card-resumo" onclick="ativarAba('planos')">
+                <span class="num" id="count-planos">0</span>
+                <span class="leg">Planos de Instrução</span>
+            </div>
+            <div class="card-resumo" onclick="ativarAba('tiro')">
+                <span class="num" id="count-tiro">0</span>
+                <span class="leg">Planos de Tiro</span>
+            </div>
+        </div>
+
+        <!-- Abas -->
+        <div class="abas-container">
+            <div class="abas-nav">
+                <button class="aba-btn ativa" data-aba="cursos" onclick="ativarAba('cursos')">📘 Cursos / Estágios</button>
+                <button class="aba-btn" data-aba="instrutores" onclick="ativarAba('instrutores')">👨‍🏫 Instrutores</button>
+                <button class="aba-btn" data-aba="alunos" onclick="ativarAba('alunos')">🎓 Alunos</button>
+                <button class="aba-btn" data-aba="planos" onclick="ativarAba('planos')">📋 Planos de Instrução</button>
+                <button class="aba-btn" data-aba="tiro" onclick="ativarAba('tiro')">🎯 Planos de Tiro</button>
+            </div>
+
+            <!-- ABA: CURSOS / ESTÁGIOS -->
+            <div class="aba-conteudo ativa" id="aba-cursos">
+                <div class="barra-acoes">
+                    <button class="btn-verde" onclick="abrirSidebar('curso')">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Novo Curso / Estágio
+                    </button>
+                    <span id="msg-carregamento" style="font-size:0.85rem;color:#666;">Carregando...</span>
+                </div>
+                <div class="filtros-bar">
+                    <label>Filtrar:</label>
+                    <select id="filtro-curso-campo">
+                        <option value="">Todos</option>
+                        <option value="TIPO">Tipo</option>
+                        <option value="STATUS">Status</option>
+                        <option value="NOME">Nome</option>
+                    </select>
+                    <input type="text" id="filtro-curso-valor" placeholder="Digite...">
+                    <button class="btn-azul" onclick="filtrarTabela('cursos')">Filtrar</button>
+                    <button class="btn-outline" onclick="limparFiltro('cursos')">Limpar</button>
+                </div>
+                <div class="container-tabela">
+                    <table class="tabela-sistema" id="tabela-cursos">
+                        <thead>
+                            <tr>
+                                <th>TIPO</th>
+                                <th>NOME</th>
+                                <th>INÍCIO</th>
+                                <th>TÉRMINO</th>
+                                <th>LOCAL</th>
+                                <th>C/H</th>
+                                <th>VAGAS</th>
+                                <th>STATUS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-cursos">
+                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum registro encontrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA: INSTRUTORES -->
+            <div class="aba-conteudo" id="aba-instrutores">
+                <div class="barra-acoes">
+                    <button class="btn-verde" onclick="abrirSidebar('instrutor')">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Cadastrar Instrutor
+                    </button>
+                </div>
+                <div class="container-tabela">
+                    <table class="tabela-sistema" id="tabela-instrutores">
+                        <thead>
+                            <tr>
+                                <th>GRADUAÇÃO</th>
+                                <th>NOME</th>
+                                <th>Nº ORDEM</th>
+                                <th>MATRÍCULA</th>
+                                <th>ESPECIALIDADE</th>
+                                <th>TELEFONE</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-instrutores">
+                            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Nenhum instrutor cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA: ALUNOS -->
+            <div class="aba-conteudo" id="aba-alunos">
+
+                <!-- PAINEL: UPLOAD DO EFETIVO -->
+                <div class="painel-efetivo">
+                    <div class="painel-efetivo-header">
+                        <span style="font-size:1.3rem">📋</span>
+                        <h4>Efetivo da Unidade</h4>
+                    </div>
+                    <div class="painel-efetivo-body">
+                        <label class="label-upload">
+                            📂 Importar Efetivo (.xls / .xlsx)
+                            <input type="file" id="input-efetivo-xls" accept=".xls,.xlsx">
+                        </label>
+                        <div class="efetivo-status" id="efetivo-status">
+                            <span>Nenhum efetivo carregado.</span>
+                        </div>
+                        <button class="btn-outline" id="btn-ver-efetivo" style="display:none;font-size:0.8rem;padding:0.35rem 0.75rem;" onclick="toggleTabelaEfetivo()">
+                            👁️ Ver Efetivo
+                        </button>
+                    </div>
+                    <!-- Tabela prévia do efetivo (colapsável) -->
+                    <div id="tabela-efetivo-wrap" style="display:none;margin-top:0.75rem;">
+                        <div class="container-tabela" style="max-height:200px;">
+                            <table class="tabela-sistema" id="tabela-efetivo-preview">
+                                <thead>
+                                    <tr>
+                                        <th>P/G</th><th>NOME</th><th>NOME GUERRA</th>
+                                        <th>MATRÍCULA</th><th>Nº ORDEM</th><th>CPF</th><th>OPM</th><th>SITUAÇÃO</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="corpo-efetivo-preview"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BARRA DE AÇÕES -->
+                <div class="barra-acoes">
+                    <button class="btn-verde" onclick="abrirSidebar('aluno')">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Cadastrar Aluno
+                    </button>
+                    <div class="filtros-bar" style="margin:0;">
+                        <label>Curso:</label>
+                        <select id="filtro-aluno-curso" onchange="carregarAlunos()">
+                            <option value="">Todos os cursos</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- BARRA DE AÇÃO EM LOTE -->
+                <div class="barra-lote" id="barra-lote-alunos">
+                    <span id="lote-contador">0 selecionados</span>
+                    <label style="font-size:0.85rem;">Alterar status para:</label>
+                    <select id="lote-status-select">
+                        <option value="INSCRITO">INSCRITO</option>
+                        <option value="APROVADO">APROVADO</option>
+                        <option value="REPROVADO">REPROVADO</option>
+                        <option value="DESISTENTE">DESISTENTE</option>
+                    </select>
+                    <button class="btn-lote-aplicar" onclick="aplicarStatusEmLote()">✔ Aplicar</button>
+                    <button class="btn-lote-cancelar" onclick="limparSelecaoAlunos()">✕ Cancelar</button>
+                </div>
+
+                <!-- TABELA DE ALUNOS INSCRITOS -->
+                <div class="container-tabela">
+                    <table class="tabela-sistema" id="tabela-alunos">
+                        <thead>
+                            <tr>
+                                <th class="th-cb"><input type="checkbox" class="cb-aluno" id="cb-todos-alunos" title="Selecionar todos" onchange="selecionarTodosAlunos(this.checked)"></th>
+                                <th>ORD.</th>
+                                <th>GRADUAÇÃO</th>
+                                <th>NOME</th>
+                                <th>Nº ORDEM</th>
+                                <th>MATRÍCULA</th>
+                                <th>CPF</th>
+                                <th>OPM</th>
+                                <th>CURSO</th>
+                                <th>SITUAÇÃO</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-alunos">
+                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum aluno cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA: PLANOS DE INSTRUÇÃO -->
+            <div class="aba-conteudo" id="aba-planos">
+                <div class="barra-acoes">
+                    <button class="btn-verde" onclick="abrirSidebar('plano')">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Novo Plano de Instrução
+                    </button>
+                </div>
+                <div class="container-tabela">
+                    <table class="tabela-sistema" id="tabela-planos">
+                        <thead>
+                            <tr>
+                                <th>NP / Nº PLANO</th>
+                                <th>NOME DO EVENTO</th>
+                                <th>PERÍODO</th>
+                                <th>LOCAL</th>
+                                <th>C/H</th>
+                                <th>VAGAS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-planos">
+                            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Nenhum plano cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ABA: PLANOS DE TIRO -->
+            <div class="aba-conteudo" id="aba-tiro">
+                <div class="barra-acoes">
+                    <button class="btn-verde" onclick="abrirSidebar('tiro')">
+                        <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Novo Plano de Tiro
+                    </button>
+                </div>
+                <div class="container-tabela">
+                    <table class="tabela-sistema" id="tabela-tiro">
+                        <thead>
+                            <tr>
+                                <th>DATA</th>
+                                <th>HORÁRIO</th>
+                                <th>LOCAL</th>
+                                <th>ARMAMENTO</th>
+                                <th>MODALIDADE</th>
+                                <th>INSTRUTOR</th>
+                                <th>MUNIÇÃO</th>
+                                <th>STATUS</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="corpo-tiro">
+                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum plano de tiro cadastrado.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div><!-- /abas-container -->
+    </main>
+</section>
+
+<footer>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
+</footer>
+
+<script src="../js/instrucoes.js"></script>
+
+</body>
+</html>

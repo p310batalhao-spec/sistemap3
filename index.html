@@ -40,39 +40,43 @@
 
     <section class="pagecomplete">
         <nav class="navegacao">
-            <a href="index.html" class="active">
+            <a href="../index.html" class="active">
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
-                    alt="home--v1" />
+                    alt="home" />
                 <p>Home</p>
-            </a><!--termina home-->
-            <a href="page/dashboard.html">
+            </a>
+            <a href="../page/dashboard.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
                     alt="performance-macbook" />
                 <p>Dashboard</p>
             </a><!--termina dashboard-->
-            <a href="page/cadastroocorrencias.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências" />
                 <p>Cadastro de Ocorrências</p>
-            </a><!--termina cadastroocorrencias-->
-            <a href="page/materiais.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+            </a>
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais" />
                 <p>Materiais Apreendidos</p>
-            </a><!--termina materiais apreendidos-->
-            <a href="page/eventos.html">
+            </a>
+            <a href="../page/eventos.html">
                 <img width="32" height="32"
                     src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
-                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                    alt="eventos" />
                 <p>Eventos</p>
-            </a><!--termina eventos-->
-            <a href="page/solucoesia.html">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+            </a>
+            <a href="../page/instrucoes.html">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
+                <p>Instrução</p>
+            </a>
+            <a href="../page/solucoesia.html">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA" />
                 <p>Soluções IA</p>
-            </a><!--termina solucoes ia-->
+            </a>
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button><!--termina sair-->
-        </nav><!--termina navegacao-->
+            </button>
+        </nav>
         <main>
             <div class="saudacao">
                 <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
@@ -242,7 +246,7 @@
         }
 
         //===== CONTAGEM DE TCOS FIREBASE ====//
-                async function atualizarContagemTCOFirebase() {
+        async function atualizarContagemTCOFirebase() {
             const numerotcoElement = document.getElementById('numerotco');
             const FIREBASE_TCO_URL = "https://sistema-p3-default-rtdb.firebaseio.com/tco.json";
 
@@ -271,7 +275,7 @@
 
 
         // --- CONTAGEM DE VIOLÊNCIA DOMÉSTICA -- 
-                async function atualizarContagemViolenciaDomesticaFirebase() {
+        async function atualizarContagemViolenciaDomesticaFirebase() {
             const numeroVDElement = document.getElementById('numeroviolenciadomestica');
             const FIREBASE_VD_URL = "https://sistema-p3-default-rtdb.firebaseio.com/violencia_domestica.json";
 
@@ -299,7 +303,7 @@
         }
 
         // CONTAGEM DAS ARMAS APREENDIDAS ---7
-                async function atualizarContagemArmasFirebase() {
+        async function atualizarContagemArmasFirebase() {
             const numeroArmasElement = document.getElementById('armasapreendidas');
             const FIREBASE_ARMAS_URL = "https://sistema-p3-default-rtdb.firebaseio.com/arma.json";
 
@@ -325,7 +329,7 @@
                 numeroArmasElement.innerText = "!"; // Indica erro visualmente
             }
         }
-// CONTAGEM DE VISITAS ORIENTATIVAS --- 
+        // CONTAGEM DE VISITAS ORIENTATIVAS --- 
 
         async function atualizarContagemVisitasFirebase() {
             const numerovisitasElement = document.getElementById('numerovistiasorientativas');
@@ -359,7 +363,7 @@
 
         // -- PERTURBAÇÃO DO SOSSEGO ---
 
-         async function atualizarContagemPerturbacaoFirebase() {
+        async function atualizarContagemPerturbacaoFirebase() {
             const numeroperturbacaoElement = document.getElementById('numeroperturbacaodosossego');
             const FIREBASE_PERTURBACAO_URL = "https://sistema-p3-default-rtdb.firebaseio.com/sossego.json";
 

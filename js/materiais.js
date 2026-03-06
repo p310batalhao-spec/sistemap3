@@ -1,66 +1,30 @@
+// ====================================================================
+// CONFIGURAÇÃO FIREBASE
+// ====================================================================
+const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const NODE_MATERIAIS = 'materiais';
+
+// URL do Apps Script — usado APENAS para sincronização e-SAJ (POST/ação server-side)
+const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
 
 let allMateriais = [];
 let filtradosAtivos = null;
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
-
-// Wrapper para fetch do Apps Script — funciona em Live Server e produção
-// O Apps Script retorna um redirect 302; o browser bloqueia por CORS no redirect.
-// Solução: abrimos a URL final num iframe oculto via postMessage (workaround),
-// OU usamos jsonp via script tag para GET requests.
-async function appsScriptFetch(url) {
-    return new Promise((resolve, reject) => {
-        // Cria uma <script> tag — não tem restrição de CORS
-        const cbName = '_gsCallback_' + Date.now();
-        const script = document.createElement('script');
-
-        // Timeout de 15 segundos
-        const timer = setTimeout(() => {
-            delete window[cbName];
-            script.remove();
-            reject(new Error('Timeout ao chamar Apps Script'));
-        }, 15000);
-
-        window[cbName] = function (data) {
-            clearTimeout(timer);
-            delete window[cbName];
-            script.remove();
-            // Simula um Response para manter a interface igual ao fetch normal
-            resolve({
-                ok: true,
-                json: () => Promise.resolve(data),
-                text: () => Promise.resolve(typeof data === 'string' ? data : JSON.stringify(data))
-            });
-        };
-
-        // Adiciona callback JSONP na URL
-        const sep = url.includes('?') ? '&' : '?';
-        script.src = url + sep + 'callback=' + cbName;
-        script.onerror = () => {
-            clearTimeout(timer);
-            delete window[cbName];
-            reject(new Error('Erro ao carregar script do Apps Script'));
-        };
-        document.head.appendChild(script);
-    });
-}
 
 const chavesMateriais = ['IDMaterial', 'N° DO BOU', 'DATA', 'CATEGORIA', 'DESCRIÇÃO', 'LOCAL', 'DATA DE DEPOSITO', 'ESAJ', 'STATUS'];
-const chavesEditaveis = chavesMateriais.filter(function (k) { return k !== 'IDMaterial'; });
+const chavesEditaveis = chavesMateriais.filter(k => k !== 'IDMaterial');
 
 const sidebar = document.getElementById('form-materiais');
 const overlay = document.getElementById('overlay-sidebar');
 
-// --- 1. FUNÇÕES DE LOGIN E RELÓGIO (IGUAIS AO CADASTRO) ---
+// ====================================================================
+// LOGIN E RELÓGIO
+// ====================================================================
 function checkLogin() {
     const graduacao = localStorage.getItem('userGraduacao');
     const nomeGuerra = localStorage.getItem('userNomeGuerra');
     const userInfoEl = document.getElementById('user-info');
-
     if (graduacao && nomeGuerra) {
-        userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-            `;
+        userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
     } else {
         alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
         window.location.href = '../page/login.html';
@@ -76,22 +40,45 @@ function atualizarRelogio() {
     if (el) el.innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
 }
 
-// --- 2. FUNÇÕES DE DADOS E TABELA ---
+// ====================================================================
+// CARREGAR DADOS DO FIREBASE
+// ====================================================================
 async function fetchData() {
+    const msgCarregamento = document.getElementById('mensagem-carregamento');
     try {
-        const response = await appsScriptFetch(WEBAPP_URL + '?action=read');
+        if (msgCarregamento) msgCarregamento.style.display = 'block';
+
+        const response = await fetch(`${DATABASE_URL}/${NODE_MATERIAIS}.json`);
+        if (!response.ok) throw new Error('Erro ao acessar Firebase');
+
         const data = await response.json();
-        allMateriais = data;
+
+        if (!data) {
+            allMateriais = [];
+        } else {
+            // Converte objeto Firebase em array, guardando o id_realtime
+            allMateriais = Object.keys(data)
+                .map(id => ({ ...data[id], id_realtime: id }))
+                .filter(item => item !== null)
+                .sort((a, b) => {
+                    // Ordena por data decrescente
+                    return new Date(b.DATA || 0) - new Date(a.DATA || 0);
+                });
+        }
+
         renderTable(allMateriais);
         loadTotalCounts();
-        if (document.getElementById('mensagem-carregamento')) {
-            document.getElementById('mensagem-carregamento').style.display = 'none';
-        }
+        if (msgCarregamento) msgCarregamento.style.display = 'none';
+
     } catch (error) {
         console.error("Erro ao buscar dados:", error);
+        if (msgCarregamento) msgCarregamento.textContent = "Erro ao carregar dados. Verifique a conexão.";
     }
 }
 
+// ====================================================================
+// RENDERIZAÇÃO DA TABELA
+// ====================================================================
 function renderTable(dataToRender) {
     const tbody = document.querySelector('#tabela-materiais tbody');
     if (!tbody) return;
@@ -100,43 +87,30 @@ function renderTable(dataToRender) {
     dataToRender.forEach(function (item) {
         const row = tbody.insertRow();
 
-        // 1. Coluna IDMaterial
+        // Coluna IDMaterial
         row.insertCell().textContent = item.IDMaterial || '';
 
-        // 2. Colunas dinâmicas baseadas em chavesEditaveis
+        // Colunas dinâmicas
         chavesEditaveis.forEach(function (key) {
             const cell = row.insertCell();
             const valor = item[key] || '';
 
-            // Lógica para a coluna STATUS (Badges coloridas)
             if (key === 'STATUS') {
                 const sClass = String(valor).replace(/\s+/g, '').toLowerCase();
                 cell.innerHTML = '<span class="status-badge status-' + sClass + '">' + valor + '</span>';
-            }
-
-            // --- NOVO: LÓGICA DO LINK E-SAJ (Igual ao tco.js) ---
-            else if (key === 'ESAJ' && valor) {
-                const numLimpo = String(valor).replace(/\D/g, ''); // Remove pontos e traços
-                cell.innerHTML = `
-                    <a href="https://www2.tjal.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&dadosConsulta.valorConsulta=${numLimpo}&numeroDigitado=${numLimpo}" 
-                       target="_blank" 
-                       style="color:#1a3d5d; font-weight:bold; text-decoration:underline;">
-                       ${valor}
-                    </a>`;
-            }
-            // ---------------------------------------------------
-
-            else {
+            } else if (key === 'ESAJ' && valor) {
+                const numLimpo = String(valor).replace(/\D/g, '');
+                cell.innerHTML = `<a href="https://www2.tjal.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&dadosConsulta.valorConsulta=${numLimpo}&numeroDigitado=${numLimpo}" target="_blank" style="color:#1a3d5d; font-weight:bold; text-decoration:underline;">${valor}</a>`;
+            } else {
                 cell.textContent = valor;
             }
         });
 
-        // 3. Coluna de AÇÕES
+        // Coluna de AÇÕES
         const acoesCell = row.insertCell();
         acoesCell.style.display = 'flex';
         acoesCell.style.gap = '5px';
 
-        // Botão Editar (Sempre visível)
         const btnEditar = document.createElement('button');
         btnEditar.className = 'btn-editar-sidebar';
         btnEditar.style.cssText = 'background:#2c3e50; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;';
@@ -144,7 +118,6 @@ function renderTable(dataToRender) {
         btnEditar.onclick = () => toggleSidebar(true, item);
         acoesCell.appendChild(btnEditar);
 
-        // Botão TERMO (Status: A DEVOLVER)
         if (String(item.STATUS).toUpperCase() === 'A DEVOLVER') {
             const btnTermo = document.createElement('button');
             btnTermo.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
@@ -153,7 +126,6 @@ function renderTable(dataToRender) {
             acoesCell.appendChild(btnTermo);
         }
 
-        // Botão FIEL DEPOSITÁRIO (Status: FIEL DEPOSITÁRIO)
         if (String(item.STATUS).toUpperCase() === 'FIEL DEPOSITÁRIO') {
             const btnFiel = document.createElement('button');
             btnFiel.style.cssText = 'background:#e67e22; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;';
@@ -167,22 +139,96 @@ function renderTable(dataToRender) {
     });
 }
 
-function gerarTermo(item) {
-    // Salva os dados do item selecionado para o termo
-    localStorage.setItem('dadosTermo', JSON.stringify(item));
-    // Abre a nova página do termo
-    window.open('../termos/termo_devolucao.html', '_blank');
+// ====================================================================
+// SALVAR NO FIREBASE (POST = novo, PATCH = editar)
+// ====================================================================
+async function salvarDados(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-salvar-form');
+    btn.disabled = true;
+    btn.textContent = "Processando...";
+
+    const id = document.getElementById('form-id').value; // id_realtime se edição
+
+    const payload = {
+        'IDMaterial':      id || Date.now().toString(),
+        'N° DO BOU':       document.getElementById('bou').value,
+        'DATA':            document.getElementById('data').value,
+        'CATEGORIA':       document.getElementById('categoria').value,
+        'DESCRIÇÃO':       document.getElementById('descricao').value,
+        'LOCAL':           document.getElementById('localdeposito').value,
+        'DATA DE DEPOSITO': document.getElementById('data-deposito').value,
+        'ESAJ':            document.getElementById('esaj').value,
+        'STATUS':          document.getElementById('status').value
+    };
+
+    // Remove campos vazios
+    Object.keys(payload).forEach(k => { if (payload[k] === '') delete payload[k]; });
+
+    const url = id
+        ? `${DATABASE_URL}/${NODE_MATERIAIS}/${id}.json`
+        : `${DATABASE_URL}/${NODE_MATERIAIS}.json`;
+
+    try {
+        const res = await fetch(url, {
+            method: id ? 'PATCH' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Erro ao salvar: ' + res.status);
+
+        alert("Operação realizada com sucesso!");
+        toggleSidebar(false);
+        setTimeout(fetchData, 500);
+    } catch (error) {
+        console.error("Erro ao salvar:", error);
+        alert("Erro ao salvar: " + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = "SALVAR DADOS";
+    }
 }
 
-// --- 3. FILTROS ---
-function aplicarFiltro() {
-    var campo = document.getElementById('filtro-tipo').value;
-    var busca = document.getElementById('filtro-valor-text').value.toLowerCase();
-    if (!campo || !busca) return;
+// ====================================================================
+// CONTADORES
+// ====================================================================
+function loadTotalCounts() {
+    const agora = new Date();
+    const anoAtual = agora.getFullYear().toString();
+    const anoAnterior = (agora.getFullYear() - 1).toString();
 
-    filtradosAtivos = allMateriais.filter(function (i) {
-        return String(i[campo] || "").toLowerCase().indexOf(busca) > -1;
-    });
+    const ativos = allMateriais.filter(item =>
+        String(item.STATUS || "").toUpperCase() !== 'DEVOLVIDO'
+    );
+
+    const elTotal = document.getElementById('total-materiais');
+    if (elTotal) elTotal.textContent = ativos.length;
+
+    const ativosAnoAtual = ativos.filter(item =>
+        String(item.DATA || "").indexOf(anoAtual) > -1
+    );
+    const elAnoAtual = document.getElementById('total-ano-atual');
+    if (elAnoAtual) elAnoAtual.textContent = ativosAnoAtual.length;
+
+    const ativosAnoAnterior = ativos.filter(item =>
+        String(item.DATA || "").indexOf(anoAnterior) > -1
+    );
+    const elAnoAnterior = document.getElementById('total-ano-anterior');
+    if (elAnoAnterior) elAnoAnterior.textContent = ativosAnoAnterior.length;
+}
+
+// ====================================================================
+// FILTROS
+// ====================================================================
+function aplicarFiltro() {
+    const campo = document.getElementById('filtro-tipo').value;
+    const busca = document.getElementById('filtro-valor-text').value.toLowerCase().trim();
+    if (!campo || !busca) { alert('Selecione um campo e digite um valor.'); return; }
+
+    filtradosAtivos = allMateriais.filter(i =>
+        String(i[campo] || "").toLowerCase().indexOf(busca) > -1
+    );
 
     renderTable(filtradosAtivos);
     document.getElementById('btn-limpar-filtro').style.display = 'inline-block';
@@ -192,34 +238,56 @@ function limparFiltro() {
     document.getElementById('filtro-tipo').value = "";
     document.getElementById('filtro-valor-text').value = "";
     document.getElementById('btn-limpar-filtro').style.display = 'none';
-    filtradosAtivos = null; // Reseta o estado do filtro
+    filtradosAtivos = null;
     renderTable(allMateriais);
 }
 
-// --- 4. IMPRESSÃO (FILTRADO OU TOTAL) ---
+// ====================================================================
+// IMPRESSÃO
+// ====================================================================
 function imprimirTabela() {
-    // Se houver filtro aplicado, usa os filtrados, senão usa todos
     const dadosParaImprimir = filtradosAtivos ? filtradosAtivos : allMateriais;
-
     if (dadosParaImprimir.length === 0) return alert("Não há dados para imprimir.");
-
     localStorage.setItem('dadosParaImpressao', JSON.stringify(dadosParaImprimir));
     window.open('../relatorios/relatoriomateriais.html', '_blank');
 }
 
-// --- 5. LOGOUT E OUTROS ---
-function efetuarLogout() {
-    localStorage.clear();
-    window.location.href = '../page/login.html';
-}
+// ====================================================================
+// SINCRONIZAÇÃO E-SAJ (ainda via Apps Script — roda no servidor)
+// ====================================================================
+document.getElementById('btn-sincronizar-esaj').onclick = async function () {
+    const btn = this;
+    if (!confirm("Deseja atualizar os status via API DataJud? Isso pode levar alguns minutos.")) return;
 
+    btn.disabled = true;
+    btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...`;
+
+    try {
+        // A sincronização roda no Apps Script (server-side) e grava o resultado no Firebase
+        const url = WEBAPP_URL + "?action=sincronizar";
+        const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+        const texto = await response.text();
+        alert("✅ " + texto);
+        await fetchData(); // Recarrega do Firebase após sincronização
+    } catch (e) {
+        console.error("Erro na sincronização:", e);
+        alert("Erro ao sincronizar: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizar e-SAJ`;
+    }
+};
+
+// ====================================================================
+// SIDEBAR
+// ====================================================================
 function toggleSidebar(show, data) {
     if (!sidebar) return;
     if (show) {
         sidebar.reset();
         document.getElementById('form-id').value = '';
         if (data) {
-            document.getElementById('form-id').value = data.IDMaterial || '';
+            document.getElementById('form-id').value = data.id_realtime || '';
             document.getElementById('bou').value = data['N° DO BOU'] || '';
             document.getElementById('data').value = formatarDataParaInput(data.DATA);
             document.getElementById('categoria').value = data.CATEGORIA || '';
@@ -238,83 +306,24 @@ function toggleSidebar(show, data) {
 }
 
 function formatarDataParaInput(dataStr) {
-    if (!dataStr || !dataStr.includes('/')) return dataStr;
-    var p = dataStr.split('/');
+    if (!dataStr || !dataStr.includes('/')) return dataStr || '';
+    const p = dataStr.split('/');
     return p[2] + '-' + p[1] + '-' + p[0];
 }
 
-// --- FUNÇÃO DE CONTAGEM ATUALIZADA ---
-function loadTotalCounts() {
-    const agora = new Date();
-    const anoAtual = agora.getFullYear().toString();
-    const anoAnterior = (agora.getFullYear() - 1).toString();
-
-    // 1. Total de Materiais (Todos exceto DEVOLVIDO)
-    const materiaisAtivosGeral = allMateriais.filter(item => {
-        return String(item.STATUS || "").toUpperCase() !== 'DEVOLVIDO';
-    });
-    const elTotal = document.getElementById('total-materiais');
-    if (elTotal) elTotal.textContent = materiaisAtivosGeral.length;
-
-    // 2. Total do Ano (Ativos do ano atual)
-    const ativosAnoAtual = materiaisAtivosGeral.filter(item => {
-        return String(item.DATA || "").indexOf(anoAtual) > -1;
-    });
-    const elAnoAtual = document.getElementById('total-ano-atual');
-    if (elAnoAtual) elAnoAtual.textContent = ativosAnoAtual.length;
-
-    // 3. Total Ano Anterior (Ativos do ano anterior)
-    const ativosAnoAnterior = materiaisAtivosGeral.filter(item => {
-        return String(item.DATA || "").indexOf(anoAnterior) > -1;
-    });
-    const elAnoAnterior = document.getElementById('total-ano-anterior');
-    if (elAnoAnterior) elAnoAnterior.textContent = ativosAnoAnterior.length;
+function gerarTermo(item) {
+    localStorage.setItem('dadosTermo', JSON.stringify(item));
+    window.open('../termos/termo_devolucao.html', '_blank');
 }
 
-// --- FETCH DATA ATUALIZADO ---
-async function fetchData() {
-    try {
-        const response = await appsScriptFetch(WEBAPP_URL + '?action=read');
-        const data = await response.json();
-        allMateriais = data;
-
-        renderTable(allMateriais);
-        loadTotalCounts(); // Chama a contagem logo após carregar os dados
-
-        if (document.getElementById('mensagem-carregamento')) {
-            document.getElementById('mensagem-carregamento').style.display = 'none';
-        }
-    } catch (error) {
-        console.error("Erro ao buscar dados:", error);
-        if (document.getElementById('mensagem-carregamento')) {
-            document.getElementById('mensagem-carregamento').textContent = "Erro ao carregar dados.";
-        }
-    }
+function efetuarLogout() {
+    localStorage.clear();
+    window.location.href = '../page/login.html';
 }
-// Lógica para o botão de sincronização
-document.getElementById('btn-sincronizar-esaj').onclick = async function () {
-    const btn = this;
-    if (!confirm("Deseja atualizar os status via API DataJud? Isso pode levar alguns minutos.")) return;
 
-    btn.disabled = true;
-    btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...`;
-
-    try {
-        const url = WEBAPP_URL + "?action=sincronizar";
-        const response = await appsScriptFetch(url);
-        const texto = await response.text();
-        alert("✅ " + texto);
-        await fetchData();
-    } catch (e) {
-        console.error("Erro na sincronização:", e);
-        alert("Erro ao sincronizar: " + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizar e-SAJ`;
-    }
-};
-
-// --- INICIALIZAÇÃO ---
+// ====================================================================
+// INICIALIZAÇÃO
+// ====================================================================
 document.addEventListener('DOMContentLoaded', function () {
     checkLogin();
     atualizarRelogio();
@@ -322,46 +331,11 @@ document.addEventListener('DOMContentLoaded', function () {
     fetchData();
 
     document.getElementById('btn-logout').onclick = efetuarLogout;
-    document.getElementById('btn-adicionar-cadastro').onclick = function () { toggleSidebar(true); };
-    document.getElementById('btn-fechar-sidebar').onclick = function () { toggleSidebar(false); };
-    if (overlay) overlay.onclick = function () { toggleSidebar(false); };
+    document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);
+    document.getElementById('btn-fechar-sidebar').onclick = () => toggleSidebar(false);
+    if (overlay) overlay.onclick = () => toggleSidebar(false);
     sidebar.onsubmit = salvarDados;
     document.getElementById('btn-aplicar-filtro').onclick = aplicarFiltro;
     document.getElementById('btn-limpar-filtro').onclick = limparFiltro;
     document.getElementById('btn-imprimir').onclick = imprimirTabela;
 });
-
-async function salvarDados(e) {
-    e.preventDefault();
-    const btn = document.getElementById('btn-salvar-form');
-    btn.disabled = true;
-    btn.textContent = "Processando...";
-    const payload = {
-        action: document.getElementById('form-id').value ? 'update' : 'create',
-        IDMaterial: document.getElementById('form-id').value,
-        'N° DO BOU': document.getElementById('bou').value,
-        'DATA': document.getElementById('data').value,
-        'CATEGORIA': document.getElementById('categoria').value,
-        'DESCRIÇÃO': document.getElementById('descricao').value,
-        'LOCAL': document.getElementById('localdeposito').value,
-        'DATA DE DEPOSITO': document.getElementById('data-deposito').value,
-        'ESAJ': document.getElementById('esaj').value,
-        'STATUS': document.getElementById('status').value
-    };
-    try {
-        await fetch(WEBAPP_URL, {
-            method: 'POST',
-            mode: 'no-cors',
-            headers: { 'Content-Type': 'application/x-form-urlencoded' },
-            body: new URLSearchParams(payload)
-        });
-        alert("Operação realizada com sucesso!");
-        toggleSidebar(false);
-        setTimeout(fetchData, 1500);
-    } catch (error) {
-        alert("Erro ao salvar.");
-    } finally {
-        btn.disabled = false;
-        btn.textContent = "SALVAR DADOS";
-    }
-}
