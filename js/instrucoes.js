@@ -122,6 +122,9 @@ function preencherSidebar(tipo, dados) {
         set('plano-material', dados.MATERIAL); set('plano-avaliacao', dados.AVALIACAO);
         set('plano-proporcao', dados.PROPORCAO);
         set('plano-tel', dados.TEL_P3); set('plano-email', dados.EMAIL_P3);
+        set('plano-equipe', dados.EQUIPE_TECNICA);
+        set('plano-intercorrencia', dados.INTERCORRENCIA);
+        set('plano-observacoes', dados.OBSERVACOES);
         setTimeout(() => {
             set('plano-curso', dados.CURSO_ID);
 
@@ -407,8 +410,10 @@ function renderPlanos(dados = null) {
             <td>${p.VAGAS || '-'}</td>
             <td>
                 <button class="btn-acao btn-editar" onclick='editarRegistro("plano","${id}")'>✏️</button>
-                <button class="btn-acao btn-doc" onclick='gerarDocPlano("${id}")'>🖨️ Imprimir</button>
-                <button class="btn-acao btn-relatorio" onclick='gerarDocxPlano("${id}")'>📄 Word</button>
+                <button class="btn-acao btn-doc" onclick='gerarDocPlano("${id}")'>🖨️ Plano</button>
+                <button class="btn-acao btn-relatorio" onclick='gerarDocxPlano("${id}")'>📄 Plano .docx</button>
+                <button class="btn-acao btn-doc" style="background:#6c3483;" onclick='imprimirRelatorio("${id}")'>🖨️ Relatório</button>
+                <button class="btn-acao btn-relatorio" style="background:#1a5276;" onclick='gerarDocxRelatorio("${id}")'>📄 Rel. .docx</button>
                 <button class="btn-acao btn-excluir" onclick='excluirRegistro("planos","${id}")'>🗑️</button>
             </td>
         </tr>`).join('');
@@ -522,7 +527,10 @@ async function handleSubmit(tipo, extraData = {}) {
             AVALIACAO: document.getElementById('plano-avaliacao').value,
             PROPORCAO: document.getElementById('plano-proporcao').value,
             TEL_P3: document.getElementById('plano-tel').value,
-            EMAIL_P3: document.getElementById('plano-email').value
+            EMAIL_P3: document.getElementById('plano-email').value,
+            EQUIPE_TECNICA: (document.getElementById('plano-equipe')||{value:''}).value,
+            INTERCORRENCIA: (document.getElementById('plano-intercorrencia')||{value:''}).value,
+            OBSERVACOES: (document.getElementById('plano-observacoes')||{value:''}).value
         }),
         tiro: () => ({
             CURSO_ID: document.getElementById('tiro-curso').value,
@@ -1473,3 +1481,223 @@ document.addEventListener('DOMContentLoaded', () => {
     iniciarUploadEfetivo();
     iniciarAutocompletes();
 });
+// ====================================================================
+// RELATÓRIO DE INSTRUÇÃO — Imprimir (abre relatorio_instrucao.html)
+// ====================================================================
+window.imprimirRelatorio = function(id) {
+    const p = cache.planos[id];
+    if (!p) return;
+
+    const todosAlunos = Object.values(cache.alunos).filter(a => a.CURSO_ID === p.CURSO_ID);
+    const concluintes = todosAlunos
+        .filter(a => a.SITUACAO === 'APROVADO')
+        .sort((a, b) => (a.NUM_ORDEM || '').localeCompare(b.NUM_ORDEM || ''));
+    const totalOPM = todosAlunos.length;
+
+    const instMap = new Map();
+    (p.CONTEUDO || []).forEach(c => {
+        if (!c.instrutor) return;
+        const inst = Object.values(cache.instrutores).find(i =>
+            (`${i.GRADUACAO || ''} ${i.NOME || ''}`).trim() === c.instrutor.trim() ||
+            (i.NOME || '').trim() === c.instrutor.trim()
+        );
+        if (!instMap.has(c.instrutor)) {
+            instMap.set(c.instrutor, {
+                grad: inst?.GRADUACAO || '',
+                nome: inst?.NOME || c.instrutor,
+                temas: [c.tema || ''],
+                ha: c.ha || ''
+            });
+        } else {
+            instMap.get(c.instrutor).temas.push(c.tema || '');
+        }
+    });
+
+    sessionStorage.setItem('relatorio_instrucao', JSON.stringify({
+        plano: p,
+        instrutores: [...instMap.values()],
+        concluintes: concluintes,
+        totalOPM: totalOPM
+    }));
+
+    window.open('../relatorios/relatorioinstrucoes.html', '_blank');
+};
+
+// ====================================================================
+// RELATÓRIO DE INSTRUÇÃO — .DOCX
+// ====================================================================
+window.gerarDocxRelatorio = async function(id) {
+    const docxLib = window.docx;
+    if (!docxLib) { alert('Biblioteca docx.js não carregada.'); return; }
+
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign } = docxLib;
+
+    const p = cache.planos[id];
+    if (!p) return;
+
+    const todosAlunos = Object.values(cache.alunos).filter(a => a.CURSO_ID === p.CURSO_ID);
+    const concluintes = todosAlunos
+        .filter(a => a.SITUACAO === 'APROVADO')
+        .sort((a, b) => (a.NUM_ORDEM || '').localeCompare(b.NUM_ORDEM || ''));
+    const totalOPM = todosAlunos.length;
+
+    const instMap = new Map();
+    (p.CONTEUDO || []).forEach(c => {
+        if (!c.instrutor) return;
+        const inst = Object.values(cache.instrutores).find(i =>
+            (`${i.GRADUACAO || ''} ${i.NOME || ''}`).trim() === c.instrutor.trim() ||
+            (i.NOME || '').trim() === c.instrutor.trim()
+        );
+        if (!instMap.has(c.instrutor)) {
+            instMap.set(c.instrutor, { grad: inst?.GRADUACAO || '', nome: inst?.NOME || c.instrutor, temas: [c.tema || ''], ha: c.ha || '' });
+        } else {
+            instMap.get(c.instrutor).temas.push(c.tema || '');
+        }
+    });
+
+    // A4 útil: 11906 - 2×851 = 10204 DXA — 7 colunas
+    const CONT=10204;
+    const D1=2244, D2=612, D3=816, D4=1122, D5=816, D6=714, D7=CONT-D1-D2-D3-D4-D5-D6; // D7=3880
+
+    const fnt='Times New Roman', SZ=20, SZh=22;
+    const bS={style:BorderStyle.SINGLE,size:4,color:'000000'};
+    const bN={style:BorderStyle.NONE,  size:0,color:'FFFFFF'};
+    const bAll={top:bS,bottom:bS,left:bS,right:bS};
+    const bTop={top:bS,bottom:bN,left:bS,right:bS};
+    const bMid={top:bN,bottom:bN,left:bS,right:bS};
+    const bBot={top:bN,bottom:bS,left:bS,right:bS};
+
+    const marg={top:50,bottom:50,left:80,right:80};
+    const marg0={top:0,bottom:0,left:80,right:80};
+
+    const run=(t,o={})=>new TextRun({text:String(t??''),font:fnt,size:o.sz||SZ,
+        bold:!!o.bold,italics:!!o.italic,allCaps:!!o.caps});
+    const par=(r,o={})=>new Paragraph({alignment:o.align||AlignmentType.LEFT,
+        spacing:{before:0,after:0},children:Array.isArray(r)?r:[r]});
+    const cel=(t,w,o={})=>new TableCell({
+        borders:o.borders||bAll, margins:o.m||marg,
+        width:{size:w,type:WidthType.DXA},
+        verticalAlign:o.vAlign||VerticalAlign.TOP,
+        shading:o.fill?{fill:o.fill,type:ShadingType.CLEAR}:undefined,
+        columnSpan:o.span||1,
+        children:[par(run(String(t??''),{bold:o.bold,sz:o.sz||SZ,caps:o.caps}),
+                     {align:o.align||AlignmentType.LEFT})]
+    });
+    const row=(...cells)=>new TableRow({children:cells});
+    const secao=t=>row(new TableCell({
+        borders:bAll,margins:marg,columnSpan:7,
+        width:{size:CONT,type:WidthType.DXA},
+        shading:{fill:'D9D9D9',type:ShadingType.CLEAR},
+        children:[par(run(t,{bold:true,sz:SZh,caps:true}),{align:AlignmentType.CENTER})]
+    }));
+
+    // BGO simulado com bordas seletivas (rowspan não suportado pelo docx.js)
+    const celBGO1=new TableCell({borders:bTop,margins:marg,width:{size:D7,type:WidthType.DXA},
+        children:[par(run('BGO DO PLANO',{bold:true,sz:SZh,caps:true}),{align:AlignmentType.CENTER})]});
+    const celBGO2=new TableCell({borders:bMid,margins:marg0,width:{size:D7,type:WidthType.DXA},
+        children:[par(run(''))]});
+    const celBGO3=new TableCell({borders:bBot,margins:marg,width:{size:D7,type:WidthType.DXA},
+        verticalAlign:VerticalAlign.BOTTOM,
+        children:[par(run(p.NP_SEI||''),{align:AlignmentType.CENTER})]});
+
+    const rows=[];
+
+    const parCab=new Paragraph({
+        alignment:AlignmentType.CENTER, spacing:{before:0,after:100},
+        children:[new TextRun({
+            text:`NP Nº ${p.NP_SEI||'(Nº GERADO PELO SEI)'} - RELATÓRIO DE INSTRUÇÃO`+
+                 ` Nº ${p.NUMERO_PLANO||'/ANO'} – OPM - PROCESSO DE REFERÊNCIA`+
+                 ` Nº (Nº GERADO PELO SEI INCLUÍDO COMO LINK)`,
+            font:fnt,size:SZh,bold:true,allCaps:true
+        })]
+    });
+
+    rows.push(row(
+        cel('Nome do Evento',D1,{bold:true,align:AlignmentType.CENTER,sz:SZh}),
+        cel('C/H',D2,{bold:true,align:AlignmentType.CENTER,sz:SZh}),
+        cel('Número de Participantes',D3+D4+D5+D6,{bold:true,align:AlignmentType.CENTER,sz:SZh,span:4}),
+        celBGO1
+    ));
+    rows.push(row(
+        cel(p.NOME_EVENTO||'',D1,{vAlign:VerticalAlign.CENTER}),
+        cel(p.CARGA_TOTAL||'',D2,{align:AlignmentType.CENTER,vAlign:VerticalAlign.CENTER}),
+        cel('OPM',D3,{bold:true,align:AlignmentType.CENTER,sz:18}),
+        cel('Outras OPM',D4,{bold:true,align:AlignmentType.CENTER,sz:18}),
+        cel('Externo',D5,{bold:true,align:AlignmentType.CENTER,sz:18}),
+        cel('Total',D6,{bold:true,align:AlignmentType.CENTER,sz:18}),
+        celBGO2
+    ));
+    rows.push(row(
+        cel('',D1),cel('',D2),
+        cel(String(totalOPM),D3,{align:AlignmentType.CENTER}),
+        cel('-',D4,{align:AlignmentType.CENTER}),
+        cel('-',D5,{align:AlignmentType.CENTER}),
+        cel(String(totalOPM),D6,{align:AlignmentType.CENTER}),
+        celBGO3
+    ));
+    rows.push(row(
+        cel('Da Equipe Técnica Responsável',D1,{bold:true}),
+        cel(p.EQUIPE_TECNICA||'Citar todos os envolvidos que possibilitaram a realização do evento.',D2+D3+D4+D5+D6+D7,{span:6})
+    ));
+    rows.push(row(
+        cel('Intercorrência envolvendo policiais',D1),
+        cel(p.INTERCORRENCIA||'Ex: disciplina, acidente com policial, entre outros.',D2+D3+D4+D5+D6+D7,{span:6})
+    ));
+    rows.push(row(
+        cel('Observações/Sugestões',D1),
+        cel(p.OBSERVACOES||'Outras informações a critério.',D2+D3+D4+D5+D6+D7,{span:6})
+    ));
+
+    rows.push(secao('RELAÇÃO DO(S) INSTRUTOR(ES)'));
+    rows.push(row(
+        cel('Ord',D2,{bold:true,align:AlignmentType.CENTER,sz:SZh}),
+        cel('Posto/Graduação',D3+D4,{bold:true,align:AlignmentType.CENTER,sz:SZh,span:2}),
+        cel('Nome',D1,{bold:true,align:AlignmentType.CENTER,sz:SZh}),
+        cel('Tema Ministrado',D5+D6,{bold:true,align:AlignmentType.CENTER,sz:SZh,span:2}),
+        cel('Carga Horária',D7,{bold:true,align:AlignmentType.CENTER,sz:SZh})
+    ));
+    const instArr=[...instMap.values()];
+    (instArr.length>0?instArr:[{grad:'',nome:'',temas:[''],ha:''},{grad:'',nome:'',temas:[''],ha:''}])
+    .forEach((inst,i)=>{
+        rows.push(row(
+            cel(String(i+1),D2,{align:AlignmentType.CENTER}),
+            cel(inst.grad,D3+D4,{span:2}),
+            cel(inst.nome,D1),
+            cel(inst.temas.join('; '),D5+D6,{span:2}),
+            cel(inst.ha,D7,{align:AlignmentType.CENTER})
+        ));
+    });
+
+    rows.push(secao('RELAÇÃO DOS CONCLUINTES'));
+    rows.push(row(
+        cel('Ord',D2,{bold:true,align:AlignmentType.CENTER,sz:SZh}),
+        cel('Posto/Graduação',D3+D4,{bold:true,align:AlignmentType.CENTER,sz:SZh,span:2}),
+        cel('Nome',D1+D5+D6,{bold:true,align:AlignmentType.CENTER,sz:SZh,span:3}),
+        cel('Número de Ordem',D7,{bold:true,align:AlignmentType.CENTER,sz:SZh})
+    ));
+    const concArr=concluintes.length>0?concluintes:[{GRADUACAO:'',NOME:'',NUM_ORDEM:''},{GRADUACAO:'',NOME:'',NUM_ORDEM:''}];
+    concArr.forEach((a,i)=>{
+        rows.push(row(
+            cel(String(i+1),D2,{align:AlignmentType.CENTER}),
+            cel(a.GRADUACAO||'',D3+D4,{span:2}),
+            cel(a.NOME||'',D1+D5+D6,{span:3}),
+            cel(a.NUM_ORDEM||'',D7,{align:AlignmentType.CENTER})
+        ));
+    });
+
+    const tabela=new Table({width:{size:CONT,type:WidthType.DXA},columnWidths:[D1,D2,D3,D4,D5,D6,D7],rows});
+    const doc=new Document({sections:[{properties:{
+        page:{size:{width:11906,height:16838},margin:{top:851,right:851,bottom:851,left:851}}
+    },children:[parCab,tabela]}]});
+
+    const blob=await Packer.toBlob(doc);
+    const nome=`Relatorio_Instrucao_${(p.NUMERO_PLANO||'sem_numero').replace(/\//g,'-')}.docx`;
+    if(window.saveAs){window.saveAs(blob,nome);}
+    else{
+        const url=URL.createObjectURL(blob);
+        const a=document.createElement('a');
+        a.href=url;a.download=nome;a.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+    }
+};

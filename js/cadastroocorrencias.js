@@ -124,7 +124,12 @@ document.getElementById('input-xls').onchange = function(e) {
         document.getElementById('status-msg').innerText = `✓ ${bufferDados.length} registros prontos para salvar.`;
         document.getElementById('btn-save-cloud').style.display = "block";
     };
-    reader.readAsArrayBuffer(e.target.files[0]);
+    const arquivo = e.target.files && e.target.files[0];
+    if (!arquivo) {
+        alert("Nenhum arquivo selecionado.");
+        return;
+    }
+    reader.readAsArrayBuffer(arquivo);
 };
 
 // Lógica de Salvar no Firebase
@@ -169,9 +174,13 @@ document.getElementById('btn-save-cloud').onclick = async function() {
                 const solucao = (d.SOLUÇÃO || "").toUpperCase();
 
                 if (solucao.includes("TCO")) updates[`/tco/${safeId}`] = dadoFinal;
-                if (tipGeral.includes("MULHER") || tipGeral.includes("DOMÉSTICA")) updates[`/violencia_domestica/${safeId}`] = dadoFinal;
-                if (tipGeral.includes("ROUBO") || tipGeral.includes("FURTO") || tipGeral.includes("EXTORÇÃO") ||tipGeral.includes("LATROCÍNIO") || (tipGeral.includes("DANO") && !tipGeral.includes("PERIGO"))) updates[`/cvp/${safeId}`] = dadoFinal;
-                if (tipGeral.includes("HOMICIDIO") || tipGeral.includes("CVLI")) updates[`/cvli/${safeId}`] = dadoFinal;
+                if (tipGeral.includes("MULHER") || tipGeral.includes("DOMÉSTICA") || tipGeral.includes("DOMESTICA")) updates[`/violencia_domestica/${safeId}`] = dadoFinal;
+                if (tipGeral.includes("ROUBO") || tipGeral.includes("EXTORÇÃO") ||tipGeral.includes("LATROCÍNIO") || tipGeral.includes("LATROCINIO") || tipGeral.includes("EXTORSÃO") || tipGeral.includes("EXTORSAO") || tipGeral.includes("EXTORSÃO MEDIANTE SEQUESTRO") || tipGeral.includes("EXTORSAO MEDIANTE SEQUESTRO"))  updates[`/cvp/${safeId}`] = dadoFinal;
+                // CVLI: cobre variações com e sem acento da planilha
+                const tipNorm = tipGeral.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                if (tipNorm.includes("HOMICIDIO") || tipNorm.includes("CVLI") ||
+                    tipNorm.includes("LATROCINIO") || tipNorm.includes("FEMINICIDIO"))
+                    updates[`/cvli/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("SOSSEGO")) updates[`/sossego/${safeId}`] = dadoFinal;
                 if (tipGeral.includes("MANDADO")) updates[`/mandados/${safeId}`] = dadoFinal;
             } else {
@@ -181,10 +190,19 @@ document.getElementById('btn-save-cloud').onclick = async function() {
             }
         });
 
-        // 4. Executa o update atômico no Firebase
-        await db.ref().update(updates);
-        alert("Sincronização realizada com sucesso e dados cruzados!");
-        location.reload(); 
+        // 4. Executa o update em LOTES de 100 (evita "Write too large")
+        const LOTE = 100;
+        const chaves = Object.keys(updates);
+        let salvos = 0;
+        for (let i = 0; i < chaves.length; i += LOTE) {
+            const lote = {};
+            chaves.slice(i, i + LOTE).forEach(k => { lote[k] = updates[k]; });
+            await db.ref().update(lote);
+            salvos += Object.keys(lote).length;
+            btn.innerText = `SINCRONIZANDO… ${Math.round(salvos/chaves.length*100)}%`;
+        }
+        alert(`Sincronização concluída! ${salvos} escritas enviadas ao Firebase.`);
+        location.reload();
 
     } catch (e) {
         console.error("Erro na sincronização:", e);
@@ -202,10 +220,7 @@ function atualizarrelogio() {
     const segundos = String(agora.getSeconds()).padStart(2, '0');
     relogio.innerText = `${horas}:${minutos}:${segundos}`;
 }
-function logout() {
-    localStorage.removeItem('usuarioLogado');
-    window.location.href = '../index.html';
-}
+// logout definido abaixo
 function exibirUsuario() {
     const userInfoDiv = document.getElementById('user-info');
     const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));

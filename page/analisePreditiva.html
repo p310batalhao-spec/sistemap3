@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Preditiva — P3</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <style>
+        /* ── Tokens ─────────────────────────────────────────── */
+        :root {
+            --azul:    #0a448f;
+            --azul-m:  #3b6fb8;
+            --cvp:     #e65100;
+            --cvp-l:   rgba(230,81,0,.12);
+            --cvli:    #6a1b9a;
+            --cvli-l:  rgba(106,27,154,.12);
+            --mvi:     #b71c1c;
+            --mvi-l:   rgba(183,28,28,.12);
+            --ok:      #2e7d32;
+            --warn:    #f57f17;
+            --borda:   #e0e4ef;
+            --sub:     #5a6382;
+            --bg:      #f3f3f5;
+        }
+
+        /* ── Layout geral ─────────────────────────────────── */
+        main { flex-grow:1; padding:1.25rem; display:flex; flex-direction:column; gap:1.25rem; }
+
+        /* ── Spinner ────────────────────────────────────────── */
+        .loading-overlay {
+            position:fixed; inset:0; background:rgba(243,243,245,.9);
+            display:flex; align-items:center; justify-content:center;
+            flex-direction:column; gap:1rem; z-index:9999;
+        }
+        .spinner {
+            width:48px; height:48px;
+            border:5px solid var(--borda);
+            border-top-color:var(--azul);
+            border-radius:50%;
+            animation:spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform:rotate(360deg); } }
+        .loading-txt { font-size:.9rem; color:var(--sub); font-weight:600; font-family:Arial,sans-serif; }
+
+        /* ── Faixa de cabeçalho da página ─────────────────── */
+        .page-header {
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem;
+            background:linear-gradient(90deg,#0a448f 0%,#3b6fb8 50%,#1464b5 100%);
+            border-radius:.625rem; padding:1rem 1.5rem; color:white;
+        }
+        .page-header h2 { font-size:1.1rem; font-weight:bold; margin:0; font-family:Arial,sans-serif; }
+        .page-header small { font-size:.78rem; opacity:.75; display:block; margin-top:.2rem; }
+        .badge-ia {
+            background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+            padding:.3rem .9rem; border-radius:20px; font-size:.72rem; font-weight:bold;
+            letter-spacing:.08em; white-space:nowrap;
+        }
+
+        /* ── Alertas ────────────────────────────────────────── */
+        .alerta-bar { display:flex; gap:.75rem; flex-wrap:wrap; }
+        .alerta {
+            flex:1; min-width:200px;
+            border-radius:.625rem; padding:.9rem 1.1rem;
+            display:flex; align-items:center; gap:.85rem;
+            border-left:4px solid; font-family:Arial,sans-serif;
+            box-shadow:0 2px 6px rgba(0,0,0,.07);
+        }
+        .alerta.critico { background:#fff3e0; border-color:var(--cvp); }
+        .alerta.alto    { background:#fce4ec; border-color:var(--mvi); }
+        .alerta.neutro  { background:#e8f5e9; border-color:var(--ok); }
+        .alerta-icone   { font-size:1.6rem; line-height:1; flex-shrink:0; }
+        .alerta-txt strong { font-size:.88rem; font-weight:bold; display:block; color:#1a1f36; }
+        .alerta-txt small  { font-size:.76rem; color:var(--sub); }
+
+        /* ── Grids ──────────────────────────────────────────── */
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+        .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1.25rem; }
+        @media(max-width:900px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+        /* ── Card — replica .btn mas adaptado ──────────────── */
+        .card {
+            background:white; border-radius:.625rem;
+            padding:1.25rem; box-shadow:0 .25rem .5rem rgba(0,0,0,.1);
+            font-family:Arial,sans-serif;
+        }
+        .card-titulo {
+            font-size:.75rem; font-weight:bold; text-transform:uppercase;
+            letter-spacing:.08em; color:var(--sub);
+            margin-bottom:1rem; display:flex; align-items:center; gap:.45rem;
+        }
+        .card-titulo .dot { width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0; }
+
+        /* ── KPIs ────────────────────────────────────────────── */
+        .kpi-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+        .kpi {
+            flex:1; min-width:110px; text-align:center;
+            background:var(--bg); border-radius:.5rem;
+            padding:.75rem .5rem; border:1px solid var(--borda);
+        }
+        .kpi .val { font-size:1.9rem; font-weight:bold; line-height:1.1; }
+        .kpi .lbl { font-size:.68rem; color:var(--sub); margin-top:.2rem; font-weight:bold; text-transform:uppercase; letter-spacing:.05em; }
+        .kpi .delta { font-size:.72rem; font-weight:bold; margin-top:.2rem; }
+        .delta.up   { color:var(--mvi); }
+        .delta.down { color:var(--ok); }
+        .delta.eq   { color:var(--sub); }
+
+        /* ── Gráficos ─────────────────────────────────────────── */
+        .chart-wrap { position:relative; }
+        .chart-wrap canvas { width:100%!important; }
+
+        /* ── Previsão ─────────────────────────────────────────── */
+        .previsao-box {
+            background:linear-gradient(135deg,#0a1f4d 0%,#1a3a6e 100%);
+            border-radius:.625rem; padding:1.25rem; color:white;
+            font-family:Arial,sans-serif;
+            box-shadow:0 .25rem .5rem rgba(0,0,0,.18);
+        }
+        .previsao-box h3 { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; opacity:.65; margin-bottom:.85rem; }
+        .previsao-row  { display:flex; gap:1rem; margin-top:1rem; }
+        .previsao-item { flex:1; }
+        .p-val { font-size:2.4rem; font-weight:bold; line-height:1; }
+        .p-lbl { font-size:.72rem; opacity:.65; margin-top:.15rem; }
+        .previsao-item.cvp .p-val { color:#ff7043; }
+        .previsao-item.cvli .p-val { color:#ce93d8; }
+        .previsao-item.mvi .p-val { color:#ef5350; }
+        .previsao-nota { margin-top:1rem; font-size:.68rem; opacity:.5; line-height:1.5; }
+
+        /* ── Modal de ocorrências ──────────────────────────────── */
+        .modal-overlay {
+            display:none; position:fixed; inset:0;
+            background:rgba(10,20,50,.55); z-index:10000;
+            align-items:center; justify-content:center;
+        }
+        .modal-overlay.aberto { display:flex; }
+        .modal-box {
+            background:#fff; border-radius:.75rem;
+            width:min(720px, 95vw); max-height:82vh;
+            display:flex; flex-direction:column;
+            box-shadow:0 8px 40px rgba(0,0,0,.25);
+            font-family:Arial,sans-serif; overflow:hidden;
+        }
+        .modal-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:.9rem 1.2rem; border-bottom:2px solid var(--borda);
+        }
+        .modal-header h4 { margin:0; font-size:.95rem; color:#1a1f36; }
+        .modal-header small { font-size:.75rem; color:var(--sub); display:block; margin-top:.15rem; }
+        .modal-fechar {
+            background:none; border:none; font-size:1.4rem;
+            cursor:pointer; color:var(--sub); line-height:1;
+            padding:.2rem .5rem; border-radius:.3rem;
+        }
+        .modal-fechar:hover { background:var(--bg); color:#1a1f36; }
+        .modal-corpo { overflow-y:auto; padding:1rem 1.2rem; flex:1; }
+        .modal-busca {
+            width:100%; padding:.55rem .8rem; border:1px solid var(--borda);
+            border-radius:.4rem; font-size:.82rem; margin-bottom:.8rem;
+            box-sizing:border-box;
+        }
+        .modal-busca:focus { outline:none; border-color:var(--azul); }
+        .modal-tabela { width:100%; border-collapse:collapse; font-size:.8rem; }
+        .modal-tabela th {
+            text-align:left; padding:.45rem .6rem;
+            background:var(--bg); font-size:.68rem;
+            text-transform:uppercase; letter-spacing:.07em;
+            color:var(--sub); border-bottom:2px solid var(--borda);
+            position:sticky; top:0;
+        }
+        .modal-tabela td { padding:.45rem .6rem; border-bottom:1px solid var(--borda); vertical-align:top; }
+        .modal-tabela tr:last-child td { border-bottom:none; }
+        .modal-tabela tr:hover td { background:#f7f9ff; }
+        .modal-boletim { font-weight:bold; color:var(--azul); white-space:nowrap; }
+        .modal-vazio { text-align:center; color:var(--sub); padding:2rem; font-size:.85rem; }
+        .modal-footer { padding:.6rem 1.2rem; border-top:1px solid var(--borda); font-size:.72rem; color:var(--sub); }
+        .chart-clickable { cursor:pointer; }
+        .p-delta { font-size:.7rem; font-weight:bold; margin-top:.3rem; display:block; }
+        .p-delta.up   { color:#ff8a65; }
+        .p-delta.down { color:#a5d6a7; }
+        .p-delta.eq   { color:rgba(255,255,255,.5); }
+
+        /* ── Heatmap horário ─────────────────────────────────── */
+        .hora-grid {
+            display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-top:.5rem;
+        }
+        .hora-cel {
+            height:32px; border-radius:4px;
+            display:flex; flex-direction:column;
+            align-items:center; justify-content:center;
+            font-size:.58rem; font-weight:bold; color:white;
+            cursor:default;
+        }
+        .hora-cel span { font-size:.68rem; opacity:.8; }
+        .hora-cel.zero { background:#e9ecef!important; color:#aaa; }
+        .hora-cel:hover { filter:brightness(1.12); }
+
+        /* ── Tabela hotspots ─────────────────────────────────── */
+        .tabela-pred { width:100%; border-collapse:collapse; font-size:.8rem; font-family:Arial,sans-serif; }
+        .tabela-pred th {
+            text-align:left; padding:.5rem .65rem;
+            background:var(--bg); font-size:.68rem;
+            text-transform:uppercase; letter-spacing:.07em; color:var(--sub);
+            border-bottom:2px solid var(--borda);
+        }
+        .tabela-pred td { padding:.5rem .65rem; border-bottom:1px solid var(--borda); vertical-align:middle; }
+        .tabela-pred tr:last-child td { border-bottom:none; }
+        .tabela-pred tr:hover td { background:#f7f9ff; }
+
+        .risco-badge {
+            display:inline-block; padding:.15rem .55rem; border-radius:20px;
+            font-size:.68rem; font-weight:bold; text-transform:uppercase;
+        }
+        .risco-alto  { background:#ffebee; color:#c62828; }
+        .risco-medio { background:#fff3e0; color:#e65100; }
+        .risco-baixo { background:#e8f5e9; color:#2e7d32; }
+
+        .barra-mini { height:5px; border-radius:3px; background:var(--borda); overflow:hidden; width:80px; }
+        .barra-fill { height:100%; border-radius:3px; }
+
+        /* ── Separador de seção ──────────────────────────────── */
+        .secao-titulo {
+            font-size:.78rem; font-weight:bold; text-transform:uppercase;
+            color:var(--azul); letter-spacing:.09em;
+            padding:.35rem 0; border-bottom:2px solid var(--azul);
+            margin-bottom:.1rem; font-family:Arial,sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Spinner -->
+<div class="loading-overlay" id="loading">
+    <div class="spinner"></div>
+    <p class="loading-txt">Carregando dados preditivos…</p>
+</div>
+
+<header>
+    <div class="header-info-left">
+        <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+        <div class="cabecalhotexto">
+            <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+            <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+        </div>
+    </div>
+    <div class="header-info-right">
+        <div class="relogio" id="relogio"></div>
+        <div class="exibirusuario" id="user-info"></div>
+    </div>
+</header>
+
+<section class="pagecomplete">
+
+    <nav class="navegacao">
+        <a href="../index.html">
+            <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
+            <p>Home</p>
+        </a>
+        <a href="dashboard.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard"/>
+            <p>Dashboard</p>
+        </a>
+        <a href="cadastroocorrencias.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
+            <p>Cadastro de Ocorrências</p>
+        </a>
+        <a href="materiais.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
+            <p>Materiais Apreendidos</p>
+        </a>
+        <a href="eventos.html">
+            <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos"/>
+            <p>Eventos</p>
+        </a>
+        <a href="instrucoes.html">
+            <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução"/>
+            <p>Instrução</p>
+        </a>
+        <a href="preditiva.html" class="active">
+            <img width="48" height="48" src="https://img.icons8.com/ios/50/mind-map.png" alt="preditiva"/>
+            <p>Análise Preditiva</p>
+        </a>
+        <a href="solucoesia.html">
+            <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
+            <p>Soluções IA</p>
+        </a>
+        <button id="btn-logout" class="btn-logout">
+            <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
+            <p>Sair</p>
+        </button>
+    </nav>
+
+    <main>
+
+        <!-- ══ Cabeçalho ══════════════════════════════════════ -->
+        <div class="page-header">
+            <div>
+                <h2>🔍 Análise Preditiva — CVP · CVLI · MVI</h2>
+                <small id="subtitulo-periodo">Carregando período de análise…</small>
+            </div>
+            <span class="badge-ia">⚡ MODELO PREDITIVO</span>
+        </div>
+
+        <!-- ══ Alertas ════════════════════════════════════════ -->
+        <div class="alerta-bar" id="alertas-bar">
+            <div class="alerta neutro">
+                <div class="alerta-icone">⏳</div>
+                <div class="alerta-txt"><strong>Carregando alertas…</strong><small>Aguarde a leitura do Firebase</small></div>
+            </div>
+        </div>
+
+        <!-- ══ KPIs CVP + CVLI + MVI ═══════════════════════════ -->
+        <div class="grid-3">
+            <!-- CVP -->
+            <div class="card">
+                <div class="card-titulo">
+                    <span class="dot" style="background:var(--cvp)"></span>CVP — Crimes Violentos contra o Patrimônio
+                </div>
+                <div class="kpi-row">
+                    <div class="kpi">
+                        <div class="val" id="cvp-total" style="color:var(--cvp)">--</div>
+                        <div class="lbl">Total Geral</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="cvp-mes-atual" style="color:var(--cvp)">--</div>
+                        <div class="lbl">Mês Atual</div>
+                        <div class="delta" id="cvp-delta">…</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="cvp-media" style="color:var(--cvp)">--</div>
+                        <div class="lbl">Média/mês</div>
+                    </div>
+                    <div class="kpi" style="min-width:100%">
+                        <div class="val" id="cvp-cidade-bairro" style="color:var(--cvp);font-size:.85rem;line-height:1.2">--</div>
+                        <div class="lbl">Cidade / Bairro Crítico</div>
+                    </div>
+                </div>
+                <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                    <canvas id="chart-cvp-mes" class="chart-clickable"></canvas>
+                </div>
+            </div>
+
+            <!-- CVLI -->
+            <div class="card">
+                <div class="card-titulo">
+                    <span class="dot" style="background:var(--cvli)"></span>CVLI — Crimes Violentos Letais Intencionais
+                </div>
+                <div class="kpi-row">
+                    <div class="kpi">
+                        <div class="val" id="cvli-total" style="color:var(--cvli)">--</div>
+                        <div class="lbl">Total Geral</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="cvli-mes-atual" style="color:var(--cvli)">--</div>
+                        <div class="lbl">Mês Atual</div>
+                        <div class="delta" id="cvli-delta">…</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="cvli-media" style="color:var(--cvli)">--</div>
+                        <div class="lbl">Média/mês</div>
+                    </div>
+                    <div class="kpi" style="min-width:100%">
+                        <div class="val" id="cvli-cidade-bairro" style="color:var(--cvli);font-size:.85rem;line-height:1.2">--</div>
+                        <div class="lbl">Cidade / Bairro Crítico</div>
+                    </div>
+                </div>
+                <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                    <canvas id="chart-cvli-mes" class="chart-clickable"></canvas>
+                </div>
+            </div>
+
+            <!-- MVI -->
+            <div class="card">
+                <div class="card-titulo">
+                    <span class="dot" style="background:var(--mvi)"></span>MVI — Mortes Violentas Intencionais (Hom. + Latrocínio)
+                </div>
+                <div class="kpi-row">
+                    <div class="kpi">
+                        <div class="val" id="mvi-total" style="color:var(--mvi)">--</div>
+                        <div class="lbl">Total Geral</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="mvi-mes-atual" style="color:var(--mvi)">--</div>
+                        <div class="lbl">Mês Atual</div>
+                        <div class="delta" id="mvi-delta">…</div>
+                    </div>
+                    <div class="kpi">
+                        <div class="val" id="mvi-media" style="color:var(--mvi)">--</div>
+                        <div class="lbl">Média/mês</div>
+                    </div>
+                    <div class="kpi" style="min-width:100%">
+                        <div class="val" id="mvi-cidade-bairro" style="color:var(--mvi);font-size:.85rem;line-height:1.2">--</div>
+                        <div class="lbl">Cidade / Bairro Crítico</div>
+                    </div>
+                </div>
+                <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                    <canvas id="chart-mvi-mes" class="chart-clickable"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ Previsão + Heatmaps de hora ═══════════════════ -->
+        <div class="grid-3">
+            <div style="display:flex; flex-direction:column; gap:1rem;">
+
+                <!-- Card 1: Previsão vs Real do mês atual -->
+                <div class="previsao-box">
+                    <h3>📅 Previsão vs Real — <span id="prev-nome-mes-atual">…</span></h3>
+                    <div class="previsao-row">
+                        <div class="previsao-item cvp">
+                            <div style="display:flex;align-items:baseline;gap:.35rem">
+                                <div class="p-val" id="prevmes-cvp" style="font-size:1.6rem;opacity:.7">--</div>
+                                <div style="font-size:.9rem;opacity:.5">→</div>
+                                <div class="p-val" id="real-cvp">--</div>
+                            </div>
+                            <div class="p-lbl">CVP est. → real</div>
+                            <span class="p-delta" id="delta-cvp-mes">…</span>
+                        </div>
+                        <div class="previsao-item cvli">
+                            <div style="display:flex;align-items:baseline;gap:.35rem">
+                                <div class="p-val" id="prevmes-cvli" style="font-size:1.6rem;opacity:.7">--</div>
+                                <div style="font-size:.9rem;opacity:.5">→</div>
+                                <div class="p-val" id="real-cvli">--</div>
+                            </div>
+                            <div class="p-lbl">CVLI est. → real</div>
+                            <span class="p-delta" id="delta-cvli-mes">…</span>
+                        </div>
+                        <div class="previsao-item mvi">
+                            <div style="display:flex;align-items:baseline;gap:.35rem">
+                                <div class="p-val" id="prevmes-mvi" style="font-size:1.6rem;opacity:.7">--</div>
+                                <div style="font-size:.9rem;opacity:.5">→</div>
+                                <div class="p-val" id="real-mvi">--</div>
+                            </div>
+                            <div class="p-lbl">MVI est. → real</div>
+                            <span class="p-delta" id="delta-mvi-mes">…</span>
+                        </div>
+                    </div>
+                    <div class="previsao-nota">Estimativa (3 meses ant.) → valor real importado até hoje.</div>
+                </div>
+
+                <!-- Card 2: Previsão próximo mês -->
+                <div class="previsao-box">
+                    <h3>📈 Previsão — <span id="prev-nome-prox-mes">…</span></h3>
+                    <div class="previsao-row">
+                        <div class="previsao-item cvp">
+                            <div class="p-val" id="prev-cvp">--</div>
+                            <div class="p-lbl">CVP Estimado</div>
+                        </div>
+                        <div class="previsao-item cvli">
+                            <div class="p-val" id="prev-cvli">--</div>
+                            <div class="p-lbl">CVLI Estimado</div>
+                        </div>
+                        <div class="previsao-item mvi">
+                            <div class="p-val" id="prev-mvi">--</div>
+                            <div class="p-lbl">MVI Estimado</div>
+                        </div>
+                    </div>
+                    <div class="previsao-nota">Modelo: média ponderada (3 meses) + tendência linear.</div>
+                </div>
+
+            </div>
+
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvp)"></span>Picos de Horário — CVP</div>
+                <div class="hora-grid" id="horas-cvp"></div>
+                <div style="margin-top:.6rem;font-size:.68rem;color:var(--sub)">Branco = zero &nbsp;·&nbsp; laranja = concentração alta</div>
+            </div>
+
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>Picos de Horário — CVLI</div>
+                <div class="hora-grid" id="horas-cvli"></div>
+                <div style="margin-top:.6rem;font-size:.68rem;color:var(--sub)">Branco = zero &nbsp;·&nbsp; roxo = concentração alta</div>
+            </div>
+        </div>
+        <!-- Heatmap MVI em linha separada -->
+        <div class="grid-2">
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--mvi)"></span>Picos de Horário — MVI</div>
+                <div class="hora-grid" id="horas-mvi"></div>
+                <div style="margin-top:.6rem;font-size:.68rem;color:var(--sub)">Branco = zero &nbsp;·&nbsp; vermelho = concentração alta</div>
+            </div>
+            <div class="card">
+                <div class="card-titulo">Distribuição por Dia da Semana — CVP · CVLI · MVI</div>
+                <div class="chart-wrap" style="height:160px">
+                    <canvas id="chart-diasemana"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ Hotspots por Cidade / Bairro ════════════════════ -->
+        <div class="secao-titulo">📍 Hotspots por Cidade e Bairro — Risco Previsto</div>
+        <div class="grid-3">
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvp)"></span>CVP — Top Localidades</div>
+                <table class="tabela-pred">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-cvp"></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>CVLI — Top Localidades</div>
+                <table class="tabela-pred">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-cvli"></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--mvi)"></span>MVI — Top Localidades</div>
+                <table class="tabela-pred">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-mvi"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ══ Tipificações ══════════════════════════════════ -->
+        <div class="secao-titulo">📊 Tipificações por Indicador</div>
+        <div class="grid-3">
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvp)"></span>Tipificações CVP — Top 8</div>
+                <div class="chart-wrap" style="height:210px">
+                    <canvas id="chart-tip-cvp"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>Tipificações CVLI — Top 8</div>
+                <div class="chart-wrap" style="height:210px">
+                    <canvas id="chart-tip-cvli"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-titulo"><span class="dot" style="background:var(--mvi)"></span>Tipificações MVI — Top 8</div>
+                <div class="chart-wrap" style="height:210px">
+                    <canvas id="chart-tip-mvi"></canvas>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</section>
+
+<footer>
+    <div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div>
+</footer>
+
+<script src="../js/analisePreditiva.js"></script>
+
+<!-- ══ Modal de Ocorrências ══════════════════════════════════ -->
+<div class="modal-overlay" id="modal-ocorrencias">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h4 id="modal-titulo">Ocorrências</h4>
+                <small id="modal-subtitulo"></small>
+            </div>
+            <button class="modal-fechar" id="modal-fechar" title="Fechar">✕</button>
+        </div>
+        <div class="modal-corpo">
+            <input class="modal-busca" id="modal-busca" type="text" placeholder="🔍 Buscar por nº, bairro, tipificação…">
+            <table class="modal-tabela">
+                <thead>
+                    <tr>
+                        <th>Nº Ocorrência</th>
+                        <th>Data</th>
+                        <th>Tipificação</th>
+                        <th>Cidade / Bairro</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-tbody"></tbody>
+            </table>
+        </div>
+        <div class="modal-footer" id="modal-footer"></div>
+    </div>
+</div>
+
+</body>
+</html>

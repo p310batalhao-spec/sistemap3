@@ -186,6 +186,20 @@
         const WEBAPP_URL_MANDADOS = 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec'; // Use a URL da nova implantação
         // --- FUNÇÕES DE UTILIDADE ---
 
+        // ── UTILITÁRIO: extrai o ano do campo DATA (DD/MM/AAAA ou AAAA-MM-DD) ──
+        const ANO_ATUAL = new Date().getFullYear();
+        function anoDoRegistro(item) {
+            const data = (item.DATA || item.data || '').toString().trim();
+            if (!data || data === '---') return null;
+            if (data.includes('/')) {
+                const p = data.split('/');
+                return p.length >= 3 ? parseInt(p[2]) : null;
+            }
+            if (data.includes('-')) return parseInt(data.split('-')[0]);
+            return null;
+        }
+        function doAnoAtual(item) { return anoDoRegistro(item) === ANO_ATUAL; }
+
         // ---- CHAMA OS DADOS DO FIREBASE PARA O MVI (HOMICÍDIOS) ---
         async function atualizarContagemHomicidiosFirebase() {
             const numeromviElement = document.getElementById('numeromvi');
@@ -204,8 +218,8 @@
 
                 // Converte o objeto do Firebase em array e filtra pela tipificação
                 const contagem = Object.values(dados).filter(item => {
-                    // Verifica se a tipificação existe e é igual a HOMICÍDIO (ignora maiúsculas/minúsculas e espaços)
-                    return item.TIPIFICACAO && item.TIPIFICACAO.toString().trim().toUpperCase() === "HOMICÍDIO";
+                    return doAnoAtual(item) &&
+                           item.TIPIFICACAO && item.TIPIFICACAO.toString().trim().toUpperCase() === "HOMICÍDIO";
                 }).length;
 
                 // Atualiza o ID numeromvi no HTML
@@ -233,10 +247,7 @@
                     return;
                 }
 
-                // Como queremos todos os registros, basta contar quantos itens existem no objeto
-                const contagemTotal = Object.keys(dados).length;
-
-                // Atualiza o ID numerocvp no HTML
+                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
                 numerocvpElement.innerText = contagemTotal;
 
             } catch (error) {
@@ -261,10 +272,7 @@
                     return;
                 }
 
-                // Como queremos todos os registros, basta contar quantos itens existem no objeto
-                const contagemTotal = Object.keys(dados).length;
-
-                // Atualiza o ID numerocvp no HTML
+                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
                 numerotcoElement.innerText = contagemTotal;
 
             } catch (error) {
@@ -290,10 +298,7 @@
                     return;
                 }
 
-                // Como queremos todos os registros, basta contar quantos itens existem no objeto
-                const contagemTotal = Object.keys(dados).length;
-
-                // Atualiza o ID numeroviolenciadomestica no HTML
+                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
                 numeroVDElement.innerText = contagemTotal;
 
             } catch (error) {
@@ -318,10 +323,7 @@
                     return;
                 }
 
-                // Como queremos todos os registros, basta contar quantos itens existem no objeto
-                const contagemTotal = Object.keys(dados).length;
-
-                // Atualiza o ID numeroarmasapreendidas no HTML
+                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
                 numeroArmasElement.innerText = contagemTotal;
 
             } catch (error) {
@@ -348,8 +350,8 @@
 
                 // Converte o objeto do Firebase em array e filtra pela tipificação
                 const contagem = Object.values(dados).filter(item => {
-                    // Verifica se a tipificação existe e é igual a HOMICÍDIO (ignora maiúsculas/minúsculas e espaços)
-                    return item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("VISITA");
+                    return doAnoAtual(item) &&
+                           item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("VISITA");
                 }).length;
 
                 // Atualiza o ID numerovisitas no HTML
@@ -380,8 +382,8 @@
 
                 // Converte o objeto do Firebase em array e filtra pela tipificação
                 const contagem = Object.values(dados).filter(item => {
-                    // Verifica se a tipificação existe e é igual a HOMICÍDIO (ignora maiúsculas/minúsculas e espaços)
-                    return item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("PERTURBAÇÃO");
+                    return doAnoAtual(item) &&
+                           item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("PERTURBAÇÃO");
                 }).length;
 
                 // Atualiza o ID numeroperturbacao no HTML
@@ -461,7 +463,7 @@
                 if (!dados) { elTotal.innerText = '0 g'; return; }
 
                 let soma = 0;
-                Object.values(dados).forEach(item => {
+                Object.values(dados).filter(doAnoAtual).forEach(item => {
                     // Tenta os dois campos possíveis: QUANTIDADE e PESO
                     const bruto = item.QUANTIDADE || item.PESO || '0';
                     const num = parseFloat(String(bruto).replace(',', '.'));

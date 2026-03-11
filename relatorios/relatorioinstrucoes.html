@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Instrução</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Times New Roman", Times, serif; font-size: 10pt; color: #000; background: #fff; }
+    @media screen  { body { margin: 15mm auto; max-width: 210mm; } }
+    @media print   { @page { size: A4; margin: 15mm; } body { margin: 0; } .no-print { display: none; } }
+    .btn-imprimir {
+        display: block; margin: 0 auto 8mm; width: 150px; padding: 7px 0;
+        background: #1a3a6e; color: #fff; border: none; border-radius: 6px;
+        font-size: 0.95rem; cursor: pointer;
+    }
+    .titulo {
+        font-weight: bold; text-transform: uppercase; text-align: center;
+        font-size: 10pt; line-height: 1.45; margin-bottom: 4px;
+    }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    td {
+        border: 1px solid #000; padding: 2px 4px; vertical-align: top;
+        font-size: 10pt; word-wrap: break-word; overflow-wrap: break-word;
+    }
+    .h  { font-weight: bold; text-transform: uppercase; text-align: center; }
+    .hs { font-weight: bold; text-transform: uppercase; text-align: center; background: #d9d9d9; }
+    .vm { vertical-align: middle; }
+    .ct { text-align: center; }
+</style>
+</head>
+<body>
+
+<button class="btn-imprimir no-print" onclick="window.print()">Imprimir</button>
+<p class="titulo" id="txt-cabecalho"></p>
+
+<!--
+  7 colunas fixas:
+  C1=22% (NOME EVENTO)  C2=6% (C/H)  C3=8% (OPM)  C4=11% (OUTRAS OPM)
+  C5=8% (EXTERNO)  C6=7% (TOTAL)  C7=38% (BGO rowspan=3)
+
+  Instrutores: ORD[1] GRAD[2] NOME[1] TEMA[2] CH[1] = 7 cols
+  Concluintes: ORD[1] GRAD[2] NOME[3] NRORDEM[1] = 7 cols
+-->
+<table>
+<colgroup>
+    <col style="width:22%"><col style="width:6%"><col style="width:8%">
+    <col style="width:11%"><col style="width:8%"><col style="width:7%">
+    <col style="width:38%">
+</colgroup>
+
+<tr>
+    <td class="h vm">NOME DO EVENTO</td>
+    <td class="h vm ct">C/H</td>
+    <td colspan="4" class="h ct vm">NÚMERO DE PARTICIPANTES</td>
+    <td rowspan="3" style="vertical-align:top; text-align:center;">
+        <div class="h" style="border-bottom:1px solid #000; padding-bottom:2px; margin-bottom:3px;">BGO DO PLANO</div>
+        <div id="td-bgo" style="text-align:left; font-size:10pt;"></div>
+    </td>
+</tr>
+<tr>
+    <td rowspan="2" class="vm" id="td-nome-evento"></td>
+    <td rowspan="2" class="ct vm" id="td-ch"></td>
+    <td class="h ct" style="font-size:9pt">OPM</td>
+    <td class="h ct" style="font-size:9pt">OUTRAS OPM</td>
+    <td class="h ct" style="font-size:9pt">EXTERNO</td>
+    <td class="h ct" style="font-size:9pt">TOTAL</td>
+</tr>
+<tr>
+    <td class="ct" id="td-opm"></td>
+    <td class="ct" id="td-outras">-</td>
+    <td class="ct" id="td-externo">-</td>
+    <td class="ct" id="td-total"></td>
+</tr>
+
+<tr>
+    <td style="font-weight:bold">Da Equipe Técnica Responsável</td>
+    <td colspan="6" id="td-equipe"></td>
+</tr>
+<tr>
+    <td>Intercorrência envolvendo policiais</td>
+    <td colspan="6" id="td-intercorrencia"></td>
+</tr>
+<tr>
+    <td>Observações/Sugestões</td>
+    <td colspan="6" id="td-observacoes"></td>
+</tr>
+
+<tr><td colspan="7" class="hs">RELAÇÃO DO(S) INSTRUTOR(ES)</td></tr>
+<tr>
+    <td class="h ct">ORD</td>
+    <td colspan="2" class="h ct">POSTO/GRADUAÇÃO</td>
+    <td class="h ct">NOME</td>
+    <td colspan="2" class="h ct">TEMA MINISTRADO</td>
+    <td class="h ct">CARGA HORÁRIA</td>
+</tr>
+<tbody id="tbody-instrutores">
+    <tr><td class="ct">1</td><td colspan="2"></td><td></td><td colspan="2"></td><td></td></tr>
+    <tr><td class="ct">2</td><td colspan="2"></td><td></td><td colspan="2"></td><td></td></tr>
+</tbody>
+
+<tr><td colspan="7" class="hs">RELAÇÃO DOS CONCLUINTES</td></tr>
+<tr>
+    <td class="h ct">ORD</td>
+    <td colspan="2" class="h ct">POSTO/GRADUAÇÃO</td>
+    <td colspan="3" class="h ct">NOME</td>
+    <td class="h ct">NÚMERO DE ORDEM</td>
+</tr>
+<tbody id="tbody-concluintes">
+    <tr><td class="ct">1</td><td colspan="2"></td><td colspan="3"></td><td></td></tr>
+    <tr><td class="ct">2</td><td colspan="2"></td><td colspan="3"></td><td></td></tr>
+</tbody>
+
+</table>
+
+<script>
+(function () {
+    const esc = s => String(s || '')
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const set = (id, txt) => { const el=document.getElementById(id); if(el) el.textContent=txt||''; };
+
+    let dados;
+    try { dados = JSON.parse(sessionStorage.getItem('relatorio_instrucao')||'null'); }
+    catch(e) { dados=null; }
+
+    if (!dados) {
+        document.body.innerHTML='<p style="padding:2rem;color:red;">Erro: dados não encontrados. Feche e tente novamente.</p>';
+        return;
+    }
+
+    const p          = dados.plano;
+    const instrutores= dados.instrutores||[];
+    const concluintes= dados.concluintes||[];
+    const totalOPM   = dados.totalOPM||0;
+
+    document.getElementById('txt-cabecalho').textContent=
+        'NP Nº '+(p.NP_SEI||'(Nº GERADO PELO SEI)')+
+        ' - RELATÓRIO DE INSTRUÇÃO Nº '+(p.NUMERO_PLANO||'/ANO')+
+        ' – OPM - PROCESSO DE REFERÊNCIA Nº (Nº GERADO PELO SEI INCLUÍDO COMO LINK)';
+
+    set('td-nome-evento', p.NOME_EVENTO||'');
+    set('td-ch',          p.CARGA_TOTAL||'');
+    set('td-bgo',         p.NP_SEI||'');
+    set('td-opm',         String(totalOPM));
+    set('td-total',       String(totalOPM));
+    set('td-equipe',       p.EQUIPE_TECNICA  ||'Citar todos os envolvidos que possibilitaram a realização do evento.');
+    set('td-intercorrencia',p.INTERCORRENCIA ||'Ex: disciplina, acidente com policial, entre outros.');
+    set('td-observacoes',  p.OBSERVACOES     ||'Outras informações a critério.');
+
+    const tbI=document.getElementById('tbody-instrutores');
+    if(instrutores.length>0){
+        tbI.innerHTML=instrutores.map((inst,i)=>
+            '<tr>'+
+            '<td class="ct">'+(i+1)+'</td>'+
+            '<td colspan="2">'+esc(inst.grad)+'</td>'+
+            '<td>'+esc(inst.nome)+'</td>'+
+            '<td colspan="2">'+esc(inst.temas.join('; '))+'</td>'+
+            '<td class="ct">'+esc(inst.ha)+'</td>'+
+            '</tr>'
+        ).join('');
+    }
+
+    const tbC=document.getElementById('tbody-concluintes');
+    if(concluintes.length>0){
+        tbC.innerHTML=concluintes.map((a,i)=>
+            '<tr>'+
+            '<td class="ct">'+(i+1)+'</td>'+
+            '<td colspan="2">'+esc(a.GRADUACAO||'')+'</td>'+
+            '<td colspan="3">'+esc(a.NOME||'')+'</td>'+
+            '<td class="ct">'+esc(a.NUM_ORDEM||'')+'</td>'+
+            '</tr>'
+        ).join('');
+    }
+
+    window.addEventListener('load', ()=>window.print());
+})();
+</script>
+</body>
+</html>
