@@ -203,10 +203,10 @@
         // ---- CHAMA OS DADOS DO FIREBASE PARA O MVI (HOMICÍDIOS) ---
         async function atualizarContagemHomicidiosFirebase() {
             const numeromviElement = document.getElementById('numeromvi');
-            const FIREBASE_CVLI_URL = "https://sistema-p3-default-rtdb.firebaseio.com/geral.json";
+            const FIREBASE_MVI_URL = "https://sistema-p3-default-rtdb.firebaseio.com/geral.json";
 
             try {
-                const response = await fetch(FIREBASE_CVLI_URL);
+                const response = await fetch(FIREBASE_MVI_URL);
                 if (!response.ok) throw new Error("Erro ao acessar Firebase");
 
                 const dados = await response.json();
@@ -216,18 +216,32 @@
                     return;
                 }
 
-                // Converte o objeto do Firebase em array e filtra pela tipificação
                 const contagem = Object.values(dados).filter(item => {
-                    return doAnoAtual(item) &&
-                           item.TIPIFICACAO && item.TIPIFICACAO.toString().trim().toUpperCase() === "HOMICÍDIO";
+                    // 1. Verifica ano atual
+                    if (!doAnoAtual(item)) return false;
+
+                    // 2. Lê a tipificação — normaliza acentos e caixa para comparação segura
+                    const tip = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || "")
+                        .toString().trim()
+                        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                        .toUpperCase();
+
+                    // 3. Se for HOMICÍDIO (direto, sem "TENTATIVA"), entra na contagem
+                    const ehHomicidio = tip.includes("HOMICIDIO") && !tip.includes("TENTATIVA");
+
+                    // 4. Se for TENTATIVA, verifica se OBITO === "S"
+                    const ehTentativa = tip.includes("TENTATIVA");
+                    const temObito = (item.OBITO || "").toString().trim().toUpperCase() === "S";
+                    const ehTentativaComObito = ehTentativa && temObito;
+
+                    return ehHomicidio || ehTentativaComObito;
                 }).length;
 
-                // Atualiza o ID numeromvi no HTML
                 numeromviElement.innerText = contagem;
 
             } catch (error) {
                 console.error("Erro ao atualizar contagem de homicídios:", error);
-                numeromviElement.innerText = "!"; // Indica erro visualmente
+                numeromviElement.innerText = "!";
             }
         }
 

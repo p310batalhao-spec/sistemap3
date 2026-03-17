@@ -119,6 +119,7 @@
                                 <th>TIPIFICAÇÃO</th>
                                 <th>ESTABELECIMENTO</th>
                                 <th>SOLUÇÃO</th>
+                                <th>ÓBITO?</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
@@ -215,6 +216,13 @@
                     <div class="formulario">
                         <p>SOLUÇÃO</p>
                         <input type="text" name="SOLUCAO" id="SOLUCAO">
+                    </div>
+                    <div class="formulario">
+                        <p>ÓBITO?</p>
+                        <select name="OBITO" id="OBITO">
+                            <option value="N">Não</option>
+                            <option value="S">Sim</option>
+                        </select>
                     </div>
                 </div><!--termina formulario-scroll-->
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -314,7 +322,7 @@
             tbody.innerHTML = "";
 
             if (!data) {
-                tbody.innerHTML = `<tr><td colspan="15">Nenhum dado encontrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="16">Nenhum dado encontrado.</td></tr>`;
                 if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
                 return;
             }
@@ -325,10 +333,15 @@
                 ...data[id]
             })).filter(doc => {
                 const campo = doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'] || "";
-                return normalizarTexto(campo).includes("HOMI");
+                return normalizarTexto(campo).includes("HOMI") || normalizarTexto(campo).includes("FEMINI");
             });
 
             resultados.reverse().forEach(doc => {
+                const obito = (doc.OBITO || "N").toString().trim().toUpperCase();
+                const obitoLabel = obito === "S"
+                    ? `<span style="background:#c62828;color:#fff;padding:2px 8px;border-radius:4px;font-weight:bold;font-size:0.85em;">SIM</span>`
+                    : `<span style="background:#e0e0e0;color:#555;padding:2px 8px;border-radius:4px;font-size:0.85em;">NÃO</span>`;
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                 <td>${doc.BOLETIM || ""}</td>
@@ -347,6 +360,7 @@
                 </td>
                 <td>${doc.ESTABELECIMENTO || ""}</td>
                 <td>${doc.SOLUCAO || doc.SOLUÇÃO || ""}</td>
+                <td style="text-align:center;">${obitoLabel}</td>
                 <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
             `;
                 tbody.appendChild(tr);
@@ -371,7 +385,7 @@
         const campos = [
             'BOLETIM', 'DATA', 'HORA', 'SOLICITANTE', 'TELEFONE',
             'LOGRADOURO', 'BAIRRO', 'CIDADE', 'PONTO_REF',
-            'LATITUDE', 'LONGITUDE', 'ESTABELECIMENTO'
+            'LATITUDE', 'LONGITUDE', 'ESTABELECIMENTO', 'OBITO'
         ];
 
         campos.forEach(campo => {

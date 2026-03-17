@@ -221,20 +221,25 @@ function renderModalTabela(lista) {
     const tbody  = document.getElementById('modal-tbody');
     const footer = document.getElementById('modal-footer');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="modal-vazio">Nenhuma ocorrência encontrada.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="modal-vazio">Nenhuma ocorrência encontrada.</td></tr>';
         footer.textContent = '';
         return;
     }
     tbody.innerHTML = lista.map(r => {
-        const tip  = (r.TIPIFICACAO || r.TIPIFICACAO_GERAL || '—').trim();
-        const cid  = (r.CIDADE  || '—').trim();
-        const bai  = (r.BAIRRO  || '—').trim();
-        const data = (r.DATA    || '—').trim();
+        const tip   = (r.TIPIFICACAO || r.TIPIFICACAO_GERAL || '—').trim();
+        const cid   = (r.CIDADE  || '—').trim();
+        const bai   = (r.BAIRRO  || '—').trim();
+        const data  = (r.DATA    || '—').trim();
+        const obito = (r.OBITO   || 'N').toString().trim().toUpperCase();
+        const obitoLabel = obito === 'S'
+            ? '<span style="background:#c62828;color:#fff;padding:1px 7px;border-radius:4px;font-weight:bold;font-size:.78em;">SIM</span>'
+            : '<span style="background:#e0e0e0;color:#555;padding:1px 7px;border-radius:4px;font-size:.78em;">NÃO</span>';
         return `<tr>
             <td><span class="modal-boletim">${r.BOLETIM || '—'}</span></td>
             <td style="white-space:nowrap">${data}</td>
             <td>${tip}</td>
             <td>${cid} · ${bai}</td>
+            <td style="text-align:center">${obitoLabel}</td>
         </tr>`;
     }).join('');
     footer.textContent = `${lista.length} ocorrência(s) exibida(s)`;
@@ -312,35 +317,76 @@ async function carregar() {
         const mesAtual = new Date().getMonth(); // 0-based
 
         // ── Filtros por indicador ─────────────────────────────
-        // MVI: Homicídio, Latrocínio, Feminicídio — EXCLUI "TENTATIVA" e "TENTADO"
+        // Utilitário: remove acentos e normaliza para maiúsculas
+        const norm = str => str.toString().trim()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+
+        // ── Função auxiliar: verifica se é tipo CVLI/MVI ────────
+        // Todos os campos de tipificação são normalizados por norm() antes,
+        // portanto todas as comparações são SEM acento.
+        const ehTipoCVLI = t =>
+            t.includes('HOMICIDIO') ||
+            t.includes('FEMINICIDIO') ||
+            t.includes('LATROCINIO');
+
+        // ── MVI ───────────────────────────────────────────────
+        // Inclui: HOMICIDIO, FEMINICIDIO, LATROCINIO diretos
+        //       + TENTATIVA de HOMICIDIO/FEMINICIDIO/LATROCINIO com OBITO "S"
+        // Exclui sempre: ACHADO, SUICIDIO, VIOLACAO (sem acento — já normalizado)
         const isMVI = item => {
-            const t = (item.TIPIFICACAO || item.TIPIFICACAO_GERAL || '')
-                        .toString().toUpperCase().trim();
-            if (t.includes('TENTATIVA') || t.includes('TENTADO')) return false;
-            return t.includes('HOMICÍD') || t.includes('HOMICID') ||
-                   t.includes('LATROCÍN') || t.includes('LATROCIN') ||
-                   t.includes('FEMINICÍD') || t.includes('FEMINICID');
+            // Concatena AMBOS os campos de tipificação para não perder nenhum dado
+            const t = norm(
+                (item.TIPIFICACAO_GERAL || '') + ' ' + (item.TIPIFICACAO || '')
+            );
+            const obito = norm(item.OBITO || '');
+
+            // Exclusões absolutas — nunca entram no MVI
+            if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
+
+            // TENTATIVA: só entra se for de tipo CVLI/MVI e tiver óbito confirmado
+            if (t.includes('TENTATIVA')) return ehTipoCVLI(t) && obito === 'S';
+
+            // Direto: apenas os tipos MVI permitidos
+            return ehTipoCVLI(t);
         };
-        // CVLI: combina nó /cvli + registros do /geral com TENTADO ou TENTATIVA
-        //       EXCLUI qualquer registro com "ACHADO" na tipificação
-        const temAchado = t => t.includes('ACHADO');
-        const temTentativa = t => t.includes('TENTADO') || t.includes('TENTATIVA');
 
-        // Do nó /cvli: exclui apenas ACHADO
-        const cvliBase = Object.values(dadosCVLI).filter(item => {
-            const t = (item.TIPIFICACAO || item.TIPIFICACAO_GERAL || '').toString().toUpperCase().trim();
-            return !temAchado(t);
-        });
-        // Do nó /geral: inclui os que têm TENTADO ou TENTATIVA (e não têm ACHADO)
-        const cvliDasTentativas = Object.values(dadosGeral).filter(item => {
-            const t = (item.TIPIFICACAO || item.TIPIFICACAO_GERAL || '').toString().toUpperCase().trim();
-            return temTentativa(t) && !temAchado(t);
-        });
-        // Mescla sem duplicatas (chave = BOLETIM)
+        // ── CVP: Roubos/extorsões
+        const isCVP = item => {
+            const t     = norm((item.TIPIFICACAO_GERAL || '') + ' ' + (item.TIPIFICACAO || ''));
+            const obito = norm(item.OBITO || '');
+            if (t.includes('APOIO') || t.includes('OUTRAS')) return false;
+            if (t.includes('TENTATIVA') && obito === 'S') return false; // vai para MVI
+            return t.includes('ROUBO') || t.includes('EXTORSAO');
+        };
+
+        // ── CVLI ──────────────────────────────────────────────
+        // Inclui: TENTATIVA de HOMICIDIO/FEMINICIDIO/LATROCINIO
+        //       + HOMICIDIO, FEMINICIDIO, LATROCINIO diretos
+        // Exclui: ACHADO, SUICIDIO, VIOLACAO (sem acento — já normalizado)
+        // "TENTATIVA DE VIOLACAO DE DOMICILIO" é excluída pois
+        // não é tentativa de tipo CVLI
         const cvliMap = {};
-        [...cvliBase, ...cvliDasTentativas].forEach(r => { cvliMap[r.BOLETIM || Math.random()] = r; });
+        Object.values(dadosGeral).forEach(item => {
+            const t = norm(
+                (item.TIPIFICACAO_GERAL || '') + ' ' + (item.TIPIFICACAO || '')
+            );
 
-        const arrCVP  = Object.values(dadosCVP);
+            // Exclusões absolutas — nunca entram no CVLI
+            if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return;
+
+            // TENTATIVA: só entra se for tentativa de tipo CVLI
+            if (t.includes('TENTATIVA')) {
+                if (ehTipoCVLI(t)) cvliMap[item.BOLETIM || Math.random()] = item;
+                return;
+            }
+
+            // Direto: apenas os tipos CVLI permitidos
+            if (ehTipoCVLI(t)) {
+                cvliMap[item.BOLETIM || Math.random()] = item;
+            }
+        });
+
+        const arrCVP  = Object.values(dadosCVP).filter(isCVP);
         const arrCVLI = Object.values(cvliMap);
         const arrMVI  = Object.values(dadosGeral).filter(isMVI);
 
