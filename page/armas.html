@@ -101,10 +101,31 @@
                     <button id="btn-aplicar-filtro">Aplicar Filtro</button>
                     <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
                 </div>
+                <!-- Barra de ações em massa -->
+                <div id="barra-selecao" style="display:none;align-items:center;gap:.9rem;flex-wrap:wrap;
+                    background:#fff3e0;border:1px solid #e65100;border-radius:6px;
+                    padding:.6rem 1rem;margin-bottom:.75rem;font-family:Arial,sans-serif;">
+                    <span id="txt-selecionados"
+                        style="font-size:.85rem;font-weight:bold;color:#e65100;"></span>
+                    <button id="btn-excluir-selecionados"
+                        style="background:#c62828;color:#fff;border:none;padding:6px 16px;
+                        border-radius:4px;cursor:pointer;font-size:.83rem;font-weight:bold;">
+                        🗑 EXCLUIR SELECIONADOS
+                    </button>
+                    <button onclick="limparSelecao()"
+                        style="background:#f5f5f5;color:#333;border:1px solid #ccc;padding:6px 12px;
+                        border-radius:4px;cursor:pointer;font-size:.83rem;">
+                        Cancelar
+                    </button>
+                </div>
                 <div class="tabela-container">
                     <table id="tabela-materiais">
                         <thead>
                             <tr>
+                                <th style="width:42px;text-align:center;">
+                                    <input type="checkbox" id="check-all" title="Selecionar todos"
+                                        style="width:16px;height:16px;cursor:pointer;">
+                                </th>
                                 <th>BOLETIM</th>
                                 <th>DATA</th>
                                 <th>HORA</th>
@@ -188,22 +209,6 @@
         </main>
     </section>
 </body>
-
-<!-- ══ Modal de confirmação de exclusão ══════════════════════════ -->
-<div id="modal-excluir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:.75rem;padding:2rem;width:min(380px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.25);font-family:Arial,sans-serif;">
-        <h3 style="margin:0 0 .5rem;color:#b71c1c;font-size:1rem;">🔒 Confirmar Exclusão</h3>
-        <p style="font-size:.85rem;color:#555;margin-bottom:1.2rem;">Esta ação é irreversível. Digite a senha de administrador para confirmar.</p>
-        <input type="password" id="input-senha-excluir" placeholder="Senha de administrador"
-            style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:.9rem;box-sizing:border-box;margin-bottom:.75rem;">
-        <p id="msg-erro-senha" style="color:#c62828;font-size:.8rem;margin-bottom:.75rem;display:none;">Senha incorreta. Tente novamente.</p>
-        <div style="display:flex;gap:.75rem;justify-content:flex-end;">
-            <button onclick="fecharModalExcluir()" style="padding:8px 18px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-size:.85rem;">Cancelar</button>
-            <button onclick="confirmarExclusao()" style="padding:8px 18px;border:none;border-radius:6px;background:#c62828;color:#fff;cursor:pointer;font-size:.85rem;font-weight:bold;">Excluir</button>
-        </div>
-    </div>
-</div>
-
 <footer>
     <div>
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
@@ -305,7 +310,12 @@
 
             resultados.forEach(doc => {
                 const tr = document.createElement('tr');
+                tr.dataset.id = doc.id;
                 tr.innerHTML = `
+                <td style="text-align:center;">
+                    <input type="checkbox" class="check-row" data-id="${doc.id}"
+                        style="width:15px;height:15px;cursor:pointer;">
+                </td>
                 <td>${doc.BOLETIM || ""}</td>
                 <td>${doc.DATA || ""}</td>
                 <td>${doc.HORA || ""}</td>
@@ -315,12 +325,20 @@
                 <td>${doc.CALIBRE || ""}</td>
                 <td>${doc.MARCA || ""}</td>
                 <td>${doc.SERIE || ""}</td>
-                <td style="display:flex;gap:6px;align-items:center">
-                    <button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button>
-                    <button class="btn-excluir" style="background:#c62828;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:bold;" onclick='solicitarExclusao("${doc.id}")'>EXCLUIR</button>
+                <td style="display:flex;gap:5px;align-items:center;flex-wrap:wrap;">
+                    <button class="btn-editar"
+                        onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button>
+                    <button style="background:#c62828;color:#fff;border:none;padding:5px 10px;
+                        border-radius:4px;cursor:pointer;font-size:.78rem;font-weight:bold;"
+                        onclick='excluirRegistros(["${doc.id}"])'>EXCLUIR</button>
                 </td>
             `;
                 tbody.appendChild(tr);
+            });
+
+            // Atualiza barra ao marcar/desmarcar checkboxes
+            document.querySelectorAll('.check-row').forEach(cb => {
+                cb.addEventListener('change', atualizarBarraSelecao);
             });
 
             if (document.getElementById('mensagem-carregamento')) document.getElementById('mensagem-carregamento').style.display = 'none';
@@ -403,59 +421,48 @@
         }
     });
 
-    // --- SENHA DE ADMINISTRADOR ---
-    const SENHA_ADMIN = "p3admin2025"; // ← altere aqui conforme necessário
+    // ═══════════════════════════════════════════════════════
+    // SELEÇÃO EM MASSA
+    // ═══════════════════════════════════════════════════════
 
-    // --- EXCLUIR REGISTRO COM SENHA ---
-    let _idParaExcluir = null;
-
-    window.solicitarExclusao = (id) => {
-        _idParaExcluir = id;
-        document.getElementById('input-senha-excluir').value = '';
-        document.getElementById('msg-erro-senha').style.display = 'none';
-        const modal = document.getElementById('modal-excluir');
-        modal.style.display = 'flex';
-        setTimeout(() => document.getElementById('input-senha-excluir').focus(), 100);
-    };
-
-    window.fecharModalExcluir = () => {
-        document.getElementById('modal-excluir').style.display = 'none';
-        _idParaExcluir = null;
-    };
-
-    window.confirmarExclusao = async () => {
-        const senha = document.getElementById('input-senha-excluir').value;
-        if (senha !== SENHA_ADMIN) {
-            document.getElementById('msg-erro-senha').style.display = 'block';
-            return;
+    function atualizarBarraSelecao() {
+        const selecionados = document.querySelectorAll('.check-row:checked');
+        const barra = document.getElementById('barra-selecao');
+        const txt   = document.getElementById('txt-selecionados');
+        if (selecionados.length > 0) {
+            barra.style.display = 'flex';
+            txt.textContent = `${selecionados.length} registro(s) selecionado(s)`;
+        } else {
+            barra.style.display = 'none';
         }
+    }
+
+    function limparSelecao() {
+        document.querySelectorAll('.check-row, #check-all').forEach(cb => cb.checked = false);
+        atualizarBarraSelecao();
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // EXCLUSÃO (individual ou em massa) — sem senha
+    // ═══════════════════════════════════════════════════════
+
+    window.excluirRegistros = async (ids) => {
+        if (!ids || !ids.length) return;
+        const msg = ids.length === 1
+            ? 'Confirma a exclusão deste registro?'
+            : `Confirma a exclusão de ${ids.length} registros selecionados?`;
+        if (!confirm(msg)) return;
 
         try {
-            const res = await fetch(`${DATABASE_URL}/${NODE_NAME}/${_idParaExcluir}.json`, {
-                method: 'DELETE'
-            });
-            if (res.ok) {
-                fecharModalExcluir();
-                alert("Registro excluído com sucesso!");
-                carregarDados();
-            } else {
-                alert("Erro ao excluir. Tente novamente.");
-            }
+            await Promise.all(
+                ids.map(id => fetch(`${DATABASE_URL}/${NODE_NAME}/${id}.json`, { method: 'DELETE' }))
+            );
+            limparSelecao();
+            carregarDados();
         } catch (err) {
-            alert("Erro de conexão: " + err.message);
+            alert('Erro ao excluir: ' + err.message);
         }
     };
-
-    // Fechar modal ao clicar fora
-    document.getElementById('modal-excluir').addEventListener('click', (e) => {
-        if (e.target === document.getElementById('modal-excluir')) fecharModalExcluir();
-    });
-
-    // Confirmar com Enter
-    document.getElementById('input-senha-excluir').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') confirmarExclusao();
-        if (e.key === 'Escape') fecharModalExcluir();
-    });
 
     // --- INICIALIZAÇÃO ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -466,5 +473,17 @@
 
         const btnLogout = document.getElementById('btn-logout');
         if (btnLogout) btnLogout.onclick = logout;
+
+        // Selecionar / desselecionar todos
+        document.getElementById('check-all').addEventListener('change', function () {
+            document.querySelectorAll('.check-row').forEach(cb => cb.checked = this.checked);
+            atualizarBarraSelecao();
+        });
+
+        // Excluir selecionados em massa
+        document.getElementById('btn-excluir-selecionados').addEventListener('click', () => {
+            const ids = [...document.querySelectorAll('.check-row:checked')].map(cb => cb.dataset.id);
+            excluirRegistros(ids);
+        });
     });
 </script>

@@ -1,269 +1,473 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gerenciamento P3 | Login/Cadastro</title>
-    <link rel="stylesheet" href="../css/style.css">
-    <link rel="stylesheet" href="../css/styleslogin.css">
+    <title>Login — Sistema P3</title>
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #0a1f4d 0%, #1a3a6e 60%, #0d2a5c 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .login-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            width: min(420px, 100%);
+            box-shadow: 0 12px 48px rgba(0,0,0,.35);
+        }
+
+        .login-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 2px solid #e8ecf5;
+        }
+
+        .login-header img {
+            width: 64px;
+            height: 64px;
+            object-fit: contain;
+            flex-shrink: 0;
+        }
+
+        .login-header-txt h2 {
+            font-size: .95rem;
+            color: #0a1f4d;
+            font-weight: bold;
+            line-height: 1.3;
+        }
+
+        .login-header-txt p {
+            font-size: .75rem;
+            color: #6b7594;
+            margin-top: .2rem;
+        }
+
+        /* Abas Login / Cadastro */
+        .tabs {
+            display: flex;
+            border-radius: 8px;
+            background: #f0f2f8;
+            padding: 4px;
+            margin-bottom: 1.75rem;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: .55rem;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            font-size: .85rem;
+            font-weight: bold;
+            color: #6b7594;
+            cursor: pointer;
+            transition: all .2s;
+        }
+
+        .tab-btn.active {
+            background: #fff;
+            color: #0a1f4d;
+            box-shadow: 0 1px 4px rgba(0,0,0,.12);
+        }
+
+        /* Formulário */
+        .painel { display: none; }
+        .painel.ativo { display: block; }
+
+        .campo { margin-bottom: 1.1rem; }
+
+        .campo label {
+            display: block;
+            font-size: .78rem;
+            font-weight: bold;
+            color: #374263;
+            margin-bottom: .35rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+
+        .campo input,
+        .campo select {
+            width: 100%;
+            padding: 11px 13px;
+            border: 1.5px solid #d5daea;
+            border-radius: 7px;
+            font-size: .9rem;
+            color: #1a1f36;
+            transition: border-color .2s;
+            background: #fafbff;
+        }
+
+        .campo input:focus,
+        .campo select:focus {
+            outline: none;
+            border-color: #0a448f;
+            background: #fff;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(90deg, #0a448f, #1a6abf);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: .95rem;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: .04em;
+            margin-top: .5rem;
+            transition: opacity .2s;
+        }
+
+        .btn-submit:hover { opacity: .9; }
+        .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
+
+        /* Mensagem de erro/sucesso */
+        .msg {
+            font-size: .82rem;
+            font-weight: bold;
+            padding: .7rem 1rem;
+            border-radius: 7px;
+            margin-bottom: 1rem;
+            display: none;
+            text-align: center;
+        }
+
+        .msg.erro    { background: #fde8e8; color: #b71c1c; border: 1px solid #f5c6c6; }
+        .msg.sucesso { background: #e8f5e9; color: #1b5e20; border: 1px solid #c3e6cb; }
+
+        /* Spinner dentro do botão */
+        .spinner-btn {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(255,255,255,.4);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        footer {
+            margin-top: 1.5rem;
+            font-size: .72rem;
+            color: rgba(255,255,255,.45);
+            text-align: center;
+        }
+    </style>
 </head>
+<body>
 
-<body class="login-page-body">
-    <main class="login-container">
-        <div class="login-card">
-            <div class="login-header">
-                <img class="brasao-login" src="../img/brasao.png" alt="Brasão do 10º Batalhão">
-                <h2 id="form-title">Acesso ao Sistema P3</h2>
-                <h3>10º Batalhão de Polícia Militar</h3>
-            </div>
-
-            <form id="login-form" action="#" method="POST" class="form-active">
-                <div class="input-group">
-                    <label for="username">CPF (Usuário)</label>
-                    <input type="text" id="username" name="username" placeholder="Digite seu CPF (apenas números)"
-                        required>
-                </div>
-                <div class="input-group">
-                    <label for="password">Senha</label>
-                    <input type="password" id="password" name="password" placeholder="Digite sua senha" required>
-                </div>
-
-                <button type="submit" class="btn-login-moderno" id="btn-login">Entrar</button>
-            </form>
-
-            <form id="cadastro-form" action="#" method="POST" class="form-hidden">
-                <div class="input-group">
-                    <label for="reg-graduacao">Graduação</label>
-                    <select id="reg-graduacao" name="GRADUACAO" required>
-                        <option value="">Selecione sua graduação</option>
-                        <option value="SD">SD</option>
-                        <option value="CB">CB</option>
-                        <option value="3º SGT">3º SGT</option>
-                        <option value="2º SGT">2º SGT</option>
-                        <option value="1º SGT">1º SGT</option>
-                        <option value="SUBTEN">SUBTEN</option>
-                        <option value="ASP OF">ASP OF</option>
-                        <option value="2º TEN">2º TEN</option>
-                        <option value="1º TEN">1º TEN</option>
-                        <option value="CAP">CAP</option>
-                        <option value="MAJ">MAJ</option>
-                        <option value="TEN CEL">TEN CEL</option>
-                        <option value="CEL">CEL</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="reg-nome">Nome Completo</label>
-                    <input type="text" id="reg-nome" name="NOME" placeholder="Digite seu nome completo" required>
-                </div>
-                <div class="input-group">
-                    <label for="reg-nome-guerra">Nome de Guerra (Opcional)</label>
-                    <input type="text" id="reg-nome-guerra" name="NOME_DE_GUERRA" placeholder="Ex: SGT João">
-                </div>
-                <div class="input-group">
-                    <label for="reg-cpf">CPF (Será seu Usuário)</label>
-                    <input type="text" id="reg-cpf" name="CPF" placeholder="Apenas números" required>
-                </div>
-                <div class="input-group">
-                    <label for="reg-senha">Senha</label>
-                    <input type="password" id="reg-senha" name="SENHA" placeholder="Crie uma senha (mín. 6 caracteres)"
-                        required>
-                </div>
-                <div class="input-group">
-                    <label for="reg-confirma-senha">Confirme a Senha</label>
-                    <input type="password" id="reg-confirma-senha" placeholder="Confirme a senha" required>
-                </div>
-
-                <button type="submit" class="btn-login-moderno" id="btn-cadastro">Cadastrar</button>
-            </form>
-
-
-            <div class="login-footer">
-                <a href="#" id="toggle-form" class="link-recuperar-senha">Não tem conta? Cadastre-se!</a>
-            </div>
+<div class="login-card">
+    <div class="login-header">
+        <img src="../img/brasao.png" alt="Brasão 10º BPM">
+        <div class="login-header-txt">
+            <h2>SISTEMA DE GERENCIAMENTO P3</h2>
+            <p>10º Batalhão de Polícia Militar</p>
         </div>
-    </main>
+    </div>
 
-    <footer>
-        <div>
-            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    <!-- Abas -->
+    <div class="tabs">
+        <button class="tab-btn active" id="tab-login"    onclick="trocarAba('login')">Entrar</button>
+        <button class="tab-btn"        id="tab-cadastro" onclick="trocarAba('cadastro')">Cadastrar</button>
+    </div>
+
+    <!-- ══ PAINEL LOGIN ══════════════════════════════════════════ -->
+    <div class="painel ativo" id="painel-login">
+        <div class="msg" id="msg-login"></div>
+
+        <div class="campo">
+            <label>CPF</label>
+            <input type="text" id="login-cpf" placeholder="Somente números"
+                maxlength="11" inputmode="numeric">
         </div>
-    </footer>
+        <div class="campo">
+            <label>Senha</label>
+            <input type="password" id="login-senha" placeholder="Sua senha">
+        </div>
 
-    <script>
-        // ** ATUALIZE AQUI ** com a URL de Implantação do seu Google Apps Script
-        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyU6ByxTQZmZ_dwiuDr8_baml31J3QnO5mjgV9wFtFpZhnCDmpStbI8-NT6fmxhoDF6aA/exec';
+        <button class="btn-submit" id="btn-entrar" onclick="fazerLogin()">ENTRAR</button>
+    </div>
 
-        document.addEventListener('DOMContentLoaded', function () {
-            const loginForm = document.getElementById('login-form');
-            const cadastroForm = document.getElementById('cadastro-form');
-            const toggleLink = document.getElementById('toggle-form');
-            const formTitle = document.getElementById('form-title');
-            const btnLogin = document.getElementById('btn-login');
-            const btnCadastro = document.getElementById('btn-cadastro');
+    <!-- ══ PAINEL CADASTRO ══════════════════════════════════════ -->
+    <div class="painel" id="painel-cadastro">
+        <div class="msg" id="msg-cadastro"></div>
 
-            // -----------------------------------------------------------
-            // FUNÇÃO DE TOGGLE (MUDAR DE LOGIN PARA CADASTRO E VICE-VERSA)
-            // -----------------------------------------------------------
+        <div class="campo">
+            <label>Graduação</label>
+            <select id="cad-graduacao">
+                <option value="">Selecione</option>
+                <option>Soldado</option>
+                <option>Cabo</option>
+                <option>3º Sargento</option>
+                <option>2º Sargento</option>
+                <option>1º Sargento</option>
+                <option>Subtenente</option>
+                <option>Aspirante</option>
+                <option>2º Tenente</option>
+                <option>1º Tenente</option>
+                <option>Capitão</option>
+                <option>Major</option>
+                <option>Tenente Coronel</option>
+                <option>Coronel</option>
+            </select>
+        </div>
+        <div class="campo">
+            <label>Nome Completo</label>
+            <input type="text" id="cad-nome" placeholder="Nome completo">
+        </div>
+        <div class="campo">
+            <label>Nome de Guerra</label>
+            <input type="text" id="cad-nomeguerra" placeholder="Como é chamado">
+        </div>
+        <div class="campo">
+            <label>CPF</label>
+            <input type="text" id="cad-cpf" placeholder="Somente números"
+                maxlength="11" inputmode="numeric">
+        </div>
+        <div class="campo">
+            <label>Senha</label>
+            <input type="password" id="cad-senha" placeholder="Crie uma senha">
+        </div>
+        <div class="campo">
+            <label>Nível de Acesso</label>
+            <select id="cad-nivel">
+                <option value="operador">Operador</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="admin">Administrador</option>
+            </select>
+        </div>
 
-            function toggleForm(isRegister) {
-                if (isRegister) {
-                    // Mudar para Cadastro
-                    loginForm.style.display = 'none';
-                    cadastroForm.style.display = 'block';
-                    formTitle.textContent = 'Cadastro de Novo Usuário';
-                    toggleLink.innerHTML = 'Já tem conta? Faça Login!';
-                } else {
-                    // Mudar para Login
-                    loginForm.style.display = 'block';
-                    cadastroForm.style.display = 'none';
-                    formTitle.textContent = 'Acesso ao Sistema P3';
-                    toggleLink.innerHTML = 'Não tem conta? Cadastre-se!';
-                }
-            }
+        <button class="btn-submit" id="btn-cadastrar" onclick="fazerCadastro()">CADASTRAR</button>
+    </div>
+</div>
 
-            // Inicializa mostrando o formulário de login
-            toggleForm(false);
+<footer>P3 / 10º BPM — Sistema de Gerenciamento Interno</footer>
 
-            // Listener para o link de toggle
-            toggleLink.addEventListener('click', function (e) {
-                e.preventDefault();
-                const isCurrentlyLogin = loginForm.style.display !== 'none';
-                toggleForm(isCurrentlyLogin);
-            });
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
+<script>
+// ═══════════════════════════════════════════════════════════════
+// CONFIGURAÇÃO FIREBASE
+// ═══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+    apiKey           : "AIzaSyAFflO2pvI7nFDNwFdK86-TK18o6_cpXr4",
+    authDomain       : "sistema-p3.firebaseapp.com",
+    projectId        : "sistema-p3",
+    storageBucket    : "sistema-p3.firebasestorage.app",
+    messagingSenderId: "186813662716",
+    appId            : "1:186813662716:web:e2a85cc956ed561c541e79",
+    databaseURL      : "https://sistema-p3-default-rtdb.firebaseio.com"
+};
 
-            // -----------------------------------------------------------
-            // LÓGICA DE LOGIN
-            // -----------------------------------------------------------
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-            loginForm.addEventListener('submit', function (event) {
-                event.preventDefault();
-                handleLogin();
-            });
+// ═══════════════════════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════════════════════
+function trocarAba(aba) {
+    document.getElementById('painel-login').classList.toggle('ativo', aba === 'login');
+    document.getElementById('painel-cadastro').classList.toggle('ativo', aba === 'cadastro');
+    document.getElementById('tab-login').classList.toggle('active', aba === 'login');
+    document.getElementById('tab-cadastro').classList.toggle('active', aba === 'cadastro');
+    limparMensagens();
+}
 
-            async function handleLogin() {
-                const username = document.getElementById('username').value.replace(/[^0-9]/g, ''); // Limpa o CPF
-                const password = document.getElementById('password').value;
+function limparMensagens() {
+    ['msg-login', 'msg-cadastro'].forEach(id => {
+        const el = document.getElementById(id);
+        el.style.display = 'none';
+        el.className = 'msg';
+        el.textContent = '';
+    });
+}
 
-                if (!username || !password) {
-                    alert('Por favor, preencha o CPF e a Senha.');
-                    return;
-                }
+function mostrarMensagem(id, texto, tipo) {
+    const el = document.getElementById(id);
+    el.textContent = texto;
+    el.className   = `msg ${tipo}`;
+    el.style.display = 'block';
+}
 
-                btnLogin.disabled = true;
-                btnLogin.textContent = 'Verificando...';
+function limparCPF(cpf) {
+    return (cpf || '').toString().replace(/\D/g, '').trim();
+}
 
-                try {
-                    const response = await fetch(WEBAPP_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            action: 'login',
-                            username: username,
-                            password: password
-                        })
-                    });
+function setBtnLoading(id, loading, textoOriginal) {
+    const btn = document.getElementById(id);
+    if (loading) {
+        btn.innerHTML = `<span class="spinner-btn"></span> Aguarde...`;
+        btn.disabled  = true;
+    } else {
+        btn.textContent = textoOriginal;
+        btn.disabled    = false;
+    }
+}
 
-                    const result = await response.json();
+// ═══════════════════════════════════════════════════════════════
+// LOGIN — consulta direto no nó /usuarios/{cpf} do Firebase
+// ═══════════════════════════════════════════════════════════════
+async function fazerLogin() {
+    limparMensagens();
+    const cpf   = limparCPF(document.getElementById('login-cpf').value);
+    const senha = document.getElementById('login-senha').value.trim();
 
-                    if (result.status === 'success') {
+    if (!cpf || !senha) {
+        mostrarMensagem('msg-login', 'Preencha CPF e senha.', 'erro');
+        return;
+    }
 
-                        // =======================================================
-                        // CRÍTICO: SALVANDO A SESSÃO NO LOCALSTORAGE (CÓDIGO ADICIONADO!)
-                        // O `result.user` vem do seu Apps Script (Code.gs)
-                        localStorage.setItem('userGraduacao', result.user.graduacao);
-                        localStorage.setItem('userNomeGuerra', result.user.nomeGuerra);
-                        // =======================================================
+    setBtnLoading('btn-entrar', true, 'ENTRAR');
 
-                        alert(result.message);
-                        window.location.href = result.redirect;
+    try {
+        const snap = await db.ref(`usuarios/${cpf}`).once('value');
+        const usuario = snap.val();
 
-                    } else {
-                        alert('Falha no login: ' + result.message);
-                    }
+        if (!usuario) {
+            mostrarMensagem('msg-login', 'CPF não encontrado no sistema.', 'erro');
+            return;
+        }
 
-                } catch (error) {
-                    console.error('Erro de rede/servidor:', error);
-                    alert('Erro de conexão ao tentar fazer login.');
-                } finally {
-                    btnLogin.disabled = false;
-                    btnLogin.textContent = 'Entrar';
-                }
-            }
+        if (usuario.senha !== senha) {
+            mostrarMensagem('msg-login', 'Senha incorreta.', 'erro');
+            return;
+        }
 
-            // -----------------------------------------------------------
-            // LÓGICA DE CADASTRO
-            // -----------------------------------------------------------
+        if (usuario.ativo === false) {
+            mostrarMensagem('msg-login', 'Usuário inativo. Contate o administrador.', 'erro');
+            return;
+        }
 
-            cadastroForm.addEventListener('submit', function (event) {
-                event.preventDefault();
-                handleRegistration();
-            });
+        // ── Salva sessão no localStorage ──────────────────────
+        localStorage.setItem('userCpf',       usuario.cpf);
+        localStorage.setItem('userGraduacao', usuario.graduacao);
+        localStorage.setItem('userNomeGuerra',usuario.nomeGuerra);
+        localStorage.setItem('userNome',      usuario.nome);
+        localStorage.setItem('userNivel',     usuario.nivel || 'operador');
+        localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
 
-            async function handleRegistration() {
-                const grad = document.getElementById('reg-graduacao').value;
-                const nome = document.getElementById('reg-nome').value;
-                const nomeGuerra = document.getElementById('reg-nome-guerra').value;
-                const cpf = document.getElementById('reg-cpf').value.replace(/[^0-9]/g, ''); // Limpa e usa apenas números
-                const senha = document.getElementById('reg-senha').value;
-                const confirmaSenha = document.getElementById('reg-confirma-senha').value;
+        // Redireciona para a home
+        window.location.href = '../index.html';
 
-                if (!grad || !nome || !cpf || !senha || !confirmaSenha) {
-                    alert('Por favor, preencha todos os campos obrigatórios.');
-                    return;
-                }
+    } catch (err) {
+        console.error('Erro no login:', err);
+        mostrarMensagem('msg-login', 'Erro de conexão. Tente novamente.', 'erro');
+    } finally {
+        setBtnLoading('btn-entrar', false, 'ENTRAR');
+    }
+}
 
-                if (senha.length < 6) {
-                    alert('A senha deve ter pelo menos 6 caracteres.');
-                    return;
-                }
+// ═══════════════════════════════════════════════════════════════
+// CADASTRO — grava no nó /usuarios/{cpf} do Firebase
+// ═══════════════════════════════════════════════════════════════
+async function fazerCadastro() {
+    limparMensagens();
 
-                if (senha !== confirmaSenha) {
-                    alert('As senhas digitadas não coincidem.');
-                    return;
-                }
+    const graduacao  = document.getElementById('cad-graduacao').value.trim();
+    const nome       = document.getElementById('cad-nome').value.trim();
+    const nomeGuerra = document.getElementById('cad-nomeguerra').value.trim() || nome.split(' ')[0];
+    const cpf        = limparCPF(document.getElementById('cad-cpf').value);
+    const senha      = document.getElementById('cad-senha').value.trim();
+    const nivel      = document.getElementById('cad-nivel').value;
 
-                btnCadastro.disabled = true;
-                btnCadastro.textContent = 'Cadastrando...';
+    // Validações básicas
+    if (!graduacao || !nome || !cpf || !senha) {
+        mostrarMensagem('msg-cadastro', 'Preencha todos os campos obrigatórios.', 'erro');
+        return;
+    }
 
-                try {
-                    const response = await fetch(WEBAPP_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            action: 'register',
-                            GRADUACAO: grad,
-                            NOME: nome,
-                            NOME_DE_GUERRA: nomeGuerra,
-                            CPF: cpf,
-                            SENHA: senha
-                        })
-                    });
+    if (cpf.length !== 11) {
+        mostrarMensagem('msg-cadastro', 'CPF deve ter 11 dígitos.', 'erro');
+        return;
+    }
 
-                    const result = await response.json();
+    if (senha.length < 4) {
+        mostrarMensagem('msg-cadastro', 'A senha deve ter pelo menos 4 caracteres.', 'erro');
+        return;
+    }
 
-                    if (result.status === 'success') {
-                        alert(result.message);
-                        // Limpa o formulário e retorna para a tela de login
-                        cadastroForm.reset();
-                        toggleForm(false);
-                    } else {
-                        alert('Falha no cadastro: ' + result.message);
-                    }
+    setBtnLoading('btn-cadastrar', true, 'CADASTRAR');
 
-                } catch (error) {
-                    console.error('Erro de rede/servidor:', error);
-                    alert('Erro de conexão ao tentar cadastrar o usuário.');
-                } finally {
-                    btnCadastro.disabled = false;
-                    btnCadastro.textContent = 'Cadastrar';
-                }
-            }
+    try {
+        // Verifica se CPF já existe
+        const snap = await db.ref(`usuarios/${cpf}`).once('value');
+        if (snap.val()) {
+            mostrarMensagem('msg-cadastro', 'CPF já cadastrado no sistema.', 'erro');
+            return;
+        }
 
-        });
-    </script>
+        // Grava o novo usuário
+        const novoUsuario = {
+            graduacao,
+            nome,
+            nomeGuerra,
+            cpf,
+            senha,
+            nivel,
+            ativo      : true,
+            cadastrado_em: new Date().toISOString()
+        };
+
+        await db.ref(`usuarios/${cpf}`).set(novoUsuario);
+
+        mostrarMensagem('msg-cadastro', 'Cadastro realizado! Você já pode fazer login.', 'sucesso');
+
+        // Limpa o formulário e volta para aba de login após 2s
+        document.getElementById('cad-graduacao').value  = '';
+        document.getElementById('cad-nome').value       = '';
+        document.getElementById('cad-nomeguerra').value = '';
+        document.getElementById('cad-cpf').value        = '';
+        document.getElementById('cad-senha').value      = '';
+
+        setTimeout(() => trocarAba('login'), 2000);
+
+    } catch (err) {
+        console.error('Erro no cadastro:', err);
+        mostrarMensagem('msg-cadastro', 'Erro ao salvar. Tente novamente.', 'erro');
+    } finally {
+        setBtnLoading('btn-cadastrar', false, 'CADASTRAR');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENTER confirma nos campos
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+    // Se já está logado, redireciona direto
+    if (localStorage.getItem('userGraduacao') && localStorage.getItem('userNomeGuerra')) {
+        window.location.href = '../index.html';
+        return;
+    }
+
+    document.getElementById('login-senha').addEventListener('keydown', e => {
+        if (e.key === 'Enter') fazerLogin();
+    });
+    document.getElementById('login-cpf').addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('login-senha').focus();
+    });
+});
+</script>
+
 </body>
-
 </html>
