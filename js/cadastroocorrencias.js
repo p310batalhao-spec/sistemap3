@@ -294,8 +294,29 @@ document.getElementById('btn-save-cloud').onclick = async function() {
                     if (tipGeral.includes("MANDADO"))  updates[`/mandados/${safeId}`]  = dadoFinal;
 
                 } else {
-                    // Coleções específicas (arma, droga, veiculo, objeto, autor)
-                    const uniqueId = `${safeId}_${index}`;
+                    // Coleções específicas: ID determinístico por tipo para evitar duplicatas.
+                    // Arma   → BOLETIM_SERIE   (uma arma é única pelo boletim + número de série)
+                    // Droga  → BOLETIM_TIPO     (uma droga por tipo/boletim)
+                    // Veículo→ BOLETIM_PLACA    (um veículo por placa/boletim)
+                    // Objeto → BOLETIM_DESCRICAO_index (pode haver vários objetos por boletim)
+                    // Autor  → BOLETIM_NOME     (um autor por nome/boletim)
+                    let uniqueId;
+                    if (tipo === 'arma') {
+                        const serie = (d.SERIE || 'SSERIE').toString().trim().replace(/[^a-zA-Z0-9]/g, '_');
+                        uniqueId = `${safeId}_${serie}`;
+                    } else if (tipo === 'droga') {
+                        const tipoDroga = (d.TIPO_DROGA || 'STIPO').toString().trim().replace(/[^a-zA-Z0-9]/g, '_');
+                        uniqueId = `${safeId}_${tipoDroga}`;
+                    } else if (tipo === 'veiculo') {
+                        const placa = (d.PLACA || 'SPLACA').toString().trim().replace(/[^a-zA-Z0-9]/g, '_');
+                        uniqueId = `${safeId}_${placa}`;
+                    } else if (tipo === 'autor') {
+                        const nome = (d.NOME || 'SNOME').toString().trim().replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+                        uniqueId = `${safeId}_${nome}`;
+                    } else {
+                        // objeto e outros: usa index como fallback (múltiplos por boletim)
+                        uniqueId = `${safeId}_${index}`;
+                    }
                     updates[`/${tipo}/${uniqueId}`] = dadoFinal;
                 }
             });

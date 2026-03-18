@@ -114,7 +114,7 @@
                                 <th>CALIBRE</th>
                                 <th>MARCA</th>
                                 <th>SÉRIE</th>
-                                <th>AÇÕES</th>
+                                <th style="min-width:160px">AÇÕES</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -188,6 +188,22 @@
         </main>
     </section>
 </body>
+
+<!-- ══ Modal de confirmação de exclusão ══════════════════════════ -->
+<div id="modal-excluir" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:.75rem;padding:2rem;width:min(380px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.25);font-family:Arial,sans-serif;">
+        <h3 style="margin:0 0 .5rem;color:#b71c1c;font-size:1rem;">🔒 Confirmar Exclusão</h3>
+        <p style="font-size:.85rem;color:#555;margin-bottom:1.2rem;">Esta ação é irreversível. Digite a senha de administrador para confirmar.</p>
+        <input type="password" id="input-senha-excluir" placeholder="Senha de administrador"
+            style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:.9rem;box-sizing:border-box;margin-bottom:.75rem;">
+        <p id="msg-erro-senha" style="color:#c62828;font-size:.8rem;margin-bottom:.75rem;display:none;">Senha incorreta. Tente novamente.</p>
+        <div style="display:flex;gap:.75rem;justify-content:flex-end;">
+            <button onclick="fecharModalExcluir()" style="padding:8px 18px;border:1px solid #ccc;border-radius:6px;background:#f5f5f5;cursor:pointer;font-size:.85rem;">Cancelar</button>
+            <button onclick="confirmarExclusao()" style="padding:8px 18px;border:none;border-radius:6px;background:#c62828;color:#fff;cursor:pointer;font-size:.85rem;font-weight:bold;">Excluir</button>
+        </div>
+    </div>
+</div>
+
 <footer>
     <div>
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
@@ -299,7 +315,10 @@
                 <td>${doc.CALIBRE || ""}</td>
                 <td>${doc.MARCA || ""}</td>
                 <td>${doc.SERIE || ""}</td>
-                <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
+                <td style="display:flex;gap:6px;align-items:center">
+                    <button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button>
+                    <button class="btn-excluir" style="background:#c62828;color:#fff;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:.8rem;font-weight:bold;" onclick='solicitarExclusao("${doc.id}")'>EXCLUIR</button>
+                </td>
             `;
                 tbody.appendChild(tr);
             });
@@ -382,6 +401,60 @@
             btn.innerText = "SALVAR DADOS";
             btn.disabled = false;
         }
+    });
+
+    // --- SENHA DE ADMINISTRADOR ---
+    const SENHA_ADMIN = "p3admin2025"; // ← altere aqui conforme necessário
+
+    // --- EXCLUIR REGISTRO COM SENHA ---
+    let _idParaExcluir = null;
+
+    window.solicitarExclusao = (id) => {
+        _idParaExcluir = id;
+        document.getElementById('input-senha-excluir').value = '';
+        document.getElementById('msg-erro-senha').style.display = 'none';
+        const modal = document.getElementById('modal-excluir');
+        modal.style.display = 'flex';
+        setTimeout(() => document.getElementById('input-senha-excluir').focus(), 100);
+    };
+
+    window.fecharModalExcluir = () => {
+        document.getElementById('modal-excluir').style.display = 'none';
+        _idParaExcluir = null;
+    };
+
+    window.confirmarExclusao = async () => {
+        const senha = document.getElementById('input-senha-excluir').value;
+        if (senha !== SENHA_ADMIN) {
+            document.getElementById('msg-erro-senha').style.display = 'block';
+            return;
+        }
+
+        try {
+            const res = await fetch(`${DATABASE_URL}/${NODE_NAME}/${_idParaExcluir}.json`, {
+                method: 'DELETE'
+            });
+            if (res.ok) {
+                fecharModalExcluir();
+                alert("Registro excluído com sucesso!");
+                carregarDados();
+            } else {
+                alert("Erro ao excluir. Tente novamente.");
+            }
+        } catch (err) {
+            alert("Erro de conexão: " + err.message);
+        }
+    };
+
+    // Fechar modal ao clicar fora
+    document.getElementById('modal-excluir').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('modal-excluir')) fecharModalExcluir();
+    });
+
+    // Confirmar com Enter
+    document.getElementById('input-senha-excluir').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') confirmarExclusao();
+        if (e.key === 'Escape') fecharModalExcluir();
     });
 
     // --- INICIALIZAÇÃO ---
