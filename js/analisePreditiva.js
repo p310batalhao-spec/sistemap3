@@ -607,6 +607,9 @@ async function carregar() {
         renderHotspotLocalidade('tbody-cvli', localCVLI, '#6a1b9a', arrCVLI.length);
         renderHotspotLocalidade('tbody-mvi',  localMVI,  '#b71c1c', arrMVI.length);
 
+        // Guarda referência dos dados para o relatório (acessível pelo botão)
+        window._dadosPreditiva = { arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr };
+
     } catch(err) {
         console.error('Erro ao carregar preditiva:', err);
         document.getElementById('alertas-bar').innerHTML =
@@ -614,6 +617,48 @@ async function carregar() {
              <div class="alerta-txt"><strong>Erro ao carregar dados</strong><small>${err.message}</small></div></div>`;
     } finally {
         document.getElementById('loading').style.display = 'none';
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELATÓRIO PREDITIVO — serializa dados e abre nova aba
+// ═══════════════════════════════════════════════════════════════
+function abrirRelatorioPreditivo(arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr) {
+    const grad = localStorage.getItem('userGraduacao')  || '';
+    const nome = localStorage.getItem('userNomeGuerra') || '';
+
+    // Enxuga para só os campos necessários no relatório
+    const enx = arr => arr.map(i => ({
+        DATA:              i.DATA || i.data || '',
+        HORA:              i.HORA || '',
+        BOLETIM:           i.BOLETIM || '',
+        TIPIFICACAO_GERAL: i.TIPIFICACAO_GERAL || '',
+        TIPIFICACAO:       i.TIPIFICACAO || '',
+        CIDADE:            i.CIDADE || '',
+        BAIRRO:            i.BAIRRO || i.bairro || '',
+        OBITO:             i.OBITO || 'N',
+    }));
+
+    const payload = {
+        operador: (grad + ' ' + nome).trim(),
+        arrCVP:   enx(arrCVP),
+        arrCVLI:  enx(arrCVLI),
+        arrMVI:   enx(arrMVI),
+        meses12,
+        labels12,
+        cvpArr,
+        cvliArr,
+        mviArr,
+    };
+
+    const json = JSON.stringify(payload);
+    try {
+        localStorage.removeItem('p3_preditiva');
+        localStorage.setItem('p3_preditiva', json);
+        window.open('../relatorios/relatorio_preditiva.html', '_blank');
+    } catch (e) {
+        alert('Erro ao gerar relatório: dados muito grandes (' + Math.round(json.length/1024) + ' KB). Tente um período menor.');
+        console.error(e);
     }
 }
 

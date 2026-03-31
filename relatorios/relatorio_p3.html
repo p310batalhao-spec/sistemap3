@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Analítico — P3 / 10º BPM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+        /* ── Reset / Base ─────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f4f6fb; color: #1a1f36; }
+
+        /* ── Loader ───────────────────────────────────────── */
+        #loader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-size: 1rem;
+            color: #555;
+            gap: .75rem;
+        }
+
+        /* ── Relatório geral ──────────────────────────────── */
+        .relatorio { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
+
+        /* ── Capa ─────────────────────────────────────────── */
+        .capa {
+            background: linear-gradient(135deg, #0a1f4d 0%, #1a3a6e 60%, #0d2a5c 100%);
+            border-radius: 12px;
+            padding: 2.5rem 2rem;
+            color: #fff;
+            margin-bottom: 1.5rem;
+        }
+        .capa-header { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.5rem; }
+        .capa-header img { height: 64px; }
+        .capa-org h1 { font-size: 1.15rem; font-weight: bold; letter-spacing: .05em; }
+        .capa-org h2 { font-size: .88rem; opacity: .7; margin-top: .3rem; font-weight: normal; }
+        .capa-titulo { border-top: 1px solid rgba(255,255,255,.25); padding-top: 1.25rem; margin-top: 1rem; }
+        .capa-titulo h3 { font-size: 1.4rem; font-weight: bold; letter-spacing: .08em; }
+        .capa-titulo p  { font-size: .85rem; opacity: .65; margin-top: .4rem; }
+        .capa-meta {
+            display: flex; flex-wrap: wrap; gap: .6rem 1.5rem;
+            margin-top: 1.25rem; font-size: .82rem; opacity: .75;
+        }
+        .capa-meta span { display: flex; align-items: center; gap: .4rem; }
+
+        /* ── Botões de ação ───────────────────────────────── */
+        .acoes-impressao {
+            display: flex; gap: .75rem; justify-content: flex-end;
+            margin-bottom: 1.5rem; flex-wrap: wrap;
+        }
+        .btn-imprimir {
+            padding: 10px 22px; background: #0a448f; color: #fff;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-size: .88rem; font-weight: bold;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .btn-fechar {
+            padding: 10px 22px; background: #e8ecf5; color: #374263;
+            border: none; border-radius: 8px; cursor: pointer;
+            font-size: .88rem; font-weight: bold;
+        }
+
+        /* ── Seção ────────────────────────────────────────── */
+        .secao {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1.75rem 1.75rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            page-break-inside: avoid;
+        }
+        .secao-titulo {
+            display: flex; align-items: flex-start; gap: 1rem;
+            margin-bottom: 1.25rem; padding-bottom: .9rem;
+            border-bottom: 2px solid #e8ecf5;
+        }
+        .secao-numero {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: #0a448f; color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-size: .95rem; font-weight: bold; flex-shrink: 0;
+        }
+        .secao-titulo h2 { font-size: 1rem; font-weight: bold; color: #0a1f4d; }
+        .secao-titulo p  { font-size: .78rem; color: #9ea3b5; margin-top: .2rem; }
+
+        /* ── KPIs ─────────────────────────────────────────── */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: .85rem;
+            margin-bottom: 1rem;
+        }
+        .kpi {
+            background: #f8f9ff;
+            border-radius: 8px;
+            padding: .9rem 1rem;
+            border-top: 3px solid #0a448f;
+            text-align: center;
+        }
+        .kpi.cvli  { border-top-color: #6a1b9a; }
+        .kpi.cvp   { border-top-color: #e65100; }
+        .kpi.mvi   { border-top-color: #b71c1c; }
+        .kpi.vd    { border-top-color: #ad1457; }
+        .kpi.tco   { border-top-color: #1565c0; }
+        .kpi.arma  { border-top-color: #2e7d32; }
+        .kpi.drug  { border-top-color: #f57f17; }
+        .kpi-valor { font-size: 2rem; font-weight: bold; color: #1a1f36; line-height: 1.1; }
+        .kpi-pct   { font-size: .72rem; color: #9ea3b5; margin: .2rem 0; }
+        .kpi-label { font-size: .72rem; font-weight: bold; color: #6b7594; text-transform: uppercase; letter-spacing: .05em; }
+
+        /* ── Gráficos ─────────────────────────────────────── */
+        .chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .chart-row.single { grid-template-columns: 1fr; }
+        .chart-box { background: #f8f9ff; border-radius: 8px; padding: 1rem 1.1rem; }
+        .chart-box-title { font-size: .82rem; font-weight: bold; color: #1a1f36; margin-bottom: .2rem; }
+        .chart-box-desc  { font-size: .72rem; color: #9ea3b5; margin-bottom: .75rem; }
+        .chart-wrapper { position: relative; height: 220px; }
+        .chart-wrapper.tall { height: 300px; }
+
+        /* ── Insights / comentários ───────────────────────── */
+        .comentario { margin-top: .9rem; display: flex; flex-direction: column; gap: .55rem; }
+        .insight {
+            display: flex; align-items: flex-start; gap: .7rem;
+            background: #f0f4ff; border-left: 3px solid #0a448f;
+            border-radius: 6px; padding: .7rem .9rem;
+            font-size: .83rem; line-height: 1.55; color: #374263;
+        }
+        .insight i { color: #0a448f; margin-top: 2px; flex-shrink: 0; }
+        .insight.alerta { background: #fff3e0; border-left-color: #e65100; }
+        .insight.alerta i { color: #e65100; }
+        .insight.perigo { background: #ffebee; border-left-color: #b71c1c; }
+        .insight.perigo i { color: #b71c1c; }
+        .insight.ok     { background: #e8f5e9; border-left-color: #2e7d32; }
+        .insight.ok i   { color: #2e7d32; }
+
+        /* ── Tabela ───────────────────────────────────────── */
+        .tabela-rel { width: 100%; border-collapse: collapse; font-size: .78rem; margin-top: .5rem; }
+        .tabela-rel th {
+            background: #0a448f; color: #fff; font-weight: bold;
+            padding: 8px 10px; text-align: left; white-space: nowrap;
+        }
+        .tabela-rel td { padding: 7px 10px; border-bottom: 1px solid #edf0f8; vertical-align: middle; }
+        .tabela-rel tr:nth-child(even) td { background: #f8f9ff; }
+        .tabela-rel tr:hover td { background: #f0f4ff; }
+
+        .badge {
+            display: inline-block; padding: 2px 9px;
+            border-radius: 10px; font-size: .7rem; font-weight: bold;
+        }
+        .badge-cvli { background: #ede7f6; color: #4a148c; }
+        .badge-cvp  { background: #fff3e0; color: #e65100; }
+        .badge-mvi  { background: #ffebee; color: #b71c1c; }
+        .badge-vd   { background: #fce4ec; color: #880e4f; }
+        .badge-tco  { background: #e3f2fd; color: #0d47a1; }
+        .badge-out  { background: #f0f2f8; color: #374263; }
+        .obito-s { background: #c62828; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: .7rem; font-weight: bold; }
+        .obito-n { background: #e0e0e0; color: #555; padding: 2px 8px; border-radius: 4px; font-size: .7rem; }
+        .num { font-weight: bold; }
+
+        /* ── Rodapé ───────────────────────────────────────── */
+        .rodape {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            flex-wrap: wrap; gap: .5rem;
+            border-top: 2px solid #e8ecf5; margin-top: 2rem; padding-top: 1rem;
+            font-size: .75rem; color: #9ea3b5; line-height: 1.6;
+        }
+
+        /* ── Print ────────────────────────────────────────── */
+        @media print {
+            body { background: #fff; }
+            .acoes-impressao { display: none; }
+            .secao { box-shadow: none; border: 1px solid #e8ecf5; }
+            .relatorio { padding: 0; }
+            .chart-wrapper { height: 180px; }
+            .chart-wrapper.tall { height: 250px; }
+        }
+
+        @media (max-width: 680px) {
+            .chart-row { grid-template-columns: 1fr; }
+            .kpi-grid  { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <i class="fas fa-spinner fa-spin" style="font-size:2rem; color:#0a448f;"></i>
+    Gerando relatório analítico…
+</div>
+
+<div class="relatorio" id="relatorio" style="display:none;">
+
+    <!-- ══ CAPA ══════════════════════════════════════════════════════ -->
+    <div class="capa">
+        <div class="capa-header">
+            <img src="../img/brasao.png" alt="Brasão 10º BPM">
+            <div class="capa-org">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS</h2>
+            </div>
+        </div>
+        <div class="capa-titulo">
+            <h3>RELATÓRIO ANALÍTICO OPERACIONAL</h3>
+            <p>Análise integrada de CVLI, MVI, CVP, Violência Doméstica, TCO, Armas e Drogas apreendidas</p>
+        </div>
+        <div class="capa-meta">
+            <span id="meta-unidade"><i class="fas fa-shield-alt"></i> 10º BPM</span>
+            <span id="meta-data"><i class="fas fa-calendar"></i> —</span>
+            <span id="meta-operador"><i class="fas fa-user"></i> —</span>
+            <span id="meta-periodo"><i class="fas fa-filter"></i> —</span>
+        </div>
+    </div>
+
+    <!-- Botões -->
+    <div class="acoes-impressao">
+        <button class="btn-fechar" onclick="window.close()">
+            <i class="fas fa-times"></i> Fechar
+        </button>
+        <button class="btn-imprimir" onclick="window.print()">
+            <i class="fas fa-print"></i> Imprimir / Salvar PDF
+        </button>
+    </div>
+
+    <!-- ══ SEÇÃO 1 — RESUMO EXECUTIVO ════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">1</div>
+            <div>
+                <h2>Resumo Executivo — Indicadores Gerais</h2>
+                <p>Visão consolidada de todos os indicadores operacionais do período</p>
+            </div>
+        </div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div class="comentario" id="comentario-resumo"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 2 — CVLI ════════════════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">2</div>
+            <div>
+                <h2>CVLI — Crimes Violentos Letais e Intencionais</h2>
+                <p>Homicídio, Tentativa de Homicídio, Latrocínio, Feminicídio e variantes</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull" style="color:#6a1b9a"></i> Tipificações CVLI</div>
+                <div class="chart-box-desc">Distribuição por tipo de crime violento letal</div>
+                <div class="chart-wrapper"><canvas id="r-cvli-tip"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-map-marker-alt" style="color:#6a1b9a"></i> CVLI por Cidade</div>
+                <div class="chart-box-desc">Cidades com maior incidência de CVLI</div>
+                <div class="chart-wrapper"><canvas id="r-cvli-cidade"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-chart-line" style="color:#6a1b9a"></i> CVLI — Evolução Mensal (12 meses)</div>
+                <div class="chart-box-desc">Quantidade de registros CVLI por mês</div>
+                <div class="chart-wrapper tall"><canvas id="r-cvli-mes"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-cvli"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 3 — MVI ═════════════════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">3</div>
+            <div>
+                <h2>MVI — Mortes Violentas Intencionais</h2>
+                <p>Homicídio, Feminicídio, Latrocínio + Tentativas com óbito confirmado (campo ÓBITO = S)</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull-crossbones" style="color:#b71c1c"></i> MVI por Tipificação</div>
+                <div class="chart-box-desc">Distribuição dos casos de morte violenta por tipo</div>
+                <div class="chart-wrapper"><canvas id="r-mvi-tip"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-calendar-week" style="color:#b71c1c"></i> MVI por Dia da Semana</div>
+                <div class="chart-box-desc">Concentração dos casos por dia da semana</div>
+                <div class="chart-wrapper"><canvas id="r-mvi-diasemana"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-mvi"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 4 — CVP ═════════════════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">4</div>
+            <div>
+                <h2>CVP — Crimes Violentos Contra o Patrimônio</h2>
+                <p>Roubo, Tentativa de Roubo, Extorsão Mediante Sequestro</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-mask" style="color:#e65100"></i> Tipificações CVP</div>
+                <div class="chart-box-desc">Distribuição por tipo de crime patrimonial</div>
+                <div class="chart-wrapper"><canvas id="r-cvp-tip"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-map-marker-alt" style="color:#e65100"></i> CVP por Cidade</div>
+                <div class="chart-box-desc">Cidades com maior incidência de CVP</div>
+                <div class="chart-wrapper"><canvas id="r-cvp-cidade"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-chart-line" style="color:#e65100"></i> CVP — Evolução Mensal (12 meses)</div>
+                <div class="chart-box-desc">Quantidade de registros CVP por mês</div>
+                <div class="chart-wrapper tall"><canvas id="r-cvp-mes"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-cvp"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 5 — SÉRIE TEMPORAL CRUZADA ══════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">5</div>
+            <div>
+                <h2>Série Temporal Comparativa — CVLI · CVP · MVI</h2>
+                <p>Evolução mensal cruzada dos três principais indicadores nos últimos 12 meses</p>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-chart-line" style="color:#0a448f"></i> Evolução Comparativa Mensal</div>
+                <div class="chart-box-desc">Cruzamento temporal entre CVLI, CVP e MVI — permite identificar tendências e sazonalidade</div>
+                <div class="chart-wrapper tall"><canvas id="r-temporal-cruzado"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-temporal"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 6 — VIOLÊNCIA DOMÉSTICA + TCO ═══════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">6</div>
+            <div>
+                <h2>Violência Doméstica e TCO</h2>
+                <p>Ocorrências de violência doméstica e termos circunstanciados de ocorrência</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-hand-paper" style="color:#ad1457"></i> VD — Evolução Mensal</div>
+                <div class="chart-box-desc">Ocorrências de violência doméstica por mês</div>
+                <div class="chart-wrapper"><canvas id="r-vd-mes"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-file-alt" style="color:#1565c0"></i> TCO — Evolução Mensal</div>
+                <div class="chart-box-desc">Termos circunstanciados lavrados por mês</div>
+                <div class="chart-wrapper"><canvas id="r-tco-mes"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-vd-tco"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 7 — ARMAS E DROGAS ══════════════════════════════════ -->
+        <!-- ══ SEÇÃO 7 — TCO: TIPIFICAÇÃO E CIDADE ═══════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">7</div>
+            <div>
+                <h2>TCO — Detalhamento por Tipificação e Cidade</h2>
+                <p>Distribuição dos Termos Circunstanciados por tipo de infração e município</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-file-alt" style="color:#1565c0"></i> Tipificações TCO — Top 8</div>
+                <div class="chart-box-desc">Tipos de infração mais registrados via TCO</div>
+                <div class="chart-wrapper"><canvas id="r-tco-tip"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-map-marker-alt" style="color:#1565c0"></i> TCO por Cidade — Top 8</div>
+                <div class="chart-box-desc">Municípios com maior número de TCOs lavrados</div>
+                <div class="chart-wrapper"><canvas id="r-tco-cidade"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-tco"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 8 — ARMAS E DROGAS ══════════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">7</div>
+            <div>
+                <h2>Materiais Apreendidos — Armas e Drogas</h2>
+                <p>Armas apreendidas por tipo/calibre e drogas por quantidade total</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-gun" style="color:#2e7d32"></i> Armas por Tipo</div>
+                <div class="chart-box-desc">Distribuição das armas apreendidas por tipo</div>
+                <div class="chart-wrapper"><canvas id="r-arma-tipo"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-cannabis" style="color:#f57f17"></i> Drogas por Tipo (peso)</div>
+                <div class="chart-box-desc">Quantidade apreendida por tipo de droga</div>
+                <div class="chart-wrapper"><canvas id="r-droga-tipo"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-materiais"></div>
+    </div>
+
+    <!-- ══ SEÇÃO 8 — CRUZAMENTO GERAL ════════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">8</div>
+            <div>
+                <h2>Cruzamento Geral — Ocorrências por Cidade e Horário</h2>
+                <p>Distribuição geográfica e temporal cruzada de todos os indicadores</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-map-marker-alt"></i> Total de Ocorrências por Cidade</div>
+                <div class="chart-box-desc">Somatório de CVLI + CVP + MVI + VD por município</div>
+                <div class="chart-wrapper"><canvas id="r-cidade-geral"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-clock"></i> Distribuição por Dia da Semana</div>
+                <div class="chart-box-desc">CVLI · CVP · MVI cruzados por dia da semana</div>
+                <div class="chart-wrapper"><canvas id="r-diasemana-cruzado"></canvas></div>
+            </div>
+        </div>
+
+        <h4 style="font-size:.85rem;font-weight:bold;color:#0a1f4d;margin:1.25rem 0 .6rem;display:flex;align-items:center;gap:.5rem;">
+            <i class="fas fa-table"></i> Detalhamento — Top Ocorrências CVLI e MVI
+        </h4>
+        <table class="tabela-rel" id="tabela-cvli-rel">
+            <thead>
+                <tr>
+                    <th>Nº BOLETIM</th>
+                    <th>DATA</th>
+                    <th>HORA</th>
+                    <th>TIPIFICAÇÃO</th>
+                    <th>BAIRRO</th>
+                    <th>CIDADE</th>
+                    <th>SOLICITANTE</th>
+                    <th>SOLUÇÃO</th>
+                    <th>ÓBITO</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-cvli-rel"></tbody>
+        </table>
+        <div class="comentario" id="comentario-cruzamento"></div>
+    </div>
+
+    <!-- ══ SEÇÃO — VD · SOSSEGO · VISITAS ═══════════════════════════════ -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero" style="background:#00695c;">✓</div>
+            <div>
+                <h2>Violência Doméstica · Perturbação do Sossego · Visitas Orientativas</h2>
+                <p>Evolução mensal e distribuição por cidade dos três indicadores</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-hand-paper" style="color:#ad1457"></i> Violência Doméstica — Mensal</div>
+                <div class="chart-box-desc">Ocorrências de violência doméstica por mês</div>
+                <div class="chart-wrapper"><canvas id="r-vd-mes2"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-volume-high" style="color:#00695c"></i> Perturbação do Sossego — Mensal</div>
+                <div class="chart-box-desc">Ocorrências de perturbação do sossego por mês</div>
+                <div class="chart-wrapper"><canvas id="r-soss-mes"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-house-user" style="color:#00796b"></i> Visitas Orientativas — Mensal</div>
+                <div class="chart-box-desc">Visitas comunitárias realizadas por mês</div>
+                <div class="chart-wrapper"><canvas id="r-visitas-mes"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-map-marker-alt" style="color:#00796b"></i> Visitas por Cidade</div>
+                <div class="chart-box-desc">Cidades com maior número de visitas orientativas</div>
+                <div class="chart-wrapper"><canvas id="r-visitas-cidade"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-social"></div>
+    </div>
+
+    <!-- ══ RODAPÉ ══════════════════════════════════════════════════════ -->
+    <div class="rodape">
+        <div>
+            <strong>Sistema de Gerenciamento P3</strong> — 10º Batalhão de Polícia Militar<br>
+            Seção de Planejamento, Instrução e Estatística — P3/10ºBPM
+        </div>
+        <div id="rodape-meta" style="text-align:right;"></div>
+    </div>
+</div>
+
+<script src="../js/relatorio_p3.js"></script>
+</body>
+</html>

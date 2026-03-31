@@ -241,7 +241,7 @@
     <div class="header-info-left">
         <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
         <div class="cabecalhotexto">
-            <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+            <h1>SISTEMA DE GERENCIAMENTO P3 | ANÁLISE PREDITIVA</h1>
             <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
         </div>
     </div>
@@ -258,7 +258,7 @@
             <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
             <p>Home</p>
         </a>
-        <a href="dashboard.html">
+        <a href="dashboard-p3.html">
             <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard"/>
             <p>Dashboard</p>
         </a>
@@ -544,6 +544,14 @@
 <footer>
     <div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div>
 </footer>
+
+<!-- Botão Relatório Preditivo -->
+<div style="position:fixed;bottom:20px;right:20px;z-index:9999;">
+    <button onclick="if(window._dadosPreditiva){const d=window._dadosPreditiva;abrirRelatorioPreditivo(d.arrCVP,d.arrCVLI,d.arrMVI,d.meses12,d.labels12,d.cvpArr,d.cvliArr,d.mviArr);}else{alert('Aguarde o carregamento completo dos dados.');}"
+        style="padding:11px 20px;background:#0a448f;color:#fff;border:none;border-radius:50px;cursor:pointer;font-weight:bold;font-size:.85rem;box-shadow:0 4px 16px rgba(10,68,143,.4);display:flex;align-items:center;gap:8px;">
+        📄 Imprimir Relatório
+    </button>
+</div>
 
 <script src="../js/analisePreditiva.js"></script>
 

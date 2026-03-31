@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório Operacional — P3 · 10º BPM</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <link rel="stylesheet" href="../css/stylesrelatorio_publico.css">
+</head>
+<body>
+
+<!-- Loader -->
+<div id="loader">
+    <div class="spinner"></div>
+    Carregando dados operacionais…
+</div>
+
+<!-- Página principal -->
+<div id="pagina">
+
+    <!-- Cabeçalho -->
+    <div class="cabecalho">
+        <img class="cab-brasao" src="../img/brasao.png" alt="Brasão 10º BPM"
+             onerror="this.style.display='none'">
+        <div class="cab-txt">
+            <h1>RELATÓRIO OPERACIONAL — P3</h1>
+            <h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS<br>
+                Seção de Planejamento, Instrução e Estatística</h2>
+        </div>
+        <div class="cab-meta">
+            <strong id="meta-periodo">Ano corrente</strong><br>
+            Gerado em: <span id="meta-data">—</span><br>
+            Dados: P3/10º BPM - CAD/SSP 
+        </div>
+    </div>
+
+    <!-- Aviso -->
+    <div class="aviso-publico">
+        <i class="fas fa-info-circle" style="color:#f57f17;"></i>
+        Este relatório é de uso interno da PMAL. Não divulgar informações operacionais sensíveis.
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid" id="kpi-grid"></div>
+
+    <!-- Série temporal -->
+    <div class="secao-titulo"><i class="fas fa-chart-line" style="margin-right:.4rem;"></i>Série Temporal — Últimos 12 Meses</div>
+    <div class="charts-grid">
+        <div class="chart-card full">
+            <div class="chart-title">Evolução Mensal — CVLI · CVP · MVI</div>
+            <div class="chart-sub">Principais indicadores de criminalidade mês a mês</div>
+            <div class="chart-wrap tall"><canvas id="c-temporal"></canvas></div>
+        </div>
+    </div>
+
+    <!-- CVLI + CVP -->
+    <div class="secao-titulo"><i class="fas fa-skull" style="margin-right:.4rem;color:var(--roxo);"></i>CVLI e CVP — Tipificações e Cidades</div>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title">Tipificações CVLI</div>
+            <div class="chart-sub">Top tipos de crime violento letal</div>
+            <div class="chart-wrap"><canvas id="c-cvli-tip"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Tipificações CVP</div>
+            <div class="chart-sub">Top tipos de crime contra patrimônio</div>
+            <div class="chart-wrap"><canvas id="c-cvp-tip"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">CVLI por Cidade</div>
+            <div class="chart-sub">Municípios com maior incidência</div>
+            <div class="chart-wrap"><canvas id="c-cvli-cidade"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">CVP por Cidade</div>
+            <div class="chart-sub">Municípios com maior incidência</div>
+            <div class="chart-wrap"><canvas id="c-cvp-cidade"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Indicadores sociais -->
+    <div class="secao-titulo"><i class="fas fa-chart-bar" style="margin-right:.4rem;color:var(--rosa);"></i>Indicadores Sociais e Comunitários</div>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title">Violência Doméstica — Mensal</div>
+            <div class="chart-sub">Ocorrências de VD por mês</div>
+            <div class="chart-wrap"><canvas id="c-vd-mes"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Perturbação do Sossego — Mensal</div>
+            <div class="chart-sub">Ocorrências de perturbação por mês</div>
+            <div class="chart-wrap"><canvas id="c-soss-mes"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Visitas Orientativas — Mensal</div>
+            <div class="chart-sub">Visitas comunitárias por mês</div>
+            <div class="chart-wrap"><canvas id="c-visitas-mes"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">TCO por Tipificação</div>
+            <div class="chart-sub">Top tipificações dos termos circunstanciados</div>
+            <div class="chart-wrap"><canvas id="c-tco-tip"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Materiais -->
+    <div class="secao-titulo"><i class="fas fa-gun" style="margin-right:.4rem;color:var(--verde);"></i>Materiais Apreendidos</div>
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title">Armas por Tipo</div>
+            <div class="chart-sub">Distribuição das armas apreendidas</div>
+            <div class="chart-wrap"><canvas id="c-arma-tipo"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title">Drogas por Tipo (peso em g)</div>
+            <div class="chart-sub">Total apreendido por substância</div>
+            <div class="chart-wrap"><canvas id="c-droga-tipo"></canvas></div>
+        </div>
+        <div class="chart-card full">
+            <div class="chart-title">Drogas — Peso Mensal (g)</div>
+            <div class="chart-sub">Evolução do total apreendido mês a mês</div>
+            <div class="chart-wrap"><canvas id="c-droga-mes"></canvas></div>
+        </div>
+    </div>
+
+    <!-- Tabela CVLI/MVI -->
+    <div class="secao-titulo"><i class="fas fa-table" style="margin-right:.4rem;"></i>Ocorrências CVLI — Registros Recentes</div>
+    <div class="tabela-scroll">
+        <table id="tabela-cvli">
+            <thead>
+                <tr>
+                    <th>BOLETIM</th><th>DATA</th><th>HORA</th>
+                    <th>TIPIFICAÇÃO</th><th>BAIRRO</th><th>CIDADE</th><th>SOLUÇÃO</th><th>ÓBITO</th>
+                </tr>
+            </thead>
+            <tbody id="tbody-cvli"></tbody>
+        </table>
+    </div>
+    <p id="tabela-info" style="font-size:.72rem;color:#9ea3b5;margin-top:.4rem;"></p>
+
+    <!-- Rodapé -->
+    <div class="rodape">
+        <div>
+            <strong>Sistema de Gerenciamento P3 — 10º BPM / PMAL</strong><br>
+            Seção de Planejamento, Instrução e Estatística
+        </div>
+        <div id="rodape-data" style="text-align:right;"></div>
+    </div>
+</div>
+<script src="../js/relatorio_publico.js"></script>
+</body>
+</html>

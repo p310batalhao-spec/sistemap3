@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Consulta Mandado de Prisão — DataJud CNJ</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2d45;
+      --accent: #00c6ff;
+      --accent2: #0072ff;
+      --red: #ff4b4b;
+      --green: #00e090;
+      --yellow: #f5c542;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --font-mono: 'IBM Plex Mono', monospace;
+      --font-sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,198,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,198,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 860px;
+      padding: 40px 24px 80px;
+    }
+
+    /* ── Proxy status bar ── */
+    #proxy-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 16px;
+      margin-bottom: 32px;
+      font-size: 0.8rem;
+      font-family: var(--font-mono);
+    }
+    .proxy-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .proxy-dot.ok    { background: var(--green); animation: pulse 2s infinite; }
+    .proxy-dot.error { background: var(--red); }
+    #proxy-label { color: var(--muted); flex: 1; }
+    #proxy-label span { color: var(--text); }
+    .check-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .check-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+    /* ── Header ── */
+    header { margin-bottom: 36px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,198,255,0.08);
+      border: 1px solid rgba(0,198,255,0.2);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .badge::before {
+      content: '';
+      display: block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+    }
+    h1 span {
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 300;
+      max-width: 520px;
+      line-height: 1.6;
+    }
+
+    /* ── Form ── */
+    .label {
+      display: block;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .tribunal-section { margin-bottom: 20px; }
+    select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
+      padding: 12px 16px;
+      outline: none;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 16px center;
+    }
+    select:focus { border-color: var(--accent); }
+    select option { background: #1a2235; }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      padding: 14px 16px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      letter-spacing: 0.04em;
+    }
+    input[type="text"]::placeholder { color: var(--muted); }
+    input[type="text"]:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,198,255,0.08);
+    }
+    button.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: var(--font-sans);
+      font-size: 0.92rem;
+      font-weight: 600;
+      padding: 14px 28px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+    button.primary:hover { opacity: 0.9; }
+    button.primary:active { transform: scale(0.98); }
+    button.primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      margin-bottom: 32px;
+    }
+
+    /* ── Status / Error ── */
+    #status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      background: rgba(0,198,255,0.05);
+      border: 1px solid rgba(0,198,255,0.15);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 28px;
+      font-size: 0.88rem;
+      color: var(--accent);
+      font-family: var(--font-mono);
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(0,198,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #error-box {
+      display: none;
+      background: rgba(255,75,75,0.08);
+      border: 1px solid rgba(255,75,75,0.25);
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 28px;
+      color: var(--red);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    #error-box strong { display: block; margin-bottom: 4px; }
+
+    /* ── Result ── */
+    #result {
+      display: none;
+      animation: fadeUp 0.4s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .verdict-banner {
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .verdict-banner.no-warrant {
+      background: rgba(0,224,144,0.07);
+      border: 1px solid rgba(0,224,144,0.25);
+    }
+    .verdict-banner.has-warrant {
+      background: rgba(255,75,75,0.07);
+      border: 1px solid rgba(255,75,75,0.3);
+    }
+    .verdict-banner.warn-warrant {
+      background: rgba(245,197,66,0.07);
+      border: 1px solid rgba(245,197,66,0.3);
+    }
+    .verdict-icon { font-size: 2rem; flex-shrink: 0; }
+    .verdict-text h2 { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
+    .verdict-text p  { font-size: 0.85rem; opacity: 0.7; font-weight: 300; }
+    .verdict-banner.no-warrant  .verdict-text h2 { color: var(--green); }
+    .verdict-banner.has-warrant .verdict-text h2 { color: var(--red); }
+    .verdict-banner.warn-warrant .verdict-text h2 { color: var(--yellow); }
+
+    .section-title {
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .info-card .ic-label {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 5px;
+    }
+    .info-card .ic-value { font-size: 0.88rem; font-weight: 600; line-height: 1.35; }
+
+    .mov-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 28px; }
+    .mov-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 15px;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .mov-item.hw  { border-color: rgba(255,75,75,0.45);  background: rgba(255,75,75,0.05); }
+    .mov-item.hr  { border-color: rgba(245,197,66,0.4);  background: rgba(245,197,66,0.04); }
+    .mov-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; margin-top: 5px; }
+    .mov-item.hw .mov-dot { background: var(--red); }
+    .mov-item.hr .mov-dot { background: var(--yellow); }
+    .mov-name { font-size: 0.87rem; line-height: 1.4; }
+    .mov-date { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-top: 2px; }
+    .mov-tag {
+      display: inline-block; margin-left: 7px;
+      padding: 1px 7px; border-radius: 4px;
+      font-size: 10px; font-family: var(--font-mono);
+      font-weight: 600; text-transform: uppercase; vertical-align: middle;
+    }
+    .tag-red    { background: rgba(255,75,75,0.15);  color: var(--red); }
+    .tag-yellow { background: rgba(245,197,66,0.15); color: var(--yellow); }
+
+    .no-movimentos { color: var(--muted); font-size: 0.88rem; font-style: italic; padding: 12px 0; }
+
+    .raw-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 7px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .raw-toggle:hover { color: var(--text); border-color: var(--accent); }
+    #raw-json {
+      display: none;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 12px;
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      color: var(--muted);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    footer {
+      margin-top: 56px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      line-height: 1.9;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Proxy status bar -->
+  <div id="proxy-bar">
+    <div class="proxy-dot" id="proxy-dot"></div>
+    <span id="proxy-label">Proxy local: <span id="proxy-status-text">verificando...</span></span>
+    <button class="check-btn" onclick="checkProxy()">↺ Verificar</button>
+  </div>
+
+  <!-- Header -->
+  <header>
+    <div class="badge">DataJud · CNJ · BNMP</div>
+    <h1>Consulta <span>Mandado de Prisão</span></h1>
+    <p class="subtitle">Pesquise pelo número do processo e verifique a existência e validade de mandados de prisão nos registros do DataJud/CNJ.</p>
+  </header>
+
+  <!-- Tribunal -->
+  <div class="tribunal-section">
+    <span class="label">Tribunal de origem</span>
+    <select id="tribunal-select">
+      <optgroup label="Tribunais Estaduais (TJ)">
+        <option value="api_publica_tjal">TJAL — Tribunal de Justiça de Alagoas</option>
+        <option value="api_publica_tjam">TJAM — Tribunal de Justiça do Amazonas</option>
+        <option value="api_publica_tjap">TJAP — Tribunal de Justiça do Amapá</option>
+        <option value="api_publica_tjba">TJBA — Tribunal de Justiça da Bahia</option>
+        <option value="api_publica_tjce">TJCE — Tribunal de Justiça do Ceará</option>
+        <option value="api_publica_tjdft">TJDFT — Tribunal de Justiça do DF</option>
+        <option value="api_publica_tjes">TJES — Tribunal de Justiça do Espírito Santo</option>
+        <option value="api_publica_tjgo">TJGO — Tribunal de Justiça de Goiás</option>
+        <option value="api_publica_tjma">TJMA — Tribunal de Justiça do Maranhão</option>
+        <option value="api_publica_tjmg">TJMG — Tribunal de Justiça de Minas Gerais</option>
+        <option value="api_publica_tjms">TJMS — Tribunal de Justiça do Mato Grosso do Sul</option>
+        <option value="api_publica_tjmt">TJMT — Tribunal de Justiça do Mato Grosso</option>
+        <option value="api_publica_tjpa">TJPA — Tribunal de Justiça do Pará</option>
+        <option value="api_publica_tjpb">TJPB — Tribunal de Justiça da Paraíba</option>
+        <option value="api_publica_tjpe">TJPE — Tribunal de Justiça de Pernambuco</option>
+        <option value="api_publica_tjpi">TJPI — Tribunal de Justiça do Piauí</option>
+        <option value="api_publica_tjpr">TJPR — Tribunal de Justiça do Paraná</option>
+        <option value="api_publica_tjrj">TJRJ — Tribunal de Justiça do Rio de Janeiro</option>
+        <option value="api_publica_tjrn">TJRN — Tribunal de Justiça do Rio Grande do Norte</option>
+        <option value="api_publica_tjro">TJRO — Tribunal de Justiça de Rondônia</option>
+        <option value="api_publica_tjrr">TJRR — Tribunal de Justiça de Roraima</option>
+        <option value="api_publica_tjrs">TJRS — Tribunal de Justiça do Rio Grande do Sul</option>
+        <option value="api_publica_tjsc">TJSC — Tribunal de Justiça de Santa Catarina</option>
+        <option value="api_publica_tjse">TJSE — Tribunal de Justiça de Sergipe</option>
+        <option value="api_publica_tjsp">TJSP — Tribunal de Justiça de São Paulo</option>
+        <option value="api_publica_tjto">TJTO — Tribunal de Justiça do Tocantins</option>
+      </optgroup>
+      <optgroup label="Tribunais Regionais Federais (TRF)">
+        <option value="api_publica_trf1">TRF1 — 1ª Região</option>
+        <option value="api_publica_trf2">TRF2 — 2ª Região</option>
+        <option value="api_publica_trf3">TRF3 — 3ª Região</option>
+        <option value="api_publica_trf4">TRF4 — 4ª Região</option>
+        <option value="api_publica_trf5">TRF5 — 5ª Região</option>
+        <option value="api_publica_trf6">TRF6 — 6ª Região</option>
+      </optgroup>
+      <optgroup label="Tribunais Superiores">
+        <option value="api_publica_stj">STJ — Superior Tribunal de Justiça</option>
+        <option value="api_publica_stf">STF — Supremo Tribunal Federal</option>
+      </optgroup>
+      <optgroup label="Tribunais do Trabalho (TRT)">
+        <option value="api_publica_trt1">TRT1 — 1ª Região (RJ)</option>
+        <option value="api_publica_trt2">TRT2 — 2ª Região (SP)</option>
+        <option value="api_publica_trt3">TRT3 — 3ª Região (MG)</option>
+        <option value="api_publica_trt4">TRT4 — 4ª Região (RS)</option>
+        <option value="api_publica_trt5">TRT5 — 5ª Região (BA)</option>
+      </optgroup>
+    </select>
+  </div>
+
+  <!-- Search -->
+  <span class="label">Número do processo (CNJ)</span>
+  <div class="search-row">
+    <input type="text" id="processo-input"
+           placeholder="0000000-00.0000.0.00.0000"
+           maxlength="25" autocomplete="off" spellcheck="false"/>
+    <button class="primary" id="btn-search" onclick="buscar()">Consultar</button>
+  </div>
+  <p class="hint">Formato CNJ: NNNNNNN-DD.AAAA.J.TR.OOOO &nbsp;·&nbsp; Ex: 0001234-56.2023.8.02.0001</p>
+
+  <!-- Loading -->
+  <div id="status">
+    <div class="spinner"></div>
+    <span id="status-text">Consultando API DataJud...</span>
+  </div>
+
+  <!-- Error -->
+  <div id="error-box">
+    <strong id="error-title">Erro na consulta</strong>
+    <span id="error-msg"></span>
+  </div>
+
+  <!-- Result -->
+  <div id="result">
+    <div id="verdict-banner" class="verdict-banner">
+      <span class="verdict-icon" id="verdict-icon">—</span>
+      <div class="verdict-text">
+        <h2 id="verdict-title">—</h2>
+        <p id="verdict-sub">—</p>
+      </div>
+    </div>
+
+    <p class="section-title">Dados do Processo</p>
+    <div class="info-grid" id="info-grid"></div>
+
+    <p class="section-title">Movimentos Processuais <span style="color:var(--muted);font-size:10px">(relevantes primeiro)</span></p>
+    <div class="mov-list" id="mov-list"></div>
+
+    <button class="raw-toggle" onclick="toggleRaw()">{ } Ver resposta completa da API</button>
+    <pre id="raw-json"></pre>
+  </div>
+
+  <footer>
+    Fonte: <a href="https://api-publica.datajud.cnj.jus.br" target="_blank">api-publica.datajud.cnj.jus.br</a> · DataJud/CNJ<br>
+    Esta ferramenta é auxiliar — não substitui verificação oficial no <a href="https://portalbnmp.cnj.jus.br" target="_blank">Portal BNMP</a>.
+  </footer>
+</div>
+
+<script>
+  // ─── Config ───────────────────────────────────────────────────────────────
+  const PROXY = "http://localhost:3131";   // ← servidor proxy local (server.js)
+
+  const WARRANT_KEYWORDS = [
+    "mandado de prisão","mandado prisao","expedição de mandado",
+    "ordem de prisão","decreto de prisão","decretada a prisão",
+    "prisão preventiva","prisão temporária","prisão cautelar",
+    "cumprimento de mandado","reclusão","detenção","preso","presa", "mandado"
+  ];
+  const REVOKE_KEYWORDS = [
+    "revogação","revogado","revogada","alvará de soltura",
+    "habeas corpus","solto","solta","cancelamento do mandado",
+    "cancelado","cumprido","extinto","arquivado"
+  ];
+
+  // ─── Proxy health check ───────────────────────────────────────────────────
+  async function checkProxy() {
+    const dot  = document.getElementById("proxy-dot");
+    const txt  = document.getElementById("proxy-status-text");
+    dot.className = "proxy-dot";
+    txt.textContent = "verificando...";
+    try {
+      const r = await fetch(PROXY, { signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        dot.className = "proxy-dot ok";
+        txt.textContent = "online — localhost:3131 ✓";
+      } else {
+        throw new Error("status " + r.status);
+      }
+    } catch {
+      dot.className = "proxy-dot error";
+      txt.textContent = "offline — rode: node server.js";
+    }
+  }
+  checkProxy();
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+  const el = id => document.getElementById(id);
+
+  function showStatus(msg) {
+    el("status").style.display = "flex";
+    el("status-text").textContent = msg;
+  }
+  function hideStatus() { el("status").style.display = "none"; }
+
+  function showError(title, msg) {
+    el("error-box").style.display = "block";
+    el("error-title").textContent = title;
+    el("error-msg").textContent   = " " + msg;
+  }
+  function hideError() { el("error-box").style.display = "none"; }
+
+  function formatDate(str) {
+    if (!str) return "—";
+    const [y,m,d] = str.split("T")[0].split("-");
+    return `${d}/${m}/${y}`;
+  }
+
+  function hasKw(text, kws) {
+    const t = text.toLowerCase();
+    return kws.some(k => t.includes(k));
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  // ─── Input formatting ─────────────────────────────────────────────────────
+  el("processo-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") buscar();
+  });
+
+  // ─── Main search ──────────────────────────────────────────────────────────
+  async function buscar() {
+    const numero = el("processo-input").value.trim().replace(/\s/g,"");
+    if (!numero) { showError("Atenção", "Informe o número do processo."); return; }
+
+    const tribunal = el("tribunal-select").value;
+
+    hideError();
+    el("result").style.display = "none";
+    el("btn-search").disabled  = true;
+    showStatus("Consultando API DataJud CNJ via proxy local...");
+
+    try {
+      const resp = await fetch(`${PROXY}/api/${tribunal}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: { match: { "numeroProcesso": numero } }
+        })
+      });
+
+      const data = await resp.json();
+      hideStatus();
+      el("btn-search").disabled = false;
+
+      if (!resp.ok) {
+        showError("Erro da API", data?.error || `HTTP ${resp.status}`);
+        return;
+      }
+
+      const hits = data?.hits?.hits ?? [];
+      if (hits.length === 0) {
+        showError(
+          "Processo não encontrado",
+          "Nenhum registro localizado com esse número neste tribunal. Verifique o número e o tribunal selecionado."
+        );
+        return;
+      }
+
+      renderResult(hits[0]._source, data);
+
+    } catch (err) {
+      hideStatus();
+      el("btn-search").disabled = false;
+      if (err.message.includes("fetch") || err.message.includes("Failed")) {
+        showError(
+          "Proxy offline",
+          "Não foi possível conectar ao servidor proxy local. Abra um terminal na pasta do projeto e execute: node server.js"
+        );
+        checkProxy();
+      } else {
+        showError("Erro inesperado", err.message);
+      }
+    }
+  }
+
+  // ─── Render result ────────────────────────────────────────────────────────
+  function renderResult(source, rawData) {
+    const db  = source.dadosBasicos || {};
+    const movs = source.movimentos  || [];
+
+    // Classify movements
+    const wMoves = [], rMoves = [];
+    movs.forEach(m => {
+      const name = m.movimentoNacional?.descricao || m.complementoNacional || m.descricao || "";
+      if (hasKw(name, WARRANT_KEYWORDS)) wMoves.push(m);
+      else if (hasKw(name, REVOKE_KEYWORDS)) rMoves.push(m);
+    });
+
+    const hasWarrant = wMoves.length > 0;
+    let warrantActive = false;
+    if (hasWarrant) {
+      const lastW = wMoves.map(m => m.dataHora||"").sort().pop();
+      const lastR = rMoves.map(m => m.dataHora||"").sort().pop() || "0";
+      warrantActive = lastW >= lastR;
+    }
+
+    // Verdict
+    const banner = el("verdict-banner");
+    banner.className = "verdict-banner";
+    if (!hasWarrant) {
+      banner.classList.add("no-warrant");
+      el("verdict-icon").textContent  = "✅";
+      el("verdict-title").textContent = "Nenhum mandado de prisão identificado";
+      el("verdict-sub").textContent   = "Não foram encontrados movimentos relacionados a mandado de prisão neste processo.";
+    } else if (warrantActive) {
+      banner.classList.add("has-warrant");
+      el("verdict-icon").textContent  = "🚨";
+      el("verdict-title").textContent = "Mandado de Prisão — Possivelmente Vigente";
+      el("verdict-sub").textContent   = `${wMoves.length} movimento(s) com mandado de prisão detectado(s), sem revogação posterior registrada.`;
+    } else {
+      banner.classList.add("warn-warrant");
+      el("verdict-icon").textContent  = "⚠️";
+      el("verdict-title").textContent = "Mandado de Prisão — Possivelmente Revogado";
+      el("verdict-sub").textContent   = "Identificado mandado de prisão, mas há indicativo de revogação ou cumprimento posterior.";
+    }
+
+    // Info grid
+    const fields = [
+      { label: "Número",          value: db.numero || source.numeroProcesso || "—" },
+      { label: "Tribunal",        value: db.siglaTribunal  || "—" },
+      { label: "Grau",            value: db.grau           || "—" },
+      { label: "Classe",          value: db.classeProcessual?.descricao || "—" },
+      { label: "Assunto",         value: db.assuntos?.[0]?.descricao   || "—" },
+      { label: "Órgão Julgador",  value: db.orgaoJulgador?.nomeOrgao   || "—" },
+      { label: "Data Ajuizamento",value: formatDate(db.dataAjuizamento) },
+      { label: "Situação",        value: db.situacao || "—" },
+    ];
+    el("info-grid").innerHTML = fields.map(f => `
+      <div class="info-card">
+        <div class="ic-label">${f.label}</div>
+        <div class="ic-value">${escHtml(f.value)}</div>
+      </div>`).join("");
+
+    // Movements — relevant first, then rest
+    const sorted = [...movs].sort((a,b) => {
+      const score = m => {
+        const n = m.movimentoNacional?.descricao || m.complementoNacional || m.descricao || "";
+        if (hasKw(n, WARRANT_KEYWORDS)) return 0;
+        if (hasKw(n, REVOKE_KEYWORDS))  return 1;
+        return 2;
+      };
+      const ds = score(a) - score(b);
+      if (ds !== 0) return ds;
+      return (b.dataHora||"").localeCompare(a.dataHora||"");
+    }).slice(0, 40);
+
+    if (sorted.length === 0) {
+      el("mov-list").innerHTML = `<p class="no-movimentos">Nenhum movimento processual retornado pela API.</p>`;
+    } else {
+      el("mov-list").innerHTML = sorted.map(m => {
+        const name = m.movimentoNacional?.descricao || m.complementoNacional || m.descricao || "Movimento sem descrição";
+        const isW  = hasKw(name, WARRANT_KEYWORDS);
+        const isR  = !isW && hasKw(name, REVOKE_KEYWORDS);
+        const tag  = isW ? `<span class="mov-tag tag-red">Mandado</span>`
+                   : isR ? `<span class="mov-tag tag-yellow">Revogação</span>` : "";
+        return `
+          <div class="mov-item ${isW?"hw":isR?"hr":""}">
+            <div class="mov-dot"></div>
+            <div style="flex:1">
+              <div class="mov-name">${escHtml(name)}${tag}</div>
+              <div class="mov-date">${formatDate(m.dataHora)}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    el("raw-json").textContent = JSON.stringify(rawData, null, 2);
+    el("result").style.display = "block";
+  }
+
+  function toggleRaw() {
+    const r = el("raw-json");
+    r.style.display = r.style.display === "block" ? "none" : "block";
+  }
+</script>
+</body>
+</html>

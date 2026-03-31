@@ -1,0 +1,148 @@
+
+        :root {
+            --azul:   #0a448f;
+            --azul2:  #1464b5;
+            --roxo:   #6a1b9a;
+            --laranja:#e65100;
+            --verm:   #b71c1c;
+            --rosa:   #ad1457;
+            --verde:  #2e7d32;
+            --teal:   #00695c;
+            --azclr:  #1565c0;
+            --amber:  #f57f17;
+            --cinza:  #f0f2f8;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f8; color: #1a1f36; }
+
+        /* ── Loader ─────────────────────────────────────────── */
+        #loader {
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 100vh; gap: 1rem;
+            font-size: .95rem; color: #555;
+        }
+        .spinner { width: 40px; height: 40px; border: 4px solid #d0d5e8;
+            border-top-color: var(--azul); border-radius: 50%;
+            animation: spin .8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Página ─────────────────────────────────────────── */
+        #pagina { display: none; max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.25rem 4rem; }
+
+        /* ── Cabeçalho ──────────────────────────────────────── */
+        .cabecalho {
+            background: linear-gradient(135deg, #0a1f4d 0%, #1464b5 60%, #0d3a7c 100%);
+            border-radius: 12px; padding: 1.75rem 2rem; color: #fff;
+            display: flex; align-items: center; gap: 1.5rem;
+            margin-bottom: 1.25rem; flex-wrap: wrap;
+        }
+        .cab-brasao { height: 70px; opacity: .95; }
+        .cab-txt h1 { font-size: 1.2rem; font-weight: bold; letter-spacing: .06em; }
+        .cab-txt h2 { font-size: .88rem; opacity: .65; font-weight: normal; margin-top: .3rem; }
+        .cab-meta {
+            margin-left: auto; text-align: right;
+            font-size: .78rem; opacity: .7; line-height: 1.8;
+        }
+        .cab-meta strong { color: #fff; opacity: 1; font-size: .85rem; }
+
+        /* ── Aviso público ───────────────────────────────────── */
+        .aviso-publico {
+            background: #fff8e1; border: 1.5px solid #ffe082; border-radius: 8px;
+            padding: .65rem 1rem; font-size: .78rem; color: #5d4037;
+            display: flex; align-items: center; gap: .6rem; margin-bottom: 1.25rem;
+        }
+
+        /* ── KPIs ───────────────────────────────────────────── */
+        .kpi-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+            gap: .85rem; margin-bottom: 1.25rem;
+        }
+        .kpi {
+            background: #fff; border-radius: 10px; padding: .9rem 1rem;
+            border-top: 4px solid var(--azul);
+            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+            display: flex; flex-direction: column; gap: .2rem;
+        }
+        .kpi.cvli  { border-top-color: var(--roxo); }
+        .kpi.mvi   { border-top-color: var(--verm); }
+        .kpi.cvp   { border-top-color: var(--laranja); }
+        .kpi.vd    { border-top-color: var(--rosa); }
+        .kpi.tco   { border-top-color: var(--azclr); }
+        .kpi.arma  { border-top-color: var(--verde); }
+        .kpi.droga { border-top-color: var(--amber); }
+        .kpi.soss  { border-top-color: var(--teal); }
+        .kpi.visita{ border-top-color: #00796b; }
+
+        .kpi-lbl  { font-size: .68rem; font-weight: bold; color: #6b7594;
+            text-transform: uppercase; letter-spacing: .05em; }
+        .kpi-val  { font-size: 2rem; font-weight: bold; color: #1a1f36; line-height: 1.1; }
+        .kpi-sub  { font-size: .7rem; color: #9ea3b5; }
+        .kpi-mes  { font-size: .75rem; font-weight: bold; margin-top: .15rem; }
+        .kpi-mes-lbl { font-size: .65rem; color: #9ea3b5; }
+        .delta-up   { color: #b71c1c; }   /* alta = ruim para crimes */
+        .delta-down { color: #2e7d32; }   /* queda = bom para crimes */
+        .delta-neu  { color: #1565c0; }   /* neutro para materiais */
+        .delta-same { color: #9ea3b5; }
+
+        /* ── Seção ──────────────────────────────────────────── */
+        .secao-titulo {
+            font-size: .8rem; font-weight: bold; color: var(--azul);
+            text-transform: uppercase; letter-spacing: .07em;
+            border-bottom: 2px solid #d0d5e8; padding-bottom: .35rem;
+            margin: 1.5rem 0 .9rem;
+        }
+
+        /* ── Grid de gráficos ───────────────────────────────── */
+        .charts-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem; margin-bottom: 1rem; }
+        .chart-card {
+            background: #fff; border-radius: 10px; padding: 1rem 1.15rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+        .chart-card.full { grid-column: 1/-1; }
+        .chart-title { font-size: .82rem; font-weight: bold; color: #1a1f36; margin-bottom: .2rem; }
+        .chart-sub   { font-size: .7rem; color: #9ea3b5; margin-bottom: .7rem; }
+        .chart-wrap  { position: relative; height: 230px; }
+        .chart-wrap.tall { height: 300px; }
+
+        /* ── Tabela ─────────────────────────────────────────── */
+        .tabela-scroll { overflow-x: auto; margin-top: .5rem; }
+        table { width: 100%; border-collapse: collapse; font-size: .77rem; }
+        th { background: var(--azul); color: #fff; padding: 7px 10px;
+             text-align: left; white-space: nowrap; font-weight: bold; }
+        td { padding: 6px 10px; border-bottom: 1px solid #edf0f8; vertical-align: middle; }
+        tr:nth-child(even) td { background: #f8f9ff; }
+        tr:hover td { background: #f0f4ff; }
+
+        .badge { display:inline-block; padding:2px 8px; border-radius:10px;
+                 font-size:.68rem; font-weight:bold; white-space:nowrap; }
+        .b-cvli  { background:#ede7f6; color:#4a148c; }
+        .b-cvp   { background:#fff3e0; color:#e65100; }
+        .b-mvi   { background:#ffebee; color:#b71c1c; }
+        .b-out   { background:#f0f2f8; color:#374263; }
+        .obito-s { background:#c62828; color:#fff; padding:2px 7px; border-radius:4px;
+                   font-size:.68rem; font-weight:bold; }
+        .obito-n { background:#e0e0e0; color:#666; padding:2px 7px; border-radius:4px;
+                   font-size:.68rem; }
+
+        /* ── Rodapé ─────────────────────────────────────────── */
+        .rodape {
+            margin-top: 2.5rem; border-top: 2px solid #d0d5e8; padding-top: 1rem;
+            font-size: .73rem; color: #9ea3b5; display: flex;
+            justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+        }
+
+        /* ── Print ──────────────────────────────────────────── */
+        @media print {
+            body { background: #fff; }
+            .aviso-publico { display: none; }
+            #pagina { padding: 0; }
+            .chart-wrap { height: 190px; }
+            .chart-wrap.tall { height: 250px; }
+        }
+
+        @media (max-width: 680px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .kpi-grid { grid-template-columns: repeat(2,1fr); }
+            .cab-meta { display: none; }
+        }

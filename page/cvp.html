@@ -38,6 +38,11 @@
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
             </a>
+            <a href="../page/dashboard-p3.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
+                <p>Dashboard</p>
+            </a><!--termina dashboard-->s
             <a href="../page/materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
@@ -79,22 +84,120 @@
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
                 </div>
 
-                <div class="filtros-container">
-                    <label for="filtro-tipo">Filtrar por:</label>
-                    <select id="filtro-tipo">
-                        <option value="">Selecione o campo</option>
-                        <option value="N° DO BOU">N° BOU</option>
-                        <option value="DATA">Data</option>
-                        <option value="CATEGORIA">Categoria</option>
-                        <option value="ESAJ">ESAJ</option>
-                        <option value="STATUS">Status</option>
-                        <option value="LOCAL">Local</option>
-                    </select>
+                <!-- ══ ÁREA DE FILTROS ══════════════════════════════ -->
+                <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;font-family:Arial,sans-serif;">
 
-                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+                    <!-- Busca geral -->
+                    <div style="display:flex;align-items:center;gap:.6rem;">
+                        <div style="position:relative;flex:1;">
+                            <input type="text" id="busca-geral"
+                                placeholder="🔍 Busca geral — digite qualquer coisa (boletim, bairro, solução...)"
+                                style="width:100%;padding:10px 14px;border:1.5px solid #d0d5e8;border-radius:8px;
+                                font-size:.88rem;box-sizing:border-box;transition:border-color .2s;"
+                                oninput="aplicarFiltros()">
+                        </div>
+                        <button id="btn-limpar-tudo" onclick="limparTodosFiltros()"
+                            style="padding:9px 16px;background:#f5f5f5;border:1.5px solid #d0d5e8;
+                            border-radius:8px;cursor:pointer;font-size:.83rem;white-space:nowrap;color:#555;">
+                            ✕ Limpar filtros
+                        </button>
+                    </div>
 
-                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
-                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                    <!-- Filtros cruzados -->
+                    <details id="painel-cruzado" style="border:1.5px solid #d0d5e8;border-radius:8px;overflow:hidden;">
+                        <summary style="padding:.6rem 1rem;cursor:pointer;font-size:.83rem;font-weight:bold;
+                            color:#1a237e;background:#f8f9ff;user-select:none;list-style:none;
+                            display:flex;align-items:center;justify-content:space-between;">
+                            <span>⚡ Filtros avançados (cruzamento de dados)</span>
+                            <span id="badge-filtros-ativos" style="display:none;background:#1a237e;color:#fff;
+                                font-size:.72rem;padding:2px 8px;border-radius:10px;margin-left:.5rem;"></span>
+                            <span style="opacity:.5;font-size:.8rem;">▼</span>
+                        </summary>
+                        <div style="padding:.9rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;background:#fff;">
+
+                            <!-- Período: data início -->
+                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">
+                                    Data início
+                                </label>
+                                <input type="date" id="filtro-data-ini"
+                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
+                                    onchange="aplicarFiltros()">
+                            </div>
+
+                            <!-- Período: data fim -->
+                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">
+                                    Data fim
+                                </label>
+                                <input type="date" id="filtro-data-fim"
+                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
+                                    onchange="aplicarFiltros()">
+                            </div>
+
+                            <!-- Cidade -->
+                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:160px;">
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">
+                                    Cidade
+                                </label>
+                                <select id="filtro-cidade"
+                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
+                                    onchange="aplicarFiltros()">
+                                    <option value="">Todas</option>
+                                    <option>Belém</option>
+                                    <option>Cacimbinhas</option>
+                                    <option>Estrela de Alagoas</option>
+                                    <option>Igaci</option>
+                                    <option>Mar Vermelho</option>
+                                    <option>Maribondo</option>
+                                    <option>Paulo Jacinto</option>
+                                    <option>Palmeira dos Índios</option>
+                                    <option>Quebrangulo</option>
+                                    <option>Tanque D'Arca</option>
+                                </select>
+                            </div>
+
+                            <!-- Tipificação -->
+                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:200px;">
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">
+                                    Tipificação
+                                </label>
+                                <select id="filtro-tipificacao"
+                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
+                                    onchange="aplicarFiltros()">
+                                    <option value="">Todas</option>
+                                    <option>FURTO</option>
+                                    <option>FURTO QUALIFICADO</option>
+                                    <option>TENTATIVA DE FURTO</option>
+                                    <option>ROUBO</option>
+                                    <option>TENTATIVA DE ROUBO</option>
+                                    <option>LATROCÍNIO</option>
+                                    <option>EXTORÇÃO MEDIANTE SEQUESTRO</option>
+                                    <option>DANO</option>
+                                    <option>DANO QUALIFICADO</option>
+                                    <option>APROPRIAÇÃO INDÉBITA</option>
+                                    <option>ESTELIONATO</option>
+                                </select>
+                            </div>
+
+                            <!-- Solução -->
+                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:160px;">
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">
+                                    Solução
+                                </label>
+                                <input type="text" id="filtro-solucao"
+                                    placeholder="Ex.: preso em flagrante"
+                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
+                                    oninput="aplicarFiltros()">
+                            </div>
+
+                        </div>
+                        <!-- Rodapé do painel: contador de resultados -->
+                        <div style="padding:.5rem 1rem;background:#f8f9ff;border-top:1px solid #e8ecf5;
+                            font-size:.78rem;color:#5a6382;" id="contador-filtro">
+                            Mostrando todos os registros
+                        </div>
+                    </details>
                 </div>
                 <div class="container-tabela">
                     <table id="tabela-materiais">
@@ -311,44 +414,152 @@
     document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
     overlay.addEventListener('click', fecharSidebar);
 
-    // --- CARREGAR DADOS (FILTRO CVP + ORDENAÇÃO) ---
+    // ═══════════════════════════════════════════════════════════
+    // DADOS EM MEMÓRIA — carregados uma vez, filtrados localmente
+    // ═══════════════════════════════════════════════════════════
+    let _todosDados = []; // cache completo dos registros CVP
+
+    // --- CARREGAR DADOS DO FIREBASE ---
     async function carregarDados() {
         try {
             const res = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
             const data = await res.json();
 
-            const tbody = document.querySelector('#tabela-materiais tbody');
-            tbody.innerHTML = "";
-
             if (!data) {
+                const tbody = document.querySelector('#tabela-materiais tbody');
                 tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;">Nenhum registro de CVP encontrado.</td></tr>`;
                 document.getElementById('mensagem-carregamento').style.display = 'none';
                 return;
             }
 
-            const termosCVP = ["ROUBO", "FURTO", "TENTATIVA DE ROUBO", "TENTATIVA DE FURTO", "ESTELIONATO", "DANO", "LATROCINIO"];
+            const termosCVP = ["ROUBO", "FURTO", "TENTATIVA DE ROUBO", "TENTATIVA DE FURTO",
+                               "ESTELIONATO", "DANO", "LATROCINIO", "EXTORSAO", "APROPRIACAO"];
 
-            // 1. Converter objeto em Array e Filtrar por Tipificação
-            let resultados = Object.keys(data).map(id => ({
-                id: id,
-                ...data[id]
-            })).filter(doc => {
-                const campo = doc.TIPIFICAÇÃO || doc.TIPIFICACAO || "";
-                const textoNormalizado = normalizarTexto(campo);
-                return termosCVP.some(termo => textoNormalizado.includes(termo));
-            });
+            // Converte em array, filtra por tipo CVP e ordena (mais recente primeiro)
+            _todosDados = Object.keys(data).map(id => ({ id, ...data[id] }))
+                .filter(doc => {
+                    const campo = normalizarTexto(doc.TIPIFICAÇÃO || doc.TIPIFICACAO || "");
+                    return termosCVP.some(t => campo.includes(t));
+                })
+                .sort((a, b) => {
+                    return paraDataOrdenavel(b.data || b.DATA, b.HORA)
+                         - paraDataOrdenavel(a.data || a.DATA, a.HORA);
+                });
 
-            // 2. Ordenar (Mais recente primeiro - assumindo formato ISO ou similar no banco)
-            resultados.sort((a, b) => {
-                const dataA = new Date((a.data || a.DATA) + 'T' + (a.HORA || '00:00'));
-                const dataB = new Date((b.data || b.DATA) + 'T' + (b.HORA || '00:00'));
-                return dataB - dataA;
-            });
+            document.getElementById('mensagem-carregamento').style.display = 'none';
 
-            // 3. Renderizar Tabela
-            resultados.forEach(doc => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
+            // Renderiza com filtros zerados
+            aplicarFiltros();
+
+        } catch (err) {
+            console.error("Erro ao carregar CVP do RTDB:", err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // FILTRO DINÂMICO — opera sobre _todosDados em memória
+    // ═══════════════════════════════════════════════════════════
+    function aplicarFiltros() {
+        const buscaGeral   = normalizarTexto(document.getElementById('busca-geral').value);
+        const dataIni      = document.getElementById('filtro-data-ini').value;   // YYYY-MM-DD
+        const dataFim      = document.getElementById('filtro-data-fim').value;
+        const cidade       = normalizarTexto(document.getElementById('filtro-cidade').value);
+        const tipificacao  = normalizarTexto(document.getElementById('filtro-tipificacao').value);
+        const solucao      = normalizarTexto(document.getElementById('filtro-solucao').value);
+
+        // Converte data do banco (DD/MM/AAAA ou AAAA-MM-DD) para YYYY-MM-DD para comparar
+        const toISO = str => {
+            if (!str) return '';
+            if (str.includes('/')) {
+                const [d, m, a] = str.split('/');
+                return `${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+            }
+            return str.substring(0, 10); // já ISO
+        };
+
+        let resultado = _todosDados.filter(doc => {
+            const docData = toISO(doc.data || doc.DATA || '');
+
+            // ── Filtro geral: busca em todos os campos do registro ──
+            if (buscaGeral) {
+                const tudo = normalizarTexto(Object.values(doc).join(' '));
+                if (!tudo.includes(buscaGeral)) return false;
+            }
+
+            // ── Período ──
+            if (dataIni && docData && docData < dataIni) return false;
+            if (dataFim && docData && docData > dataFim) return false;
+
+            // ── Cidade ──
+            if (cidade) {
+                const docCidade = normalizarTexto(doc.CIDADE || '');
+                if (!docCidade.includes(cidade)) return false;
+            }
+
+            // ── Tipificação ──
+            if (tipificacao) {
+                const docTip = normalizarTexto(doc.TIPIFICAÇÃO || doc.TIPIFICACAO || '');
+                if (!docTip.includes(tipificacao)) return false;
+            }
+
+            // ── Solução ──
+            if (solucao) {
+                const docSol = normalizarTexto(doc.SOLUÇÃO || doc.SOLUCAO || '');
+                if (!docSol.includes(solucao)) return false;
+            }
+
+            return true;
+        });
+
+        renderizarTabela(resultado);
+        atualizarBadge(resultado.length);
+    }
+
+    // Limpa todos os filtros e mostra tudo
+    function limparTodosFiltros() {
+        document.getElementById('busca-geral').value       = '';
+        document.getElementById('filtro-data-ini').value  = '';
+        document.getElementById('filtro-data-fim').value  = '';
+        document.getElementById('filtro-cidade').value    = '';
+        document.getElementById('filtro-tipificacao').value = '';
+        document.getElementById('filtro-solucao').value   = '';
+        aplicarFiltros();
+    }
+
+    // Atualiza badge e contador de resultados
+    function atualizarBadge(total) {
+        const badge    = document.getElementById('badge-filtros-ativos');
+        const contador = document.getElementById('contador-filtro');
+        const totalGeral = _todosDados.length;
+
+        if (total < totalGeral) {
+            badge.textContent = `${total} de ${totalGeral}`;
+            badge.style.display = 'inline-block';
+            contador.textContent = `Mostrando ${total} de ${totalGeral} registros`;
+            contador.style.color = '#e65100';
+        } else {
+            badge.style.display = 'none';
+            contador.textContent = `Mostrando todos os ${totalGeral} registros`;
+            contador.style.color = '#5a6382';
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // RENDERIZAR TABELA com os dados filtrados
+    // ═══════════════════════════════════════════════════════════
+    function renderizarTabela(lista) {
+        const tbody = document.querySelector('#tabela-materiais tbody');
+        tbody.innerHTML = "";
+
+        if (!lista.length) {
+            tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;padding:20px;color:#999;">
+                Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
+            return;
+        }
+
+        lista.forEach(doc => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
                 <td>${doc.NUMEROOCORRENCIA || doc.BOLETIM || ""}</td>
                 <td>${doc.data || doc.DATA || ""}</td>
                 <td>${doc.HORA || ""}</td>
@@ -360,19 +571,13 @@
                 <td>${doc.PONTO_REF || ""}</td>
                 <td>${doc.LATITUDE || ""}</td>
                 <td>${doc.LONGITUDE || ""}</td>
-                <td style="font-weight:bold; color:blue;">${doc.TIPIFICAÇÃO || doc.TIPIFICACAO || ""}</td>
+                <td style="font-weight:bold;color:blue;">${doc.TIPIFICAÇÃO || doc.TIPIFICACAO || ""}</td>
                 <td>${doc.ESTABELECIMENTO || ""}</td>
                 <td>${doc.SOLUÇÃO || doc.SOLUCAO || ""}</td>
                 <td><button class="btn-editar" onclick='preencherParaEditar(${JSON.stringify(doc)})'>EDITAR</button></td>
             `;
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('mensagem-carregamento').style.display = 'none';
-
-        } catch (err) {
-            console.error("Erro ao carregar CVP do RTDB:", err);
-        }
+            tbody.appendChild(tr);
+        });
     }
 
     // --- FUNÇÃO EDITAR (PREENCHER SIDEBAR) ---

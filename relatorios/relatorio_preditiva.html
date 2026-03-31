@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório — Análise Preditiva P3</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f4f6fb; color: #1a1f36; }
+
+        #loader { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; font-size:1rem; color:#555; gap:.75rem; }
+
+        .relatorio { max-width: 1100px; margin: 0 auto; padding: 32px 24px 60px; }
+
+        /* Capa */
+        .capa { background: linear-gradient(135deg,#0a1f4d 0%,#1a3a6e 60%,#0d2a5c 100%); border-radius:12px; padding:2.5rem 2rem; color:#fff; margin-bottom:1.5rem; }
+        .capa-header { display:flex; align-items:center; gap:1.25rem; margin-bottom:1.5rem; }
+        .capa-header img { height:64px; }
+        .capa-org h1 { font-size:1.15rem; font-weight:bold; letter-spacing:.05em; }
+        .capa-org h2 { font-size:.88rem; opacity:.7; margin-top:.3rem; font-weight:normal; }
+        .capa-titulo { border-top:1px solid rgba(255,255,255,.25); padding-top:1.25rem; margin-top:1rem; }
+        .capa-titulo h3 { font-size:1.4rem; font-weight:bold; letter-spacing:.08em; }
+        .capa-titulo p { font-size:.85rem; opacity:.65; margin-top:.4rem; }
+        .capa-meta { display:flex; flex-wrap:wrap; gap:.6rem 1.5rem; margin-top:1.25rem; font-size:.82rem; opacity:.75; }
+        .capa-meta span { display:flex; align-items:center; gap:.4rem; }
+
+        /* Botões */
+        .acoes-impressao { display:flex; gap:.75rem; justify-content:flex-end; margin-bottom:1.5rem; flex-wrap:wrap; }
+        .btn-imprimir { padding:10px 22px; background:#0a448f; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:.88rem; font-weight:bold; display:flex; align-items:center; gap:8px; }
+        .btn-fechar   { padding:10px 22px; background:#e8ecf5; color:#374263; border:none; border-radius:8px; cursor:pointer; font-size:.88rem; font-weight:bold; }
+
+        /* Seção */
+        .secao { background:#fff; border-radius:10px; padding:1.75rem; margin-bottom:1.5rem; box-shadow:0 2px 8px rgba(0,0,0,.06); page-break-inside:avoid; }
+        .secao-titulo { display:flex; align-items:flex-start; gap:1rem; margin-bottom:1.25rem; padding-bottom:.9rem; border-bottom:2px solid #e8ecf5; }
+        .secao-numero { width:36px; height:36px; border-radius:50%; background:#0a448f; color:#fff; display:flex; align-items:center; justify-content:center; font-size:.95rem; font-weight:bold; flex-shrink:0; }
+        .secao-titulo h2 { font-size:1rem; font-weight:bold; color:#0a1f4d; }
+        .secao-titulo p  { font-size:.78rem; color:#9ea3b5; margin-top:.2rem; }
+
+        /* KPIs */
+        .kpi-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:.85rem; margin-bottom:1rem; }
+        .kpi { background:#f8f9ff; border-radius:8px; padding:.9rem 1rem; border-top:3px solid #0a448f; text-align:center; }
+        .kpi.cvp  { border-top-color:#e65100; }
+        .kpi.cvli { border-top-color:#6a1b9a; }
+        .kpi.mvi  { border-top-color:#b71c1c; }
+        .kpi-valor { font-size:2rem; font-weight:bold; color:#1a1f36; line-height:1.1; }
+        .kpi-pct   { font-size:.72rem; color:#9ea3b5; margin:.2rem 0; }
+        .kpi-label { font-size:.72rem; font-weight:bold; color:#6b7594; text-transform:uppercase; letter-spacing:.05em; }
+
+        /* Gráficos */
+        .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem; }
+        .chart-row.single { grid-template-columns:1fr; }
+        .chart-row.tri    { grid-template-columns:1fr 1fr 1fr; }
+        .chart-box { background:#f8f9ff; border-radius:8px; padding:1rem 1.1rem; }
+        .chart-box-title { font-size:.82rem; font-weight:bold; color:#1a1f36; margin-bottom:.2rem; }
+        .chart-box-desc  { font-size:.72rem; color:#9ea3b5; margin-bottom:.75rem; }
+        .chart-wrapper      { position:relative; height:220px; }
+        .chart-wrapper.tall { height:300px; }
+        .chart-wrapper.sm   { height:160px; }
+
+        /* Heatmap de horas */
+        .hora-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-top:.5rem; }
+        .hora-cel  { aspect-ratio:1; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:.6rem; font-weight:bold; }
+
+        /* Previsão */
+        .prev-box { background:linear-gradient(135deg,#0a1f4d,#1a3a6e); border-radius:8px; padding:1.1rem; color:#fff; }
+        .prev-box h4 { font-size:.72rem; text-transform:uppercase; letter-spacing:.08em; opacity:.6; margin-bottom:.75rem; }
+        .prev-row { display:flex; gap:1rem; }
+        .prev-item { flex:1; }
+        .prev-val { font-size:2rem; font-weight:bold; line-height:1; }
+        .prev-lbl { font-size:.7rem; opacity:.6; margin-top:.2rem; }
+        .prev-item.cvp  .prev-val { color:#ff7043; }
+        .prev-item.cvli .prev-val { color:#ce93d8; }
+        .prev-item.mvi  .prev-val { color:#ef5350; }
+        .prev-nota { font-size:.67rem; opacity:.45; margin-top:.85rem; line-height:1.5; }
+
+        /* Tabela hotspot */
+        .tabela-rel { width:100%; border-collapse:collapse; font-size:.78rem; margin-top:.5rem; }
+        .tabela-rel th { background:#0a448f; color:#fff; font-weight:bold; padding:8px 10px; text-align:left; white-space:nowrap; }
+        .tabela-rel td { padding:7px 10px; border-bottom:1px solid #edf0f8; vertical-align:middle; }
+        .tabela-rel tr:nth-child(even) td { background:#f8f9ff; }
+        .badge-risco { display:inline-block; padding:2px 8px; border-radius:10px; font-size:.7rem; font-weight:bold; }
+        .risco-alto   { background:#ffebee; color:#b71c1c; }
+        .risco-medio  { background:#fff8e1; color:#f57f17; }
+        .risco-baixo  { background:#e8f5e9; color:#2e7d32; }
+
+        /* Insights */
+        .comentario { margin-top:.9rem; display:flex; flex-direction:column; gap:.55rem; }
+        .insight { display:flex; align-items:flex-start; gap:.7rem; background:#f0f4ff; border-left:3px solid #0a448f; border-radius:6px; padding:.7rem .9rem; font-size:.83rem; line-height:1.55; color:#374263; }
+        .insight i { color:#0a448f; margin-top:2px; flex-shrink:0; }
+        .insight.alerta { background:#fff3e0; border-left-color:#e65100; }
+        .insight.alerta i { color:#e65100; }
+        .insight.perigo { background:#ffebee; border-left-color:#b71c1c; }
+        .insight.perigo i { color:#b71c1c; }
+        .insight.ok     { background:#e8f5e9; border-left-color:#2e7d32; }
+        .insight.ok i   { color:#2e7d32; }
+
+        .rodape { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:.5rem; border-top:2px solid #e8ecf5; margin-top:2rem; padding-top:1rem; font-size:.75rem; color:#9ea3b5; line-height:1.6; }
+
+        @media print {
+            body { background:#fff; }
+            .acoes-impressao { display:none; }
+            .secao { box-shadow:none; border:1px solid #e8ecf5; page-break-inside:avoid; }
+            .chart-wrapper { height:180px; }
+            .chart-wrapper.tall { height:240px; }
+        }
+        @media (max-width:680px) {
+            .chart-row { grid-template-columns:1fr; }
+            .chart-row.tri { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loader">
+    <i class="fas fa-spinner fa-spin" style="font-size:2rem;color:#0a448f;"></i>
+    Gerando relatório analítico preditivo…
+</div>
+
+<div class="relatorio" id="relatorio" style="display:none;">
+
+    <!-- CAPA -->
+    <div class="capa">
+        <div class="capa-header">
+            <img src="../img/brasao.png" alt="Brasão 10º BPM">
+            <div class="capa-org">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS</h2>
+            </div>
+        </div>
+        <div class="capa-titulo">
+            <h3>RELATÓRIO DE ANÁLISE PREDITIVA</h3>
+            <p>Previsões, tendências, hotspots e distribuição temporal de CVLI · CVP · MVI</p>
+        </div>
+        <div class="capa-meta">
+            <span id="meta-data"><i class="fas fa-calendar"></i> —</span>
+            <span id="meta-operador"><i class="fas fa-user"></i> —</span>
+            <span id="meta-periodo"><i class="fas fa-chart-line"></i> Últimos 12 meses</span>
+        </div>
+    </div>
+
+    <div class="acoes-impressao">
+        <button class="btn-fechar" onclick="window.close()"><i class="fas fa-times"></i> Fechar</button>
+        <button class="btn-imprimir" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>
+    </div>
+
+    <!-- SEÇÃO 1 — KPIs + ALERTAS -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">1</div>
+            <div>
+                <h2>Resumo Preditivo — Indicadores e Alertas</h2>
+                <p>Totais, médias mensais e alertas de tendência gerados pelo modelo</p>
+            </div>
+        </div>
+        <div class="kpi-grid" id="kpi-grid"></div>
+        <div id="alertas-rel" style="margin-top:1rem;display:flex;flex-direction:column;gap:.5rem;"></div>
+    </div>
+
+    <!-- SEÇÃO 2 — PREVISÕES -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">2</div>
+            <div>
+                <h2>Previsões — Próximo Mês e Mês Atual</h2>
+                <p>Modelo estatístico: média ponderada (60%) + regressão linear (40%) sobre os últimos 3 meses</p>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="prev-box">
+                <h4>📈 Previsão — próximo mês (<span id="prev-prox-mes">…</span>)</h4>
+                <div class="prev-row">
+                    <div class="prev-item cvp"><div class="prev-val" id="p-cvp">--</div><div class="prev-lbl">CVP estimado</div></div>
+                    <div class="prev-item cvli"><div class="prev-val" id="p-cvli">--</div><div class="prev-lbl">CVLI estimado</div></div>
+                    <div class="prev-item mvi"><div class="prev-val" id="p-mvi">--</div><div class="prev-lbl">MVI estimado</div></div>
+                </div>
+                <div class="prev-nota">Média ponderada (pesos 1·2·3) + tendência linear. Resultado mais provável, não garantido.</div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-bullseye"></i> Previsão vs Real — Mês Atual</div>
+                <div class="chart-box-desc">Estimativa calculada sobre os 3 meses anteriores comparada com o real até hoje</div>
+                <div id="prev-real-grid" style="display:flex;flex-direction:column;gap:.5rem;margin-top:.5rem;"></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-previsao"></div>
+    </div>
+
+    <!-- SEÇÃO 3 — SÉRIE TEMPORAL -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">3</div>
+            <div>
+                <h2>Série Temporal — Evolução Mensal</h2>
+                <p>CVLI · CVP · MVI nos últimos 12 meses com análise de tendência</p>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-chart-line" style="color:#0a448f"></i> Evolução Mensal Comparativa</div>
+                <div class="chart-box-desc">Tendências dos três indicadores — clique nos pontos para ver detalhes</div>
+                <div class="chart-wrapper tall"><canvas id="r-temporal"></canvas></div>
+            </div>
+        </div>
+        <div class="chart-row">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull" style="color:#6a1b9a"></i> CVLI — Mensal</div>
+                <div class="chart-box-desc">Evolução individual do CVLI</div>
+                <div class="chart-wrapper"><canvas id="r-cvli-mes"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-mask" style="color:#e65100"></i> CVP — Mensal</div>
+                <div class="chart-box-desc">Evolução individual do CVP</div>
+                <div class="chart-wrapper"><canvas id="r-cvp-mes"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-temporal"></div>
+    </div>
+
+    <!-- SEÇÃO 4 — TIPIFICAÇÕES -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">4</div>
+            <div>
+                <h2>Tipificações por Indicador</h2>
+                <p>Distribuição dos tipos de crime mais frequentes em CVLI, CVP e MVI</p>
+            </div>
+        </div>
+        <div class="chart-row tri">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull" style="color:#6a1b9a"></i> Tipificações CVLI</div>
+                <div class="chart-box-desc">Top 8 tipos de CVLI</div>
+                <div class="chart-wrapper"><canvas id="r-tip-cvli"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-mask" style="color:#e65100"></i> Tipificações CVP</div>
+                <div class="chart-box-desc">Top 8 tipos de CVP</div>
+                <div class="chart-wrapper"><canvas id="r-tip-cvp"></canvas></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull-crossbones" style="color:#b71c1c"></i> Tipificações MVI</div>
+                <div class="chart-box-desc">Top 8 tipos de MVI</div>
+                <div class="chart-wrapper"><canvas id="r-tip-mvi"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-tipificacoes"></div>
+    </div>
+
+    <!-- SEÇÃO 5 — HOTSPOTS POR CIDADE/BAIRRO -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">5</div>
+            <div>
+                <h2>Hotspots — Cidades e Bairros de Maior Risco</h2>
+                <p>Localidades com maior concentração de ocorrências por indicador</p>
+            </div>
+        </div>
+        <div class="chart-row tri">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull" style="color:#6a1b9a"></i> CVLI — Top Localidades</div>
+                <table class="tabela-rel">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-hotspot-cvli"></tbody>
+                </table>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-mask" style="color:#e65100"></i> CVP — Top Localidades</div>
+                <table class="tabela-rel">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-hotspot-cvp"></tbody>
+                </table>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-skull-crossbones" style="color:#b71c1c"></i> MVI — Top Localidades</div>
+                <table class="tabela-rel">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Ocorr.</th><th>Risco</th></tr></thead>
+                    <tbody id="tbody-hotspot-mvi"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-hotspots"></div>
+    </div>
+
+    <!-- SEÇÃO 6 — HEATMAPS DE HORÁRIO -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">6</div>
+            <div>
+                <h2>Concentração por Horário — CVP · CVLI · MVI</h2>
+                <p>Faixas horárias com maior incidência de cada indicador</p>
+            </div>
+        </div>
+        <div class="chart-row tri">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-clock" style="color:#e65100"></i> CVP por Hora</div>
+                <div class="hora-grid" id="r-horas-cvp"></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-clock" style="color:#6a1b9a"></i> CVLI por Hora</div>
+                <div class="hora-grid" id="r-horas-cvli"></div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-clock" style="color:#b71c1c"></i> MVI por Hora</div>
+                <div class="hora-grid" id="r-horas-mvi"></div>
+            </div>
+        </div>
+        <div style="font-size:.68rem;color:#9ea3b5;margin-top:.4rem;">Branco = zero · cor escura = alta concentração</div>
+        <div class="comentario" id="comentario-horas"></div>
+    </div>
+
+    <!-- SEÇÃO 7 — DIA DA SEMANA -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">7</div>
+            <div>
+                <h2>Distribuição por Dia da Semana</h2>
+                <p>CVP · CVLI · MVI — padrão semanal de ocorrências</p>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-calendar-week"></i> Ocorrências por Dia da Semana</div>
+                <div class="chart-box-desc">Concentração semanal dos três indicadores — identifica padrões de comportamento criminal</div>
+                <div class="chart-wrapper"><canvas id="r-diasemana"></canvas></div>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-diasemana"></div>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="rodape">
+        <div>
+            <strong>Análise Preditiva P3</strong> — 10º Batalhão de Polícia Militar<br>
+            Seção de Planejamento, Instrução e Estatística — P3/10ºBPM
+        </div>
+        <div id="rodape-meta" style="text-align:right;"></div>
+    </div>
+</div>
+
+<script src="../js/relatorio_preditiva.js"></script>
+</body>
+</html>
