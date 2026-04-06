@@ -6,7 +6,7 @@ const NODE_META = '_meta_tco';
 // URL do Apps Script — proxy para o DataJud (evita bloqueio CORS)
 const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
 
-let dadosTCO = [];
+var dadosTCO = [];  // var garante acesso via window.dadosTCO de outros scripts
 
 function atualizarRelogio() {
     const agora = new Date();
@@ -81,11 +81,20 @@ async function loadTCO() {
             return item;
         }).filter(item => item !== null);
 
-        dadosTCO.sort((a, b) => {
-            const tempoA = a.DATA ? new Date(a.DATA).getTime() : 0;
-            const tempoB = b.DATA ? new Date(b.DATA).getTime() : 0;
-            return tempoB - tempoA;
-        });
+        // Converte DATA para timestamp — suporta AAAA-MM-DD e DD/MM/AAAA
+        const parseTCODate = str => {
+            if (!str) return 0;
+            str = str.toString().trim();
+            // Formato DD/MM/AAAA
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+                const [d, m, a] = str.split('/');
+                return new Date(`${a}-${m}-${d}T00:00:00Z`).getTime() || 0;
+            }
+            // Formato ISO AAAA-MM-DD (com ou sem hora)
+            const t = new Date(str).getTime();
+            return isNaN(t) ? 0 : t;
+        };
+        dadosTCO.sort((a, b) => parseTCODate(b.DATA) - parseTCODate(a.DATA));
 
         renderTable(dadosTCO);
         atualizarContadores(dadosTCO);

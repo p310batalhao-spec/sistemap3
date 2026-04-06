@@ -19,47 +19,53 @@
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
             </div>
         </div>
+
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info"></div>
+            <div class="exibirusuario" id="user-info">
+            </div>
         </div>
     </header>
 
     <section class="pagecomplete">
         <nav class="navegacao">
             <a href="../index.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
+                    alt="home--v1" />
                 <p>Home</p>
-            </a>
-            <a href="../page/dashboard-p3.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard"/>
+            </a><!--termina home-->
+            <a href="../page/dashboard.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
+                    alt="performance-macbook" />
                 <p>Dashboard</p>
-            </a>
+            </a><!--termina dashboard-->
             <a href="../page/cadastroocorrencias.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a>
+            </a><!--termina cadastroocorrencias-->
             <a href="../page/materiais.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a>
+            </a><!--termina materiais apreendidos-->
             <a href="../page/eventos.html">
-                <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos"/>
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
                 <p>Eventos</p>
-            </a>
+            </a><!--termina eventos-->
             <a href="../page/instrucoes.html">
-                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução"/>
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
                 <p>Instrução</p>
             </a>
             <a href="../page/solucoesia.html">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a>
+            </a><!--termina solucoes ia-->
             <button id="btn-logout" class="btn-logout">
-                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button>
-        </nav>
+            </button><!--termina sair-->
+        </nav><!--termina navegacao-->
 
         <main>
             <div class="saudacao">
@@ -71,92 +77,107 @@
                 <div class="cardnumero" id="totalanoanterior">
                     <h3>Total de TCOs - Ano Anterior</h3>
                     <p id="total-ano-anterior">--</p>
-                </div>
+                </div> <!--totalanoanterior-->
                 <div class="cardnumero" id="totaldoano">
                     <h3>Total de TCOs - Ano Atual</h3>
                     <p id="total-ano-atual">--</p>
-                </div>
-            </section>
+                </div><!--totaldoano-->
+            </section> <!--terminatotalcards-->
 
             <div class="TabelaEventos">
                 <h3>Cadastro de TCO</h3>
 
                 <div class="adicionar-cadastro-container">
                     <button id="btn-adicionar-cadastro">
-                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Adicionar"/>
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
+                            alt="Adicionar" />
                         Adicionar Novo TCO
                     </button>
                     <button id="btn-imprimir" class="adicionar-cadastro">
-                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/print--v1.png" alt="Imprimir"/>
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/print--v1.png"
+                            alt="Imprimir" />
                         Imprimir Tabela
                     </button>
                     <button id="btn-sincronizar-esaj-tco"
-                        style="background-color:#1a3d5d;color:white;border:none;padding:8px 14px;border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-size:14px;">
-                        <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/>
-                        Sincronizar e-SAJ
-                    </button>
+                        style="background-color:#1a3d5d; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:14px;"><img
+                            width="20" height="20"
+                            src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png" /> Sincronizar
+                        e-SAJ</button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
-                    <p id="ultima-sincronizacao" style="font-size:13px;color:#555;margin:4px 0 0 2px;">
+                    <p id="ultima-sincronizacao" style="font-size:13px; color:#555; margin:4px 0 0 2px;">
                         🔄 Carregando última sincronização...
                     </p>
                     <a href="../page/jurimetria.html">Analisador Jurimétrico</a>
                     <a href="../relatorios/prescricao.html">Analisador Prescricional</a>
                 </div>
 
-                <!-- ══ FILTROS ═════════════════════════════════════════ -->
+                <!-- ═══════════════════════════════════════════════════════════
+                     FILTROS AVANÇADOS
+                     Todos os IDs têm sufixo -av para não conflitar com o tco.js
+                     ═══════════════════════════════════════════════════════════ -->
                 <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;font-family:Arial,sans-serif;">
 
                     <!-- Busca geral -->
                     <div style="display:flex;align-items:center;gap:.6rem;">
                         <div style="position:relative;flex:1;">
-                            <input type="text" id="busca-geral"
+                            <input type="text" id="busca-geral-av"
                                 placeholder="🔍 Busca geral — Nº ocorrência, operador, tipicidade, movimentação..."
-                                style="width:100%;padding:10px 14px;border:1.5px solid #d0d5e8;border-radius:8px;font-size:.88rem;box-sizing:border-box;"
-                                oninput="aplicarFiltros()">
+                                style="width:100%;padding:10px 14px;border:1.5px solid #d0d5e8;border-radius:8px;
+                                       font-size:.88rem;box-sizing:border-box;"
+                                oninput="filtroAvancado()">
                         </div>
-                        <button onclick="limparTodosFiltros()"
-                            style="padding:9px 16px;background:#f5f5f5;border:1.5px solid #d0d5e8;border-radius:8px;cursor:pointer;font-size:.83rem;white-space:nowrap;color:#555;">
+                        <button onclick="limparFiltroAvancado()"
+                            style="padding:9px 16px;background:#f5f5f5;border:1.5px solid #d0d5e8;
+                                   border-radius:8px;cursor:pointer;font-size:.83rem;white-space:nowrap;color:#555;">
                             ✕ Limpar filtros
                         </button>
                     </div>
 
-                    <!-- Filtros avançados -->
-                    <details id="painel-cruzado" style="border:1.5px solid #d0d5e8;border-radius:8px;overflow:hidden;">
-                        <summary style="padding:.6rem 1rem;cursor:pointer;font-size:.83rem;font-weight:bold;color:#1a3d5d;background:#f0f5ff;user-select:none;list-style:none;display:flex;align-items:center;justify-content:space-between;">
+                    <!-- Filtros cruzados -->
+                    <details style="border:1.5px solid #d0d5e8;border-radius:8px;overflow:hidden;">
+                        <summary style="padding:.6rem 1rem;cursor:pointer;font-size:.83rem;font-weight:bold;
+                            color:#1a3d5d;background:#f0f5ff;user-select:none;list-style:none;
+                            display:flex;align-items:center;justify-content:space-between;">
                             <span>⚡ Filtros avançados (cruzamento de dados)</span>
-                            <span id="badge-filtros-ativos" style="display:none;background:#1a3d5d;color:#fff;font-size:.72rem;padding:2px 8px;border-radius:10px;margin-left:.5rem;"></span>
+                            <span id="badge-av"
+                                style="display:none;background:#1a3d5d;color:#fff;font-size:.72rem;
+                                       padding:2px 8px;border-radius:10px;margin-left:.5rem;"></span>
                             <span style="opacity:.5;font-size:.8rem;">▼</span>
                         </summary>
 
                         <div style="padding:.9rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;background:#fff;">
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Data início</label>
-                                <input type="date" id="filtro-data-ini"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Data início</label>
+                                <input type="date" id="data-ini-av"
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="aplicarFiltros()">
+                                    onchange="filtroAvancado()">
                             </div>
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Data fim</label>
-                                <input type="date" id="filtro-data-fim"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Data fim</label>
+                                <input type="date" id="data-fim-av"
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="aplicarFiltros()">
+                                    onchange="filtroAvancado()">
                             </div>
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:200px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Tipicidade Geral</label>
-                                <input type="text" id="filtro-tipicidade"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Tipicidade Geral</label>
+                                <input type="text" id="tipicidade-av"
                                     placeholder="Ex.: lesão, ameaça, furto..."
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    oninput="aplicarFiltros()">
+                                    oninput="filtroAvancado()">
                             </div>
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:200px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Movimentação</label>
-                                <select id="filtro-movimentacao"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Movimentação</label>
+                                <select id="movimentacao-av"
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="aplicarFiltros()">
+                                    onchange="filtroAvancado()">
                                     <option value="">Todas</option>
                                     <option>ASSINADO TENENTE</option>
                                     <option>ARQUIVADO</option>
@@ -175,18 +196,20 @@
                             </div>
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:160px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Operador Capa</label>
-                                <input type="text" id="filtro-operador"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Operador Capa</label>
+                                <input type="text" id="operador-av"
                                     placeholder="Nome do operador..."
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    oninput="aplicarFiltros()">
+                                    oninput="filtroAvancado()">
                             </div>
 
                             <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;text-transform:uppercase;letter-spacing:.04em;">Mês</label>
-                                <select id="filtro-mes"
+                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
+                                    text-transform:uppercase;letter-spacing:.04em;">Mês</label>
+                                <select id="mes-av"
                                     style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="aplicarFiltros()">
+                                    onchange="filtroAvancado()">
                                     <option value="">Todos</option>
                                     <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
                                     <option>Abril</option><option>Maio</option><option>Junho</option>
@@ -197,13 +220,31 @@
 
                         </div>
 
-                        <div id="contador-filtro"
-                            style="padding:.5rem 1rem;background:#f0f5ff;border-top:1px solid #e0e8f5;font-size:.78rem;color:#1a3d5d;">
+                        <div id="contador-av"
+                            style="padding:.5rem 1rem;background:#f0f5ff;border-top:1px solid #e0e8f5;
+                                   font-size:.78rem;color:#1a3d5d;">
                             Carregando registros...
                         </div>
                     </details>
                 </div>
-                <!-- ══ FIM FILTROS ════════════════════════════════════ -->
+                <!-- ═══════════════════════════════════════════════════════════
+                     IDs ORIGINAIS do tco.js — ocultos, necessários para o script
+                     ═══════════════════════════════════════════════════════════ -->
+                <div class="filtros-container" style="display:none;">
+                    <label for="filtro-tipo">Filtrar por:</label>
+                    <select id="filtro-tipo">
+                        <option value="">Selecione o campo</option>
+                        <option value="Nº Ocorrência">Nº Ocorrência</option>
+                        <option value="DATA">Data</option>
+                        <option value="OPERADOR CAPA">Operador Capa</option>
+                        <option value="Movimentação">Movimentação</option>
+                        <option value="Tipicidade Geral">Tipicidade Geral</option>
+                        <option value="ESAJ">ESAJ</option>
+                    </select>
+                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
+                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
+                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+                </div>
 
                 <div class="tabela-container">
                     <table id="tabela-tco">
@@ -220,7 +261,7 @@
                                 <th>SISDOC</th>
                                 <th>Tipicidade Geral</th>
                                 <th>Movimentação</th>
-                                <th>OBS</th>
+                                <th>OBS:</th>
                                 <th>Material Apreendido</th>
                                 <th>Data Envio</th>
                                 <th>LocalE-SAJ</th>
@@ -231,222 +272,297 @@
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-            </div>
+                        <tbody>
+                        </tbody>
+                    </table><!--tabela-tco-->
+                </div><!--tabela-container-->
+            </div> <!--TabelaEventos-->
 
             <div id="overlay" class="overlay-sidebar"></div>
 
             <form class="sidbarform" id="form-tco">
                 <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
                 <h4>Cadastro de TCO</h4>
+
                 <input type="hidden" name="id_realtime" id="form-id-tco">
 
-                <div class="formulario"><p>Dia da Semana:</p>
+                <div class="formulario">
+                    <p>Dia da Semana:</p>
                     <select name="Dia da Semana" id="diadasemana">
                         <option value=""></option>
-                        <option>Segunda-feira</option><option>Terça-feira</option>
-                        <option>Quarta-feira</option><option>Quinta-feira</option>
-                        <option>Sexta-feira</option><option>Sábado</option><option>Domingo</option>
+                        <option value="Segunda-feira">Segunda-feira</option>
+                        <option value="Terça-feira">Terça-feira</option>
+                        <option value="Quarta-feira">Quarta-feira</option>
+                        <option value="Quinta-feira">Quinta-feira</option>
+                        <option value="Sexta-feira">Sexta-feira</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
                     </select>
                 </div>
-                <div class="formulario"><p>Mês:</p>
-                    <select name="Mês" id="mes-form">
+
+                <div class="formulario">
+                    <p>Mês:</p>
+                    <select name="Mês" id="mes">
                         <option value=""></option>
-                        <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
-                        <option>Abril</option><option>Maio</option><option>Junho</option>
-                        <option>Julho</option><option>Agosto</option><option>Setembro</option>
-                        <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+                        <option value="Janeiro">Janeiro</option>
+                        <option value="Fevereiro">Fevereiro</option>
+                        <option value="Março">Março</option>
+                        <option value="Abril">Abril</option>
+                        <option value="Maio">Maio</option>
+                        <option value="Junho">Junho</option>
+                        <option value="Julho">Julho</option>
+                        <option value="Agosto">Agosto</option>
+                        <option value="Setembro">Setembro</option>
+                        <option value="Outubro">Outubro</option>
+                        <option value="Novembro">Novembro</option>
+                        <option value="Dezembro">Dezembro</option>
                     </select>
                 </div>
-                <div class="formulario"><p>Hora:</p><input type="time" name="Hora" id="hora"></div>
-                <div class="formulario"><p>Nº Ocorrência:</p><input type="text" name="Nº Ocorrência" id="numeroocorrencia"></div>
-                <div class="formulario"><p>Data:</p><input type="date" name="DATA" id="data"></div>
-                <div class="formulario"><p>SERVIÇO:</p><input type="text" name="SERVIÇO" id="servico"></div>
-                <div class="formulario"><p>OPERADOR CAPA:</p><input type="text" name="OPERADOR CAPA" id="operadorcapa"></div>
-                <div class="formulario"><p>SISDOC:</p><input type="text" name="SISDOC" id="sisdoc"></div>
-                <div class="formulario"><p>Tipicidade Geral:</p><input type="text" name="Tipicidade Geral" id="tipicidadegeral"></div>
-                <div class="formulario"><p>Movimentação:</p>
+
+                <div class="formulario">
+                    <p>Hora:</p>
+                    <input type="time" name="Hora" id="hora">
+                </div>
+
+                <div class="formulario">
+                    <p>Nº Ocorrência:</p>
+                    <input type="text" name="Nº Ocorrência" id="numeroocorrencia">
+                </div>
+
+                <div class="formulario">
+                    <p>Data:</p>
+                    <input type="date" name="DATA" id="data">
+                </div>
+
+                <div class="formulario">
+                    <p>SERVIÇO:</p>
+                    <input type="text" name="SERVIÇO" id="servico">
+                </div>
+
+                <div class="formulario">
+                    <p>OPERADOR CAPA:</p>
+                    <input type="text" name="OPERADOR CAPA" id="operadorcapa">
+                </div>
+
+                <div class="formulario">
+                    <p>SISDOC:</p>
+                    <input type="text" name="SISDOC" id="sisdoc">
+                </div>
+
+                <div class="formulario">
+                    <p>Tipicidade Geral:</p>
+                    <input type="text" name="Tipicidade Geral" id="tipicidadegeral">
+                </div>
+
+                <div class="formulario">
+                    <p>Movimentação:</p>
                     <select name="Movimentação" id="movimentacao">
-                        <option>ASSINADO TENENTE</option><option>ARQUIVADO</option>
-                        <option>CAPA FEITA</option><option>CAPA CORRIGIDA</option>
-                        <option>DIGITALIZADO</option><option>ENCAMINHADO TENENTE</option>
-                        <option>ENCAMINHADO SECRETARIA</option><option>PRONTO PARA PROTOCOLAR</option>
-                        <option>PROTOCOLADO ESAJ</option><option>PENDENTE</option>
-                        <option>REFAZER CAPA</option><option>RECEBIDO</option><option>VISTORIADO</option>
+                        <option value="ASSINADO TENENTE">ASSINADO TENENTE</option>
+                        <option value="Arquivado">ARQUIVADO</option>
+                        <option value="CAPA FEITA">CAPA FEITA</option>
+                        <option value="CAPA CORRIGIDA">CAPA CORRIGIDA</option>
+                        <option value="DIGITALIZADO">DIGITALIZADO</option>
+                        <option value="ENCAMINHADO TENENTE">ENCAMINHADO TENENTE</option>
+                        <option value="ENCAMINHADO SECRETARIA">ENCAMINHADO SECRETARIA</option>
+                        <option value="PRONTO PARA PROTOCOLAR">PRONTO PARA PROTOCOLAR</option>
+                        <option value="PROTOCOLADO ESAJ">PROTOCOLADO ESAJ</option>
+                        <option value="PENDENTE">PENDENTE</option>
+                        <option value="REFAZER CAPA">REFAZER CAPA</option>
+                        <option value="RECEBIDO">RECEBIDO</option>
+                        <option value="VISTORIADO">VISTORIADO</option>
                     </select>
                 </div>
-                <div class="formulario"><p>OBS:</p><input type="text" name="OBS:" id="obs"></div>
-                <div class="formulario"><p>Material Apreendido:</p><input type="text" name="Material Apreendido" id="materialapreendido"></div>
-                <div class="formulario"><p>Data Envio:</p><input type="date" name="Data Envio" id="dataenvio"></div>
-                <div class="formulario"><p>LocalE-SAJ:</p><input type="text" name="LocalE-SAJ" id="locale-saj"></div>
-                <div class="formulario"><p>PETICIONADOR:</p><input type="text" name="PETICIONADOR" id="peticionador"></div>
-                <div class="formulario"><p>Endereço:</p><input type="text" name="Endereço" id="endereco"></div>
-                <div class="formulario"><p>Vistoriou?</p>
+
+                <div class="formulario">
+                    <p>OBS:</p>
+                    <input type="text" name="OBS:" id="obs">
+                </div>
+
+                <div class="formulario">
+                    <p>Material Apreendido:</p>
+                    <input type="text" name="Material Apreendido" id="materialapreendido">
+                </div>
+
+                <div class="formulario">
+                    <p>Data Envio:</p>
+                    <input type="date" name="Data Envio" id="dataenvio">
+                </div>
+
+                <div class="formulario">
+                    <p>LocalE-SAJ:</p>
+                    <input type="text" name="LocalE-SAJ" id="locale-saj">
+                </div>
+
+                <div class="formulario">
+                    <p>PETICIONADOR:</p>
+                    <input type="text" name="PETICIONADOR" id="peticionador">
+                </div>
+
+                <div class="formulario">
+                    <p>Endereço:</p>
+                    <input type="text" name="Endereço" id="endereco">
+                </div>
+
+                <div class="formulario">
+                    <p>Vistoriou?</p>
                     <select name="Vistoriou?" id="vistoriou">
-                        <option>Sim</option><option>Não</option>
+                        <option value="Sim">Sim</option>
+                        <option value="Não">Não</option>
                     </select>
                 </div>
-                <div class="formulario"><p>NUMERO_LACRE:</p><input type="text" name="NUMERO_LACRE" id="numero_lacre"></div>
+
+                <div class="formulario">
+                    <p>NUMERO_LACRE:</p>
+                    <input type="text" name="NUMERO_LACRE" id="numero_lacre">
+                </div>
 
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
-                    style="width:100%;padding:15px;margin-top:20px;margin-bottom:40px;">
+                    style="width: 100%; padding: 15px; margin-top: 20px; margin-bottom: 40px;">
                     SALVAR TCO
                 </button>
             </form>
-        </main>
-    </section>
+        </main><!--termina main-->
+    </section><!--termina pagecomplete-->
 </body>
-
 <footer>
-    <div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div>
+    <div>
+        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+    </div>
 </footer>
 
+<!-- tco.js original: carrega dadosTCO de tco_geral, renderTable, toggleSidebar, sincronizarEsajTCO, etc. -->
+<script src="../js/tco.js"></script>
+
+<!-- Filtros avançados: camada separada que lê dadosTCO e chama renderTable do tco.js -->
 <script>
 // ═══════════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO FIREBASE
+// FILTROS AVANÇADOS DO TCO
+// Lê dadosTCO (var global do tco.js) e chama renderTable() do tco.js
+// Todos os IDs têm sufixo -av para não conflitar com os do tco.js
 // ═══════════════════════════════════════════════════════════════════
-const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
-const NODE_NAME    = 'tco';
 
-// ── Cache — carregado UMA vez, filtrado localmente (zero requests extras) ──
-let _todosDados = [];
-
-// ── Referências DOM ────────────────────────────────────────────────
-const sidebar = document.querySelector('.sidbarform');
-const overlay = document.getElementById('overlay');
-const form    = document.getElementById('form-tco');
-const tbody   = document.querySelector('#tabela-tco tbody');
-
-// ═══════════════════════════════════════════════════════════════════
-// UTILITÁRIOS
-// ═══════════════════════════════════════════════════════════════════
-const norm = texto => texto
-    ? texto.toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim()
-    : '';
-
-// DD/MM/AAAA ou AAAA-MM-DD → AAAA-MM-DD
-const toISO = str => {
-    if (!str) return '';
-    if (str.includes('/')) {
-        const [d,m,a] = str.split('/');
-        return `${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
-    }
-    return str.substring(0, 10);
-};
-
-// Para ordenação decrescente (mais recente primeiro)
-const paraData = doc => {
-    const iso = toISO(doc.DATA || doc.data || '');
-    const h   = doc.Hora || '';
-    return iso ? new Date(`${iso}T${h || '00:00'}`) : new Date(0);
-};
-
-// ═══════════════════════════════════════════════════════════════════
-// CARREGAR DADOS DO FIREBASE
-// ═══════════════════════════════════════════════════════════════════
-async function carregarDados() {
-    try {
-        const res  = await fetch(`${DATABASE_URL}/${NODE_NAME}.json`);
-        const data = await res.json();
-        document.getElementById('mensagem-carregamento').style.display = 'none';
-
-        if (!data) { renderizarTabela([]); return; }
-
-        // Array ordenado mais recente → mais antigo
-        _todosDados = Object.keys(data)
-            .map(id => ({ id, ...data[id] }))
-            .sort((a, b) => paraData(b) - paraData(a));
-
-        // Contadores ano atual / ano anterior
-        const anoAtual = new Date().getFullYear();
-        let cA = 0, cB = 0;
-        _todosDados.forEach(doc => {
-            const iso = toISO(doc.DATA || doc.data || '');
-            const ano = iso ? +iso.substring(0,4) : null;
-            if (ano === anoAtual)     cA++;
-            else if (ano === anoAtual - 1) cB++;
-        });
-        const elA = document.getElementById('total-ano-atual');
-        const elB = document.getElementById('total-ano-anterior');
-        if (elA) elA.textContent = cA;
-        if (elB) elB.textContent = cB;
-
-        // Aplicar filtros zerados (mostra tudo)
-        aplicarFiltros();
-
-    } catch (err) {
-        console.error('Erro ao carregar TCO:', err);
-        document.getElementById('mensagem-carregamento').textContent = '⚠️ Erro ao carregar dados.';
-    }
+function _normAv(texto) {
+    if (!texto) return '';
+    return texto.toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase().trim();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// FILTROS — tudo em memória, sem nova requisição
-// ═══════════════════════════════════════════════════════════════════
-function aplicarFiltros() {
-    const buscaGeral   = norm(document.getElementById('busca-geral')?.value);
-    const dataIni      = document.getElementById('filtro-data-ini')?.value  || '';
-    const dataFim      = document.getElementById('filtro-data-fim')?.value  || '';
-    const tipicidade   = norm(document.getElementById('filtro-tipicidade')?.value);
-    const movimentacao = norm(document.getElementById('filtro-movimentacao')?.value);
-    const operador     = norm(document.getElementById('filtro-operador')?.value);
-    const mes          = norm(document.getElementById('filtro-mes')?.value);
+// Converte qualquer formato de data para AAAA-MM-DD para comparação
+// Suporta: AAAA-MM-DD, DD/MM/AAAA, e timestamps ISO completos
+function _toISOAv(str) {
+    if (!str) return '';
+    str = str.toString().trim();
 
-    const resultado = _todosDados.filter(doc => {
-        const docData = toISO(doc.DATA || doc.data || '');
+    // Já é ISO (AAAA-MM-DD ou AAAA-MM-DDTHH:MM...)
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        return str.substring(0, 10);
+    }
 
-        // Busca geral em todos os campos concatenados
-        if (buscaGeral && !norm(Object.values(doc).join(' ')).includes(buscaGeral)) return false;
+    // Formato DD/MM/AAAA
+    if (str.includes('/')) {
+        const p = str.split('/');
+        if (p.length === 3 && p[2].length === 4) {
+            return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+        }
+    }
 
-        // Período
-        if (dataIni && docData && docData < dataIni) return false;
-        if (dataFim && docData && docData > dataFim) return false;
+    return '';
+}
 
-        // Tipicidade Geral — tenta múltiplos nomes de campo
-        if (tipicidade) {
-            const v = norm(doc['Tipicidade Geral'] || doc.Tipicidade_Geral ||
-                           doc.TIPIFICACAO || doc.TIPIFICACAO_GERAL || '');
-            if (!v.includes(tipicidade)) return false;
+// Retorna o valor do primeiro campo encontrado no objeto
+function _getAv(doc, ...chaves) {
+    for (const k of chaves) {
+        const v = doc[k];
+        if (v !== undefined && v !== null && v !== '') return String(v);
+    }
+    return '';
+}
+
+function filtroAvancado() {
+    if (!dadosTCO || !dadosTCO.length) return;
+
+    const busca = _normAv(document.getElementById('busca-geral-av')?.value);
+    const ini   = document.getElementById('data-ini-av')?.value  || '';
+    const fim   = document.getElementById('data-fim-av')?.value  || '';
+    const tipic = _normAv(document.getElementById('tipicidade-av')?.value);
+    const movi  = _normAv(document.getElementById('movimentacao-av')?.value);
+    const oper  = _normAv(document.getElementById('operador-av')?.value);
+    const mes   = _normAv(document.getElementById('mes-av')?.value);
+
+    // Nenhum filtro ativo → mostra tudo sem processar
+    if (!busca && !ini && !fim && !tipic && !movi && !oper && !mes) {
+        renderTable(dadosTCO);
+        _badgeAv(dadosTCO.length);
+        return;
+    }
+
+    const resultado = dadosTCO.filter(doc => {
+
+        // Converte a DATA do registro para AAAA-MM-DD
+        const docISO = _toISOAv(_getAv(doc, 'DATA', 'data'));
+
+        // ── Busca geral ───────────────────────────────────────────
+        if (busca && !_normAv(Object.values(doc).join(' ')).includes(busca))
+            return false;
+
+        // ── Período ───────────────────────────────────────────────
+        // Registros SEM data válida são mantidos (não excluídos pelo período)
+        if (ini || fim) {
+            if (docISO) {
+                if (ini && docISO < ini) return false;
+                if (fim && docISO > fim) return false;
+            }
+            // sem docISO: não filtra — mantém o registro
         }
 
-        // Movimentação
-        if (movimentacao) {
-            const v = norm(doc['Movimentação'] || doc.Movimentacao || '');
-            if (!v.includes(movimentacao)) return false;
+        // ── Tipicidade Geral ──────────────────────────────────────
+        if (tipic) {
+            const v = _normAv(_getAv(doc,
+                'Tipicidade Geral', 'Tipicidade_Geral', 'TIPIFICACAO', 'TIPIFICACAO_GERAL'));
+            if (!v.includes(tipic)) return false;
         }
 
-        // Operador Capa
-        if (operador) {
-            const v = norm(doc['OPERADOR CAPA'] || doc.OPERADOR_CAPA || '');
-            if (!v.includes(operador)) return false;
+        // ── Movimentação ──────────────────────────────────────────
+        if (movi) {
+            const v = _normAv(_getAv(doc, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO'));
+            if (!v.includes(movi)) return false;
         }
 
-        // Mês
+        // ── Operador Capa ─────────────────────────────────────────
+        if (oper) {
+            const v = _normAv(_getAv(doc, 'OPERADOR CAPA', 'OPERADOR_CAPA', 'Operador Capa'));
+            if (!v.includes(oper)) return false;
+        }
+
+        // ── Mês ───────────────────────────────────────────────────
         if (mes) {
-            const v = norm(doc['Mês'] || doc.Mes || '');
+            const v = _normAv(_getAv(doc, 'Mês', 'Mes', 'MES'));
             if (!v.includes(mes)) return false;
         }
 
         return true;
     });
 
-    renderizarTabela(resultado);
-    atualizarBadge(resultado.length);
+    renderTable(resultado);
+    _badgeAv(resultado.length);
 }
 
-function limparTodosFiltros() {
-    ['busca-geral','filtro-data-ini','filtro-data-fim',
-     'filtro-tipicidade','filtro-movimentacao','filtro-operador','filtro-mes']
+function limparFiltroAvancado() {
+    ['busca-geral-av', 'data-ini-av', 'data-fim-av',
+     'tipicidade-av', 'movimentacao-av', 'operador-av', 'mes-av']
         .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    aplicarFiltros();
+
+    if (typeof dadosTCO !== 'undefined' && typeof renderTable === 'function')
+        renderTable(dadosTCO);
+
+    _badgeAv(typeof dadosTCO !== 'undefined' ? dadosTCO.length : 0);
 }
 
-function atualizarBadge(total) {
-    const badge    = document.getElementById('badge-filtros-ativos');
-    const contador = document.getElementById('contador-filtro');
-    const totalG   = _todosDados.length;
+function _badgeAv(total) {
+    const badge    = document.getElementById('badge-av');
+    const contador = document.getElementById('contador-av');
+    const totalG   = typeof dadosTCO !== 'undefined' ? dadosTCO.length : 0;
 
     if (total < totalG) {
         if (badge)    { badge.textContent = `${total} de ${totalG}`; badge.style.display = 'inline-block'; }
@@ -457,168 +573,15 @@ function atualizarBadge(total) {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// RENDERIZAR TABELA
-// ═══════════════════════════════════════════════════════════════════
-function renderizarTabela(lista) {
-    tbody.innerHTML = '';
-
-    if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="20"
-            style="text-align:center;padding:20px;color:#999;">
-            Nenhum registro encontrado com os filtros aplicados.</td></tr>`;
-        return;
-    }
-
-    lista.forEach(doc => {
-        const tr = document.createElement('tr');
-        // Escapar JSON para inline onclick sem quebrar aspas
-        const docJSON = JSON.stringify(doc).replace(/'/g, '&#39;');
-        tr.innerHTML = `
-            <td>${doc.id || ''}</td>
-            <td>${doc['Dia da Semana'] || ''}</td>
-            <td>${doc['Mês'] || ''}</td>
-            <td>${doc.Hora || ''}</td>
-            <td>${doc['Nº Ocorrência'] || ''}</td>
-            <td>${doc.DATA || doc.data || ''}</td>
-            <td>${doc['SERVIÇO'] || ''}</td>
-            <td>${doc['OPERADOR CAPA'] || ''}</td>
-            <td>${doc.SISDOC || ''}</td>
-            <td style="font-weight:bold;color:#1a3d5d;">${doc['Tipicidade Geral'] || ''}</td>
-            <td>${doc['Movimentação'] || ''}</td>
-            <td>${doc['OBS:'] || ''}</td>
-            <td>${doc['Material Apreendido'] || ''}</td>
-            <td>${doc['Data Envio'] || ''}</td>
-            <td>${doc['LocalE-SAJ'] || ''}</td>
-            <td>${doc.PETICIONADOR || ''}</td>
-            <td>${doc['Endereço'] || ''}</td>
-            <td>${doc['Vistoriou?'] || ''}</td>
-            <td>${doc.NUMERO_LACRE || ''}</td>
-            <td><button class="btn-editar" onclick='preencherParaEditar(${docJSON})'>EDITAR</button></td>`;
-        tbody.appendChild(tr);
-    });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SIDEBAR
-// ═══════════════════════════════════════════════════════════════════
-const abrirSidebar = () => {
-    form.reset();
-    document.getElementById('form-id-tco').value = '';
-    sidebar.classList.add('active');
-    overlay.style.display = 'block';
-};
-
-const fecharSidebar = () => {
-    sidebar.classList.remove('active');
-    overlay.style.display = 'none';
-    form.reset();
-};
-
-function preencherParaEditar(doc) {
-    abrirSidebar();
-    const p = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-    p('form-id-tco',      doc.id);
-    p('diadasemana',      doc['Dia da Semana']);
-    p('mes-form',         doc['Mês']);
-    p('hora',             doc.Hora);
-    p('numeroocorrencia', doc['Nº Ocorrência']);
-    p('data',             toISO(doc.DATA || doc.data || ''));
-    p('servico',          doc['SERVIÇO']);
-    p('operadorcapa',     doc['OPERADOR CAPA']);
-    p('sisdoc',           doc.SISDOC);
-    p('tipicidadegeral',  doc['Tipicidade Geral']);
-    p('movimentacao',     doc['Movimentação']);
-    p('obs',              doc['OBS:']);
-    p('materialapreendido', doc['Material Apreendido']);
-    p('dataenvio',        toISO(doc['Data Envio'] || ''));
-    p('locale-saj',       doc['LocalE-SAJ']);
-    p('peticionador',     doc.PETICIONADOR);
-    p('endereco',         doc['Endereço']);
-    p('vistoriou',        doc['Vistoriou?']);
-    p('numero_lacre',     doc.NUMERO_LACRE);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// SALVAR
-// ═══════════════════════════════════════════════════════════════════
-form.addEventListener('submit', async e => {
-    e.preventDefault();
-    const id     = document.getElementById('form-id-tco').value;
-    const dados  = Object.fromEntries(new FormData(form).entries());
-    delete dados.id_realtime;
-
-    const url    = id ? `${DATABASE_URL}/${NODE_NAME}/${id}.json` : `${DATABASE_URL}/${NODE_NAME}.json`;
-    const method = id ? 'PATCH' : 'POST';
-
-    try {
-        const res = await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dados)
-        });
-        if (res.ok) {
-            alert('TCO salvo com sucesso!');
-            fecharSidebar();
-            await carregarDados(); // recarrega e reaaplica filtros
-        } else {
-            alert('Erro ao salvar. Status: ' + res.status);
+// Aguarda dadosTCO ser preenchido e atualiza o contador
+(function aguardarDados() {
+    const iv = setInterval(() => {
+        if (typeof dadosTCO !== 'undefined' && dadosTCO.length > 0) {
+            clearInterval(iv);
+            _badgeAv(dadosTCO.length);
         }
-    } catch (err) {
-        console.error('Erro ao salvar:', err);
-        alert('Erro de conexão ao salvar.');
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════════
-// AUTENTICAÇÃO E RELÓGIO
-// ═══════════════════════════════════════════════════════════════════
-function checkLogin() {
-    const grad = localStorage.getItem('userGraduacao');
-    const nome = localStorage.getItem('userNomeGuerra');
-    const el   = document.getElementById('user-info');
-    if (grad && nome) {
-        if (el) el.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${grad} ${nome}</p>`;
-    } else {
-        window.location.href = 'login.html';
-    }
-}
-
-function logout() {
-    localStorage.removeItem('userGraduacao');
-    localStorage.removeItem('userNomeGuerra');
-    window.location.href = 'login.html';
-}
-
-function atualizarRelogio() {
-    const n  = new Date();
-    const el = document.getElementById('relogio');
-    if (el) el.innerHTML =
-        n.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'long', year:'numeric' }) +
-        '<br>' + n.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// EVENTOS E INICIALIZAÇÃO
-// ═══════════════════════════════════════════════════════════════════
-document.getElementById('btn-adicionar-cadastro').addEventListener('click', abrirSidebar);
-document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
-document.getElementById('btn-imprimir').addEventListener('click', () => window.print());
-document.getElementById('btn-logout').addEventListener('click', logout);
-overlay.addEventListener('click', fecharSidebar);
-
-// Sincronizar e-SAJ — preserva função do tco.js se existir
-document.getElementById('btn-sincronizar-esaj-tco').addEventListener('click', () => {
-    if (typeof sincronizarESAJ === 'function') sincronizarESAJ();
-    else alert('Função de sincronização não disponível nesta versão.');
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    checkLogin();
-    atualizarRelogio();
-    setInterval(atualizarRelogio, 1000);
-    carregarDados();
-});
+    }, 300);
+})();
 </script>
 
 </html>

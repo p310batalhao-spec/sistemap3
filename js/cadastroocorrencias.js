@@ -137,17 +137,39 @@ document.getElementById('input-xls').onchange = function(e) {
             let idLimpo = strOco.replace(/\D/g, '').substring(0, 7);
 
             // ── DATA E HORA ────────────────────────────────
+            // Busca campo de data (pode conter data+hora no mesmo campo)
             let rawDataHora = buscarValor(linha, ["Data da Ocorrência", "Dia da Ocorrência", "Data"]) || "---";
+            // Busca campo de hora separado (algumas planilhas têm coluna própria)
+            let rawHora = buscarValor(linha, ["Hora da Ocorrência", "Hora", "Horário", "HORA"]);
             let dataFinal = "---";
             let horaFinal = "00:00";
 
-            if (rawDataHora.toString().includes(" ")) {
-                let partes = rawDataHora.toString().split(" ");
+            const rawStr = rawDataHora.toString().trim();
+
+            if (rawStr.includes(" ")) {
+                // Campo data contém data e hora separadas por espaço: "DD/MM/AAAA HH:MM"
+                let partes = rawStr.split(" ");
                 dataFinal = partes[0].trim();
-                horaFinal = partes[1].trim().substring(0, 5);
+                let horaCandidata = partes[1].trim().substring(0, 5);
+                // Valida que é realmente HH:MM (0-23 : 0-59)
+                let hh = parseInt(horaCandidata.split(":")[0], 10);
+                let mm = parseInt((horaCandidata.split(":")[1] || "0"), 10);
+                horaFinal = (!isNaN(hh) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59)
+                    ? horaCandidata
+                    : "00:00";
             } else {
-                dataFinal = rawDataHora.toString().trim();
-                horaFinal = strOco.length >= 5 ? strOco.slice(-5) : "00:00";
+                dataFinal = rawStr;
+                // Tenta usar coluna separada de hora se existir
+                if (rawHora) {
+                    let horaStr = rawHora.toString().trim().substring(0, 5);
+                    let hh = parseInt(horaStr.split(":")[0], 10);
+                    let mm = parseInt((horaStr.split(":")[1] || "0"), 10);
+                    horaFinal = (!isNaN(hh) && hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59)
+                        ? horaStr
+                        : "00:00";
+                }
+                // Se não há coluna separada, hora fica "00:00"
+                // NUNCA usar strOco (número do boletim) como hora — causa corrupção
             }
 
             // ── CAMPOS DO MAPA ─────────────────────────────

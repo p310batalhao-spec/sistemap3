@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head><meta charset="UTF-8"><title>Diagnóstico DATA</title>
+<style>body{font-family:monospace;background:#111;color:#eee;padding:20px;}
+pre{background:#1a1a1a;padding:12px;border-radius:6px;font-size:11px;overflow-x:auto;}
+.ok{color:#81c784;}.err{color:#e57373;}.warn{color:#ffb74d;}
+table{border-collapse:collapse;width:100%;font-size:11px;margin-top:8px;}
+th{background:#0d47a1;color:#fff;padding:5px 8px;text-align:left;}
+td{padding:4px 8px;border-bottom:1px solid #333;}
+</style></head>
+<body>
+<h2>🔍 Diagnóstico do campo DATA — últimos 90 dias</h2>
+<div id="out">Carregando...</div>
+<script>
+const FB = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const NOS = ['geral','cvp','cvli','droga'];
+
+const hoje     = new Date();
+const limite90 = new Date(hoje);
+limite90.setDate(hoje.getDate() - 90);
+
+// Replica exatamente a função dentroJanela do gerarcartao.js
+function dentroJanela(dataStr) {
+    if (!dataStr) return false;
+    const s = dataStr.toString().trim();
+    let d;
+    if (s.includes('/')) {
+        const [dia, mes, ano] = s.split('/');
+        d = new Date(+ano, +mes - 1, +dia);
+    } else {
+        d = new Date(s.substring(0, 10));
+    }
+    return !isNaN(d.getTime()) && d >= limite90 && d <= hoje;
+}
+
+(async () => {
+    const el = document.getElementById('out');
+    let html  = `<p class="ok">Janela: ${limite90.toLocaleDateString('pt-BR')} até ${hoje.toLocaleDateString('pt-BR')}</p>`;
+
+    for (const no of NOS) {
+        const res  = await fetch(`${FB}/${no}.json`);
+        const data = await res.json();
+        if (!data) { html += `<p class="warn">/${no}: vazio</p>`; continue; }
+
+        const items = Object.entries(data).filter(([,v]) => v && typeof v === 'object');
+        const total = items.length;
+
+        // Contar por resultado de dentroJanela
+        let dentro = 0, fora = 0, semData = 0;
+        const amostras = { dentro: [], fora: [], semData: [] };
+
+        // Detectar todos os nomes de campo de data presentes
+        const camposData = new Set();
+        items.forEach(([id, item]) => {
+            Object.keys(item).forEach(k => {
+                if (k.toLowerCase().includes('data') || k.toLowerCase() === 'date') camposData.add(k);
+            });
+        });
+
+        items.forEach(([id, item]) => {
+            const d = item.DATA || item.data || item.Date || item.date;
+            if (!d) {
+                semData++;
+                if (amostras.semData.length < 3) amostras.semData.push({ id, campos: Object.keys(item).join(', ') });
+                return;
+            }
+            if (dentroJanela(d)) {
+                dentro++;
+                if (amostras.dentro.length < 5) amostras.dentro.push({ id, DATA: d });
+            } else {
+                fora++;
+                if (amostras.fora.length < 5) amostras.fora.push({ id, DATA: d });
+            }
+        });
+
+        html += `<h3 style="color:#4fc3f7;">/${no} — ${total} registros</h3>`;
+        html += `<p>Campos de data detectados: <strong>${[...camposData].join(', ') || 'nenhum'}</strong></p>`;
+        html += `<p class="ok">✅ Dentro dos 90 dias: ${dentro}</p>`;
+        html += `<p class="warn">⏰ Fora dos 90 dias: ${fora}</p>`;
+        html += `<p class="err">❌ Sem campo DATA: ${semData}</p>`;
+
+        if (amostras.dentro.length) {
+            html += `<p class="ok">Amostras DENTRO:</p><table><tr><th>ID</th><th>DATA</th></tr>`;
+            amostras.dentro.forEach(a => html += `<tr><td>${a.id}</td><td>${a.DATA}</td></tr>`);
+            html += '</table>';
+        }
+
+        if (amostras.fora.length) {
+            html += `<p class="warn">Amostras FORA:</p><table><tr><th>ID</th><th>DATA</th></tr>`;
+            amostras.fora.forEach(a => html += `<tr><td>${a.id}</td><td>${a.DATA}</td></tr>`);
+            html += '</table>';
+        }
+
+        // Mostrar JSON do primeiro registro com DATA dentro da janela
+        const primeiroIn = items.find(([,v]) => dentroJanela(v.DATA || v.data));
+        if (primeiroIn) {
+            html += `<details><summary style="cursor:pointer;color:#4fc3f7;">Ver 1º registro dentro dos 90 dias</summary>
+                <pre>${JSON.stringify(primeiroIn[1], null, 2).substring(0, 1000)}</pre></details>`;
+        } else {
+            // Mostrar o primeiro registro para ver os campos
+            html += `<details><summary style="cursor:pointer;color:#ffb74d;">Ver 1º registro qualquer (debug)</summary>
+                <pre>${JSON.stringify(items[0]?.[1] || {}, null, 2).substring(0, 1000)}</pre></details>`;
+        }
+    }
+
+    el.innerHTML = html;
+})();
+</script>
+</body></html>

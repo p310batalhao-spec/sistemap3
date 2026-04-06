@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Diagnóstico TCO</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1a1a2e; color: #eee; }
+        h2 { color: #4fc3f7; }
+        .ok   { color: #81c784; }
+        .warn { color: #ffb74d; }
+        .erro { color: #e57373; }
+        table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 12px; }
+        th { background: #0d47a1; color: #fff; padding: 6px 10px; text-align: left; }
+        td { padding: 5px 10px; border-bottom: 1px solid #333; }
+        tr:nth-child(even) td { background: #162032; }
+        .tag { display:inline-block; padding:1px 6px; border-radius:4px; font-size:11px; font-weight:bold; }
+        .iso { background:#1b5e20; color:#a5d6a7; }
+        .br  { background:#b71c1c; color:#ffcdd2; }
+        .vaz { background:#424242; color:#bbb; }
+        .out { background:#4a148c; color:#e1bee7; }
+        pre  { background:#111; padding:12px; border-radius:6px; overflow-x:auto; font-size:11px; }
+    </style>
+</head>
+<body>
+<h2>🔍 Diagnóstico — tco_geral Firebase</h2>
+<div id="status">Carregando...</div>
+<div id="resumo"></div>
+<div id="tabela"></div>
+<h2 style="margin-top:30px;">📋 Amostra JSON bruto (primeiros 5 registros)</h2>
+<pre id="json-bruto">...</pre>
+
+<script>
+const FB = 'https://sistema-p3-default-rtdb.firebaseio.com/tco_geral.json';
+
+function detectarFormato(data) {
+    if (!data) return { label: 'VAZIO', cls: 'vaz', iso: '' };
+    const s = String(data).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return { label: 'ISO (AAAA-MM-DD)', cls: 'iso', iso: s.substring(0,10) };
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(s)) {
+        const [d,m,a] = s.split('/');
+        return { label: 'BR (DD/MM/AAAA)', cls: 'br', iso: `${a}-${m}-${d}` };
+    }
+    return { label: 'OUTRO: ' + s.substring(0,20), cls: 'out', iso: '' };
+}
+
+function newDateJS(s) {
+    if (!s) return NaN;
+    const t = new Date(s).getTime();
+    return t;
+}
+
+(async () => {
+    const el = document.getElementById('status');
+    try {
+        el.textContent = 'Buscando dados do Firebase...';
+        const res = await fetch(FB);
+        const raw = await res.json();
+
+        if (!raw) { el.innerHTML = '<span class="erro">Firebase retornou null — nó vazio.</span>'; return; }
+
+        const items = Object.entries(raw)
+            .filter(([,v]) => v && typeof v === 'object')
+            .map(([id, v]) => ({ id, ...v }));
+
+        el.innerHTML = `<span class="ok">✅ ${items.length} registros carregados do Firebase.</span>`;
+
+        // Analisar formatos
+        const contFormatos = { iso: 0, br: 0, vaz: 0, out: 0 };
+        const porAno = {};
+        items.forEach(item => {
+            const f = detectarFormato(item.DATA);
+            contFormatos[f.cls] = (contFormatos[f.cls] || 0) + 1;
+            const ano = f.iso ? f.iso.substring(0,4) : 'SEM_DATA';
+            porAno[ano] = (porAno[ano] || 0) + 1;
+        });
+
+        // Sort simulado igual ao tco.js ORIGINAL (com bug)
+        const comSortOriginal = [...items].sort((a,b) => {
+            const tA = a.DATA ? new Date(a.DATA).getTime() : 0;
+            const tB = b.DATA ? new Date(b.DATA).getTime() : 0;
+            return tB - tA;
+        });
+
+        // Sort corrigido
+        const parseTCODate = str => {
+            if (!str) return 0;
+            str = String(str).trim();
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+                const [d,m,a] = str.split('/');
+                return new Date(`${a}-${m}-${d}T00:00:00Z`).getTime() || 0;
+            }
+            const t = new Date(str).getTime();
+            return isNaN(t) ? 0 : t;
+        };
+        const comSortCorrigido = [...items].sort((a,b) => parseTCODate(b.DATA) - parseTCODate(a.DATA));
+
+        // Resumo
+        document.getElementById('resumo').innerHTML = `
+            <h2>📊 Resumo</h2>
+            <p><b>Formatos encontrados:</b></p>
+            <ul>
+                <li><span class="tag iso">ISO AAAA-MM-DD</span> → ${contFormatos.iso || 0} registros</li>
+                <li><span class="tag br">BR DD/MM/AAAA</span> → ${contFormatos.br || 0} registros <b style="color:#e57373">${contFormatos.br ? '← new Date() retorna NaN! Vai pro fim do sort' : ''}</b></li>
+                <li><span class="tag vaz">VAZIO</span> → ${contFormatos.vaz || 0} registros</li>
+                <li><span class="tag out">OUTRO</span> → ${contFormatos.out || 0} registros</li>
+            </ul>
+            <p><b>Registros por ano/mês (formato detectado):</b></p>
+            <ul>${Object.entries(porAno).sort().map(([a,c]) => `<li>${a}: ${c} registros</li>`).join('')}</ul>
+            <h3 style="color:#ffb74d;">🔢 Top 20 — Sort ORIGINAL do tco.js (com possível bug)</h3>
+            <table>
+                <tr><th>#</th><th>DATA (raw)</th><th>Formato</th><th>new Date().getTime()</th><th>Mês</th><th>Nº Ocorrência</th></tr>
+                ${comSortOriginal.slice(0,20).map((item,i) => {
+                    const f = detectarFormato(item.DATA);
+                    const t = newDateJS(item.DATA);
+                    return `<tr>
+                        <td>${i+1}</td>
+                        <td>${item.DATA || '—'}</td>
+                        <td><span class="tag ${f.cls}">${f.label}</span></td>
+                        <td class="${isNaN(t)?'erro':'ok'}">${isNaN(t) ? 'NaN ← BUG' : t}</td>
+                        <td>${item['Mês'] || '—'}</td>
+                        <td>${item['Nº Ocorrência'] || '—'}</td>
+                    </tr>`;
+                }).join('')}
+            </table>
+            <h3 style="color:#81c784;margin-top:20px;">✅ Top 20 — Sort CORRIGIDO (parseTCODate)</h3>
+            <table>
+                <tr><th>#</th><th>DATA (raw)</th><th>Formato</th><th>parseTCODate()</th><th>Mês</th><th>Nº Ocorrência</th></tr>
+                ${comSortCorrigido.slice(0,20).map((item,i) => {
+                    const f = detectarFormato(item.DATA);
+                    const t = parseTCODate(item.DATA);
+                    return `<tr>
+                        <td>${i+1}</td>
+                        <td>${item.DATA || '—'}</td>
+                        <td><span class="tag ${f.cls}">${f.label}</span></td>
+                        <td class="ok">${t}</td>
+                        <td>${item['Mês'] || '—'}</td>
+                        <td>${item['Nº Ocorrência'] || '—'}</td>
+                    </tr>`;
+                }).join('')}
+            </table>
+        `;
+
+        // JSON bruto dos primeiros 5
+        document.getElementById('json-bruto').textContent =
+            JSON.stringify(items.slice(0,5).map(i => ({
+                id: i.id,
+                DATA: i.DATA,
+                'Mês': i['Mês'],
+                'Nº Ocorrência': i['Nº Ocorrência'],
+                'Tipicidade Geral': i['Tipicidade Geral'],
+                'Movimentação': i['Movimentação'],
+            })), null, 2);
+
+    } catch(err) {
+        el.innerHTML = `<span class="erro">Erro: ${err.message}</span>`;
+    }
+})();
+</script>
+</body>
+</html>
