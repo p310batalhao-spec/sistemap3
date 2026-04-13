@@ -8,6 +8,52 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/styleseventos.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* ── Badges de Porte do Evento ── */
+        .porte-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .pequeno-porte {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #28a745;
+        }
+        .medio-porte {
+            background-color: #ffe8cc;
+            color: #7d3c00;
+            border: 1px solid #e67e22;
+        }
+        .grande-porte {
+            background-color: #fde8e8;
+            color: #7b1c1c;
+            border: 1px solid #c0392b;
+        }
+        .na-porte {
+            background-color: #f0f0f0;
+            color: #666;
+            border: 1px solid #bbb;
+        }
+
+        /* ── Cabeçalho fixo da tabela ── */
+        .tabela-container {
+            overflow-y: auto;
+            max-height: calc(100vh - 280px);
+        }
+        #tabela-eventos thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #003366;
+            color: #fff;
+        }
+    </style>
 </head>
 
 <body>
@@ -330,6 +376,20 @@
         tbody.innerHTML = '';
 
         if (dataToRender && dataToRender.length) {
+            // Ordena do mais recente ao mais antigo
+            // Campo DATA pode ser DD/MM/AAAA ou AAAA-MM-DD
+            const parseData = (str) => {
+                if (!str) return new Date(0);
+                const s = str.toString().trim();
+                if (s.includes('/')) {
+                    const [d, m, a] = s.split('/');
+                    return new Date(+a, +m - 1, +d);
+                }
+                return new Date(s);
+            };
+            dataToRender = [...dataToRender].sort(
+                (a, b) => parseData(b.DATA) - parseData(a.DATA)
+            );
             if (mensagem) mensagem.style.display = 'none';
 
             dataToRender.forEach(item => {
@@ -379,6 +439,14 @@
 
                 // CORREÇÃO: Usando acoesCell que foi definida acima
                 acoesCell.appendChild(btnOPO);
+
+                // Botão Deletar
+                const btnDel = document.createElement('button');
+                btnDel.innerHTML = '🗑 Excluir';
+                btnDel.className = 'btn-deletar-evento';
+                btnDel.style.cssText = "background-color:#c0392b; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; margin-left:5px;";
+                btnDel.onclick = () => deletarEvento(item.ID, item['NOME DO EVENTO'] || item.ID);
+                acoesCell.appendChild(btnDel);
             });
         } else {
             if (mensagem) {
@@ -486,6 +554,38 @@
             document.getElementById('filtro-valor-text').value = '';
         };
     });
+
+    /**
+     * 7. DELETAR EVENTO
+     * Envia action=delete com o ID para o Apps Script
+     */
+    async function deletarEvento(id, nomeEvento) {
+        if (!id) { alert('ID do evento não encontrado.'); return; }
+
+        const confirmacao = confirm(
+            `⚠ Tem certeza que deseja EXCLUIR o evento abaixo?\n\n"${nomeEvento}"\n\nEssa ação não pode ser desfeita.`
+        );
+        if (!confirmacao) return;
+
+        try {
+            const payload = new URLSearchParams({ action: 'delete', ID: id });
+            const res = await fetch(WEBAPP_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: payload
+            });
+            const result = await res.json();
+            if (result.status === 'success') {
+                alert('Evento excluído com sucesso!');
+                fetchData(); // recarrega a tabela
+            } else {
+                alert('Erro ao excluir: ' + (result.message || 'resposta inesperada do servidor.'));
+            }
+        } catch (err) {
+            console.error('Erro ao deletar evento:', err);
+            alert('Erro de conexão ao tentar excluir o evento.');
+        }
+    }
 </script>
 
 </html>
