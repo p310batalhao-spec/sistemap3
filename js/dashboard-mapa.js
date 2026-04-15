@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // MAPA DE CALOR — Dashboard P3 / 10º BPM
 // Leaflet + Leaflet.heat (heatmap) + MarkerCluster
-// Camadas: CVP | CVLI | MVI | DROGA | ARMA | SOSSEGO | VD
+// Camadas: CVP | CVLI | MVI | DROGA | ARMA | SOSSEGO | VD | MANDADOS
 // ═══════════════════════════════════════════════════════════════════
 
 // ── Configuração das camadas ──────────────────────────────────────
@@ -23,15 +23,6 @@ const CAMADAS_CONFIG = [
         corHex: [106, 27, 154],
         noFB:   'cvli',
         filtro: null
-    },
-        {
-        id:     'mvi',
-        label:  'MVI — Mortes Violentas Intencionais',
-        icon:   '☠️',
-        cor:    '#500000',
-        corHex: [183, 28, 28],
-        noFB:   'cvli',   // deriva do nó cvli com filtro de tipificação
-        filtro: 'mvi'     // sinaliza filtragem especial
     },
     {
         id:     'droga',
@@ -69,7 +60,24 @@ const CAMADAS_CONFIG = [
         noFB:   'violencia_domestica',
         filtro: null
     },
-
+    {
+        id:     'mvi',
+        label:  'MVI — Mortes Violentas Intencionais',
+        icon:   '☠️',
+        cor:    '#b71c1c',
+        corHex: [183, 28, 28],
+        noFB:   'cvli',
+        filtro: 'mvi'
+    },
+    {
+        id:     'mandados',
+        label:  'Cumprimento de Mandados',
+        icon:   '📋',
+        cor:    '#080808',
+        corHex: [55, 71, 79],
+        noFB:   'mandados',
+        filtro: null
+    }
 ];
 
 // ── Estado do mapa ────────────────────────────────────────────────
@@ -77,7 +85,7 @@ let _mapaL         = null;        // instância Leaflet
 let _heatLayers    = {};          // { id: heatLayer }
 let _clusterGroups = {};          // { id: markerClusterGroup }
 let _dadosMapa     = {};          // { id: [{lat,lng,info},...] }
-let _camadasAtivas = new Set(['cvp','cvli','droga','arma','sossego','vd','mvi']);
+let _camadasAtivas = new Set(['cvp','cvli','droga','arma','sossego','vd','mvi','mandados']);
 let _modoVista     = 'heat';      // 'heat' | 'cluster' | 'ambos'
 let _mapaIniciado  = false;
 
@@ -166,13 +174,14 @@ function ehMVI(item) {
 // Usa FILTRO_MAPA (próprio) — independente do filtro do dashboard
 function carregarDadosMapa() {
     const fontes = {
-        cvp:     DADOS.cvp,
-        cvli:    DADOS.cvli,
-        droga:   DADOS.droga,
-        arma:    DADOS.arma,
-        sossego: DADOS.sossego,
-        vd:      DADOS.vd,
-        mvi:     DADOS.cvli  // MVI deriva do mesmo nó cvli com filtro adicional
+        cvp:      DADOS.cvp,
+        cvli:     DADOS.cvli,
+        droga:    DADOS.droga,
+        arma:     DADOS.arma,
+        sossego:  DADOS.sossego,
+        vd:       DADOS.vd,
+        mvi:      DADOS.cvli,    // MVI deriva do mesmo nó cvli com filtro adicional
+        mandados: DADOS.mandados // nó próprio
     };
 
     let totalPontos = 0;
@@ -407,6 +416,14 @@ function atualizarContadores() {
 function renderMapaCalor() {
     const main = document.getElementById('dash-main');
     if (!main) return;
+
+    // ── Seção título ──────────────────────────────────────────────
+    main.insertAdjacentHTML('beforeend', `
+        <div class="secao-titulo" style="margin-top:.5rem;">
+            <i class="fas fa-map-marked-alt" style="margin-right:.4rem;color:#1a237e;"></i>
+            Mapa de Concentração de Ocorrências — Análise Espacial
+        </div>
+    `);
 
     // ── Card do mapa ──────────────────────────────────────────────
     main.insertAdjacentHTML('beforeend', `
