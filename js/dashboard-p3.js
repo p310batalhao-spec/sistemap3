@@ -442,6 +442,11 @@ function renderizar() {
             <div id="crz-contador" style="font-size:.75rem;color:#9ea3b5;margin-top:.5rem;"></div>
         </div>`;
 
+    // ── Mapa de Calor ──────────────────────────────────────────────
+    main.insertAdjacentHTML('beforeend', '<div class="secao-titulo" style="margin-top:.5rem;">'
+        + '<i class="fas fa-map-marked-alt" style="margin-right:.4rem;color:#1a237e;"></i>'
+        + 'Mapa de Concentração de Ocorrências — Análise Espacial</div>');
+
     // Renderiza gráficos após DOM estar pronto
     setTimeout(() => {
         renderKPIs();
@@ -459,6 +464,8 @@ function renderizar() {
         renderTCO();
         renderCruzamento();
         startRelogio();
+        // Mapa de calor (carrega após o resto para não bloquear)
+        if (typeof renderMapaCalor === 'function') renderMapaCalor();
     }, 80);
 }
 
@@ -1363,6 +1370,8 @@ function atualizarTudo() {
     renderVdSossVisitas();
     renderTCO();
     renderCruzamento();
+    // Atualiza mapa com novo filtro de período
+    if (typeof atualizarMapaComFiltro === 'function') atualizarMapaComFiltro();
 }
 
 // ═══════════════════════════════════════════════════════════════════
