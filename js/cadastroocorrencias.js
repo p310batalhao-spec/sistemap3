@@ -31,7 +31,8 @@ const MAPA_GERAL = {
     "LATITUDE": ["Latitude (Abertura de Ocor.)", "Latitude"],
     "LONGITUDE": ["Longitude (Abertura de Ocor.)", "Longitude"],
     "CIDADE": ["Cidade", "Município"],
-    "ESTABELECIMENTO": ["Estabelecimento", "Local"]
+    "ESTABELECIMENTO": ["Estabelecimento", "Local"],
+    "ATENDENTE": ["Atendente"]
 };
 
 const MAPA_OBJETO = {

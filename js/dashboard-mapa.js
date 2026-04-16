@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════
 // MAPA DE CALOR — Dashboard P3 / 10º BPM
 // Leaflet + Leaflet.heat (heatmap) + MarkerCluster
-// Camadas: CVP | CVLI | MVI | DROGA | ARMA | SOSSEGO | VD | MANDADOS
+// Camadas: CVP | CVLI | MVI | DROGA | ARMA | SOSSEGO | VD | MANDADOS | TCO | CCP
 // ═══════════════════════════════════════════════════════════════════
 
 // ── Configuração das camadas ──────────────────────────────────────
@@ -10,7 +10,7 @@ const CAMADAS_CONFIG = [
         id:     'cvp',
         label:  'CVP — Crimes Violentos Patrimoniais',
         icon:   '🔶',
-        cor:    '#e65100',
+        cor:    '#a75c00',
         corHex: [230, 81, 0],
         noFB:   'cvp',
         filtro: null   // usa todos os registros do nó
@@ -28,7 +28,7 @@ const CAMADAS_CONFIG = [
         id:     'droga',
         label:  'Drogas Apreendidas',
         icon:   '🌿',
-        cor:    '#f57f17',
+        cor:    '#002206',
         corHex: [245, 127, 23],
         noFB:   'droga',
         filtro: null
@@ -37,7 +37,7 @@ const CAMADAS_CONFIG = [
         id:     'arma',
         label:  'Armas Apreendidas',
         icon:   '🔫',
-        cor:    '#2e7d32',
+        cor:    '#3d5f3e',
         corHex: [46, 125, 50],
         noFB:   'arma',
         filtro: null
@@ -55,7 +55,7 @@ const CAMADAS_CONFIG = [
         id:     'vd',
         label:  'Violência Doméstica',
         icon:   '🏠',
-        cor:    '#ad1457',
+        cor:    '#b500b2',
         corHex: [173, 20, 87],
         noFB:   'violencia_domestica',
         filtro: null
@@ -77,6 +77,33 @@ const CAMADAS_CONFIG = [
         corHex: [55, 71, 79],
         noFB:   'mandados',
         filtro: null
+    },
+    {
+        id:     'tco',
+        label:  'TCO — Termo Circunstanciado de Ocorrência',
+        icon:   '📑',
+        cor:    '#1565c0',
+        corHex: [21, 101, 192],
+        noFB:   'tco',
+        filtro: 'tco'
+    },
+    {
+        id:     'ccp',
+        label:  'CCP — Crimes Contra o Patrimônio',
+        icon:   '🏚️',
+        cor:    '#4e342e',
+        corHex: [78, 52, 46],
+        noFB:   'geral',
+        filtro: 'ccp'  // furto | tentativa de furto | dano | invasão de domicílio
+    },
+        {
+        id:     'visitas',
+        label:  'Visitas Orientativas',
+        icon:   '🏘️',
+        cor:    '#72f3ff',
+        corHex: [0, 131, 143],
+        noFB:   'geral',
+        filtro: 'visitas'
     }
 ];
 
@@ -85,7 +112,7 @@ let _mapaL         = null;        // instância Leaflet
 let _heatLayers    = {};          // { id: heatLayer }
 let _clusterGroups = {};          // { id: markerClusterGroup }
 let _dadosMapa     = {};          // { id: [{lat,lng,info},...] }
-let _camadasAtivas = new Set(['cvp','cvli','droga','arma','sossego','vd','mvi','mandados']);
+let _camadasAtivas = new Set(['cvp','cvli','droga','arma','sossego','vd','mvi','mandados','tco','ccp','visitas']); // todas ativas por padrão
 let _modoVista     = 'heat';      // 'heat' | 'cluster' | 'ambos'
 let _mapaIniciado  = false;
 
@@ -132,6 +159,7 @@ function extrairPontos(registros, cfg) {
             data:      item.DATA        || '—',
             tip:       item.TIPIFICACAO_GERAL || item.TIPIFICACAO || item.TIPO_DROGA || item.TIPO_ARMA || '—',
             boletim:   item.BOLETIM     || '—',
+            solucao:   item.SOLUÇÃO     || item.SOLUCAO  || item['SOLUÇÃO'] || '—',
         });
     }
     return pontos;
@@ -169,6 +197,38 @@ function ehMVI(item) {
            t.includes('LESAO CORPORAL SEGUIDA DE MORTE');
 }
 
+// ── Classificador TCO ────────────────────────────────────────────
+// Critério: solução contém "ELABOROU TCO" (normalizado, sem acento)
+function ehTCO(item) {
+    const s = (item.SOLUÇÃO || item.SOLUCAO || item['SOLUÇÃO'] || '')
+        .toString().toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return s.includes('ELABOROU TCO');
+}
+
+// ── Classificador CCP ───────────────────────────────────────────
+// Furto | Tentativa de Furto | Dano | Invasão de Domicílio
+// Opera sobre o nó /geral (tipificação)
+function ehCCP(item) {
+    const t = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || '')
+        .toString().toUpperCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '');
+    return t.includes('FURTO') ||
+           t.includes('DANO')  ||
+           t.includes('INVASAO DE DOMICILIO') ||
+           t.includes('INVASÃO DE DOMICÍLIO');
+}
+
+// ── Classificador VISITAS ───────────────────────────────────────
+// Critério: tipificação contém "VISITA" (visitas orientativas)
+// Mesmo critério usado no dashboard-p3.js
+function ehVisitas(item) {
+    const t = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || '')
+        .toString().toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    return t.includes('VISITA');
+}
+
 // ── Carrega dados do Firebase para o mapa ─────────────────────────
 // Reutiliza DADOS global do dashboard (já carregado)
 // Usa FILTRO_MAPA (próprio) — independente do filtro do dashboard
@@ -181,16 +241,28 @@ function carregarDadosMapa() {
         sossego:  DADOS.sossego,
         vd:       DADOS.vd,
         mvi:      DADOS.cvli,    // MVI deriva do mesmo nó cvli com filtro adicional
-        mandados: DADOS.mandados // nó próprio
+        mandados: DADOS.mandados, // nó próprio
+        tco:      DADOS.tco,      // nó /tco — filtrado por solução ehTCO
+        ccp:      DADOS.geral,     // nó /geral — filtrado por tipificação ehCCP
+        visitas:  DADOS.visitas  // nó /geral — filtrado por tipificação ehVisitas
     };
 
     let totalPontos = 0;
     for (const cfg of CAMADAS_CONFIG) {
         let arr = fontes[cfg.id] || [];
 
-        // Aplica filtro de tipificação especial para MVI
+        // Aplica filtros especiais por camada
         if (cfg.filtro === 'mvi') {
             arr = arr.filter(ehMVI);
+        }
+        if (cfg.filtro === 'tco') {
+            arr = arr.filter(ehTCO);
+        }
+        if (cfg.filtro === 'ccp') {
+            arr = arr.filter(ehCCP);
+        }
+        if (cfg.filtro === 'visitas') {
+            arr = arr.filter(ehVisitas);
         }
 
         // Aplica filtro de período do mapa (independente do dashboard)
@@ -312,20 +384,40 @@ function construirCamadas() {
                 fillOpacity: 0.85
             });
 
+            // Badge de tipificação — destaque por camada
+            let tipBadge;
+            if (cfg.id === 'tco') {
+                tipBadge = `<div style="background:#e3f2fd;border:1px solid #1565c0;border-radius:4px;
+                                padding:3px 8px;margin:4px 0;font-size:11px;color:#0d47a1;font-weight:bold;">
+                        📑 ${p.tip}
+                    </div>`;
+            } else if (cfg.id === 'ccp') {
+                tipBadge = `<div style="background:#efebe9;border:1px solid #4e342e;border-radius:4px;
+                                padding:3px 8px;margin:4px 0;font-size:11px;color:#3e2723;font-weight:bold;">
+                        🏚️ ${p.tip}
+                    </div>`;
+            } else {
+                tipBadge = `<span style="color:#374263;">${p.tip}</span>`;
+            }
+
+            const solucaoLinha = (cfg.id === 'tco' || cfg.id === 'ccp')
+                ? `<br><b>Solução:</b> <span style="color:${cfg.cor};font-weight:bold;">${p.solucao}</span>`
+                : '';
+
             marker.bindPopup(`
-                <div style="font-family:Arial,sans-serif;font-size:12px;min-width:200px;">
+                <div style="font-family:Arial,sans-serif;font-size:12px;min-width:220px;">
                     <div style="background:${cfg.cor};color:#fff;padding:6px 10px;
                                 border-radius:6px 6px 0 0;font-weight:bold;margin:-8px -12px 8px;">
                         ${cfg.icon} ${cfg.label}
                     </div>
                     <b>Boletim:</b> ${p.boletim}<br>
                     <b>Data:</b> ${p.data}<br>
-                    <b>Tipificação:</b> ${p.tip}<br>
+                    <b>Tipificação:</b> ${tipBadge}
                     <b>Bairro:</b> ${p.bairro}<br>
                     <b>Logradouro:</b> ${p.logr}<br>
-                    <b>Cidade:</b> ${p.cidade}
+                    <b>Cidade:</b> ${p.cidade}${solucaoLinha}
                 </div>
-            `, { maxWidth: 280 });
+            `, { maxWidth: 300 });
 
             group.addLayer(marker);
         }
