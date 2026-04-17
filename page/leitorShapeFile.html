@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leitor de Shapefile — P3 · 10º BPM</title>
+<link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Barlow+Condensed:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --ink:      #07090f;
+  --ink2:     #0c1018;
+  --ink3:     #131926;
+  --border:   rgba(255,255,255,.07);
+  --border2:  rgba(255,255,255,.13);
+  --cyan:     #00e5ff;
+  --gold:     #f5a623;
+  --green:    #00c896;
+  --red:      #ff4757;
+  --text:     #c8d0e0;
+  --muted:    #4a5568;
+  --r:        8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Barlow Condensed',sans-serif;
+  background:var(--ink);color:var(--text);
+  display:flex;flex-direction:column;
+  letter-spacing:.02em;
+}
+
+/* ── HEADER ─────────────────────────────────────────── */
+.hdr{
+  display:flex;align-items:center;gap:16px;
+  background:linear-gradient(90deg,#060810,#0b1220);
+  border-bottom:1px solid var(--border2);
+  padding:10px 20px;flex-shrink:0;
+}
+.hdr-badge{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;font-weight:700;letter-spacing:.18em;
+  text-transform:uppercase;color:var(--cyan);
+  border:1px solid rgba(0,229,255,.25);
+  padding:3px 8px;border-radius:3px;
+  background:rgba(0,229,255,.06);white-space:nowrap;
+}
+.hdr-title{
+  font-size:17px;font-weight:800;color:#fff;
+  text-transform:uppercase;letter-spacing:.06em;flex:1;
+}
+.hdr-title span{color:var(--cyan);}
+.hdr-back{
+  font-size:11px;color:var(--muted);text-decoration:none;
+  display:flex;align-items:center;gap:6px;
+  transition:color .2s;font-weight:600;letter-spacing:.05em;
+}
+.hdr-back:hover{color:var(--cyan);}
+
+/* ── LAYOUT ─────────────────────────────────────────── */
+.layout{
+  display:grid;
+  grid-template-columns:340px 1fr;
+  flex:1;min-height:0;
+}
+
+/* ── PAINEL ─────────────────────────────────────────── */
+.painel{
+  background:var(--ink2);
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+/* ── DROP ZONE ──────────────────────────────────────── */
+.drop{
+  margin:16px;border-radius:var(--r);
+  border:1.5px dashed rgba(0,229,255,.22);
+  background:rgba(0,229,255,.03);
+  padding:24px 16px;text-align:center;
+  cursor:pointer;transition:all .22s;position:relative;
+}
+.drop input[type=file]{
+  position:absolute;inset:0;opacity:0;cursor:pointer;
+  width:100%;height:100%;
+}
+.drop:hover,.drop.over{
+  border-color:var(--cyan);
+  background:rgba(0,229,255,.07);
+}
+.drop-icon{font-size:28px;display:block;margin-bottom:8px;}
+.drop-h{font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+.drop-s{font-size:11px;color:var(--muted);line-height:1.5;}
+.fmt-tags{display:flex;gap:5px;justify-content:center;margin-top:10px;flex-wrap:wrap;}
+.ftag{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  font-weight:700;padding:2px 7px;border-radius:3px;
+}
+.ftag-shp{background:rgba(0,229,255,.12);color:var(--cyan);border:1px solid rgba(0,229,255,.25);}
+.ftag-dbf{background:rgba(245,166,35,.12);color:var(--gold);border:1px solid rgba(245,166,35,.25);}
+.ftag-prj{background:rgba(0,200,150,.12);color:var(--green);border:1px solid rgba(0,200,150,.25);}
+.ftag-shx{background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.25);}
+
+/* ── LISTA ARQUIVOS ─────────────────────────────────── */
+.arq-list{margin:0 16px 12px;display:flex;flex-direction:column;gap:5px;}
+.arq-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:6px;
+  border:1px solid var(--border);
+  background:var(--ink3);font-size:11px;
+  transition:border-color .2s;
+}
+.arq-item.ok {border-color:rgba(0,200,150,.3);}
+.arq-item.mis{opacity:.5;}
+.arq-ext{
+  font-family:'JetBrains Mono',monospace;
+  font-size:9px;font-weight:700;width:28px;flex-shrink:0;
+}
+.arq-nome{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e2e8f0;}
+.arq-sz{font-size:10px;color:var(--muted);flex-shrink:0;}
+
+/* ── BOTÃO PROCESSAR ────────────────────────────────── */
+.btn-proc{
+  margin:0 16px 14px;
+  padding:12px;border:none;border-radius:var(--r);
+  background:linear-gradient(135deg,#00b4d8,#0077b6);
+  color:#fff;font-family:'Barlow Condensed',sans-serif;
+  font-size:14px;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;
+  transition:opacity .2s,transform .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-proc:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.btn-proc:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ── SCROLL DE INFORMAÇÕES ──────────────────────────── */
+.info{flex:1;overflow-y:auto;padding:0 16px 16px;display:flex;flex-direction:column;gap:12px;}
+.info-empty{
+  text-align:center;padding:40px 0;color:var(--muted);font-size:12px;
+}
+.info-empty i{font-size:32px;display:block;margin-bottom:10px;opacity:.3;}
+
+/* ── CARDS ──────────────────────────────────────────── */
+.card{
+  border:1px solid var(--border);border-radius:var(--r);
+  background:var(--ink3);overflow:hidden;
+}
+.card-hdr{
+  padding:8px 12px;background:rgba(255,255,255,.02);
+  border-bottom:1px solid var(--border);
+  font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);
+  display:flex;align-items:center;gap:7px;
+}
+.card-body{padding:10px 12px;}
+
+/* stat rows */
+.s-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 0;border-bottom:1px solid rgba(255,255,255,.03);
+  font-size:11px;
+}
+.s-row:last-child{border:none;}
+.s-lbl{color:var(--muted);}
+.s-val{
+  font-family:'JetBrains Mono',monospace;
+  font-size:10px;color:var(--cyan);text-align:right;max-width:180px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* campos checklist */
+.campo-item{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03);
+  font-size:11px;
+}
+.campo-item:last-child{border:none;}
+.campo-item input{accent-color:var(--cyan);cursor:pointer;}
+.campo-tipo{
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  padding:1px 5px;border-radius:3px;
+  background:rgba(0,229,255,.1);color:var(--cyan);
+  border:1px solid rgba(0,229,255,.2);flex-shrink:0;
+}
+
+/* tabela atributos */
+.tbl-wrap{overflow-x:auto;max-height:200px;overflow-y:auto;}
+table.attrs{width:100%;border-collapse:collapse;font-size:10px;}
+table.attrs th{
+  background:rgba(0,229,255,.07);color:var(--cyan);
+  padding:5px 8px;text-align:left;white-space:nowrap;
+  font-family:'JetBrains Mono',monospace;font-size:9px;
+  font-weight:700;letter-spacing:.06em;
+  position:sticky;top:0;z-index:1;
+}
+table.attrs td{
+  padding:4px 8px;border-bottom:1px solid rgba(255,255,255,.03);
+  white-space:nowrap;font-family:'JetBrains Mono',monospace;
+  color:#94a3b8;max-width:120px;overflow:hidden;text-overflow:ellipsis;
+}
+table.attrs tr:hover td{background:rgba(255,255,255,.02);}
+
+/* exportar */
+.exp-row{display:flex;gap:6px;flex-wrap:wrap;}
+.btn-exp{
+  flex:1;padding:8px 10px;border:1px solid var(--border2);
+  border-radius:6px;background:rgba(255,255,255,.03);
+  color:var(--text);font-family:'Barlow Condensed',sans-serif;
+  font-size:12px;font-weight:700;letter-spacing:.05em;
+  cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:5px;
+}
+.btn-exp:hover{background:rgba(0,229,255,.08);border-color:var(--cyan);color:var(--cyan);}
+
+/* prj */
+.prj-raw{
+  font-family:'JetBrains Mono',monospace;font-size:8.5px;
+  color:var(--muted);white-space:pre-wrap;word-break:break-all;
+  max-height:70px;overflow-y:auto;
+}
+
+/* ── MAPA ────────────────────────────────────────────── */
+.mapa-wrap{position:relative;display:flex;flex-direction:column;}
+#mapa{flex:1;background:#07090f;min-height:0;}
+
+.mapa-toolbar{
+  position:absolute;top:10px;left:10px;z-index:1000;
+  display:flex;flex-direction:column;gap:6px;
+}
+.mapa-btn{
+  background:rgba(7,9,15,.88);border:1px solid var(--border2);
+  color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;
+  font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:.06em;backdrop-filter:blur(8px);
+  transition:all .2s;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.mapa-btn:hover{background:rgba(0,229,255,.15);border-color:var(--cyan);color:var(--cyan);}
+.mapa-btn.ativo{background:rgba(0,229,255,.2);border-color:var(--cyan);color:var(--cyan);}
+
+/* ── STATUS BAR ──────────────────────────────────────── */
+.sbar{
+  background:var(--ink2);border-top:1px solid var(--border);
+  padding:6px 16px;font-size:10px;font-family:'JetBrains Mono',monospace;
+  color:var(--muted);display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sdot.ok  {background:var(--green);box-shadow:0 0 6px var(--green);}
+.sdot.err {background:var(--red);box-shadow:0 0 6px var(--red);}
+.sdot.run {background:var(--cyan);box-shadow:0 0 6px var(--cyan);animation:blink 1s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ── SCROLL FINO ────────────────────────────────────── */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:2px;}
+
+@media(max-width:860px){
+  .layout{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
+  .painel{max-height:45vh;}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <span class="hdr-badge">P3 · 10º BPM</span>
+  <div class="hdr-title">Leitor de <span>Shapefile</span> — Dados Censitários</div>
+  <a href="../page/dashboard-p3.html" class="hdr-back">
+    <i class="fas fa-arrow-left"></i> Dashboard
+  </a>
+</header>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- ── PAINEL ── -->
+  <div class="painel">
+
+    <!-- Drop zone -->
+    <div class="drop" id="drop">
+      <input type="file" id="inp" multiple accept=".shp,.dbf,.prj,.shx,.SHP,.DBF,.PRJ,.SHX">
+      <span class="drop-icon">🗂️</span>
+      <div class="drop-h">Arraste ou clique para carregar</div>
+      <div class="drop-s">Selecione todos os arquivos juntos<br>(.shp + .dbf + .prj + .shx)</div>
+      <div class="fmt-tags">
+        <span class="ftag ftag-shp">.shp</span>
+        <span class="ftag ftag-dbf">.dbf</span>
+        <span class="ftag ftag-prj">.prj</span>
+        <span class="ftag ftag-shx">.shx</span>
+      </div>
+    </div>
+
+    <!-- Lista arquivos -->
+    <div class="arq-list" id="arq-list"></div>
+
+    <!-- Botão -->
+    <button class="btn-proc" id="btn-proc" disabled onclick="processar()">
+      <i class="fas fa-cogs"></i> PROCESSAR E VISUALIZAR
+    </button>
+
+    <!-- Informações -->
+    <div class="info" id="info">
+      <div class="info-empty">
+        <i class="fas fa-map-marked-alt"></i>
+        Carregue um shapefile para visualizar as informações geoespaciais.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── MAPA ── -->
+  <div class="mapa-wrap">
+    <div id="mapa"></div>
+    <div class="mapa-toolbar" id="mapa-toolbar" style="display:none;">
+      <button class="btn-mapa" onclick="fitBounds()">⛶ Ajustar Zoom</button>
+      <button class="btn-mapa" id="btn-sat" onclick="toggleTile('sat')">🛰 Satélite</button>
+      <button class="btn-mapa" id="btn-esc" onclick="toggleTile('esc')" >🌑 Escuro</button>
+      <button class="btn-mapa" id="btn-osm" onclick="toggleTile('osm')">🗺 Rua</button>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div class="sbar">
+  <div class="sdot" id="sdot"></div>
+  <span id="stxt">Aguardando arquivos...</span>
+</div>
+
+<!-- LIBS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/shapefile@0.6.6/dist/shapefile.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+<script>
+// ════════════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════════════
+let _files  = {};
+let _geojson = null;
+let _prjStr  = '';
+let _campos  = [];      // [{nome, tipo}]
+let _mapaL   = null;
+let _layer   = null;
+let _tileAtual = 'esc';
+
+const TILES = {
+  esc: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'© CartoDB',maxZoom:19}),
+  sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{attribution:'Esri',maxZoom:19}),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OSM',maxZoom:19}),
+};
+
+// ════════════════════════════════════════════════
+// MAPA
+// ════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  _mapaL = L.map('mapa',{center:[-9.42,-36.63],zoom:8,zoomControl:true});
+  TILES.esc.addTo(_mapaL);
+  L.control.scale({imperial:false,position:'bottomleft'}).addTo(_mapaL);
+});
+
+function toggleTile(id) {
+  if (_tileAtual === id) return;
+  TILES[_tileAtual].remove();
+  TILES[id].addTo(_mapaL);
+  _tileAtual = id;
+  ['sat','esc','osm'].forEach(k => {
+    const b = document.getElementById('btn-'+k);
+    if (b) b.classList.toggle('ativo', k === id);
+  });
+}
+
+function fitBounds() {
+  if (_layer) {
+    try { _mapaL.fitBounds(_layer.getBounds(), {padding:[30,30]}); } catch(e) {}
+  }
+}
+
+// ════════════════════════════════════════════════
+// UPLOAD
+// ════════════════════════════════════════════════
+const dropEl = document.getElementById('drop');
+const inpEl  = document.getElementById('inp');
+
+dropEl.addEventListener('dragover',  e => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragleave', () => dropEl.classList.remove('over'));
+dropEl.addEventListener('drop', e => {
+  e.preventDefault(); dropEl.classList.remove('over');
+  receberArquivos(e.dataTransfer.files);
+});
+inpEl.addEventListener('change', e => receberArquivos(e.target.files));
+
+function receberArquivos(files) {
+  _files = {};
+  for (const f of files) {
+    const ext = f.name.split('.').pop().toLowerCase();
+    if (['shp','dbf','prj','shx'].includes(ext)) _files[ext] = f;
+  }
+  renderArqList();
+}
+
+function renderArqList() {
+  const el  = document.getElementById('arq-list');
+  const btn = document.getElementById('btn-proc');
+  const corExt = { shp:'var(--cyan)', dbf:'var(--gold)', prj:'var(--green)', shx:'var(--red)' };
+  const exts = ['shp','dbf','prj','shx'];
+
+  el.innerHTML = exts.map(ext => {
+    const f  = _files[ext];
+    return `<div class="arq-item ${f?'ok':'mis'}">
+      <span class="arq-ext" style="color:${corExt[ext]};">.${ext}</span>
+      <span class="arq-nome">${f ? f.name : '— não carregado'}</span>
+      <span class="arq-sz">${f ? fmtSz(f.size) : ''}</span>
+      <i class="fas fa-${f?'check-circle':'minus-circle'}"
+         style="color:${f?'var(--green)':'var(--muted)'}"></i>
+    </div>`;
+  }).join('');
+
+  btn.disabled = !(_files.shp && _files.dbf);
+  st('', `${Object.keys(_files).length} arquivo(s). ${btn.disabled?'Necessário ao menos .shp e .dbf.':'Pronto para processar.'}`);
+}
+
+// ════════════════════════════════════════════════
+// PROCESSAR
+// ════════════════════════════════════════════════
+async function processar() {
+  st('run','Lendo arquivos...');
+  document.getElementById('btn-proc').disabled = true;
+
+  try {
+    // Lê PRJ
+    _prjStr = _files.prj ? await lerTxt(_files.prj) : '';
+
+    // Detecta projeção
+    let fromProj = null;
+    if (_prjStr) {
+      try { fromProj = proj4(_prjStr); } catch(e) { console.warn('PRJ parse:',e); }
+    }
+
+    // Lê SHP + DBF
+    const shpBuf = await lerBuf(_files.shp);
+    const dbfBuf = _files.dbf ? await lerBuf(_files.dbf) : null;
+
+    st('run','Convertendo geometrias...');
+
+    const features = [];
+    const src = dbfBuf
+      ? await shapefile.open(shpBuf, dbfBuf, {encoding:'latin1'})
+      : await shapefile.open(shpBuf);
+
+    let r = await src.read();
+    while (!r.done) {
+      if (r.value) {
+        if (fromProj) r.value.geometry = reprojetar(r.value.geometry, fromProj);
+        features.push(r.value);
+      }
+      r = await src.read();
+    }
+
+    _geojson = { type:'FeatureCollection', features };
+
+    // Detecta campos e tipos do primeiro registro
+    _campos = [];
+    if (features.length && features[0].properties) {
+      for (const [k, v] of Object.entries(features[0].properties)) {
+        const tipo = typeof v === 'number' ? 'NUM' : typeof v === 'boolean' ? 'BOOL' : 'STR';
+        _campos.push({nome: k, tipo});
+      }
+    }
+
+    st('run',`${features.length} feições — renderizando...`);
+    await delay(30);
+
+    renderMapa();
+    renderInfo();
+    document.getElementById('mapa-toolbar').style.display = 'flex';
+    st('ok', `✅ ${features.length.toLocaleString('pt-BR')} feições carregadas com sucesso.`);
+
+  } catch(err) {
+    console.error(err);
+    st('err','Erro: ' + err.message);
+  } finally {
+    document.getElementById('btn-proc').disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════
+// MAPA — RENDER
+// ════════════════════════════════════════════════
+function renderMapa() {
+  if (_layer) { _mapaL.removeLayer(_layer); _layer = null; }
+  if (!_geojson?.features?.length) return;
+
+  const tipo = _geojson.features[0]?.geometry?.type || '';
+  const isPoint = tipo.includes('Point');
+
+  _layer = L.geoJSON(_geojson, {
+    style: () => ({
+      color: '#00e5ff', fillColor: '#00e5ff',
+      weight: isPoint ? 0 : 1.5,
+      opacity: .9, fillOpacity: .12
+    }),
+    pointToLayer: (feat, ll) => L.circleMarker(ll, {
+      radius: 5, fillColor: '#00e5ff', color: '#fff',
+      weight: 1, opacity: 1, fillOpacity: .9
+    }),
+    onEachFeature: (feat, layer) => {
+      if (!feat.properties) return;
+      const rows = Object.entries(feat.properties).slice(0,15)
+        .map(([k,v]) => `<tr>
+          <td style="color:#64748b;padding:3px 8px;font-size:10px;font-family:monospace;">${k}</td>
+          <td style="padding:3px 8px;font-size:10px;font-family:monospace;">${v ?? '—'}</td>
+        </tr>`).join('');
+      layer.bindPopup(`<div style="font-family:sans-serif;min-width:200px;">
+        <div style="background:#00b4d8;color:#fff;padding:6px 10px;font-weight:bold;
+                    font-size:12px;margin:-8px -12px 8px;border-radius:4px 4px 0 0;">
+          📍 ${tipo}
+        </div>
+        <table style="width:100%;border-collapse:collapse;">${rows}</table>
+      </div>`, {maxWidth:300});
+    }
+  }).addTo(_mapaL);
+
+  try { _mapaL.fitBounds(_layer.getBounds(), {padding:[30,30]}); } catch(e) {}
+}
+
+// ════════════════════════════════════════════════
+// PAINEL — RENDER INFO
+// ════════════════════════════════════════════════
+function renderInfo() {
+  const el = document.getElementById('info');
+  const feats = _geojson.features;
+  const tipo  = feats[0]?.geometry?.type || 'N/D';
+  const bbox  = calcBbox(feats);
+
+  const prjLabel = _prjStr
+    ? (_prjStr.match(/PROJCS\["([^"]+)"/)?.[1]
+    || _prjStr.match(/GEOGCS\["([^"]+)"/)?.[1]
+    || 'Personalizado')
+    : 'WGS84 (padrão)';
+
+  // Amostra de 50 feições, 8 campos
+  const amostra = feats.slice(0, 50);
+  const camposExib = _campos.slice(0, 8);
+
+  el.innerHTML = `
+
+    <!-- METADADOS -->
+    <div class="card">
+      <div class="card-hdr"><i class="fas fa-info-circle"></i> Metadados</div>
+      <div class="card-body">
+        <div class="s-row"><span class="s-lbl">Feições</span>
+          <span class="s-val">${feats.length.toLocaleString('pt-BR')}</span></div>
+        <div class="s-row"><span class="s-lbl">Geometria</span>
+          <span class="s-val">${tipo}</span></div>
+        <div class="s-row"><span class="s-lbl">Campos</span>
+          <span class="s-val">${_campos.length}</span></div>
+        <div class="s-row"><span class="s-lbl">CRS</span>
+          <span class="s-val" style="font-size:9px;">${prjLabel}</span></div>
+        <div class="s-row"><span class="s-lbl">BBox mín</span>
+          <span class="s-val">${bbox.s.toFixed(5)}, ${bbox.w.toFixed(5)}</span></div>
+        <div class="s-row"><span class="s-lbl">BBox máx</span>
+          <span class="s-val">${bbox.n.toFixed(5)}, ${bbox.e.toFixed(5)}</span></div>
+      </div>
+    </div>
+
+    <!-- CAMPOS DBF -->
+    ${_campos.length ? `
+    <div class="card">
+      <div class="card-hdr"><i class="fas fa-columns"></i> Campos do .dbf (${_campos.length})</div>
+      <div class="card-body" style="padding:6px 0;">
+        ${_campos.map(c => `
+        <div class="campo-item" style="padding:5px 12px;">
+          <span style="flex:1;font-size:11px;">${c.nome}</span>
+          <span class="campo-tipo">${c.tipo}</span>
+        </div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <!-- TABELA ATRIBUTOS -->
+    ${camposExib.length ? `
+    <div class="card">
+      <div class="card-hdr"><i class="fas fa-table"></i>
+        Atributos — ${Math.min(50,feats.length)} de ${feats.length} feições</div>
+      <div class="tbl-wrap">
+        <table class="attrs">
+          <thead><tr>${camposExib.map(c=>`<th>${c.nome}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${amostra.map(f=>`<tr>
+              ${camposExib.map(c=>`<td title="${f.properties?.[c.nome]??''}">${f.properties?.[c.nome]??'—'}</td>`).join('')}
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      ${_campos.length > 8 ? `<div style="padding:5px 12px;font-size:9px;color:var(--muted);">
+        + ${_campos.length-8} campos adicionais ocultos</div>` : ''}
+    </div>` : ''}
+
+    <!-- EXPORTAR -->
+    <div class="card">
+      <div class="card-hdr"><i class="fas fa-file-export"></i> Exportar</div>
+      <div class="card-body">
+
+        <!-- Enviar para dashboard-mapa (destaque) -->
+        <div style="margin-bottom:12px;">
+          <div style="font-size:10px;font-weight:700;letter-spacing:.08em;
+                      text-transform:uppercase;color:var(--cyan);margin-bottom:8px;">
+            <i class="fas fa-map"></i> Enviar para Dashboard Mapa
+          </div>
+          <div style="display:flex;gap:6px;align-items:stretch;margin-bottom:8px;">
+            <input id="inp-nome-camada" type="text"
+              placeholder="Nome da camada (ex: Setores Censitários)"
+              style="flex:1;padding:8px 10px;border-radius:6px;
+                     border:1px solid rgba(0,229,255,.25);
+                     background:rgba(0,229,255,.05);color:#fff;
+                     font-family:'Barlow Condensed',sans-serif;font-size:12px;
+                     outline:none;">
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+            <label style="font-size:10px;color:var(--muted);">Cor da camada:</label>
+            <input id="inp-cor-camada" type="color" value="#00e5ff"
+              style="width:36px;height:28px;padding:2px;border-radius:4px;
+                     border:1px solid rgba(255,255,255,.15);background:transparent;cursor:pointer;">
+            <label style="font-size:10px;color:var(--muted);">Ícone:</label>
+            <select id="inp-icone-camada"
+              style="padding:5px 8px;border-radius:5px;
+                     border:1px solid rgba(255,255,255,.15);
+                     background:#131926;color:#fff;font-size:11px;cursor:pointer;">
+              <option value="🗺">🗺 Mapa</option>
+              <option value="📐">📐 Área</option>
+              <option value="🏘">🏘 Setor</option>
+              <option value="📍">📍 Ponto</option>
+              <option value="🔷">🔷 Polígono</option>
+              <option value="🌐">🌐 Censo</option>
+              <option value="📊">📊 Dados</option>
+              <option value="🛡">🛡 Área de Segurança</option>
+            </select>
+          </div>
+          <button onclick="enviarParaDashboard()"
+            style="width:100%;padding:11px;border:none;border-radius:7px;
+                   background:linear-gradient(135deg,#00b4d8,#0077b6);
+                   color:#fff;font-family:'Barlow Condensed',sans-serif;
+                   font-size:14px;font-weight:800;letter-spacing:.08em;
+                   text-transform:uppercase;cursor:pointer;
+                   transition:opacity .2s;display:flex;align-items:center;
+                   justify-content:center;gap:8px;">
+            <i class="fas fa-paper-plane"></i> ENVIAR PARA O MAPA DO DASHBOARD
+          </button>
+          <div id="envio-feedback"
+            style="margin-top:7px;font-size:10px;display:none;
+                   padding:7px 10px;border-radius:5px;"></div>
+        </div>
+
+        <div style="height:1px;background:var(--border);margin:10px 0;"></div>
+
+        <!-- Exportar arquivo -->
+        <div style="font-size:10px;font-weight:700;letter-spacing:.08em;
+                    text-transform:uppercase;color:var(--muted);margin-bottom:8px;">
+          <i class="fas fa-download"></i> Salvar Arquivo
+        </div>
+        <div class="exp-row">
+          <button class="btn-exp" onclick="expGeojson()">
+            <i class="fas fa-code"></i> GeoJSON
+          </button>
+          <button class="btn-exp" onclick="expCsv()">
+            <i class="fas fa-file-csv"></i> CSV
+          </button>
+          <button class="btn-exp" onclick="copiarClip()">
+            <i class="fas fa-copy"></i> Copiar JSON
+          </button>
+        </div>
+        <div style="margin-top:8px;font-size:9px;color:var(--muted);line-height:1.5;">
+          GeoJSON compatível com QGIS, ArcGIS e dashboard-mapa.js do sistema P3.
+        </div>
+      </div>
+    </div>
+
+    <!-- PRJ RAW -->
+    ${_prjStr ? `
+    <div class="card">
+      <div class="card-hdr"><i class="fas fa-globe"></i> Projeção (.prj)</div>
+      <div class="card-body"><pre class="prj-raw">${_prjStr}</pre></div>
+    </div>` : ''}
+  `;
+}
+
+// ════════════════════════════════════════════════
+// EXPORTAR
+// ════════════════════════════════════════════════
+function expGeojson() {
+  if (!_geojson) return;
+  baixar(new Blob([JSON.stringify(_geojson,null,2)],{type:'application/json'}),
+    `shapefile_${hoje()}.geojson`);
+  st('ok','GeoJSON exportado.');
+}
+
+// ════════════════════════════════════════════════
+// ENVIAR GEOJSON PARA O DASHBOARD-MAPA
+// Mecanismo: salva no localStorage com chave
+// 'p3_camadas_shp' — um array de camadas.
+// O dashboard-mapa.js lê essa chave ao iniciar
+// e renderiza as camadas extras automaticamente.
+// ════════════════════════════════════════════════
+function enviarParaDashboard() {
+  if (!_geojson?.features?.length) {
+    mostrarFeedback('Nenhum dado processado. Carregue e processe um shapefile primeiro.', 'err');
+    return;
+  }
+
+  const nomeEl  = document.getElementById('inp-nome-camada');
+  const corEl   = document.getElementById('inp-cor-camada');
+  const iconeEl = document.getElementById('inp-icone-camada');
+
+  const nome  = (nomeEl?.value || '').trim() || 'Shapefile ' + hoje();
+  const cor   = corEl?.value  || '#00e5ff';
+  const icone = iconeEl?.value || '🗺';
+
+  // Monta a camada no formato que o dashboard-mapa.js espera
+  const camada = {
+    id:        'shp_' + Date.now(),
+    nome,
+    cor,
+    icone,
+    origem:    'shapefile',
+    arquivo:   _files.shp?.name || 'shapefile',
+    feicoes:   _geojson.features.length,
+    tipo:      _geojson.features[0]?.geometry?.type || 'N/D',
+    criadoEm:  new Date().toISOString(),
+    geojson:   _geojson
+  };
+
+  // Lê array existente
+  let camadas = [];
+  try {
+    const raw = localStorage.getItem('p3_camadas_shp');
+    if (raw) camadas = JSON.parse(raw);
+    if (!Array.isArray(camadas)) camadas = [];
+  } catch(e) { camadas = []; }
+
+  // Remove se já existia uma com mesmo nome (sobrescreve)
+  camadas = camadas.filter(c => c.nome !== nome);
+  camadas.push(camada);
+
+  // Verifica tamanho antes de salvar (localStorage: 5–10 MB)
+  const json = JSON.stringify(camadas);
+  const kb   = (json.length / 1024).toFixed(0);
+
+  try {
+    localStorage.setItem('p3_camadas_shp', json);
+    mostrarFeedback(
+      `✅ Camada <b>"${nome}"</b> enviada para o dashboard!<br>` +
+      `${camada.feicoes.toLocaleString('pt-BR')} feições · ${kb} KB<br>` +
+      `<a href="../page/dashboard-p3.html" target="_blank"
+         style="color:#00e5ff;text-decoration:none;font-weight:700;">
+         → Abrir Dashboard</a>`,
+      'ok'
+    );
+    st('ok', `✅ Camada "${nome}" pronta no dashboard (${kb} KB).`);
+  } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      // Tenta remover camadas antigas e tentar novamente
+      try {
+        localStorage.removeItem('p3_camadas_shp');
+        localStorage.setItem('p3_camadas_shp', JSON.stringify([camada]));
+        mostrarFeedback(
+          `⚠️ Espaço insuficiente. Camadas anteriores removidas.<br>
+           Camada <b>"${nome}"</b> salva com sucesso (${kb} KB).`, 'warn'
+        );
+      } catch(e2) {
+        mostrarFeedback(
+          `❌ Arquivo muito grande para o localStorage (${kb} KB).<br>
+           Use a exportação em GeoJSON e importe manualmente no QGIS.`, 'err'
+        );
+      }
+    } else {
+      mostrarFeedback('❌ Erro ao salvar: ' + e.message, 'err');
+    }
+  }
+}
+
+function mostrarFeedback(msg, tipo) {
+  const el = document.getElementById('envio-feedback');
+  if (!el) return;
+  const cores = {
+    ok:   { bg: 'rgba(0,200,150,.12)', border: 'rgba(0,200,150,.3)',  txt: '#00c896' },
+    warn: { bg: 'rgba(245,166,35,.12)',border: 'rgba(245,166,35,.3)', txt: '#f5a623' },
+    err:  { bg: 'rgba(255,71,87,.12)', border: 'rgba(255,71,87,.3)',  txt: '#ff4757' },
+  };
+  const c = cores[tipo] || cores.ok;
+  el.style.display      = 'block';
+  el.style.background   = c.bg;
+  el.style.border       = `1px solid ${c.border}`;
+  el.style.color        = c.txt;
+  el.style.fontSize     = '11px';
+  el.style.lineHeight   = '1.5';
+  el.innerHTML = msg;
+}
+
+// Lista as camadas já enviadas ao dashboard
+function listarCamadasEnviadas() {
+  try {
+    const raw = localStorage.getItem('p3_camadas_shp');
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function expCsv() {
+  if (!_geojson?.features?.length) return;
+  const cnames = _campos.map(c => c.nome);
+  const header = ['lat_centroide','lng_centroide',...cnames].join(',');
+  const rows = _geojson.features.map(f => {
+    let lat='', lng='';
+    try {
+      const c = f.geometry?.coordinates;
+      if (f.geometry?.type==='Point') { lng=c[0]; lat=c[1]; }
+      else if (f.geometry?.type.includes('Polygon')) {
+        const first = f.geometry.type==='MultiPolygon' ? c[0][0][0] : c[0][0];
+        lng=first[0]; lat=first[1];
+      }
+    } catch(e) {}
+    const vals = cnames.map(k => `"${(f.properties?.[k]??'').toString().replace(/"/g,"'")}"`);
+    return [lat,lng,...vals].join(',');
+  });
+  baixar(new Blob([[header,...rows].join('\n')],{type:'text/csv'}), `shapefile_${hoje()}.csv`);
+  st('ok','CSV exportado.');
+}
+
+function copiarClip() {
+  if (!_geojson) return;
+  navigator.clipboard.writeText(JSON.stringify(_geojson,null,2))
+    .then(()=>st('ok','GeoJSON copiado para a área de transferência.'))
+    .catch(()=>st('err','Falha ao copiar.'));
+}
+
+// ════════════════════════════════════════════════
+// REPROJEÇÃO
+// ════════════════════════════════════════════════
+function reprojetar(geom, fromProj) {
+  if (!geom) return geom;
+  const conv = arr => {
+    if (typeof arr[0]==='number') {
+      try {
+        const [x,y] = proj4(fromProj, proj4.defs('EPSG:4326'), arr);
+        return [x, y];
+      } catch(e) { return arr; }
+    }
+    return arr.map(conv);
+  };
+  return {...geom, coordinates: conv(geom.coordinates)};
+}
+
+// ════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════
+function lerBuf(f) {
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result); r.onerror=rej;
+    r.readAsArrayBuffer(f);
+  });
+}
+function lerTxt(f) {
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result); r.onerror=rej;
+    r.readAsText(f,'latin1');
+  });
+}
+function calcBbox(feats) {
+  let n=-90,s=90,e=-180,w=180;
+  feats.forEach(f=>{
+    flatC(f.geometry).forEach(([lng,lat])=>{
+      if(lat>n)n=lat; if(lat<s)s=lat;
+      if(lng>e)e=lng; if(lng<w)w=lng;
+    });
+  });
+  return {n,s,e,w};
+}
+function flatC(geom) {
+  if(!geom)return[];
+  const f=a=>typeof a[0]==='number'?[a]:a.flatMap(f);
+  return f(geom.coordinates);
+}
+function fmtSz(n) {
+  return n>1e6?(n/1e6).toFixed(1)+' MB':n>1e3?(n/1e3).toFixed(0)+' KB':n+' B';
+}
+function hoje() { return new Date().toISOString().slice(0,10).replace(/-/g,''); }
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function baixar(blob,nome) {
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=nome;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),2e3);
+}
+function st(tipo, msg) {
+  const d=document.getElementById('sdot');
+  const t=document.getElementById('stxt');
+  d.className='sdot'+(tipo?' '+tipo:'');
+  t.textContent=msg;
+}
+</script>
+</body>
+</html>
