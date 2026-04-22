@@ -137,8 +137,30 @@ function renderizar() {
                 <h2><i class="fas fa-chart-bar" style="margin-right:.4rem;"></i>Dashboard Operacional — P3</h2>
                 <small>10º Batalhão de Polícia Militar · Dados: Firebase Realtime Database</small>
             </div>
-            <div class="relogio-dash" id="dash-relogio"></div>
         </div>`;
+
+        // Botão de acesso ao mapa de inteligência
+    main.insertAdjacentHTML('beforeend', `
+        <div style="margin-top:.5rem;padding:1.2rem 1.5rem;background:linear-gradient(135deg,#0a1628,#0d2147);
+            border-radius:10px;border:1px solid rgba(66,165,245,.2);
+            display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+            <div>
+                <div style="color:#fff;font-weight:bold;font-size:1rem;margin-bottom:.3rem;">
+                    <i class="fas fa-map-marked-alt" style="color:#42a5f5;margin-right:.4rem;"></i>
+                    Mapa de Inteligência Policial
+                </div>
+                <div style="color:rgba(255,255,255,.55);font-size:.8rem;">
+                    Mapa de calor, Mapa de Agrupamento, Cruzamento de Registros de Ocorrências, Polígonos.
+                </div>
+            </div>
+            <a href="../page/dashboard-mapa.html"
+                style="padding:10px 24px;background:#1565c0;color:#fff;text-decoration:none;
+                border-radius:8px;font-weight:bold;font-size:.88rem;
+                display:flex;align-items:center;gap:8px;white-space:nowrap;
+                box-shadow:0 2px 8px rgba(21,101,192,.4);">
+                <i class="fas fa-map"></i> Abrir Mapa
+            </a>
+        </div>`);
 
     // ── Filtro de período ─────────────────────────────────────────
     main.innerHTML += `
@@ -442,11 +464,6 @@ function renderizar() {
             <div id="crz-contador" style="font-size:.75rem;color:#9ea3b5;margin-top:.5rem;"></div>
         </div>`;
 
-    // ── Mapa de Calor ──────────────────────────────────────────────
-    main.insertAdjacentHTML('beforeend', '<div class="secao-titulo" style="margin-top:.5rem;">'
-        + '<i class="fas fa-map-marked-alt" style="margin-right:.4rem;color:#1a237e;"></i>'
-        + 'Mapa de Concentração de Ocorrências — Análise Espacial</div>');
-
     // Renderiza gráficos após DOM estar pronto
     setTimeout(() => {
         renderKPIs();
@@ -464,8 +481,6 @@ function renderizar() {
         renderTCO();
         renderCruzamento();
         startRelogio();
-        // Mapa de calor (carrega após o resto para não bloquear)
-        if (typeof renderMapaCalor === 'function') renderMapaCalor();
     }, 80);
 }
 
@@ -1370,8 +1385,7 @@ function atualizarTudo() {
     renderVdSossVisitas();
     renderTCO();
     renderCruzamento();
-    // Atualiza mapa com novo filtro de período
-    if (typeof atualizarMapaComFiltro === 'function') atualizarMapaComFiltro();
+
 }
 
 // ═══════════════════════════════════════════════════════════════════

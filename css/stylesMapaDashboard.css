@@ -1,0 +1,452 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #0a1628;
+    overflow: hidden;
+}
+
+.pagecomplete {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 56px - 36px);
+}
+
+/* ── Painel lateral ─────────────────────────────────────── */
+#painel-lateral {
+    width: 320px;
+    min-width: 220px;
+    max-width: 440px;
+    background: #0d1e3a;
+    border-right: 1px solid rgba(255, 255, 255, .1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    resize: horizontal;
+    position: relative;
+    z-index: 500;
+    transition: width .25s ease;
+}
+
+#painel-lateral.collapsed {
+    width: 0 !important;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.painel-header {
+    background: linear-gradient(90deg, #0a448f, #1464b5);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: .82rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+
+/* ── Abas do painel ────────────────────────────────────── */
+.painel-tabs {
+    display: flex;
+    background: #091529;
+    border-bottom: 1px solid rgba(255, 255, 255, .08);
+    flex-shrink: 0;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 7px 4px;
+    font-size: 9px;
+    font-weight: bold;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, .4);
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    transition: all .15s;
+    border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+    color: #42a5f5;
+    border-bottom-color: #42a5f5;
+}
+
+.tab-btn:hover {
+    color: rgba(255, 255, 255, .8);
+}
+
+.tab-content {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ── Ferramentas ────────────────────────────────────────── */
+#mapa-ferramentas {
+    background: rgba(10, 22, 40, .97);
+    color: #fff;
+    padding: 7px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    align-items: center;
+    flex-shrink: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, .06);
+}
+
+/* ── Container do mapa ──────────────────────────────────── */
+#mapa-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+#mapa-calor {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+}
+
+/* ── Botões ─────────────────────────────────────────────── */
+.btn-mapa {
+    background: rgba(255, 255, 255, .08);
+    border: 1px solid rgba(255, 255, 255, .2);
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    white-space: nowrap;
+    transition: background .15s;
+}
+
+.btn-mapa:hover {
+    background: rgba(255, 255, 255, .18);
+}
+
+.btn-mapa.active {
+    background: #1565c0;
+    border-color: #1976d2;
+    box-shadow: 0 0 8px rgba(21, 101, 192, .6);
+}
+
+/* ── Cards de camada — MELHORIA 1: preenchimento com cor ── */
+.camada-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    cursor: pointer;
+    margin-bottom: 5px;
+    border: 1.5px solid rgba(255, 255, 255, .08);
+    transition: background .2s, border-color .2s, box-shadow .2s;
+    user-select: none;
+}
+
+.camada-toggle:hover {
+    filter: brightness(1.15);
+}
+
+
+
+.camada-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.camada-nome {
+    font-size: 11px;
+    flex: 1;
+}
+
+.camada-count {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 8px;
+    min-width: 22px;
+    text-align: center;
+}
+
+/* ── Rótulo de seção ────────────────────────────────────── */
+.sec-label {
+    font-size: 9px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: rgba(255, 255, 255, .3);
+    margin: 10px 0 6px;
+}
+
+/* ── Input busca / data ─────────────────────────────────── */
+.busca-input {
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255, 255, 255, .15);
+    background: rgba(255, 255, 255, .06);
+    color: #fff;
+    font-size: 11px;
+    margin-bottom: 6px;
+    outline: none;
+}
+
+.busca-input::placeholder {
+    color: rgba(255, 255, 255, .3);
+}
+
+.busca-input:focus {
+    border-color: #42a5f5;
+}
+
+/* ── Status bar ─────────────────────────────────────────── */
+#status-bar {
+    background: #060f1e;
+    color: rgba(255, 255, 255, .4);
+    font-size: 10px;
+    padding: 4px 14px;
+    display: flex;
+    justify-content: space-between;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* ── Loader ─────────────────────────────────────────────── */
+#loader-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 15, 30, .92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    gap: 14px;
+    color: #fff;
+    font-size: .9rem;
+    backdrop-filter: blur(3px);
+}
+
+.spinner {
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(255, 255, 255, .15);
+    border-top-color: #42a5f5;
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#loader-msg {
+    font-size: .78rem;
+    opacity: .65;
+}
+
+/* ── Toggle sidebar ─────────────────────────────────────── */
+#btn-toggle-sidebar {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 600;
+    background: #0d2147;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-left: none;
+    border-radius: 0 6px 6px 0;
+    color: #fff;
+    padding: 12px 5px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+}
+
+/* ── Popup Leaflet escuro ───────────────────────────────── */
+.leaflet-popup-content-wrapper {
+    background: #0d2147 !important;
+    border: 1px solid rgba(66, 165, 245, .3) !important;
+    border-radius: 10px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .5) !important;
+}
+
+.leaflet-popup-content {
+    color: #dde !important;
+    font-size: 12px !important;
+    margin: 10px 14px !important;
+}
+
+.leaflet-popup-tip-container .leaflet-popup-tip {
+    background: #0d2147 !important;
+}
+
+.leaflet-popup-close-button {
+    color: rgba(255, 255, 255, .6) !important;
+}
+
+/* ── Fullscreen ─────────────────────────────────────────── */
+#mapa-card-wrapper:fullscreen,
+#mapa-card-wrapper:-webkit-full-screen {
+    display: flex;
+    flex-direction: row;
+    background: #0a1628;
+}
+
+#mapa-card-wrapper:fullscreen #mapa-calor,
+#mapa-card-wrapper:-webkit-full-screen #mapa-calor {
+    flex: 1;
+    height: 100% !important;
+}
+
+@media (max-width: 768px) {
+    #painel-lateral {
+        width: 0;
+        min-width: 0;
+    }
+}
+
+/* ── Lista de ocorrências no painel ─────────────────────── */
+.oc-card {
+    background: rgba(255, 255, 255, .04);
+    border: 1px solid rgba(255, 255, 255, .07);
+    border-radius: 7px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: #cde;
+    cursor: pointer;
+    transition: all .15s;
+}
+
+.oc-card:hover {
+    background: rgba(66, 165, 245, .1);
+    border-color: rgba(66, 165, 245, .25);
+}
+
+.oc-card .oc-titulo {
+    font-weight: bold;
+    color: #fff;
+    font-size: 11px;
+    margin-bottom: 3px;
+}
+
+.oc-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: bold;
+    margin-right: 3px;
+    margin-top: 2px;
+}
+
+/* ── Seção de desenhos salvos ───────────────────────────── */
+#lista-desenhos .camada-toggle {
+    position: relative;
+}
+
+#lista-desenhos .camada-toggle:hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 7px;
+    background: rgba(255, 255, 255, .06);
+    pointer-events: none;
+}
+
+/* ── Polígono sendo desenhado — preview ─────────────────── */
+.leaflet-container.crosshair-cursor {
+    cursor: crosshair !important;
+}
+
+/* ── Barra de ações rápidas de polígono ─────────────────── */
+#barra-poligono {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4000;
+    background: rgba(10, 20, 40, .96);
+    border: 1px solid rgba(66, 165, 245, .35);
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: none;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #cde;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .5);
+    white-space: nowrap;
+}
+
+#barra-poligono.show {
+    display: flex;
+}
+
+#barra-poligono button {
+    padding: 4px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.btn-confirmar-poly {
+    background: #1565c0;
+    color: #fff;
+}
+
+.btn-cancelar-poly {
+    background: rgba(244, 67, 54, .2);
+    border: 1px solid rgba(244, 67, 54, .4) !important;
+    color: #ef9a9a;
+}
+/* ══════════════════════════════════════════════════════════════
+   BUSCA ENRIQUECIDA — card de pessoa encontrada
+   ══════════════════════════════════════════════════════════════ */
+.pessoa-card-busca {
+    background: rgba(21, 101, 192, .18);
+    border: 1px solid rgba(66, 165, 245, .3);
+    border-radius: 9px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+}
+
+/* Badge de cache no painel */
+#cache-badge {
+    font-size: 9px;
+    color: rgba(255, 255, 255, .35);
+    text-align: right;
+    padding: 3px 0 0;
+    display: block;
+    font-style: italic;
+    transition: color .3s;
+}
+
+/* Busca — placeholder com ícones */
+#busca-oc {
+    background: rgba(255, 255, 255, .07);
+}

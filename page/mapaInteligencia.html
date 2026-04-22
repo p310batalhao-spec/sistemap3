@@ -1,0 +1,3197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Inteligência — 10º BPM</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #0a1628; overflow: hidden; }
+
+        .pagecomplete {
+            display: flex;
+            flex-direction: row;
+            height: calc(100vh - 56px - 36px);
+        }
+
+        /* ── Painel lateral ──────────────────────────────── */
+        #painel-lateral {
+            width: 340px;
+            min-width: 240px;
+            max-width: 440px;
+            background: #0d1e3a;
+            border-right: 1px solid rgba(255,255,255,.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            resize: horizontal;
+            position: relative;
+            z-index: 500;
+            transition: width .25s ease;
+        }
+        #painel-lateral.collapsed { width: 0 !important; min-width: 0; overflow: hidden; }
+
+        .painel-header {
+            background: linear-gradient(90deg, #0a448f, #1464b5);
+            color: #fff;
+            padding: 10px 14px;
+            font-size: .82rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .painel-tabs {
+            display: flex;
+            background: #091529;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+            flex-shrink: 0;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 44px;
+            padding: 7px 3px;
+            font-size: 9px;
+            font-weight: bold;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: rgba(255,255,255,.4);
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            transition: all .15s;
+            border-bottom: 2px solid transparent;
+            white-space: nowrap;
+        }
+        .tab-btn.active { color: #42a5f5; border-bottom-color: #42a5f5; }
+        .tab-btn:hover  { color: rgba(255,255,255,.8); }
+
+        .tab-content { display: none; flex: 1; overflow-y: auto; padding: 10px; }
+        .tab-content.active { display: block; }
+
+        /* ── Ferramentas / barra superior do mapa ────────── */
+        #mapa-ferramentas {
+            background: rgba(10,22,40,.97);
+            color: #fff;
+            padding: 7px 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 7px;
+            align-items: center;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+        }
+
+        /* ── Container do mapa ───────────────────────────── */
+        #mapa-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        #mapa-calor {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+        }
+
+        /* ── Botões ──────────────────────────────────────── */
+        .btn-mapa {
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.2);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            white-space: nowrap;
+            transition: background .15s;
+        }
+        .btn-mapa:hover  { background: rgba(255,255,255,.18); }
+        .btn-mapa.active { background: #1565c0; border-color: #1976d2; }
+        .btn-mapa.active-red { background: #b71c1c; border-color: #c62828; }
+
+        /* ── Cards de camada ─────────────────────────────── */
+        .camada-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 9px;
+            border-radius: 7px;
+            cursor: pointer;
+            margin-bottom: 5px;
+            background: rgba(255,255,255,.04);
+            border: 1.5px solid rgba(255,255,255,.08);
+            transition: all .15s;
+            user-select: none;
+        }
+        .camada-toggle:hover { background: rgba(255,255,255,.09); }
+        .camada-toggle.ativa { border-color: var(--cor); }
+        .camada-dot   { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .camada-nome  { font-size: 11px; color: #dde; flex: 1; }
+        .camada-count { font-size: 10px; color: rgba(255,255,255,.35); background: rgba(0,0,0,.3); padding: 1px 7px; border-radius: 8px; min-width: 22px; text-align: center; }
+
+        /* ── Cards Supabase ──────────────────────────────── */
+        .sb-card {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.08);
+            border-radius: 8px;
+            padding: 9px 11px;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #cdd;
+            cursor: pointer;
+            transition: all .15s;
+        }
+        .sb-card:hover { background: rgba(66,165,245,.12); border-color: rgba(66,165,245,.3); }
+        .sb-card .sb-nome { font-weight: bold; color: #fff; font-size: 12px; margin-bottom: 4px; }
+        .sb-badge {
+            display: inline-block;
+            padding: 1px 7px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-right: 4px;
+        }
+        .badge-pessoa  { background: #1565c0; color: #fff; }
+        .badge-orcrim  { background: #6a1b9a; color: #fff; }
+        .badge-end     { background: #2e7d32; color: #fff; }
+        .badge-vinculo { background: #b71c1c; color: #fff; }
+        .badge-crime   { background: #e65100; color: #fff; }
+        .badge-faccao  { background: #880e4f; color: #fff; }
+        .badge-bo      { background: #0277bd; color: #fff; }
+
+        /* ── Rótulo de seção no painel ───────────────────── */
+        .sec-label {
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: rgba(255,255,255,.3);
+            margin: 10px 0 6px;
+        }
+
+        /* ── Busca ───────────────────────────────────────── */
+        .busca-input {
+            width: 100%;
+            padding: 7px 10px;
+            border-radius: 6px;
+            border: 1.5px solid rgba(255,255,255,.15);
+            background: rgba(255,255,255,.06);
+            color: #fff;
+            font-size: 11px;
+            margin-bottom: 10px;
+            outline: none;
+        }
+        .busca-input::placeholder { color: rgba(255,255,255,.3); }
+        .busca-input:focus { border-color: #42a5f5; }
+
+        /* ── Status bar ──────────────────────────────────── */
+        #status-bar {
+            background: #060f1e;
+            color: rgba(255,255,255,.4);
+            font-size: 10px;
+            padding: 4px 14px;
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        /* ── Loader ──────────────────────────────────────── */
+        #loader-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(6,15,30,.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            gap: 14px;
+            color: #fff;
+            font-size: .9rem;
+            backdrop-filter: blur(3px);
+        }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(255,255,255,.15);
+            border-top-color: #42a5f5;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #loader-msg { font-size: .78rem; opacity: .65; }
+
+        /* ── Toggle sidebar ──────────────────────────────── */
+        #btn-toggle-sidebar {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 600;
+            background: #0d2147;
+            border: 1px solid rgba(255,255,255,.2);
+            border-left: none;
+            border-radius: 0 6px 6px 0;
+            color: #fff;
+            padding: 12px 5px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        /* ── Popup Leaflet escuro ────────────────────────── */
+        .leaflet-popup-content-wrapper {
+            background: #0d2147 !important;
+            border: 1px solid rgba(66,165,245,.3) !important;
+            border-radius: 10px !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,.5) !important;
+        }
+        .leaflet-popup-content { color: #dde !important; font-size: 12px !important; margin: 10px 14px !important; }
+        .leaflet-popup-tip-container .leaflet-popup-tip { background: #0d2147 !important; }
+        .leaflet-popup-close-button { color: rgba(255,255,255,.6) !important; }
+
+        /* ── Modal Grafo de Vínculos ──────────────────────── */
+        #modal-grafo {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-grafo.show { display: flex; }
+        #grafo-box {
+            background: #0d1e3a;
+            border: 1px solid rgba(66,165,245,.35);
+            border-radius: 14px;
+            width: min(92vw, 900px);
+            height: min(88vh, 680px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #grafo-header {
+            background: linear-gradient(90deg, #0a448f, #1464b5);
+            padding: 10px 16px;
+            color: #fff;
+            font-weight: bold;
+            font-size: .85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        #grafo-canvas-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        #grafo-canvas { width: 100%; height: 100%; display: block; }
+        #grafo-info {
+            position: absolute;
+            bottom: 10px;
+            left: 12px;
+            background: rgba(10,20,40,.88);
+            color: #cde;
+            font-size: 11px;
+            padding: 7px 11px;
+            border-radius: 8px;
+            max-width: 280px;
+            pointer-events: none;
+        }
+
+        /* ── Modal Detalhe Pessoa ─────────────────────────── */
+        #modal-pessoa {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,.75);
+            z-index: 10001;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-pessoa.show { display: flex; }
+        #pessoa-box {
+            background: #0d1e3a;
+            border: 1px solid rgba(66,165,245,.35);
+            border-radius: 14px;
+            width: min(90vw, 680px);
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 0;
+        }
+        .pessoa-header-modal {
+            background: linear-gradient(90deg, #1565c0, #0a448f);
+            padding: 14px 18px;
+            color: #fff;
+            font-weight: bold;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .pessoa-section {
+            padding: 12px 18px;
+            border-bottom: 1px solid rgba(255,255,255,.07);
+        }
+        .pessoa-section-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: .1em;
+            color: rgba(255,255,255,.35);
+            margin-bottom: 8px;
+        }
+        .pessoa-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 4px;
+        }
+        .pessoa-kv { font-size: 11px; color: #cde; }
+        .pessoa-kv b { color: #fff; }
+        .pessoa-bo-item {
+            background: rgba(255,255,255,.05);
+            border-left: 3px solid #1976d2;
+            padding: 6px 10px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 5px;
+            font-size: 11px;
+            color: #bcd;
+        }
+        .pessoa-bo-item b { color: #fff; }
+        .pessoa-vinculo-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255,255,255,.05);
+            font-size: 11px;
+            color: #cde;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,.6);
+            cursor: pointer;
+            font-size: 18px;
+            padding: 2px 6px;
+        }
+        .close-btn:hover { color: #fff; }
+
+        /* ── Fullscreen ──────────────────────────────────── */
+        #mapa-card-wrapper:fullscreen,
+        #mapa-card-wrapper:-webkit-full-screen {
+            display: flex; flex-direction: row; background: #0a1628;
+        }
+        #mapa-card-wrapper:fullscreen #mapa-calor,
+        #mapa-card-wrapper:-webkit-full-screen #mapa-calor {
+            flex: 1; height: 100% !important;
+        }
+
+        @media (max-width: 768px) {
+            #painel-lateral { width: 0; min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ══ HEADER ════════════════════════════════════════════════════ -->
+<header>
+    <div class="header-info-left">
+        <img class="brasao" src="../img/brasao.png" alt="brasão" onerror="this.style.display='none'">
+        <div class="cabecalhotexto">
+            <h1>MAPA DE INTELIGÊNCIA POLICIAL</h1>
+            <h3>10º BATALHÃO DE POLÍCIA MILITAR — SEÇÃO P3</h3>
+        </div>
+    </div>
+    <div class="header-info-right">
+        <a href="../page/dashboard-p3.html"
+            style="color:rgba(255,255,255,.75);font-size:.78rem;text-decoration:none;
+                   display:flex;align-items:center;gap:6px;
+                   background:rgba(255,255,255,.1);padding:5px 12px;border-radius:6px;">
+            <i class="fas fa-arrow-left"></i> Voltar ao Dashboard
+        </a>
+    </div>
+</header>
+
+<!-- ══ CORPO ═════════════════════════════════════════════════════ -->
+<div class="pagecomplete" id="mapa-card-wrapper">
+
+    <!-- ── PAINEL LATERAL ──────────────────────────────────────── -->
+    <div id="painel-lateral">
+
+        <div class="painel-header">
+            <span><i class="fas fa-layer-group" style="margin-right:6px;"></i>Controles</span>
+            <span id="resumo-total" style="font-size:.7rem;opacity:.7;"></span>
+        </div>
+
+        <!-- Abas -->
+        <div class="painel-tabs">
+            <button class="tab-btn active" onclick="abrirTab('tab-camadas')">
+                <i class="fas fa-map"></i><br>Camadas
+            </button>
+            <button class="tab-btn" onclick="abrirTab('tab-pessoas')">
+                <i class="fas fa-users"></i><br>Pessoas
+            </button>
+            <button class="tab-btn" onclick="abrirTab('tab-orcrim')">
+                <i class="fas fa-skull-crossbones"></i><br>ORCRIM
+            </button>
+            <button class="tab-btn" onclick="abrirTab('tab-crimes')">
+                <i class="fas fa-file-alt"></i><br>Crimes
+            </button>
+            <button class="tab-btn" onclick="abrirTab('tab-vinculos')">
+                <i class="fas fa-network-wired"></i><br>Vínculos
+            </button>
+        </div>
+
+        <!-- ── Tab Camadas ─────────────────────────────────────── -->
+        <div class="tab-content active" id="tab-camadas">
+            <div class="sec-label">Ocorrências — Firebase</div>
+            <div id="lista-camadas-fb"></div>
+
+            <div class="sec-label" style="margin-top:14px;">Inteligência — Supabase</div>
+            <div id="lista-camadas-sb"></div>
+
+            <div class="sec-label" style="margin-top:14px;">Filtro de Período</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+                <input type="date" id="fil-ini" class="busca-input" style="margin:0;"
+                    onchange="aplicarFiltros()">
+                <input type="date" id="fil-fim" class="busca-input" style="margin:0;"
+                    onchange="aplicarFiltros()">
+                <button class="btn-mapa" onclick="limparFiltros()" style="width:100%;">
+                    ✕ Limpar Período
+                </button>
+            </div>
+
+            <div class="sec-label" style="margin-top:14px;">Modo de Visualização</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                <button class="btn-mapa active" id="btn-modo-heat"    onclick="setModo('heat')">🌡 Calor</button>
+                <button class="btn-mapa"        id="btn-modo-cluster" onclick="setModo('cluster')">📍 Pontos</button>
+                <button class="btn-mapa"        id="btn-modo-ambos"   onclick="setModo('ambos')">🔀 Ambos</button>
+            </div>
+
+            <div style="margin-top:8px;display:flex;gap:5px;">
+                <button class="btn-mapa" onclick="marcarTodas()"    style="flex:1;">☑ Todas</button>
+                <button class="btn-mapa" onclick="desmarcarTodas()" style="flex:1;">☐ Nenhuma</button>
+            </div>
+
+            <div class="sec-label" style="margin-top:14px;">Vínculos no Mapa</div>
+            <button class="btn-mapa" id="btn-grafo" onclick="abrirGrafo()"
+                style="width:100%;background:rgba(255,112,67,.15);border-color:rgba(255,112,67,.4);color:#ff7043;">
+                🕸 Visualizar Grafo de Vínculos
+            </button>
+        </div>
+
+        <!-- ── Tab Pessoas ─────────────────────────────────────── -->
+        <div class="tab-content" id="tab-pessoas">
+            <input class="busca-input" id="busca-pessoas"
+                placeholder="🔍 Buscar nome, apelido, CPF..."
+                oninput="filtrarLista('pessoas')">
+            <div id="lista-pessoas">
+                <div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+                    Aguardando dados…
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tab ORCRIM ──────────────────────────────────────── -->
+        <div class="tab-content" id="tab-orcrim">
+            <input class="busca-input" id="busca-orcrim"
+                placeholder="🔍 Buscar organização, facção..."
+                oninput="filtrarLista('orcrim')">
+            <div id="lista-orcrim">
+                <div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+                    Aguardando dados…
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tab Crimes / BOs ────────────────────────────────── -->
+        <div class="tab-content" id="tab-crimes">
+            <input class="busca-input" id="busca-crimes"
+                placeholder="🔍 Buscar nº BO, tipo, local..."
+                oninput="filtrarLista('crimes')">
+            <div id="lista-crimes">
+                <div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+                    Aguardando dados…
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tab Vínculos ────────────────────────────────────── -->
+        <div class="tab-content" id="tab-vinculos">
+            <input class="busca-input" id="busca-vinculos"
+                placeholder="🔍 Buscar pessoa, tipo..."
+                oninput="filtrarLista('vinculos')">
+            <div id="lista-vinculos">
+                <div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+                    Aguardando dados…
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /painel-lateral -->
+
+    <!-- Toggle sidebar -->
+    <button id="btn-toggle-sidebar" onclick="toggleSidebar()" title="Mostrar/ocultar painel">◀</button>
+
+    <!-- ── MAPA ────────────────────────────────────────────────── -->
+    <div id="mapa-wrapper">
+
+        <!-- Barra de ferramentas -->
+        <div id="mapa-ferramentas">
+            <span style="font-size:10px;font-weight:bold;opacity:.6;">FERRAMENTAS:</span>
+
+            <button class="btn-mapa" id="btn-poligono"      onclick="toggleDesenharPoligono()">🔷 Polígono</button>
+            <button class="btn-mapa" id="btn-add-marcador"  onclick="toggleAdicionarMarcador()">📌 Marcador</button>
+            <button class="btn-mapa" onclick="limparDesenhos()">🗑 Limpar Rascunhos</button>
+
+            <input type="file" id="inp-geojson" accept=".geojson,.json"
+                style="display:none;" onchange="importarGeojson(event)">
+            <button class="btn-mapa"
+                onclick="document.getElementById('inp-geojson').click()"
+                style="background:rgba(0,229,255,.12);border-color:rgba(0,229,255,.25);
+                       color:#00e5ff;font-weight:bold;">
+                📂 GeoJSON
+            </button>
+
+            <button class="btn-mapa" id="btn-vinculos-mapa" onclick="toggleLinhasVinculos()"
+                style="background:rgba(255,112,67,.12);border-color:rgba(255,112,67,.3);color:#ff7043;">
+                🔗 Linhas de Vínculo
+            </button>
+
+            <button class="btn-mapa" onclick="fitBounds()">⛶ Ajustar Zoom</button>
+            <button class="btn-mapa" onclick="toggleTelaCheia()">⛶ Tela Cheia</button>
+            <button class="btn-mapa" onclick="imprimirMapa()">🖨 Imprimir</button>
+
+            <span id="status-ferramenta" style="font-size:10px;opacity:.6;margin-left:4px;"></span>
+            <span style="margin-left:auto;font-size:10px;opacity:.5;">
+                GPS válidos: <strong id="total-gps" style="color:#fff;">0</strong>
+            </span>
+        </div>
+
+        <!-- Loader -->
+        <div id="loader-overlay">
+            <div class="spinner"></div>
+            <div style="font-weight:bold;">Carregando dados…</div>
+            <div class="loader-msg" id="loader-msg">Conectando ao Firebase e Supabase</div>
+        </div>
+
+        <!-- Mapa Leaflet -->
+        <div id="mapa-calor"></div>
+
+        <!-- Status bar -->
+        <div id="status-bar">
+            <span>🛰 Satélite (Esri) · Rua (OSM) · Cinza/Escuro (CartoDB)</span>
+            <span id="sb-coords" style="font-family:monospace;"></span>
+            <span>ℹ Apenas registros com coordenadas GPS válidas são exibidos.</span>
+        </div>
+    </div>
+
+</div><!-- /mapa-card-wrapper -->
+
+<!-- ══ MODAL GRAFO DE VÍNCULOS ══════════════════════════════════ -->
+<div id="modal-grafo">
+    <div id="grafo-box">
+        <div id="grafo-header">
+            <span>🕸 Grafo de Vínculos entre Pessoas</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:10px;opacity:.6;">Arraste para mover · Scroll para zoom · Clique num nó para detalhes</span>
+                <button class="close-btn" onclick="fecharGrafo()">✕</button>
+            </div>
+        </div>
+        <div id="grafo-canvas-wrap">
+            <canvas id="grafo-canvas"></canvas>
+            <div id="grafo-info" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ MODAL DETALHE PESSOA ════════════════════════════════════ -->
+<div id="modal-pessoa">
+    <div id="pessoa-box">
+        <div class="pessoa-header-modal">
+            <span id="modal-pessoa-titulo">👤 Pessoa</span>
+            <button class="close-btn" onclick="fecharModalPessoa()">✕</button>
+        </div>
+        <div id="modal-pessoa-corpo"></div>
+    </div>
+</div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════ -->
+<footer>
+    <h4>Seção de Planejamento, Instrução e Estatística — P3 / 10º BPM</h4>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SCRIPT PRINCIPAL
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─────────────────────────────────────────────────────────────────
+// CONFIGURAÇÕES DE CONEXÃO
+// ─────────────────────────────────────────────────────────────────
+const FB_BASE       = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const SUPABASE_URL  = 'https://zxynbnnooauasmasgzxp.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eW5ibm5vb2F1YXNtYXNnenhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDgxNjUsImV4cCI6MjA4ODQyNDE2NX0.2LVOegWWYaVrvQ5DzrSgyBvPaYsanitK_sdWjSHOhkw';
+
+// ─────────────────────────────────────────────────────────────────
+// SERVICE ROLE KEY — para uso interno/intranet apenas.
+// Coloque aqui a service_role key (Project Settings → API).
+// NUNCA exponha esta chave em aplicações públicas na internet.
+// Deixe em branco ('') para usar apenas a anon key.
+// ─────────────────────────────────────────────────────────────────
+const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eW5ibm5vb2F1YXNtYXNnenhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3Mjg0ODE2NSwiZXhwIjoyMDg4NDI0MTY1fQ.f7CldsqEQdSsGGptzjgQiBVElKjNIyzu3ZHO9wHeQ94'; // ← cole aqui a service_role key se quiser bypass do RLS
+
+// Chave efetiva: usa service key se preenchida, senão anon
+const SUPABASE_KEY = SUPABASE_SERVICE_KEY || SUPABASE_ANON;
+
+// ─────────────────────────────────────────────────────────────────
+// ESTADO GLOBAL
+// ─────────────────────────────────────────────────────────────────
+let _mapaL         = null;
+let _heatLayers    = {};
+let _clusterGroups = {};
+let _dadosMapa     = {};
+let _camadasAtivas = new Set();
+let _modoVista     = 'heat';
+let _filtroIni     = null;
+let _filtroFim     = null;
+
+// Dados Firebase brutos
+let DADOS_FB = {
+    geral: [], cvp: [], cvli: [], arma: [], droga: [],
+    tco: [], vd: [], sossego: [], mandados: [], visitas: [], autores: []
+};
+
+// ── Dados Supabase (13 tabelas) ───────────────────────────────────
+let _sb = {
+    pessoas:           [],   // tb_pessoas
+    apelidos:          [],   // tb_pessoa_apelidos
+    vinculos:          [],   // tb_pessoa_vinculos
+    registros:         [],   // tb_registros_oficiais
+    registro_pessoas:  [],   // tb_registro_pessoas
+    crimes:            [],   // tb_crimes
+    enderecos:         [],   // tb_enderecos
+    bairros:           [],   // tb_bairros
+    cidades:           [],   // tb_cidades
+    orcrim:            [],   // tb_orcrim
+    orcrim_pessoas:    [],   // tb_orcrim_pessoas
+    faccoes:           [],   // tb_faccoes
+    faccao_pessoas:    [],   // tb_faccao_pessoas
+};
+
+// Índices derivados (preenchidos após carregamento)
+let _idx = {
+    pessoaById: {},       // id → pessoa
+    apelidosByPessoa: {}, // pessoa_id → [apelidos]
+    vinculosByPessoa: {}, // pessoa_id → [vinculos]
+    endByPessoa: {},      // pessoa_id → [enderecos]
+    endByRegistro: {},    // registro_id → [enderecos] (novo)
+    crimesByRegOfc: {},   // registro_id → [crimes]
+    pessByRegOfc: {},     // registro_id → [pessoa_ids]
+    regOfcByPessoa: {},   // pessoa_id → [registro_ids]
+    orcrimByPessoa: {},   // pessoa_id → [orcrim_ids]
+    faccaoByPessoa: {},   // pessoa_id → [faccao_ids]
+    orcrimById: {},       // id → orcrim
+    faccaoById: {},       // id → faccao
+    regOfcById: {},       // id → registro_oficial
+    regOfcByNumBO: {},    // numBO → registro_oficial
+    bairroById: {},       // id → bairro
+    cidadeById: {},       // id → cidade
+    autorByNome: {},      // nome_norm → [registros /autor Firebase]
+    fbAutorByPessoa: {},  // pessoa_id → [registros /autor Firebase]
+};
+
+// Camadas Supabase no mapa
+let _sbLayers  = { pessoas:null, orcrim:null, enderecos:null, vinculos:null, crimes:null };
+let _sbAtivas  = new Set(['pessoas','orcrim','enderecos','crimes']);
+let _linhasVinculoLayer = null;
+let _linhasVinculoAtivas = false;
+
+// FKs auto-detectadas de endereços e vínculos
+let _endFKPessoa   = null;
+let _endFKRegistro = null;
+let _vincFKa = null;
+let _vincFKb = null;
+
+// Ferramentas de desenho
+let _camadasImportadas = [];
+let _poligonosFeitos   = [];
+let _marcadoresUser    = [];
+let _modoDesenho       = null;
+let _polyPontos        = [];
+
+// Flags de carregamento
+let _fbPronto = false;
+let _sbPronto = false;
+
+// ─────────────────────────────────────────────────────────────────
+// CONFIGURAÇÃO DAS CAMADAS FIREBASE
+// ─────────────────────────────────────────────────────────────────
+const CAMADAS_CONFIG = [
+    { id:'cvp',      label:'CVP — Crimes Violentos Patrimoniais',         icon:'🔶', cor:'#e65100', corHex:[230,81,0],   noFB:'cvp',      filtro:null      },
+    { id:'cvli',     label:'CVLI — Crimes Violentos Letais Intencionais', icon:'💀', cor:'#6a1b9a', corHex:[106,27,154], noFB:'cvli',     filtro:null      },
+    { id:'mvi',      label:'MVI — Mortes Violentas Intencionais',         icon:'☠️', cor:'#b71c1c', corHex:[183,28,28],  noFB:'cvli',     filtro:'mvi'     },
+    { id:'droga',    label:'Drogas Apreendidas',                          icon:'🌿', cor:'#388e3c', corHex:[56,142,60],  noFB:'droga',    filtro:null      },
+    { id:'arma',     label:'Armas Apreendidas',                           icon:'🔫', cor:'#2e7d32', corHex:[46,125,50],  noFB:'arma',     filtro:null      },
+    { id:'vd',       label:'Violência Doméstica',                         icon:'🏠', cor:'#b500b2', corHex:[173,20,87],  noFB:'vd',       filtro:null      },
+    { id:'sossego',  label:'Perturbação do Sossego',                      icon:'📢', cor:'#00695c', corHex:[0,105,92],   noFB:'sossego',  filtro:null      },
+    { id:'tco',      label:'TCO — Termo Circunstanciado',                 icon:'📑', cor:'#1565c0', corHex:[21,101,192], noFB:'tco',      filtro:'tco'     },
+    { id:'ccp',      label:'CCP — Crimes Contra o Patrimônio',            icon:'🏚️', cor:'#4e342e', corHex:[78,52,46],  noFB:'geral',    filtro:'ccp'     },
+    { id:'mandados', label:'Cumprimento de Mandados',                     icon:'📋', cor:'#37474f', corHex:[55,71,79],   noFB:'mandados', filtro:null      },
+    { id:'visitas',  label:'Visitas Orientativas',                        icon:'🏘️', cor:'#00838f', corHex:[0,131,143], noFB:'visitas',  filtro:'visitas' },
+];
+CAMADAS_CONFIG.forEach(c => _camadasAtivas.add(c.id));
+
+// ─────────────────────────────────────────────────────────────────
+// UTILITÁRIOS
+// ─────────────────────────────────────────────────────────────────
+function norm(s) {
+    return String(s||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function parseDec(v) {
+    if (v === null || v === undefined) return NaN;
+    return parseFloat(String(v).replace(',','.').trim());
+}
+function coordValida(lat, lng) {
+    return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0
+        && lat >= -11.0 && lat <= -7.0
+        && lng >= -38.5 && lng <= -34.5;
+}
+function parseDateStr(s) {
+    if (!s || s === '---') return null;
+    s = String(s).trim().substring(0,10);
+    if (s.includes('/')) { const [d,m,a] = s.split('/'); return new Date(+a,+m-1,+d); }
+    if (s.includes('-')) { const [a,m,d] = s.split('-'); return new Date(+a,+m-1,+d); }
+    return null;
+}
+function filtroPeriodo(arr) {
+    if (!_filtroIni && !_filtroFim) return arr;
+    return arr.filter(item => {
+        const d = parseDateStr(item.DATA || item.data || item.data_fato || '');
+        if (!d) return false;
+        if (_filtroIni && d < _filtroIni) return false;
+        if (_filtroFim && d > _filtroFim) return false;
+        return true;
+    });
+}
+function gradient(rgb) {
+    const [r,g,b] = rgb;
+    return {
+        0.0: 'rgba(255,255,255,0)',
+        0.2: `rgba(${r},${g},${b},0.15)`,
+        0.4: `rgba(${r},${g},${b},0.40)`,
+        0.6: `rgba(${r},${g},${b},0.65)`,
+        0.8: `rgba(${r},${g},${b},0.85)`,
+        1.0: `rgb(${r},${g},${b})`
+    };
+}
+function setLoader(msg) {
+    const el = document.getElementById('loader-msg');
+    if (el) el.textContent = msg;
+}
+function setStatusFerramenta(msg) {
+    const el = document.getElementById('status-ferramenta');
+    if (el) el.textContent = msg;
+}
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CLASSIFICADORES Firebase
+// ─────────────────────────────────────────────────────────────────
+function ehMVI(item) {
+    const t = norm((item.TIPIFICACAO_GERAL||'') + ' ' + (item.TIPIFICACAO||''));
+    const o = norm(item.OBITO||'');
+    if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
+    if (t.includes('TENTATIVA')) {
+        return (t.includes('HOMICIDIO')||t.includes('FEMINICIDIO')||t.includes('LATROCINIO')) && o === 'S';
+    }
+    return t.includes('HOMICIDIO') || t.includes('LATROCINIO') || t.includes('FEMINICIDIO')
+        || t.includes('LESAO CORPORAL COM RESULTADO MORTE')
+        || t.includes('LESAO CORPORAL SEGUIDA DE MORTE');
+}
+function ehTCO(item)   { return norm(item.SOLUÇÃO||item.SOLUCAO||item['SOLUÇÃO']||'').includes('ELABOROU TCO'); }
+function ehCCP(item)   { const t = norm(item.TIPIFICACAO_GERAL||item.TIPIFICACAO||''); return t.includes('FURTO')||t.includes('DANO')||t.includes('INVASAO DE DOMICILIO'); }
+function ehVisita(item){ return norm(item.TIPIFICACAO||item.TIPIFICACAO_GERAL||'').includes('VISITA'); }
+
+// ─────────────────────────────────────────────────────────────────
+// EXTRATOR DE PONTOS GPS
+// ─────────────────────────────────────────────────────────────────
+function extrairPontos(registros) {
+    return registros.map(item => ({
+        lat:     parseDec(item.LATITUDE  || item.latitude),
+        lng:     parseDec(item.LONGITUDE || item.longitude),
+        cidade:  item.CIDADE     || '—',
+        bairro:  item.BAIRRO     || '—',
+        logr:    item.LOGRADOURO || item.ENDERECO || '—',
+        data:    item.DATA       || '—',
+        tip:     item.TIPIFICACAO_GERAL || item.TIPIFICACAO || item.TIPO_DROGA || item.TIPO_ARMA || '—',
+        boletim: item.BOLETIM    || '—',
+        solucao: item.SOLUÇÃO    || item.SOLUCAO  || item['SOLUÇÃO'] || '—',
+        autor:   item.AUTOR      || item.autor    || item.NOME_AUTOR || item.SUSPEITO || item.suspeito || '—',
+        _raw:    item,   // referência ao registro original (para cruzamentos)
+    })).filter(p => coordValida(p.lat, p.lng));
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CARREGAMENTO FIREBASE
+// ═════════════════════════════════════════════════════════════════
+async function fbFetch(no) {
+    try {
+        const r = await fetch(`${FB_BASE}/${no}.json`);
+        const d = await r.json();
+        if (!d) return [];
+        return Object.keys(d).map(id => ({ id, ...d[id] }));
+    } catch(e) {
+        console.warn(`[Firebase] nó /${no}:`, e.message);
+        return [];
+    }
+}
+
+async function carregarFirebase() {
+    setLoader('Conectando ao Firebase…');
+    try {
+        const [geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, autores] = await Promise.all([
+            fbFetch('geral'), fbFetch('cvp'), fbFetch('cvli'), fbFetch('arma'), fbFetch('droga'),
+            fbFetch('tco'), fbFetch('violencia_domestica'), fbFetch('sossego'), fbFetch('mandados'),
+            fbFetch('autor'),
+        ]);
+        const visitas = geral.filter(i => norm(i.TIPIFICACAO || i.TIPIFICACAO_GERAL || '').includes('VISITA'));
+        DADOS_FB = { geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, visitas, autores };
+        const total = Object.values(DADOS_FB).reduce((s,a) => s + a.length, 0);
+        console.log(`[Firebase] ${total} registros carregados.`);
+        setLoader('Firebase ✓ — Conectando ao Supabase…');
+    } catch(e) {
+        console.error('[Firebase]', e);
+        setLoader('Firebase com erro — continuando…');
+    }
+    _fbPronto = true;
+    verificarTudoPronto();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CARREGAMENTO SUPABASE — 13 TABELAS
+// ═════════════════════════════════════════════════════════════════
+// ── Diagnóstico visual no painel ─────────────────────────────────
+let _diagResultados = [];
+
+async function sbFetch(tabela, select='*') {
+    const url = `${SUPABASE_URL}/rest/v1/${tabela}?select=${select}`;
+    const inicio = Date.now();
+    try {
+        const res = await fetch(url, {
+            headers: {
+                'apikey':        SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Prefer':        'count=exact',
+                'Range':         '0-9999'
+            }
+        });
+        const ms = Date.now() - inicio;
+        if (!res.ok) {
+            let detalhe = '';
+            try { const j = await res.json(); detalhe = j.message || j.hint || JSON.stringify(j); } catch(e) {}
+            console.warn(`[Supabase] ${tabela}: HTTP ${res.status} — ${detalhe}`);
+            _diagResultados.push({ tabela, ok:false, status: res.status, detalhe, n:0, ms });
+            return [];
+        }
+        const dados = await res.json();
+        const n = Array.isArray(dados) ? dados.length : 0;
+        console.log(`[Supabase] ✓ ${tabela}: ${n} registros (${ms}ms)`);
+        _diagResultados.push({ tabela, ok:true, status:200, detalhe:'', n, ms });
+        return dados;
+    } catch(e) {
+        const ms = Date.now() - inicio;
+        console.warn(`[Supabase] ${tabela}: ERRO —`, e.message);
+        _diagResultados.push({ tabela, ok:false, status:'ERRO', detalhe:e.message, n:0, ms });
+        return [];
+    }
+}
+
+// Nomes reais conforme visto no Supabase (imagem da tabela)
+// tb_pessoa_vinculos usa: pessoa_origem_id, pessoa_destino_id, tipo_vinculo, subtipo_vinculo
+// tb_registros_oficiais é a tabela de BOs
+// tb_registro_crimes mapeia crimes por registro
+// tb_registro_pessoas mapeia pessoas por registro
+async function carregarSupabase() {
+    _diagResultados = [];
+
+    // ATENÇÃO: nomes ajustados conforme estrutura real do banco
+    const tabelas = [
+        ['tb_pessoas',              'pessoas'],
+        ['tb_pessoa_apelidos',      'apelidos'],
+        ['tb_pessoa_vinculos',      'vinculos'],       // campos: pessoa_origem_id, pessoa_destino_id
+        ['tb_registros_oficiais',   'registros'],      // BOs
+        ['tb_registro_pessoas',     'registro_pessoas'],
+        ['tb_registro_crimes',      'crimes'],         // nome real visto na imagem
+        ['tb_enderecos',            'enderecos'],
+        ['tb_bairros',              'bairros'],
+        ['tb_cidades',              'cidades'],
+        ['tb_orcrim',               'orcrim'],
+        ['tb_orcrim_pessoas',       'orcrim_pessoas'],
+        ['tb_faccoes',              'faccoes'],
+        ['tb_faccao_pessoas',       'faccao_pessoas'],
+        // Tabelas extras detectadas na imagem:
+        ['tb_pessoa_grupo_vinculos','grupo_vinculos'],
+        ['tb_ordens_busca',         'ordens_busca'],
+    ];
+
+    // Carrega em paralelo (mais rápido)
+    setLoader('Supabase — conectando…');
+    await Promise.all(tabelas.map(async ([tabelaReal, chave]) => {
+        setLoader(`Supabase — carregando ${tabelaReal}…`);
+        const dados = await sbFetch(tabelaReal);
+        if (!_sb.hasOwnProperty(chave)) _sb[chave] = [];
+        _sb[chave] = dados;
+    }));
+
+    const total = Object.values(_sb).reduce((s,a) => s + a.length, 0);
+    const erros = _diagResultados.filter(d => !d.ok).length;
+    console.log(`[Supabase] ${total} registros carregados | ${erros} tabela(s) com erro`);
+
+    // Mostrar diagnóstico na tela
+    _mostrarDiagnostico();
+
+    if (total === 0 && erros > 0) {
+        console.error('[Supabase] ATENÇÃO: Todos os registros retornaram 0. Verifique:');
+        console.error('1. A SUPABASE_ANON deve começar com "eyJ" (JWT), não com "sbp_"');
+        console.error('2. As políticas RLS devem permitir SELECT para anon');
+        console.error('3. Os nomes das tabelas devem ser exatos (sensível a maiúsculas)');
+    }
+
+    // Construir índices cruzados
+    construirIndices();
+
+    setLoader('Supabase ✓ — Iniciando mapa…');
+    _sbPronto = true;
+    verificarTudoPronto();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// DIAGNÓSTICO VISUAL — painel flutuante com status de cada tabela
+// ─────────────────────────────────────────────────────────────────
+function _mostrarDiagnostico() {
+    const anterior = document.getElementById('sb-diag');
+    if (anterior) anterior.remove();
+
+    const erros   = _diagResultados.filter(d => !d.ok);
+    const ok      = _diagResultados.filter(d => d.ok && d.n > 0);
+    const vazios  = _diagResultados.filter(d => d.ok && d.n === 0);
+    const totalRecs = _diagResultados.reduce((s,d) => s+d.n, 0);
+
+    // RLS detectado: HTTP 200 mas 0 registros, sem service key
+    const rlsDetectado = vazios.length > 0 && erros.length === 0 && !SUPABASE_SERVICE_KEY;
+
+    const div = document.createElement('div');
+    div.id = 'sb-diag';
+    div.style.cssText = `
+        position:fixed;bottom:50px;right:16px;z-index:20000;
+        background:rgba(10,20,40,.98);border:1px solid rgba(66,165,245,.3);
+        border-radius:12px;padding:14px 16px;font-size:11px;color:#cde;
+        font-family:Arial,sans-serif;max-width:400px;max-height:80vh;
+        overflow-y:auto;box-shadow:0 4px 24px rgba(0,0,0,.7);
+        backdrop-filter:blur(6px);`;
+
+    const corTitulo = rlsDetectado ? '#ffb74d' : erros.length ? '#ff7043' : '#4caf50';
+    const icone     = rlsDetectado ? '🔒' : erros.length ? '⚠️' : '✅';
+
+    // SQL para desativar RLS em todas as tabelas detectadas
+    const tabelasRLS = _diagResultados.map(d=>d.tabela);
+    const sqlRLS = tabelasRLS.map(t =>
+        `ALTER TABLE ${t} DISABLE ROW LEVEL SECURITY;`
+    ).join('\n');
+
+    const sqlPolicy = tabelasRLS.map(t =>
+        `CREATE POLICY "leitura_publica" ON ${t} FOR SELECT TO anon USING (true);`
+    ).join('\n');
+
+    div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <b style="color:${corTitulo};font-size:13px;">${icone} Supabase — Diagnóstico</b>
+            <button onclick="document.getElementById('sb-diag').remove()"
+                style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:16px;padding:0 4px;">✕</button>
+        </div>
+
+        <div style="margin-bottom:10px;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px;line-height:1.7;">
+            <div>🔑 Chave: <span style="color:${SUPABASE_SERVICE_KEY?'#4caf50':'#ffb74d'}">${SUPABASE_SERVICE_KEY?'service_role (bypass RLS)':'anon (sujeita ao RLS)'}</span></div>
+            <div>📋 Tabelas: ${_diagResultados.length} consultadas · <span style="color:#4caf50;">${ok.length} com dados</span> · <span style="color:#ff7043;">${erros.length} com erro</span></div>
+            <div>📦 Total: <b style="color:#fff;">${totalRecs.toLocaleString('pt-BR')} registros</b></div>
+        </div>
+
+        ${rlsDetectado ? `
+        <div style="background:rgba(255,152,0,.15);border:1px solid rgba(255,152,0,.4);
+            border-radius:10px;padding:10px 12px;margin-bottom:12px;">
+            <div style="color:#ffb74d;font-weight:bold;margin-bottom:8px;">🔒 RLS bloqueando leitura</div>
+            <div style="color:#ffe0b2;font-size:10px;line-height:1.7;margin-bottom:10px;">
+                As tabelas respondem HTTP 200 mas retornam 0 registros.<br>
+                Isso indica que o <b>Row Level Security (RLS) está ativo</b> sem policy de leitura para <code>anon</code>.<br><br>
+                <b>Escolha uma das soluções abaixo:</b>
+            </div>
+
+            <div style="margin-bottom:10px;">
+                <div style="color:#fff;font-size:10px;font-weight:bold;margin-bottom:5px;">
+                    Solução 1 — Cole a service_role key no HTML (uso interno)
+                </div>
+                <div style="background:rgba(0,0,0,.4);border-radius:6px;padding:8px;font-family:monospace;font-size:10px;color:#80cbc4;word-break:break-all;">
+                    const SUPABASE_SERVICE_KEY = 'eyJ...'; // linha 655 do HTML
+                </div>
+                <div style="color:rgba(255,255,255,.4);font-size:9px;margin-top:3px;">
+                    Project Settings → API → <b>service_role secret</b>
+                </div>
+            </div>
+
+            <div style="margin-bottom:10px;">
+                <div style="color:#fff;font-size:10px;font-weight:bold;margin-bottom:5px;">
+                    Solução 2 — Criar policies de SELECT no Supabase SQL Editor
+                </div>
+                <div style="background:rgba(0,0,0,.4);border-radius:6px;padding:8px;font-family:monospace;font-size:9px;color:#a5d6a7;white-space:pre;overflow-x:auto;max-height:120px;">${sqlPolicy}</div>
+                <button onclick="_copiarSQL('policy')"
+                    style="margin-top:5px;background:rgba(76,175,80,.2);border:1px solid rgba(76,175,80,.4);
+                    color:#a5d6a7;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:10px;">
+                    📋 Copiar SQL (policies)
+                </button>
+            </div>
+
+            <div>
+                <div style="color:#fff;font-size:10px;font-weight:bold;margin-bottom:5px;">
+                    Solução 3 — Desativar RLS (mais rápido, sistema interno)
+                </div>
+                <div style="background:rgba(0,0,0,.4);border-radius:6px;padding:8px;font-family:monospace;font-size:9px;color:#ef9a9a;white-space:pre;overflow-x:auto;max-height:80px;">${sqlRLS}</div>
+                <button onclick="_copiarSQL('rls')"
+                    style="margin-top:5px;background:rgba(183,28,28,.2);border:1px solid rgba(183,28,28,.4);
+                    color:#ef9a9a;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:10px;">
+                    📋 Copiar SQL (disable RLS)
+                </button>
+            </div>
+        </div>` : ''}
+
+        ${erros.length ? `
+        <div style="background:rgba(183,28,28,.2);border:1px solid rgba(183,28,28,.4);
+            border-radius:8px;padding:8px 10px;margin-bottom:10px;">
+            <div style="color:#ef9a9a;font-weight:bold;margin-bottom:6px;">❌ Erros:</div>
+            ${erros.map(d => `
+                <div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+                    <span style="color:#fff;">${d.tabela}</span>
+                    <span style="color:#ff7043;float:right;">HTTP ${d.status}</span><br>
+                    ${d.detalhe ? `<span style="color:rgba(255,255,255,.4);font-size:10px;">${String(d.detalhe).substring(0,100)}</span>` : ''}
+                </div>`).join('')}
+        </div>` : ''}
+
+        ${ok.length ? `
+        <div style="margin-bottom:8px;">
+            <div style="color:#a5d6a7;font-weight:bold;margin-bottom:5px;font-size:10px;">✅ Com dados:</div>
+            ${ok.map(d => `
+                <div style="display:flex;justify-content:space-between;padding:2px 0;
+                    border-bottom:1px solid rgba(255,255,255,.04);">
+                    <span style="color:#cde;font-size:10px;">${d.tabela}</span>
+                    <span style="color:#4caf50;font-weight:bold;font-size:10px;">${d.n.toLocaleString('pt-BR')}</span>
+                </div>`).join('')}
+        </div>` : ''}
+
+        ${vazios.length && !rlsDetectado ? `
+        <div>
+            <div style="color:rgba(255,255,255,.35);font-size:9px;margin-bottom:4px;">⚪ Vazias:</div>
+            ${vazios.map(d => `
+                <div style="color:rgba(255,255,255,.25);font-size:9px;padding:1px 0;">${d.tabela} — 0 registros</div>`).join('')}
+        </div>` : ''}
+
+        <div style="margin-top:10px;text-align:center;font-size:9px;color:rgba(255,255,255,.2);">
+            Feche este painel após resolver os erros
+        </div>`;
+
+    document.body.appendChild(div);
+}
+
+// Textos SQL para copiar
+const _sqlTexts = {
+    rls: () => _diagResultados.map(d=>`ALTER TABLE ${d.tabela} DISABLE ROW LEVEL SECURITY;`).join('\n'),
+    policy: () => _diagResultados.map(d=>`CREATE POLICY "leitura_mapa" ON ${d.tabela} FOR SELECT TO anon USING (true);`).join('\n'),
+};
+function _copiarSQL(tipo) {
+    const txt = _sqlTexts[tipo]?.();
+    if (!txt) return;
+    navigator.clipboard.writeText(txt).then(() => {
+        const btns = document.querySelectorAll('#sb-diag button');
+        btns.forEach(b => { if (b.textContent.includes('Copiar')) b.textContent = '✅ Copiado!'; });
+        setTimeout(() => btns.forEach(b => {
+            if (b.textContent.includes('Copiado')) {
+                b.textContent = tipo === 'rls' ? '📋 Copiar SQL (disable RLS)' : '📋 Copiar SQL (policies)';
+            }
+        }), 2000);
+    }).catch(() => prompt('Copie o SQL:', txt));
+}
+
+// ─────────────────────────────────────────────────────────────────
+// ÍNDICES CRUZADOS (relações entre tabelas)
+// ─────────────────────────────────────────────────────────────────
+function construirIndices() {
+    // ── Helper: registra nas duas formas (string e original) ─────────
+    function idx2(map, key, val) {
+        if (key === null || key === undefined) return;
+        map[key]         = val;
+        map[String(key)] = val;
+    }
+    function idxArr(map, key, val) {
+        if (key === null || key === undefined) return;
+        const ks = String(key);
+        if (!map[ks]) map[ks] = [];
+        map[ks].push(val);
+        if (key !== ks) { if (!map[key]) map[key] = []; map[key].push(val); }
+    }
+
+    // ── Diagnóstico: mostra colunas reais de cada tabela no console ──
+    const _diag = {};
+    for (const [k,v] of Object.entries(_sb)) {
+        if (v && v.length) _diag[k] = Object.keys(v[0]);
+    }
+    console.log('[Schema Supabase]', _diag);
+
+    // ── Pessoas ───────────────────────────────────────────────────────
+    _sb.pessoas.forEach(p => idx2(_idx.pessoaById, p.id, p));
+
+    // ── ORCRIM ────────────────────────────────────────────────────────
+    _sb.orcrim.forEach(o => idx2(_idx.orcrimById, o.id, o));
+
+    // ── Facções ───────────────────────────────────────────────────────
+    _sb.faccoes.forEach(f => idx2(_idx.faccaoById, f.id, f));
+
+    // ── Registros Oficiais (BOs) ──────────────────────────────────────
+    _idx.regOfcByNumBO = {};
+    _sb.registros.forEach(r => {
+        idx2(_idx.regOfcById, r.id, r);
+        // Tenta todos os campos possíveis para número do BO
+        const numBO = String(r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || r.numero_cop || '').trim().toUpperCase();
+        if (numBO) _idx.regOfcByNumBO[numBO] = r;
+    });
+
+    // ── Bairros / Cidades ─────────────────────────────────────────────
+    _sb.bairros.forEach(b => idx2(_idx.bairroById, b.id, b));
+    _sb.cidades.forEach(c => idx2(_idx.cidadeById, c.id, c));
+
+    // ── Apelidos ──────────────────────────────────────────────────────
+    _sb.apelidos.forEach(a => {
+        const pid = a.pessoa_id || a.id_pessoa;
+        if (!pid) return;
+        idxArr(_idx.apelidosByPessoa, pid, a.apelido || a.alcunha || a.nome_guerra || '');
+    });
+
+    // ── Vínculos entre pessoas ────────────────────────────────────────
+    // Auto-detecta campos FK nos vínculos
+    if (_sb.vinculos.length && !_vincFKa) {
+        const v0 = _sb.vinculos[0];
+        const cols = Object.keys(v0);
+        console.log('[tb_pessoa_vinculos] Colunas:', cols);
+        // Campos UUID que são FKs
+        const uuidCols = cols.filter(c => c !== 'id' && typeof v0[c] === 'string'
+            && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v0[c]||''));
+        _vincFKa = cols.find(c => /origem|pessoa_a$|pessoa_id_a|id_pessoa_a/i.test(c)) || uuidCols[0];
+        _vincFKb = cols.find(c => /destino|pessoa_b$|pessoa_id_b|id_pessoa_b/i.test(c)) || uuidCols[1];
+        console.log('[tb_pessoa_vinculos] FK_a:', _vincFKa, '| FK_b:', _vincFKb);
+    }
+    _sb.vinculos.forEach(v => {
+        const a = (_vincFKa&&v[_vincFKa]) || v.pessoa_origem_id || v.pessoa_id_a || v.id_pessoa_a;
+        const b = (_vincFKb&&v[_vincFKb]) || v.pessoa_destino_id || v.pessoa_id_b || v.id_pessoa_b;
+        if (a) idxArr(_idx.vinculosByPessoa, String(a), v);
+        if (b) idxArr(_idx.vinculosByPessoa, String(b), v);
+    });
+
+    // ── Endereços ─────────────────────────────────────────────────────
+    // Detecta automaticamente o campo FK de endereços
+    _idx.endByRegistro = {};
+    // Descobre quais campos FK existem na tabela inspecionando o primeiro registro
+    _endFKPessoa   = null;
+    _endFKRegistro = null;
+    if (_sb.enderecos.length) {
+        const e0   = _sb.enderecos[0];
+        const cols = Object.keys(e0);
+        console.log('[Endereços] Colunas reais:', cols);
+        // Busca FK de pessoa: qualquer coluna que tenha "pessoa" OU termina em "_id" e não é "id"
+        _endFKPessoa = cols.find(c => /pessoa/i.test(c) && c !== 'id')
+                    || cols.find(c => /^pessoa_id$|^id_pessoa$|^pessoas_id$|^fk_pessoa$/i.test(c));
+        // Busca FK de registro: qualquer coluna com "registro"
+        _endFKRegistro = cols.find(c => /registro/i.test(c) && c !== 'id')
+                      || cols.find(c => /^registro_id$|^id_registro$|^registros_oficiais_id$/i.test(c));
+        console.log('[Endereços] FK pessoa =>', _endFKPessoa || 'NENHUMA');
+        console.log('[Endereços] FK registro =>', _endFKRegistro || 'NENHUMA');
+        // Se ainda não achou: mostra todas as colunas UUID para diagnóstico
+        if (!_endFKPessoa) {
+            const uuidCols = cols.filter(c => c !== 'id' && (typeof e0[c] === 'string') &&
+                /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(e0[c]||''));
+            console.warn('[Endereços] Colunas UUID encontradas (candidatas a FK):', uuidCols);
+        }
+    }
+    _sb.enderecos.forEach(e => {
+        // FK pessoa: campo detectado OU todos os campos UUID que não são "id"
+        const pid = (_endFKPessoa ? e[_endFKPessoa] : null)
+                 || e.pessoa_id || e.id_pessoa || e.pessoas_id
+                 || e.responsavel_id || e.morador_id || e.titular_id;
+        if (pid) idxArr(_idx.endByPessoa, String(pid), e);
+
+        const rid = (_endFKRegistro ? e[_endFKRegistro] : null)
+                 || e.registro_id || e.id_registro || e.registros_oficiais_id;
+        if (rid) idxArr(_idx.endByRegistro, String(rid), e);
+    });
+
+    // ── Crimes por registro (tb_registro_crimes) ──────────────────────
+    _sb.crimes.forEach(c => {
+        const rid = c.registro_id || c.id_registro || c.registros_oficiais_id || c.registro_oficial_id || c.fk_registro;
+        if (!rid) return;
+        idxArr(_idx.crimesByRegOfc, rid, c);
+        if (!_idx._crimeDiag) {
+            _idx._crimeDiag = true;
+            console.log('[tb_registro_crimes] Colunas:', Object.keys(c));
+            console.log('[tb_registro_crimes] FK registro:', rid, '— campo:', Object.keys(c).filter(k=>k.includes('registro')||k.includes('id_reg')));
+        }
+    });
+
+    // ── tb_registro_pessoas: cruzamento BO ↔ Pessoa ───────────────────
+    _sb.registro_pessoas.forEach(rp => {
+        const rid = rp.registro_id || rp.id_registro || rp.registros_oficiais_id || rp.registro_oficial_id || rp.fk_registro;
+        const pid = rp.pessoa_id   || rp.id_pessoa   || rp.pessoas_id || rp.fk_pessoa;
+        if (!_idx._rpDiag) {
+            _idx._rpDiag = true;
+            console.log('[tb_registro_pessoas] Colunas:', Object.keys(rp));
+            console.log('[tb_registro_pessoas] FK registro:', rid, '| FK pessoa:', pid);
+        }
+        if (rid) idxArr(_idx.pessByRegOfc, rid, pid);
+        if (pid) idxArr(_idx.regOfcByPessoa, pid, rid);
+    });
+
+    // ── ORCRIM por pessoa ─────────────────────────────────────────────
+    _sb.orcrim_pessoas.forEach(op => {
+        const pid = op.pessoa_id || op.id_pessoa;
+        const oid = op.orcrim_id || op.id_orcrim;
+        if (pid) idxArr(_idx.orcrimByPessoa, pid, oid);
+    });
+
+    // ── Facção por pessoa ─────────────────────────────────────────────
+    _sb.faccao_pessoas.forEach(fp => {
+        const pid = fp.pessoa_id || fp.id_pessoa;
+        const fid = fp.faccao_id || fp.id_faccao;
+        if (pid) idxArr(_idx.faccaoByPessoa, pid, fid);
+    });
+
+    // ── Resumo do cruzamento ──────────────────────────────────────────
+    const nEndPessoa = Object.keys(_idx.endByPessoa).length;
+    const nEndReg    = Object.keys(_idx.endByRegistro||{}).length;
+    const nCrimeReg  = Object.keys(_idx.crimesByRegOfc).length;
+    const nPessReg   = Object.keys(_idx.pessByRegOfc).length;
+    // ── Índice de AUTORES do Firebase ────────────────────────────────
+    // Mapeia nome normalizado → lista de registros do nó /autor
+    _idx.autorByNome = {};
+    (DADOS_FB.autores || []).forEach(a => {
+        const nomeNorm = norm(a.NOME || a.nome || a.AUTOR || a.autor || a.NAME || '').trim();
+        if (!nomeNorm) return;
+        if (!_idx.autorByNome[nomeNorm]) _idx.autorByNome[nomeNorm] = [];
+        _idx.autorByNome[nomeNorm].push(a);
+    });
+    console.log(`[Índices] autorByNome: ${Object.keys(_idx.autorByNome).length} autores indexados do Firebase`);
+
+    // ── Vincula pessoas do Supabase → autores do Firebase ────────────
+    // Para cada pessoa, tenta encontrar correspondência por nome (e apelidos)
+    _idx.fbAutorByPessoa = {};   // pessoa_id → [registros autor Firebase]
+    _sb.pessoas.forEach(p => {
+        const pid   = String(p.id);
+        const nomes = [
+            norm(p.nome || p.nome_completo || ''),
+            ...(_idx.apelidosByPessoa[pid] || []).map(a => norm(a)),
+        ].filter(Boolean);
+        const matches = [];
+        nomes.forEach(n => {
+            if (_idx.autorByNome[n]) matches.push(..._idx.autorByNome[n]);
+            // Busca parcial: nome do Firebase contém o nome da pessoa (ou vice-versa)
+            Object.keys(_idx.autorByNome).forEach(k => {
+                if (k !== n && (k.includes(n) || n.includes(k)) && n.length > 5) {
+                    matches.push(..._idx.autorByNome[k]);
+                }
+            });
+        });
+        if (matches.length) {
+            // Deduplica por id do registro Firebase
+            const seen = new Set();
+            _idx.fbAutorByPessoa[pid] = matches.filter(m => {
+                const key = m.id || JSON.stringify(m);
+                if (seen.has(key)) return false;
+                seen.add(key); return true;
+            });
+        }
+    });
+    const nAutorCross = Object.keys(_idx.fbAutorByPessoa).length;
+    console.log(`[Índices] fbAutorByPessoa: ${nAutorCross} pessoas cruzadas com o nó /autor do Firebase`);
+
+    console.log(`[Índices] Construídos com sucesso.`);
+    console.log(`[Índices] endByPessoa: ${nEndPessoa} pessoas com endereço | endByRegistro: ${nEndReg} registros com endereço`);
+    console.log(`[Índices] crimesByRegOfc: ${nCrimeReg} registros com crimes | pessByRegOfc: ${nPessReg} registros com pessoas`);
+}
+
+// Helper: nome completo de uma pessoa
+function nomePessoa(p) {
+    if (!p) return 'Desconhecido';
+    return p.nome || p.nome_completo || p.name || 'Sem nome';
+}
+
+// Helper: apelidos formatados
+function apelidosPessoa(pid) {
+    return (_idx.apelidosByPessoa[pid] || []).filter(Boolean).join(', ') || '—';
+}
+
+// Helper: nome do bairro
+function nomeBairro(bid) {
+    const b = _idx.bairroById[bid];
+    return b ? (b.nome || b.bairro || bid) : (bid || '—');
+}
+
+// Helper: nome da cidade
+function nomeCidade(cid) {
+    const c = _idx.cidadeById[cid];
+    return c ? (c.nome || c.cidade || cid) : (cid || '—');
+}
+
+// Helper: nome da ORCRIM
+function nomeOrcrim(oid) {
+    const o = _idx.orcrimById[oid];
+    return o ? (o.nome || o.nome_organizacao || oid) : (oid || '—');
+}
+
+// Helper: nome da facção
+function nomeFaccao(fid) {
+    const f = _idx.faccaoById[fid];
+    return f ? (f.nome || f.nome_faccao || fid) : (fid || '—');
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POPUP ENRIQUECIDO — PESSOA (com cruzamento de BOs e vínculos)
+// ─────────────────────────────────────────────────────────────────
+function popupPessoa(p) {
+    const pid       = p.id;
+    const apelidos  = apelidosPessoa(pid);
+    const orcrimIds = _idx.orcrimByPessoa[pid]  || [];
+    const faccIds   = _idx.faccaoByPessoa[pid]  || [];
+    const regIds    = _idx.regOfcByPessoa[pid]  || [];
+    const vinculos  = _idx.vinculosByPessoa[pid] || [];
+    const ends      = _idx.endByPessoa[pid]      || [];
+
+    // Crimes vinculados via BOs
+    let crimesHtml = '';
+    const bosUnicos = new Set(regIds);
+    bosUnicos.forEach(rid => {
+        const reg = _idx.regOfcById[rid];
+        if (!reg) return;
+        const numBO  = reg.numero_bo || reg.num_bo || reg.boletim || rid;
+        const crimes = _idx.crimesByRegOfc[rid] || [];
+        const tiposCrime = crimes.map(c => c.tipo || c.tipificacao || c.descricao || '').filter(Boolean).join(', ');
+        crimesHtml += `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+            <span class="sb-badge badge-bo">BO ${esc(numBO)}</span>
+            <span style="font-size:10px;color:#aac;">${esc(reg.data_fato||reg.data||'')}</span>
+            ${tiposCrime ? `<br><span style="font-size:10px;color:#ffa;margin-left:4px;">↳ ${esc(tiposCrime)}</span>` : ''}
+            ${reg.local||reg.logradouro ? `<br><span style="font-size:10px;color:#8bc;margin-left:4px;">📍 ${esc(reg.local||reg.logradouro||'')}</span>` : ''}
+        </div>`;
+    });
+
+    let orcrHtml = [...orcrimIds.map(nomeOrcrim), ...faccIds.map(nomeFaccao)].filter(n=>n&&n!='—').join(', ') || '—';
+    let endsHtml = ends.slice(0,3).map(e => {
+        const logr   = e.logradouro || e.rua || '';
+        const num    = e.numero ? `, ${e.numero}` : '';
+        const bairro = nomeBairro(e.bairro_id || e.bairro);
+        return `${logr}${num} — ${bairro}`;
+    }).join('<br>') || '—';
+
+    let vincHtml = vinculos.slice(0,5).map(v => {
+        const outraId = (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a) == pid
+            ? (v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b)
+            : (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a);
+        const outra = _idx.pessoaById[outraId];
+        const tipo  = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+        return `<span style="color:#ff7043;">↔</span> <b>${esc(nomePessoa(outra))}</b>
+            <span style="color:rgba(255,255,255,.4);font-size:10px;"> (${esc(tipo)})</span>`;
+    }).join('<br>') || '—';
+
+    const fotoUrlPop = p.foto_url || p.foto || p.imagem || p.url_foto || p.url_imagem || p.photo || p.image_url || '';
+    return `<div style="min-width:260px;max-width:360px;">
+        <div style="background:#1565c0;color:#fff;padding:8px 12px;
+            border-radius:6px 6px 0 0;font-weight:bold;
+            margin:-10px -14px 10px;font-size:13px;
+            display:flex;align-items:center;gap:10px;">
+            ${fotoUrlPop ? `<img src="${esc(fotoUrlPop)}" alt=""
+                style="width:40px;height:50px;object-fit:cover;border-radius:6px;
+                       border:2px solid rgba(255,255,255,.4);flex-shrink:0;"
+                onerror="this.style.display='none'">` : ''}
+            <div>
+                <div>👤 ${esc(nomePessoa(p))}</div>
+                ${apelidos!='—' ? `<div style="font-size:10px;opacity:.7;font-weight:normal;">aka "${esc(apelidos)}"</div>` : ''}
+            </div>
+        </div>
+        <div style="font-size:11px;line-height:1.7;color:#cde;">
+            ${p.cpf         ? `<b>CPF:</b> ${esc(p.cpf)}<br>` : ''}
+            ${p.rg          ? `<b>RG:</b> ${esc(p.rg)}<br>` : ''}
+            ${p.data_nasc   ? `<b>Nasc.:</b> ${esc(p.data_nasc)}<br>` : ''}
+            ${p.sexo        ? `<b>Sexo:</b> ${esc(p.sexo)}<br>` : ''}
+            ${p.situacao    ? `<b>Situação:</b> <span style="color:#ffa;">${esc(p.situacao)}</span><br>` : ''}
+            <b>ORCRIM/Facção:</b> <span style="color:#ce93d8;">${esc(orcrHtml)}</span><br>
+        </div>
+        ${ends.length ? `<div style="margin-top:8px;font-size:11px;"><b>📍 Endereços:</b><br><span style="color:#81c784;">${endsHtml}</span></div>` : ''}
+        ${vinculos.length ? `<div style="margin-top:8px;font-size:11px;"><b>🔗 Vínculos:</b><br>${vincHtml}</div>` : ''}
+        ${bosUnicos.size ? `<div style="margin-top:8px;"><b style="font-size:11px;">📋 Ocorrências (${bosUnicos.size}):</b><div style="margin-top:4px;">${crimesHtml}</div></div>` : ''}
+        ${(() => {
+            const fbA = _idx.fbAutorByPessoa[String(pid)] || [];
+            if (!fbA.length) return '';
+            const tipifs = [...new Set(fbA.map(a => a.TIPIFICACAO_GERAL||a.TIPIFICACAO||'').filter(Boolean))].slice(0,3);
+            return `<div style="margin-top:8px;padding:6px 8px;
+                background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.25);border-radius:6px;">
+                <div style="color:#ef9a9a;font-weight:bold;font-size:11px;margin-bottom:4px;">
+                    🔥 Firebase /autor — ${fbA.length} registro(s)
+                </div>
+                ${tipifs.map(t => `<span style="display:inline-block;background:rgba(239,154,154,.2);
+                    color:#ffcdd2;border-radius:4px;padding:1px 6px;margin:1px;font-size:9px;">${esc(t.substring(0,30))}</span>`).join('')}
+                <div style="color:rgba(255,255,255,.35);font-size:9px;margin-top:3px;">Ver ficha completa para detalhes</div>
+            </div>`;
+        })()}
+        <div style="margin-top:10px;text-align:center;">
+            <button id="btn-ficha-pessoa" style="background:#1565c0;border:none;color:#fff;padding:5px 14px;
+                border-radius:6px;cursor:pointer;font-size:11px;"
+                onclick="fecharTodasPopups();setTimeout(()=>abrirDetalhe('${String(pid)}'),100);">
+                📄 Ver ficha completa
+            </button>
+        </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POPUP — ORCRIM
+// ─────────────────────────────────────────────────────────────────
+function popupOrcrim(o) {
+    const oid = o.id;
+    // Membros vinculados
+    const membroIds = (_sb.orcrim_pessoas.filter(op => (op.orcrim_id||op.id_orcrim) == oid)).map(op => op.pessoa_id||op.id_pessoa);
+    const membros   = membroIds.map(id => _idx.pessoaById[id]).filter(Boolean);
+    const faccIdsOrc = (_sb.faccoes.filter(f => (f.orcrim_id||f.id_orcrim) == oid)).map(f => f.id);
+
+    let membrosHtml = membros.slice(0,6).map(m =>
+        `<span style="display:inline-block;background:rgba(255,255,255,.08);
+        border-radius:4px;padding:1px 7px;margin:2px;font-size:10px;color:#cde;">
+        ${esc(nomePessoa(m))}</span>`
+    ).join('') || '<span style="color:rgba(255,255,255,.3);">Nenhum cadastrado</span>';
+
+    return `<div style="min-width:240px;max-width:320px;">
+        <div style="background:#6a1b9a;color:#fff;padding:8px 12px;
+            border-radius:6px 6px 0 0;font-weight:bold;
+            margin:-10px -14px 10px;font-size:13px;">
+            🦹 ${esc(o.nome || o.nome_organizacao || 'ORCRIM')}
+        </div>
+        <div style="font-size:11px;line-height:1.8;color:#cde;">
+            ${o.tipo         ? `<b>Tipo:</b> ${esc(o.tipo)}<br>` : ''}
+            ${o.area_atuacao ? `<b>Área:</b> ${esc(o.area_atuacao)}<br>` : ''}
+            ${o.lider        ? `<b>Líder:</b> <span style="color:#ffa;">${esc(o.lider)}</span><br>` : ''}
+            ${o.status       ? `<b>Status:</b> ${esc(o.status)}<br>` : ''}
+            ${o.observacao   ? `<b>Obs:</b> ${esc(o.observacao)}<br>` : ''}
+        </div>
+        <div style="margin-top:8px;font-size:11px;">
+            <b>👥 Membros (${membros.length}):</b><br>
+            <div style="margin-top:4px;">${membrosHtml}</div>
+        </div>
+        ${faccIdsOrc.length ? `<div style="margin-top:6px;font-size:11px;"><b>Facções:</b> ${faccIdsOrc.map(nomeFaccao).join(', ')}</div>` : ''}
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POPUP — CRIME / REGISTRO OFICIAL (com cruzamento de envolvidos)
+// ─────────────────────────────────────────────────────────────────
+function popupCrime(r) {
+    const rid      = r.id;
+    const crimes   = _idx.crimesByRegOfc[rid] || _idx.crimesByRegOfc[String(rid)] || [];
+    const pessIds  = _idx.pessByRegOfc[rid]   || _idx.pessByRegOfc[String(rid)]   || [];
+    const pessoas  = pessIds.map(id => _idx.pessoaById[id] || _idx.pessoaById[String(id)]).filter(Boolean);
+    // Número do BO — usa os campos reais do Supabase
+    const numBO    = r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '';
+    const numBOstr = numBO ? String(numBO).trim() : String(rid);
+    const tiposCrime = crimes.map(c => c.tipo || c.tipificacao || c.descricao || '').filter(Boolean);
+
+    // Cruzamento com Firebase pelo número do BO
+    const fbReg = DADOS_FB.geral.find(g => {
+        const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
+        return gbNum && gbNum === numBOstr.toUpperCase();
+    });
+
+    let fbHtml = '';
+    if (fbReg) {
+        fbHtml = `<div style="margin-top:8px;padding:6px 8px;background:rgba(21,101,192,.15);
+            border:1px solid rgba(66,165,245,.2);border-radius:6px;font-size:10px;color:#cde;">
+            <div style="color:#42a5f5;font-weight:bold;margin-bottom:3px;">🔗 Firebase — Dados do Registro</div>
+            ${fbReg.DATA        ? `<b>Data:</b> ${esc(fbReg.DATA)}<br>` : ''}
+            ${fbReg.TIPIFICACAO_GERAL||fbReg.TIPIFICACAO ? `<b>Tipo:</b> ${esc(fbReg.TIPIFICACAO_GERAL||fbReg.TIPIFICACAO)}<br>` : ''}
+            ${fbReg.LOGRADOURO  ? `<b>Logradouro:</b> ${esc(fbReg.LOGRADOURO)}<br>` : ''}
+            ${fbReg.BAIRRO      ? `<b>Bairro:</b> ${esc(fbReg.BAIRRO)}<br>` : ''}
+            ${fbReg['SOLUÇÃO']||fbReg.SOLUCAO ? `<b>Solução:</b> ${esc(fbReg['SOLUÇÃO']||fbReg.SOLUCAO)}<br>` : ''}
+            ${fbReg.OBITO==='S' ? `<span style="color:#f44336;font-weight:bold;">⚠️ Óbito registrado</span>` : ''}
+        </div>`;
+    }
+
+    let envolvidosHtml = pessoas.map(p => {
+        const orcIds   = _idx.orcrimByPessoa[p.id]   || _idx.orcrimByPessoa[String(p.id)]   || [];
+        const orgnomes = orcIds.map(nomeOrcrim).filter(n=>n&&n!='—').join(', ');
+        const fbA      = _idx.fbAutorByPessoa[String(p.id)] || [];
+        const fotoP    = p.foto_url || p.foto || p.imagem || p.url_foto || '';
+        return `<div style="padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.06);
+            cursor:pointer;border-radius:4px;display:flex;gap:8px;align-items:flex-start;"
+            onclick="fecharTodasPopups();setTimeout(()=>abrirDetalhe('${String(p.id).replace(/'/g,"\'")}'),100);"
+            onmouseover="this.style.background='rgba(66,165,245,.12)'"
+            onmouseout="this.style.background='transparent'">
+            ${fotoP ? `<img src="${esc(fotoP)}" style="width:32px;height:40px;object-fit:cover;
+                border-radius:4px;border:1.5px solid rgba(255,255,255,.2);flex-shrink:0;"
+                onerror="this.style.display='none'">` : ''}
+            <div style="flex:1;">
+                <b style="color:#fff;">${esc(nomePessoa(p))}</b>
+                ${apelidosPessoa(p.id)!='—' ? `<span style="color:#42a5f5;font-size:10px;"> (${esc(apelidosPessoa(p.id))})</span>` : ''}
+                ${orgnomes ? `<br><span style="color:#ce93d8;font-size:10px;">🦹 ${esc(orgnomes)}</span>` : ''}
+                ${fbA.length ? `<br><span style="color:#ef9a9a;font-size:10px;">🔥 ${fbA.length} reg. Firebase como autor</span>` : ''}
+            </div>
+        </div>`;
+    }).join('') || '<span style="color:rgba(255,255,255,.3);font-size:11px;">Nenhum envolvido cadastrado</span>';
+
+    return `<div style="min-width:260px;max-width:360px;">
+        <div style="background:#e65100;color:#fff;padding:8px 12px;
+            border-radius:6px 6px 0 0;font-weight:bold;
+            margin:-10px -14px 10px;font-size:13px;">
+            📋 ${numBO ? 'Nº ' + esc(numBOstr) : 'Registro #' + esc(String(rid))}
+        </div>
+        <div style="font-size:11px;line-height:1.8;color:#cde;">
+            ${r.data_fato||r.data ? `<b>Data:</b> ${esc(r.data_fato||r.data)}<br>` : ''}
+            ${r.local||r.logradouro ? `<b>Local:</b> ${esc(r.local||r.logradouro)}<br>` : ''}
+            ${r.bairro_id ? `<b>Bairro:</b> ${esc(nomeBairro(r.bairro_id))}<br>` : ''}
+            ${r.cidade_id ? `<b>Cidade:</b> ${esc(nomeCidade(r.cidade_id))}<br>` : ''}
+        </div>
+        ${tiposCrime.length ? `<div style="margin-top:6px;font-size:11px;">
+            <b>🔴 Tipificações:</b><br>
+            ${tiposCrime.map(t => `<span style="display:inline-block;background:rgba(230,81,0,.25);
+            border-radius:4px;padding:1px 7px;margin:2px;font-size:10px;color:#ffcc80;">${esc(t)}</span>`).join('')}
+        </div>` : ''}
+        ${fbHtml}
+        ${(_idx.endByRegistro[String(rid)]||[]).length ? `
+        <div style="margin-top:6px;font-size:11px;">
+            <b>📍 Locais vinculados ao BO:</b>
+            <div style="margin-top:4px;">
+            ${(_idx.endByRegistro[String(rid)]||[]).slice(0,3).map(en => {
+                const logr2 = en.logradouro||en.rua||en.endereco||'';
+                const bairro2 = nomeBairro(en.bairro_id||en.bairro);
+                return `<div style="font-size:10px;color:#a5d6a7;padding:2px 0;">
+                    📌 ${esc([logr2, en.numero?'nº '+en.numero:'', bairro2!='—'?bairro2:''].filter(Boolean).join(', ') || '—')}
+                </div>`;
+            }).join('')}
+            </div>
+        </div>` : ''}
+        <div style="margin-top:8px;font-size:11px;">
+            <b>👥 Envolvidos (${pessoas.length}):</b>
+            <div style="margin-top:4px;">${envolvidosHtml}</div>
+        </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// POPUP — ENDEREÇO
+// ─────────────────────────────────────────────────────────────────
+function popupEndereco(e) {
+    // ── Detecta FK: pessoa ou registro ──────────────────────────────
+    const pid = (_endFKPessoa&&e[_endFKPessoa]) || e.pessoa_id || e.id_pessoa || e.pessoas_id || e.responsavel_id || e.morador_id;
+    const rid = (_endFKRegistro&&e[_endFKRegistro]) || e.registro_id || e.id_registro || e.registros_oficiais_id;
+
+    const p = pid ? (_idx.pessoaById[String(pid)] || _idx.pessoaById[pid]) : null;
+    const r = rid ? (_idx.regOfcById[String(rid)]  || _idx.regOfcById[rid])  : null;
+
+    const bairro = nomeBairro(e.bairro_id || e.bairro);
+    const cidade = nomeCidade(e.cidade_id || e.cidade);
+    const logr   = e.logradouro || e.rua || e.endereco || '';
+    const endStr = [logr, e.numero ? `nº ${e.numero}` : '', e.complemento || ''].filter(Boolean).join(', ');
+
+    // ── Cor do cabeçalho conforme tipo de vínculo ─────────────────────
+    const corHeader = p ? '#1b5e20' : r ? '#e65100' : '#37474f';
+    const tituloEnd = p ? '🏠 Endereço de Pessoa' : r ? '📍 Endereço de Ocorrência' : '📌 Endereço Cadastrado';
+
+    // ── Bloco de PESSOA vinculada ─────────────────────────────────────
+    let pessoaHtml = '';
+    if (p) {
+        const apels    = apelidosPessoa(p.id);
+        const orcIds   = _idx.orcrimByPessoa[String(p.id)] || [];
+        const numBOs   = (_idx.regOfcByPessoa[String(p.id)] || []).length;
+        const numVincs = (_idx.vinculosByPessoa[String(p.id)] || []).length;
+        pessoaHtml = `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;">
+            <div style="font-size:9px;font-weight:bold;color:rgba(255,255,255,.4);margin-bottom:5px;letter-spacing:.08em;">👤 PESSOA VINCULADA</div>
+            <div style="padding:6px 8px;background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.2);border-radius:6px;cursor:pointer;"
+                onclick="fecharTodasPopups();setTimeout(()=>abrirDetalhe('${String(p.id).replace(/'/g,"\'")}'),100);">
+                <div style="color:#fff;font-weight:bold;font-size:12px;">👤 ${esc(nomePessoa(p))}</div>
+                ${apels!='—' ? `<div style="color:#42a5f5;font-size:10px;margin-top:1px;">aka "${esc(apels)}"</div>` : ''}
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px;">
+                    ${orcIds.length ? `<span style="background:#6a1b9a;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;">🦹 ${esc(nomeOrcrim(orcIds[0]))}</span>` : ''}
+                    ${numBOs   ? `<span style="background:#0277bd;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;">📋 ${numBOs} BO(s)</span>` : ''}
+                    ${numVincs ? `<span style="background:#b71c1c;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;">🔗 ${numVincs} vínculo(s)</span>` : ''}
+                </div>
+                <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:3px;">Clique para ver ficha completa</div>
+            </div>
+        </div>`;
+    } else if (!rid) {
+        // Sem FK nenhuma — tenta busca reversa por logradouro
+        const candidatos = logr ? _sb.pessoas.filter(ps => {
+            const ends = _idx.endByPessoa[String(ps.id)] || [];
+            return ends.some(en => norm(en.logradouro||en.rua||'') === norm(logr));
+        }) : [];
+        if (candidatos.length) {
+            pessoaHtml = `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;">
+                <div style="font-size:9px;font-weight:bold;color:rgba(255,255,255,.35);margin-bottom:5px;">👤 POSSÍVEL VÍNCULO (por logradouro)</div>
+                ${candidatos.slice(0,3).map(ps => `
+                    <div style="padding:4px 7px;background:rgba(255,255,255,.05);border-radius:5px;margin-bottom:3px;cursor:pointer;font-size:11px;"
+                        onclick="fecharTodasPopups();setTimeout(()=>abrirDetalhe('${String(ps.id).replace(/'/g,"\'")}'),100);">
+                        👤 ${esc(nomePessoa(ps))}
+                    </div>`).join('')}
+            </div>`;
+        } else {
+            pessoaHtml = `<div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,.25);border-top:1px solid rgba(255,255,255,.06);padding-top:6px;">
+                Nenhuma pessoa vinculada</div>`;
+        }
+    }
+
+    // ── Bloco de REGISTRO (BO) vinculado ──────────────────────────────
+    let registroHtml = '';
+    if (r) {
+        const numBO      = r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || String(r.id).substring(0,8);
+        const crimes     = _idx.crimesByRegOfc[String(r.id)] || [];
+        const tiposCrime = crimes.map(c=>c.tipo||c.tipificacao||'').filter(Boolean);
+        const envPids    = _idx.pessByRegOfc[String(r.id)] || [];
+        const envPessoas = envPids.map(id=>_idx.pessoaById[String(id)]).filter(Boolean);
+        registroHtml = `<div style="margin-top:8px;border-top:1px solid rgba(255,255,255,.1);padding-top:8px;">
+            <div style="font-size:9px;font-weight:bold;color:rgba(255,255,255,.4);margin-bottom:5px;letter-spacing:.08em;">📋 OCORRÊNCIA VINCULADA</div>
+            <div style="padding:6px 8px;background:rgba(230,81,0,.12);border:1px solid rgba(230,81,0,.25);border-radius:6px;cursor:pointer;"
+                onclick="fecharTodasPopups();setTimeout(()=>_focarRegistro('${String(r.id).replace(/'/g,"\'")}'),100);">
+                <div style="color:#ff8a65;font-weight:bold;font-size:12px;">📋 Nº ${esc(String(numBO))}</div>
+                ${r.data_fato||r.data ? `<div style="font-size:10px;color:rgba(255,255,255,.5);">${esc(r.data_fato||r.data)}</div>` : ''}
+                ${tiposCrime.length ? `<div style="margin-top:3px;">${tiposCrime.slice(0,2).map(t=>`<span style="background:rgba(230,81,0,.3);color:#ffcc80;border-radius:4px;padding:1px 6px;font-size:9px;margin-right:2px;">${esc(t.substring(0,25))}</span>`).join('')}</div>` : ''}
+                ${envPessoas.length ? `<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:3px;">👥 ${envPessoas.map(p=>esc(nomePessoa(p))).slice(0,2).join(', ')}${envPessoas.length>2?` +${envPessoas.length-2}`:''}</div>` : ''}
+                <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:3px;">Clique para ir ao ponto no mapa</div>
+            </div>
+        </div>`;
+    }
+
+    return `<div style="min-width:250px;max-width:360px;">
+        <div style="background:${corHeader};color:#fff;padding:8px 12px;
+            border-radius:6px 6px 0 0;font-weight:bold;
+            margin:-10px -14px 10px;font-size:13px;">
+            ${tituloEnd}
+        </div>
+        <div style="font-size:11px;line-height:1.8;color:#cde;">
+            ${endStr      ? `<b>Endereço:</b> ${esc(endStr)}<br>` : ''}
+            ${bairro!='—' ? `<b>Bairro:</b> ${esc(bairro)}<br>` : ''}
+            ${cidade!='—' ? `<b>Cidade:</b> ${esc(cidade)}<br>` : ''}
+            ${e.cep        ? `<b>CEP:</b> ${esc(e.cep)}<br>` : ''}
+            ${e.tipo       ? `<b>Tipo:</b> <span style="color:#a5d6a7;">${esc(e.tipo)}</span><br>` : ''}
+            ${e.observacao ? `<b>Obs:</b> ${esc(e.observacao)}<br>` : ''}
+        </div>
+        ${pessoaHtml}
+        ${registroHtml}
+    </div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// INICIAR MAPA
+// ═════════════════════════════════════════════════════════════════
+function verificarTudoPronto() {
+    if (!_fbPronto || !_sbPronto) return;
+    carregarLeafletEIniciar();
+}
+
+function carregarLeafletEIniciar() {
+    const cssList = [
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+        'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+        'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+    ];
+    cssList.forEach(href => {
+        if (!document.querySelector(`link[href="${href}"]`)) {
+            const l = document.createElement('link');
+            l.rel = 'stylesheet'; l.href = href;
+            document.head.appendChild(l);
+        }
+    });
+
+    const scripts = [
+        { src: 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+          check: () => window.L },
+        { src: 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+          check: () => window.L && L.MarkerClusterGroup },
+        { src: 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js',
+          check: () => window.L && L.heatLayer },
+    ];
+
+    function next(i) {
+        if (i >= scripts.length) { iniciarMapa(); return; }
+        const s = scripts[i];
+        if (s.check()) { next(i+1); return; }
+        const el = document.createElement('script');
+        el.src    = s.src;
+        el.onload  = () => next(i+1);
+        el.onerror = () => { console.warn('Falha:', s.src); next(i+1); };
+        document.head.appendChild(el);
+    }
+    next(0);
+}
+
+function iniciarMapa() {
+    if (_mapaL) { _mapaL.remove(); _mapaL = null; }
+
+    _mapaL = L.map('mapa-calor', { center: [-9.42, -36.63], zoom: 10 });
+
+    const tiles = {
+        'Satélite (Esri)': L.tileLayer(
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            { attribution:'Esri', maxZoom:19 }),
+        'Rua (OpenStreetMap)': L.tileLayer(
+            'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            { attribution:'© OpenStreetMap', maxZoom:19 }),
+        'Cinza (CartoDB)': L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            { attribution:'© CartoDB', maxZoom:19 }),
+        'Escuro (CartoDB)': L.tileLayer(
+            'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            { attribution:'© CartoDB', maxZoom:19 }),
+    };
+    tiles['Satélite (Esri)'].addTo(_mapaL);
+    L.control.layers(tiles, {}, { position:'topleft', collapsed:true }).addTo(_mapaL);
+    L.control.scale({ imperial:false, position:'bottomleft' }).addTo(_mapaL);
+
+    _mapaL.on('mousemove', e => {
+        const el = document.getElementById('sb-coords');
+        if (el) el.textContent = `${e.latlng.lat.toFixed(5)}, ${e.latlng.lng.toFixed(5)}`;
+    });
+
+    construirCamadasFB();
+    construirCamadasSB();
+    adicionarLegenda();
+
+    renderPainelCamadas();
+    renderListaPessoas();
+    renderListaOrcrim();
+    renderListaCrimes();
+    renderListaVinculos();
+
+    document.getElementById('loader-overlay').style.display = 'none';
+    atualizarResumo();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CAMADAS FIREBASE
+// ═════════════════════════════════════════════════════════════════
+function construirCamadasFB() {
+    for (const id in _heatLayers)    { _mapaL.removeLayer(_heatLayers[id]); }
+    for (const id in _clusterGroups) { _mapaL.removeLayer(_clusterGroups[id]); }
+    _heatLayers = {}; _clusterGroups = {};
+
+    const fontes = {
+        cvp: DADOS_FB.cvp, cvli: DADOS_FB.cvli, mvi: DADOS_FB.cvli,
+        droga: DADOS_FB.droga, arma: DADOS_FB.arma, vd: DADOS_FB.vd,
+        sossego: DADOS_FB.sossego, tco: DADOS_FB.tco,
+        ccp: DADOS_FB.geral, mandados: DADOS_FB.mandados, visitas: DADOS_FB.visitas,
+    };
+
+    for (const cfg of CAMADAS_CONFIG) {
+        let arr = fontes[cfg.id] || [];
+        if (cfg.filtro === 'mvi')     arr = arr.filter(ehMVI);
+        if (cfg.filtro === 'tco')     arr = arr.filter(ehTCO);
+        if (cfg.filtro === 'ccp')     arr = arr.filter(ehCCP);
+        if (cfg.filtro === 'visitas') arr = arr.filter(ehVisita);
+        arr = filtroPeriodo(arr);
+
+        const pontos = extrairPontos(arr);
+        _dadosMapa[cfg.id] = pontos;
+        if (!pontos.length) continue;
+
+        _heatLayers[cfg.id] = L.heatLayer(
+            pontos.map(p => [p.lat, p.lng, 1.0]),
+            { radius:22, blur:18, maxZoom:14, gradient:gradient(cfg.corHex), minOpacity:0.25 }
+        );
+
+        const group = L.markerClusterGroup({
+            showCoverageOnHover: false, maxClusterRadius: 50,
+            iconCreateFunction: cl => {
+                const n = cl.getChildCount();
+                const sz = n > 100 ? 48 : n > 20 ? 40 : 32;
+                return L.divIcon({ className:'',
+                    html:`<div style="background:${cfg.cor};color:#fff;border-radius:50%;
+                        width:${sz}px;height:${sz}px;display:flex;align-items:center;
+                        justify-content:center;font-weight:bold;font-size:${sz>40?13:11}px;
+                        border:3px solid rgba(255,255,255,.7);box-shadow:0 2px 8px rgba(0,0,0,.4);">${n}</div>`,
+                    iconSize:[sz,sz], iconAnchor:[sz/2,sz/2] });
+            }
+        });
+
+        for (const p of pontos) {
+            // Cruzar com Supabase pelo número do boletim
+            const boNum = String(p.boletim||'').trim();
+            const regOfc = boNum && boNum !== '—'
+                ? _sb.registros.find(r => String(r.numero_bo||r.num_bo||r.boletim||'').trim() === boNum)
+                : null;
+            let envolvidosPopup = '';
+            if (regOfc) {
+                const pids = _idx.pessByRegOfc[regOfc.id] || [];
+                const pessoasEnvolvidas = pids.map(id => _idx.pessoaById[id]).filter(Boolean);
+                if (pessoasEnvolvidas.length) {
+                    envolvidosPopup = `<div style="margin-top:8px;padding-top:8px;
+                        border-top:1px solid rgba(255,255,255,.1);">
+                        <b style="font-size:11px;">👥 Envolvidos cadastrados:</b><br>
+                        ${pessoasEnvolvidas.slice(0,4).map(pe =>
+                            `<span style="display:inline-block;background:rgba(21,101,192,.3);
+                            border-radius:4px;padding:1px 6px;margin:2px;font-size:10px;color:#90caf9;">
+                            ${esc(nomePessoa(pe))}</span>`
+                        ).join('')}
+                        ${pessoasEnvolvidas.length>4 ? `<span style="font-size:10px;color:rgba(255,255,255,.4);">+${pessoasEnvolvidas.length-4} mais</span>` : ''}
+                    </div>`;
+                }
+            }
+
+            // Busca autor no nó /autor pelo item do Firebase (campo AUTOR / NOME)
+            const autorNomeFB  = norm(p.autor || (p._raw ? (p._raw.AUTOR || p._raw.autor || p._raw.NOME_AUTOR || '') : '') || '').trim();
+            let autorSBHtml = '';
+            if (autorNomeFB) {
+                // Busca pessoa no Supabase cujo nome normalizado bate com o autor do Firebase
+                const pessoaAutor = _sb.pessoas.find(ps => {
+                    const nNorm = norm(ps.nome || ps.nome_completo || '');
+                    const apels = (_idx.apelidosByPessoa[String(ps.id)] || []).map(a => norm(a));
+                    return nNorm === autorNomeFB
+                        || apels.includes(autorNomeFB)
+                        || (autorNomeFB.length > 5 && (nNorm.includes(autorNomeFB) || autorNomeFB.includes(nNorm)));
+                });
+                if (pessoaAutor) {
+                    const orcIds2 = _idx.orcrimByPessoa[String(pessoaAutor.id)] || [];
+                    const fotoA   = pessoaAutor.foto_url || pessoaAutor.foto || pessoaAutor.imagem || '';
+                    autorSBHtml = `<div style="margin-top:8px;padding:6px 8px;
+                        background:rgba(66,165,245,.12);border:1px solid rgba(66,165,245,.25);
+                        border-radius:6px;cursor:pointer;"
+                        onclick="fecharTodasPopups();setTimeout(()=>abrirDetalhe('${String(pessoaAutor.id)}'),100);"
+                        onmouseover="this.style.background='rgba(66,165,245,.2)'"
+                        onmouseout="this.style.background='rgba(66,165,245,.12)'">
+                        <div style="font-size:9px;font-weight:bold;color:rgba(255,255,255,.4);
+                            margin-bottom:4px;letter-spacing:.06em;">👤 AUTOR — CADASTRADO NO SISTEMA</div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            ${fotoA ? `<img src="${esc(fotoA)}" style="width:32px;height:40px;object-fit:cover;
+                                border-radius:4px;border:1.5px solid rgba(255,255,255,.25);flex-shrink:0;"
+                                onerror="this.style.display='none'">` : ''}
+                            <div>
+                                <div style="color:#fff;font-weight:bold;font-size:12px;">
+                                    ${esc(nomePessoa(pessoaAutor))}
+                                </div>
+                                ${apelidosPessoa(pessoaAutor.id)!='—' ?
+                                    `<div style="color:#42a5f5;font-size:10px;">
+                                        aka "${esc(apelidosPessoa(pessoaAutor.id))}"</div>` : ''}
+                                ${orcIds2.length ?
+                                    `<div style="color:#ce93d8;font-size:10px;">
+                                        🦹 ${esc(nomeOrcrim(orcIds2[0]))}</div>` : ''}
+                                <div style="color:rgba(255,255,255,.3);font-size:9px;margin-top:2px;">
+                                    Clique para ver a ficha completa</div>
+                            </div>
+                        </div>
+                    </div>`;
+                } else if (autorNomeFB) {
+                    // Autor no Firebase mas não cadastrado no Supabase
+                    autorSBHtml = `<div style="margin-top:8px;padding:5px 8px;
+                        background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+                        border-radius:6px;font-size:10px;color:rgba(255,255,255,.5);">
+                        👤 Autor: <b style="color:#fff;">${esc(p.autor || p.AUTOR || autorNomeFB || '')}</b>
+                        <span style="color:rgba(255,255,255,.3);">(não cadastrado no Supabase)</span>
+                    </div>`;
+                }
+            }
+
+            const mk = L.circleMarker([p.lat, p.lng], {
+                radius:6, fillColor:cfg.cor, color:'#fff', weight:1.5, fillOpacity:.85
+            });
+            mk.bindPopup(`<div style="min-width:220px;max-width:360px;">
+                <div style="background:${cfg.cor};color:#fff;padding:6px 10px;
+                    border-radius:6px 6px 0 0;font-weight:bold;
+                    margin:-10px -14px 8px;font-size:12px;">
+                    ${cfg.icon} ${cfg.label}
+                </div>
+                <div style="font-size:11px;line-height:1.7;color:#cde;">
+                    <b>Boletim:</b> ${esc(p.boletim)}<br>
+                    <b>Data:</b> ${esc(p.data)}<br>
+                    <b>Tipificação:</b> ${esc(p.tip)}<br>
+                    ${p.autor && p.autor !== '—' ? `<b>Autor/Suspeito:</b> <span style="color:#ef9a9a;">${esc(p.autor)}</span><br>` : ''}
+                    <b>Bairro:</b> ${esc(p.bairro)}<br>
+                    <b>Logradouro:</b> ${esc(p.logr)}<br>
+                    <b>Cidade:</b> ${esc(p.cidade)}<br>
+                    <b>Solução:</b> ${esc(p.solucao)}
+                </div>
+                ${autorSBHtml}
+                ${envolvidosPopup}
+            </div>`, { maxWidth:380 });
+            group.addLayer(mk);
+        }
+        _clusterGroups[cfg.id] = group;
+
+        if (_camadasAtivas.has(cfg.id)) {
+            if (_modoVista === 'heat'    || _modoVista === 'ambos') _heatLayers[cfg.id].addTo(_mapaL);
+            if (_modoVista === 'cluster' || _modoVista === 'ambos') _clusterGroups[cfg.id].addTo(_mapaL);
+        }
+    }
+    atualizarResumo();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CAMADAS SUPABASE
+// ═════════════════════════════════════════════════════════════════
+function construirCamadasSB() {
+    for (const id in _sbLayers) {
+        if (_sbLayers[id]) { _mapaL.removeLayer(_sbLayers[id]); _sbLayers[id] = null; }
+    }
+
+    // ── PESSOAS ──────────────────────────────────────────────────
+    // Se a pessoa não tem GPS próprio, usa o primeiro endereço vinculado com coords
+    const grpPessoas = _criarClusterGroup('#42a5f5');
+    let cntP = 0;
+    _sb.pessoas.forEach(p => {
+        let lat = parseDec(p.latitude || p.lat);
+        let lng = parseDec(p.longitude || p.lng || p.lon);
+
+        if (!coordValida(lat, lng)) {
+            // Tenta endereços vinculados
+            const ends = _idx.endByPessoa[p.id] || _idx.endByPessoa[String(p.id)] || [];
+            for (const en of ends) {
+                const elat = parseDec(en.latitude || en.lat);
+                const elng = parseDec(en.longitude || en.lng);
+                if (coordValida(elat, elng)) { lat = elat; lng = elng; break; }
+            }
+        }
+        if (!coordValida(lat, lng)) return;
+        cntP++;
+        const mk = L.circleMarker([lat, lng], {
+            radius:9, fillColor:'#42a5f5', color:'#fff', weight:2, fillOpacity:.9
+        });
+        mk.bindPopup(popupPessoa(p), { maxWidth:360 });
+        grpPessoas.addLayer(mk);
+    });
+    _sbLayers.pessoas = grpPessoas;
+    if (_sbAtivas.has('pessoas') && cntP > 0) grpPessoas.addTo(_mapaL);
+
+    // ── ORCRIM ───────────────────────────────────────────────────
+    const grpOrcrim = _criarClusterGroup('#9c27b0');
+    let cntO = 0;
+    _sb.orcrim.forEach(o => {
+        const lat = parseDec(o.latitude || o.lat || o.lat_sede);
+        const lng = parseDec(o.longitude || o.lng || o.lon || o.lng_sede);
+        if (!coordValida(lat, lng)) return;
+        cntO++;
+        const mk = L.circleMarker([lat, lng], {
+            radius:11, fillColor:'#9c27b0', color:'#fff', weight:2, fillOpacity:.9
+        });
+        mk.bindPopup(popupOrcrim(o), { maxWidth:360 });
+        grpOrcrim.addLayer(mk);
+    });
+    _sbLayers.orcrim = grpOrcrim;
+    if (_sbAtivas.has('orcrim') && cntO > 0) grpOrcrim.addTo(_mapaL);
+
+    // ── CRIMES / BOs ─────────────────────────────────────────────
+    // Quando o registro Supabase não tem GPS, tenta buscar pelo nº do BO no Firebase (nó geral)
+    const grpCrimes = _criarClusterGroup('#e65100');
+    let cntC = 0;
+    _sb.registros.forEach(r => {
+        let lat = parseDec(r.latitude || r.lat);
+        let lng = parseDec(r.longitude || r.lng);
+
+        // Se não tem coords no Supabase, busca no Firebase pelo número do BO
+        if (!coordValida(lat, lng)) {
+            const numBO = String(r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '').trim().toUpperCase();
+            if (numBO) {
+                const fbReg = DADOS_FB.geral.find(g => {
+                    const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
+                    return gbNum && gbNum === numBO;
+                });
+                if (fbReg) {
+                    lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
+                    lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
+                }
+            }
+        }
+        if (!coordValida(lat, lng)) return;
+        cntC++;
+        const mk = L.circleMarker([lat, lng], {
+            radius:8, fillColor:'#e65100', color:'#fff', weight:2, fillOpacity:.88
+        });
+        mk.bindPopup(popupCrime(r), { maxWidth:380 });
+        grpCrimes.addLayer(mk);
+    });
+    _sbLayers.crimes = grpCrimes;
+    if (_sbAtivas.has('crimes') && cntC > 0) grpCrimes.addTo(_mapaL);
+
+    // ── ENDEREÇOS ────────────────────────────────────────────────
+    // Detecta se o endereço pertence a pessoa ou a registro,
+    // e usa ícone/cor diferentes para cada tipo
+    const grpEnds = _criarClusterGroup('#4caf50');
+    let cntE = 0;
+    _sb.enderecos.forEach(e => {
+        const lat = parseDec(e.latitude || e.lat);
+        const lng = parseDec(e.longitude || e.lng);
+        if (!coordValida(lat, lng)) return;
+        cntE++;
+
+        // Determina vínculo: pessoa ou registro
+        const pid = e.pessoa_id || e.id_pessoa || e.pessoas_id || e.fk_pessoa;
+        const rid = e.registro_id || e.id_registro || e.registros_oficiais_id || e.registro_oficial_id || e.fk_registro;
+        const temPessoa   = pid && (_idx.pessoaById[String(pid)]);
+        const temRegistro = rid && (_idx.regOfcById[String(rid)]);
+
+        // Cor: verde-escuro se pessoa, verde-claro se só registro, cinza se desconhecido
+        const corEnd = temPessoa ? '#2e7d32' : temRegistro ? '#66bb6a' : '#78909c';
+        const iconeEnd = temPessoa ? '🏠' : temRegistro ? '📍' : '📌';
+
+        const mk = L.circleMarker([lat, lng], {
+            radius: temPessoa ? 8 : 6,
+            fillColor: corEnd, color:'#fff', weight:2, fillOpacity:.88
+        });
+        mk.bindPopup(popupEndereco(e), { maxWidth:340 });
+        grpEnds.addLayer(mk);
+    });
+    _sbLayers.enderecos = grpEnds;
+    if (_sbAtivas.has('enderecos') && cntE > 0) grpEnds.addTo(_mapaL);
+
+    // ── FACÇÕES (como camada separada) ───────────────────────────
+    const grpFacc = _criarClusterGroup('#880e4f');
+    let cntF = 0;
+    _sb.faccoes.forEach(f => {
+        const lat = parseDec(f.latitude || f.lat);
+        const lng = parseDec(f.longitude || f.lng);
+        if (!coordValida(lat, lng)) return;
+        cntF++;
+        const mk = L.circleMarker([lat, lng], {
+            radius:10, fillColor:'#880e4f', color:'#fff', weight:2, fillOpacity:.9
+        });
+        const orcrim = _idx.orcrimById[f.orcrim_id || f.id_orcrim];
+        mk.bindPopup(`<div style="min-width:200px;">
+            <div style="background:#880e4f;color:#fff;padding:8px 12px;
+                border-radius:6px 6px 0 0;font-weight:bold;
+                margin:-10px -14px 10px;font-size:13px;">
+                ⚔ ${esc(f.nome || f.nome_faccao || 'Facção')}
+            </div>
+            <div style="font-size:11px;color:#cde;line-height:1.8;">
+                ${f.tipo       ? `<b>Tipo:</b> ${esc(f.tipo)}<br>` : ''}
+                ${orcrim       ? `<b>ORCRIM:</b> ${esc(nomePessoa(orcrim)||orcrim.nome||'')}<br>` : ''}
+                ${f.observacao ? `<b>Obs:</b> ${esc(f.observacao)}<br>` : ''}
+            </div>
+        </div>`, { maxWidth:300 });
+        grpFacc.addLayer(mk);
+    });
+    _sbLayers.vinculos = grpFacc; // reutilizando slot
+    if (_sbAtivas.has('vinculos') && cntF > 0) grpFacc.addTo(_mapaL);
+
+    // ── LINHAS DE VÍNCULO ─────────────────────────────────────────
+    // Construir mas não adicionar ainda
+    _construirLinhasVinculos();
+}
+
+function _criarClusterGroup(cor) {
+    return L.markerClusterGroup({
+        showCoverageOnHover: false, maxClusterRadius: 40,
+        iconCreateFunction: cl => {
+            const n = cl.getChildCount();
+            const sz = n > 100 ? 48 : n > 20 ? 40 : 32;
+            return L.divIcon({ className:'',
+                html:`<div style="background:${cor};color:#fff;border-radius:50%;
+                    width:${sz}px;height:${sz}px;display:flex;align-items:center;
+                    justify-content:center;font-weight:bold;font-size:${sz>40?13:11}px;
+                    border:3px solid rgba(255,255,255,.7);box-shadow:0 2px 8px rgba(0,0,0,.4);">${n}</div>`,
+                iconSize:[sz,sz], iconAnchor:[sz/2,sz/2] });
+        }
+    });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LINHAS DE VÍNCULO NO MAPA (dinâmico)
+// ─────────────────────────────────────────────────────────────────
+function _construirLinhasVinculos() {
+    if (_linhasVinculoLayer) { _mapaL.removeLayer(_linhasVinculoLayer); }
+    const grupo = L.layerGroup();
+
+    _sb.vinculos.forEach(v => {
+        const idA = (_vincFKa&&v[_vincFKa])||v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a;
+        const idB = (_vincFKb&&v[_vincFKb])||v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b;
+        const pA  = _idx.pessoaById[idA];
+        const pB  = _idx.pessoaById[idB];
+        if (!pA || !pB) return;
+
+        const latA = parseDec(pA.latitude || pA.lat);
+        const lngA = parseDec(pA.longitude || pA.lng);
+        const latB = parseDec(pB.latitude || pB.lat);
+        const lngB = parseDec(pB.longitude || pB.lng);
+        if (!coordValida(latA, lngA) || !coordValida(latB, lngB)) return;
+
+        const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+        const line = L.polyline([[latA, lngA], [latB, lngB]], {
+            color: '#ff7043', weight: 2, opacity: 0.7, dashArray: '6,4'
+        });
+        line.bindPopup(`<div style="font-size:11px;color:#cde;">
+            <b style="color:#ff7043;">🔗 ${esc(tipo)}</b><br>
+            <b>${esc(nomePessoa(pA))}</b><br>
+            <span style="opacity:.5;">↔</span><br>
+            <b>${esc(nomePessoa(pB))}</b>
+        </div>`, { maxWidth:260 });
+        grupo.addLayer(line);
+    });
+
+    _linhasVinculoLayer = grupo;
+}
+
+function toggleLinhasVinculos() {
+    const btn = document.getElementById('btn-vinculos-mapa');
+    if (_linhasVinculoAtivas) {
+        if (_linhasVinculoLayer) _mapaL.removeLayer(_linhasVinculoLayer);
+        _linhasVinculoAtivas = false;
+        btn.classList.remove('active-red');
+        btn.style.background = 'rgba(255,112,67,.12)';
+    } else {
+        if (_linhasVinculoLayer) _linhasVinculoLayer.addTo(_mapaL);
+        _linhasVinculoAtivas = true;
+        btn.classList.add('active-red');
+        btn.style.background = 'rgba(183,28,28,.4)';
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// GRAFO DE VÍNCULOS (Canvas 2D)
+// ═════════════════════════════════════════════════════════════════
+let _grafoNodes = [];
+let _grafoEdges = [];
+let _grafoSim   = null;
+let _grafoCanvasCtx = null;
+let _grafoTransform = { x:0, y:0, scale:1 };
+let _grafoDragNode  = null;
+let _grafoPanning   = false;
+let _grafoPanStart  = { x:0, y:0 };
+let _grafoAnimFrame = null;
+
+function abrirGrafo() {
+    document.getElementById('modal-grafo').classList.add('show');
+    _construirGrafo();
+}
+function fecharGrafo() {
+    document.getElementById('modal-grafo').classList.remove('show');
+    if (_grafoAnimFrame) cancelAnimationFrame(_grafoAnimFrame);
+    _grafoAnimFrame = null;
+}
+
+function _construirGrafo() {
+    const canvas = document.getElementById('grafo-canvas');
+    const wrap   = document.getElementById('grafo-canvas-wrap');
+    canvas.width  = wrap.offsetWidth;
+    canvas.height = wrap.offsetHeight;
+    _grafoCanvasCtx = canvas.getContext('2d');
+
+    // Coletar apenas pessoas que têm vínculos
+    const pessoasComVinculo = new Set();
+    _sb.vinculos.forEach(v => {
+        const idA = (_vincFKa&&v[_vincFKa])||v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a;
+        const idB = (_vincFKb&&v[_vincFKb])||v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b;
+        if (_idx.pessoaById[idA]) pessoasComVinculo.add(idA);
+        if (_idx.pessoaById[idB]) pessoasComVinculo.add(idB);
+    });
+
+    // Criar nós
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    _grafoNodes = [];
+    const nodeMap = {};
+    let i = 0;
+    pessoasComVinculo.forEach(pid => {
+        const p = _idx.pessoaById[pid];
+        if (!p) return;
+        const angle = (i / pessoasComVinculo.size) * Math.PI * 2;
+        const r     = Math.min(cx, cy) * 0.65;
+        const orcIds = _idx.orcrimByPessoa[pid] || [];
+        const facIds = _idx.faccaoByPessoa[pid] || [];
+        let cor = '#42a5f5';
+        if (orcIds.length) cor = '#9c27b0';
+        if (facIds.length) cor = '#880e4f';
+
+        nodeMap[pid] = _grafoNodes.length;
+        _grafoNodes.push({
+            id: pid,
+            nome: nomePessoa(p),
+            x: cx + Math.cos(angle) * r,
+            y: cy + Math.sin(angle) * r,
+            vx: 0, vy: 0,
+            cor,
+            orcrim: orcIds.map(nomeOrcrim).filter(n=>n&&n!='—').join(', '),
+        });
+        i++;
+    });
+
+    // Criar arestas
+    _grafoEdges = [];
+    _sb.vinculos.forEach(v => {
+        const idA = (_vincFKa&&v[_vincFKa])||v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a;
+        const idB = (_vincFKb&&v[_vincFKb])||v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b;
+        if (nodeMap[idA] === undefined || nodeMap[idB] === undefined) return;
+        _grafoEdges.push({
+            a: nodeMap[idA],
+            b: nodeMap[idB],
+            tipo: v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo'
+        });
+    });
+
+    _grafoTransform = { x: 0, y: 0, scale: 1 };
+    _iniciarSimulacao();
+    _bindGrafoEvents();
+}
+
+function _iniciarSimulacao() {
+    let frame = 0;
+    function tick() {
+        _grafoAnimFrame = requestAnimationFrame(tick);
+        // Simulação de força simplificada
+        if (frame < 200) {
+            const repul = 3000;
+            const atracao = 0.02;
+            const amort   = 0.85;
+
+            // Repulsão nó-nó
+            for (let i = 0; i < _grafoNodes.length; i++) {
+                for (let j = i+1; j < _grafoNodes.length; j++) {
+                    const na = _grafoNodes[i], nb = _grafoNodes[j];
+                    const dx = nb.x - na.x, dy = nb.y - na.y;
+                    const d2 = dx*dx + dy*dy + 1;
+                    const f  = repul / d2;
+                    const fx = f * dx / Math.sqrt(d2);
+                    const fy = f * dy / Math.sqrt(d2);
+                    na.vx -= fx; na.vy -= fy;
+                    nb.vx += fx; nb.vy += fy;
+                }
+            }
+            // Atração pelas arestas
+            _grafoEdges.forEach(e => {
+                const na = _grafoNodes[e.a], nb = _grafoNodes[e.b];
+                const dx = nb.x - na.x, dy = nb.y - na.y;
+                const d  = Math.sqrt(dx*dx + dy*dy) + 0.01;
+                const f  = (d - 120) * atracao;
+                na.vx += f * dx/d; na.vy += f * dy/d;
+                nb.vx -= f * dx/d; nb.vy -= f * dy/d;
+            });
+            // Integrar
+            _grafoNodes.forEach(n => {
+                if (n.pinned) return;
+                n.vx *= amort; n.vy *= amort;
+                n.x  += n.vx;  n.y  += n.vy;
+            });
+            frame++;
+        }
+        _desenharGrafo();
+    }
+    if (_grafoAnimFrame) cancelAnimationFrame(_grafoAnimFrame);
+    tick();
+}
+
+function _desenharGrafo() {
+    const canvas = document.getElementById('grafo-canvas');
+    if (!canvas || !_grafoCanvasCtx) return;
+    const ctx = _grafoCanvasCtx;
+    const W = canvas.width, H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(_grafoTransform.x, _grafoTransform.y);
+    ctx.scale(_grafoTransform.scale, _grafoTransform.scale);
+
+    // Arestas
+    _grafoEdges.forEach(e => {
+        const na = _grafoNodes[e.a], nb = _grafoNodes[e.b];
+        ctx.beginPath();
+        ctx.moveTo(na.x, na.y);
+        ctx.lineTo(nb.x, nb.y);
+        ctx.strokeStyle = 'rgba(255,112,67,0.45)';
+        ctx.lineWidth   = 1.5;
+        ctx.setLineDash([5,4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    });
+
+    // Nós
+    _grafoNodes.forEach(n => {
+        const r = 14;
+        // Glow
+        const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r*2);
+        g.addColorStop(0, n.cor + 'aa');
+        g.addColorStop(1, n.cor + '00');
+        ctx.beginPath(); ctx.arc(n.x, n.y, r*2, 0, Math.PI*2);
+        ctx.fillStyle = g; ctx.fill();
+
+        // Círculo
+        ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI*2);
+        ctx.fillStyle   = n.cor;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth   = 2;
+        ctx.fill(); ctx.stroke();
+
+        // Rótulo
+        ctx.fillStyle   = '#fff';
+        ctx.font        = 'bold 10px Arial';
+        ctx.textAlign   = 'center';
+        ctx.textBaseline= 'middle';
+        const label = n.nome.length > 14 ? n.nome.substring(0,13)+'…' : n.nome;
+        ctx.fillText(label, n.x, n.y + r + 10);
+    });
+
+    ctx.restore();
+}
+
+function _bindGrafoEvents() {
+    const canvas = document.getElementById('grafo-canvas');
+    if (!canvas) return;
+
+    // Clone para remover listeners anteriores
+    const novo = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(novo, canvas);
+    _grafoCanvasCtx = novo.getContext('2d');
+
+    novo.addEventListener('mousedown', e => {
+        const pt = _grafoPoint(novo, e);
+        const node = _grafoNodeAt(pt);
+        if (node) {
+            _grafoDragNode = node;
+            node.pinned = true;
+        } else {
+            _grafoPanning  = true;
+            _grafoPanStart = { x: e.clientX - _grafoTransform.x, y: e.clientY - _grafoTransform.y };
+        }
+    });
+
+    novo.addEventListener('mousemove', e => {
+        if (_grafoDragNode) {
+            const pt = _grafoPoint(novo, e);
+            _grafoDragNode.x = pt.x; _grafoDragNode.y = pt.y;
+        } else if (_grafoPanning) {
+            _grafoTransform.x = e.clientX - _grafoPanStart.x;
+            _grafoTransform.y = e.clientY - _grafoPanStart.y;
+        }
+    });
+
+    novo.addEventListener('mouseup', e => {
+        if (_grafoDragNode) { _grafoDragNode.pinned = false; _grafoDragNode = null; }
+        _grafoPanning = false;
+    });
+
+    novo.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        _grafoTransform.scale = Math.max(0.2, Math.min(4, _grafoTransform.scale * factor));
+    }, { passive:false });
+
+    novo.addEventListener('click', e => {
+        const pt    = _grafoPoint(novo, e);
+        const node  = _grafoNodeAt(pt);
+        const info  = document.getElementById('grafo-info');
+        if (node) {
+            const numBOs = (_idx.regOfcByPessoa[node.id] || []).length;
+            const numVinc = (_idx.vinculosByPessoa[node.id] || []).length;
+            info.style.display = 'block';
+            info.innerHTML = `<b style="color:#fff;font-size:12px;">👤 ${esc(node.nome)}</b><br>
+                ${node.orcrim ? `🦹 ${esc(node.orcrim)}<br>` : ''}
+                🔗 ${numVinc} vínculo(s) &nbsp;·&nbsp; 📋 ${numBOs} BO(s)<br>
+                <span style="opacity:.6;font-size:10px;">Clique duplo para ver a ficha completa</span>`;
+        } else {
+            info.style.display = 'none';
+        }
+    });
+
+    novo.addEventListener('dblclick', e => {
+        const pt   = _grafoPoint(novo, e);
+        const node = _grafoNodeAt(pt);
+        if (node) { fecharGrafo(); abrirDetalhe(node.id); }
+    });
+}
+
+function _grafoPoint(canvas, e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX - rect.left - _grafoTransform.x) / _grafoTransform.scale,
+        y: (e.clientY - rect.top  - _grafoTransform.y) / _grafoTransform.scale,
+    };
+}
+function _grafoNodeAt(pt) {
+    for (const n of _grafoNodes) {
+        const dx = pt.x - n.x, dy = pt.y - n.y;
+        if (dx*dx + dy*dy < 196) return n; // raio 14px
+    }
+    return null;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// MODAL FICHA COMPLETA DA PESSOA
+// ═════════════════════════════════════════════════════════════════
+function abrirDetalhe(pid) {
+    // Suporta tanto inteiros quanto UUIDs (string)
+    const p = _idx.pessoaById[pid] || _idx.pessoaById[String(pid)] || _idx.pessoaById[Number(pid)];
+    if (!p) { console.warn('[abrirDetalhe] Pessoa não encontrada para id:', pid); return; }
+    document.getElementById('modal-pessoa-titulo').textContent = `👤 ${nomePessoa(p)}`;
+    document.getElementById('modal-pessoa-corpo').innerHTML = _htmlFichaPessoa(p);
+    document.getElementById('modal-pessoa').classList.add('show');
+}
+
+function _abrirDetalheOrcrim(oid, tipo) {
+    const obj = tipo === 'faccao'
+        ? _idx.faccaoById[oid] || _idx.faccaoById[String(oid)]
+        : _idx.orcrimById[oid] || _idx.orcrimById[String(oid)];
+    if (!obj) { console.warn('[_abrirDetalheOrcrim] Não encontrado:', oid, tipo); return; }
+
+    const ehOrc   = tipo === 'orcrim';
+    const cor     = ehOrc ? '#6a1b9a' : '#880e4f';
+    const icone   = ehOrc ? '🦹' : '⚔️';
+    const nome    = obj.nome || obj.nome_organizacao || obj.nome_faccao || '—';
+    const pessoas = ehOrc
+        ? _sb.orcrim_pessoas.filter(op => String(op.orcrim_id||op.id_orcrim) === String(oid))
+            .map(op => _idx.pessoaById[op.pessoa_id||op.id_pessoa]).filter(Boolean)
+        : _sb.faccao_pessoas.filter(fp => String(fp.faccao_id||fp.id_faccao) === String(oid))
+            .map(fp => _idx.pessoaById[fp.pessoa_id||fp.id_pessoa]).filter(Boolean);
+
+    document.getElementById('modal-pessoa-titulo').textContent = `${icone} ${nome}`;
+    document.getElementById('modal-pessoa-corpo').innerHTML = `
+        <div class="pessoa-section">
+            <div class="pessoa-section-title">Identificação</div>
+            <div class="pessoa-row">
+                <span class="pessoa-kv"><b>Nome:</b> ${esc(nome)}</span>
+                <span class="pessoa-kv"><b>Tipo:</b> ${esc(obj.tipo||'—')}</span>
+            </div>
+            ${obj.observacao ? `<div class="pessoa-row"><span class="pessoa-kv"><b>Obs:</b> ${esc(obj.observacao)}</span></div>` : ''}
+        </div>
+        <div class="pessoa-section">
+            <div class="pessoa-section-title">👥 Membros cadastrados (${pessoas.length})</div>
+            ${pessoas.length ? pessoas.map(p => `
+                <div class="pessoa-vinculo-item" style="cursor:pointer;" onclick="fecharModalPessoa();setTimeout(()=>abrirDetalhe('${esc(String(p.id))}'),150);">
+                    <span style="color:#42a5f5;">👤 ${esc(nomePessoa(p))}</span>
+                    ${apelidosPessoa(p.id)!='—'?`<span style="color:rgba(255,255,255,.4);font-size:10px;">aka ${esc(apelidosPessoa(p.id))}</span>`:''}
+                </div>`).join('')
+            : '<div style="color:rgba(255,255,255,.3);font-size:11px;">Nenhum membro vinculado</div>'}
+        </div>`;
+    document.getElementById('modal-pessoa').classList.add('show');
+}
+function fecharModalPessoa() {
+    document.getElementById('modal-pessoa').classList.remove('show');
+}
+function fecharTodasPopups() {
+    if (_mapaL) _mapaL.closePopup();
+}
+
+function _htmlFichaPessoa(p) {
+    const pid     = p.id;
+    const apelids = apelidosPessoa(pid);
+    const orcIds  = _idx.orcrimByPessoa[pid]  || [];
+    const facIds  = _idx.faccaoByPessoa[pid]  || [];
+    const regIds  = _idx.regOfcByPessoa[pid]  || [];
+    const vinculos= _idx.vinculosByPessoa[pid] || [];
+    const ends    = _idx.endByPessoa[pid]      || [];
+
+    // ── Foto da pessoa (Supabase) ─────────────────────────────────────
+    const fotoUrl = p.foto_url || p.foto || p.imagem || p.url_foto || p.url_imagem || p.photo || p.image_url || '';
+    const fotoHtml = fotoUrl ? `
+        <div style="text-align:center;margin-bottom:14px;">
+            <div style="position:relative;display:inline-block;">
+                <img src="${esc(fotoUrl)}"
+                    alt="Foto de ${esc(nomePessoa(p))}"
+                    style="width:120px;height:150px;object-fit:cover;border-radius:10px;
+                           border:3px solid #1565c0;box-shadow:0 4px 16px rgba(0,0,0,.5);"
+                    onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div style="display:none;width:120px;height:150px;border-radius:10px;
+                            border:3px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);
+                            align-items:center;justify-content:center;font-size:48px;">👤</div>
+            </div>
+        </div>` : '';
+
+    // ── Dados básicos
+    let html = fotoHtml + `<div class="pessoa-section">
+        <div class="pessoa-section-title">Identificação</div>
+        <div class="pessoa-row">
+            ${p.cpf       ? `<div class="pessoa-kv"><b>CPF:</b> ${esc(p.cpf)}</div>` : ''}
+            ${p.rg        ? `<div class="pessoa-kv"><b>RG:</b> ${esc(p.rg)}</div>` : ''}
+            ${p.data_nasc ? `<div class="pessoa-kv"><b>Nasc.:</b> ${esc(p.data_nasc)}</div>` : ''}
+            ${p.sexo      ? `<div class="pessoa-kv"><b>Sexo:</b> ${esc(p.sexo)}</div>` : ''}
+            ${p.naturalidade ? `<div class="pessoa-kv"><b>Naturalidade:</b> ${esc(p.naturalidade)}</div>` : ''}
+        </div>
+        ${apelids!='—' ? `<div class="pessoa-kv" style="margin-top:6px;"><b>Apelidos:</b> <span style="color:#42a5f5;">${esc(apelids)}</span></div>` : ''}
+        ${p.situacao ? `<div class="pessoa-kv" style="margin-top:4px;"><b>Situação:</b> <span style="color:#ffcc80;">${esc(p.situacao)}</span></div>` : ''}
+        ${p.observacao ? `<div class="pessoa-kv" style="margin-top:4px;"><b>Obs.:</b> ${esc(p.observacao)}</div>` : ''}
+    </div>`;
+
+    // ── ORCRIM / Facções
+    if (orcIds.length || facIds.length) {
+        html += `<div class="pessoa-section">
+            <div class="pessoa-section-title">Organização Criminosa / Facção</div>
+            ${orcIds.map(id => `<span class="sb-badge badge-orcrim" style="font-size:11px;padding:2px 10px;">${esc(nomeOrcrim(id))}</span>`).join('')}
+            ${facIds.map(id => `<span class="sb-badge badge-faccao" style="font-size:11px;padding:2px 10px;">${esc(nomeFaccao(id))}</span>`).join('')}
+        </div>`;
+    }
+
+    // ── Endereços
+    if (ends.length) {
+        html += `<div class="pessoa-section">
+            <div class="pessoa-section-title">Endereços (${ends.length})</div>
+            ${ends.map(e => {
+                const logr   = e.logradouro || e.rua || '—';
+                const num    = e.numero ? `, ${e.numero}` : '';
+                const bairro = nomeBairro(e.bairro_id || e.bairro);
+                const cidade = nomeCidade(e.cidade_id || e.cidade);
+                return `<div class="pessoa-kv" style="margin-bottom:5px;">
+                    📍 ${esc(logr)}${esc(num)} — ${esc(bairro)}, ${esc(cidade)}
+                    ${e.tipo ? ` <span style="color:rgba(255,255,255,.4);">[${esc(e.tipo)}]</span>` : ''}
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    // ── Vínculos
+    if (vinculos.length) {
+        html += `<div class="pessoa-section">
+            <div class="pessoa-section-title">Vínculos (${vinculos.length})</div>
+            ${vinculos.map(v => {
+                const outraId = (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a) == pid
+                    ? (v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b)
+                    : (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a);
+                const outra = _idx.pessoaById[outraId];
+                const tipo  = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+                return `<div class="pessoa-vinculo-item">
+                    <span style="color:#ff7043;font-size:16px;">↔</span>
+                    <div>
+                        <b>${esc(nomePessoa(outra))}</b>
+                        <div style="color:rgba(255,255,255,.45);font-size:10px;">${esc(tipo)}</div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    // ── Boletins de Ocorrência
+    if (regIds.length) {
+        html += `<div class="pessoa-section">
+            <div class="pessoa-section-title">Boletins de Ocorrência (${regIds.length})</div>
+            ${regIds.map(rid => {
+                const reg    = _idx.regOfcById[rid];
+                if (!reg) return '';
+                const numBO  = reg.numero_bo || reg.num_bo || reg.boletim || rid;
+                const crimes = _idx.crimesByRegOfc[rid] || [];
+                const tiposCrime = crimes.map(c => c.tipo || c.tipificacao || c.descricao || '').filter(Boolean);
+                const envIds = _idx.pessByRegOfc[rid] || [];
+                const envOuts= envIds.filter(id => id != pid).map(id => _idx.pessoaById[id]).filter(Boolean);
+                const local  = reg.local || reg.logradouro || '';
+                const bairro = nomeBairro(reg.bairro_id || reg.bairro);
+                const cidade = nomeCidade(reg.cidade_id || reg.cidade);
+                return `<div class="pessoa-bo-item">
+                    <div><span class="sb-badge badge-bo">BO ${esc(String(numBO))}</span>
+                    <span style="color:rgba(255,255,255,.5);font-size:10px;"> ${esc(reg.data_fato||reg.data||'')}</span></div>
+                    ${local   ? `<div style="margin-top:4px;">📍 ${esc(local)}, ${esc(bairro)}, ${esc(cidade)}</div>` : ''}
+                    ${tiposCrime.length ? `<div style="margin-top:4px;">🔴 <b>Tipos:</b> ${tiposCrime.map(t=>`<span style="color:#ffcc80;">${esc(t)}</span>`).join(', ')}</div>` : ''}
+                    ${envOuts.length ? `<div style="margin-top:4px;">👥 <b>Coenvolvidos:</b> ${envOuts.slice(0,4).map(p2=>`<span style="color:#90caf9;">${esc(nomePessoa(p2))}</span>`).join(', ')}</div>` : ''}
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    // ── Cruzamento com nó /autor do Firebase ─────────────────────────
+    const fbAutores = _idx.fbAutorByPessoa[String(pid)] || [];
+    if (fbAutores.length) {
+        html += `<div class="pessoa-section">
+            <div class="pessoa-section-title" style="color:#ef9a9a;">
+                🔥 Firebase — Registros como Autor (${fbAutores.length})
+            </div>
+            <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:8px;">
+                Ocorrências do Firebase onde esta pessoa aparece como autor/suspeito
+            </div>
+            ${fbAutores.slice(0,10).map(a => {
+                const tipif   = a.TIPIFICACAO_GERAL || a.TIPIFICACAO || a.TIPO || '';
+                const boletim = a.BOLETIM || a.boletim || a.NUM_BO || a.NUMERO || '';
+                const data    = a.DATA || a.data || '';
+                const local   = a.LOGRADOURO || a.ENDERECO || a.local || '';
+                const bairro  = a.BAIRRO || a.bairro || '';
+                const cidade  = a.CIDADE || a.cidade || '';
+                const solucao = a.SOLUÇÃO || a.SOLUCAO || a['SOLUÇÃO'] || '';
+                const obito   = a.OBITO === 'S' || norm(a.OBITO||'') === 'SIM';
+                const lat     = parseDec(a.LATITUDE  || a.latitude);
+                const lng     = parseDec(a.LONGITUDE || a.longitude);
+                return `<div class="pessoa-bo-item" style="border-color:rgba(239,154,154,.2);${coordValida(lat,lng)?'cursor:pointer;':''}"
+                    ${coordValida(lat,lng) ? `onclick="fecharModalPessoa();_mapaL.setView([${lat},${lng}],17,{animate:true});"` : ''}>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+                        ${boletim ? `<span class="sb-badge badge-bo">BO ${esc(String(boletim))}</span>` : ''}
+                        ${data    ? `<span style="color:rgba(255,255,255,.5);font-size:10px;">${esc(data)}</span>` : ''}
+                        ${obito   ? `<span style="background:#c62828;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:bold;">ÓBITO</span>` : ''}
+                        ${coordValida(lat,lng) ? `<span style="color:#4fc3f7;font-size:10px;">📍 ir ao mapa</span>` : ''}
+                    </div>
+                    ${tipif  ? `<div style="color:#ffcc80;font-size:11px;">🔴 ${esc(tipif)}</div>` : ''}
+                    ${local  ? `<div style="color:#a5d6a7;font-size:10px;margin-top:2px;">📌 ${esc(local)}${bairro?' — '+esc(bairro):''}${cidade?', '+esc(cidade):''}</div>` : ''}
+                    ${solucao&&solucao!='—' ? `<div style="color:rgba(255,255,255,.45);font-size:10px;margin-top:2px;">Solução: ${esc(solucao)}</div>` : ''}
+                </div>`;
+            }).join('')}
+            ${fbAutores.length > 10 ? `<div style="color:rgba(255,255,255,.3);font-size:10px;margin-top:6px;">+ ${fbAutores.length-10} mais registros</div>` : ''}
+        </div>`;
+    }
+
+    // Botão "Ver no mapa"
+    const lat = parseDec(p.latitude || p.lat);
+    const lng = parseDec(p.longitude || p.lng);
+    if (coordValida(lat, lng)) {
+        html += `<div class="pessoa-section" style="text-align:center;">
+            <button onclick="fecharModalPessoa();_mapaL.setView([${lat},${lng}],17,{animate:true});"
+                style="background:#1565c0;border:none;color:#fff;padding:7px 20px;
+                border-radius:8px;cursor:pointer;font-size:12px;">🗺 Ver no mapa
+            </button>
+        </div>`;
+    }
+
+    return html;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PAINEL LATERAL — RENDER
+// ═════════════════════════════════════════════════════════════════
+function renderPainelCamadas() {
+    const elFB = document.getElementById('lista-camadas-fb');
+    if (elFB) {
+        elFB.innerHTML = CAMADAS_CONFIG.map(cfg => {
+            const n = (_dadosMapa[cfg.id] || []).length;
+            const ativa = _camadasAtivas.has(cfg.id);
+            return `<div class="camada-toggle ${ativa?'ativa':''}" onclick="toggleCamadaFB('${cfg.id}')"
+                id="ct-fb-${cfg.id}" style="--cor:${cfg.cor};">
+                <div class="camada-dot" style="background:${cfg.cor};box-shadow:0 0 5px ${cfg.cor};opacity:${ativa?1:.35};"></div>
+                <span class="camada-nome">${cfg.icon} ${cfg.label.split('—')[0].trim()}</span>
+                <span class="camada-count" id="ct-count-${cfg.id}">${n}</span>
+            </div>`;
+        }).join('');
+    }
+
+    const elSB = document.getElementById('lista-camadas-sb');
+    if (elSB) {
+        const entries = [
+            { id:'pessoas',   label:'Pessoas',    icon:'👤', cor:'#42a5f5', n: _sb.pessoas.filter(r   => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
+            { id:'orcrim',    label:'ORCRIM',     icon:'🦹', cor:'#9c27b0', n: _sb.orcrim.filter(r    => coordValida(parseDec(r.latitude||r.lat||r.lat_sede), parseDec(r.longitude||r.lng||r.lng_sede))).length },
+            { id:'crimes',    label:'Registros',  icon:'📋', cor:'#e65100', n: _sb.registros.filter(r => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
+            { id:'enderecos', label:'Endereços',  icon:'📍', cor:'#4caf50', n: _sb.enderecos.filter(r => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
+            { id:'vinculos',  label:'Facções',    icon:'⚔️', cor:'#880e4f', n: _sb.faccoes.filter(r   => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
+        ];
+        elSB.innerHTML = entries.map(e => {
+            const ativa = _sbAtivas.has(e.id);
+            return `<div class="camada-toggle ${ativa?'ativa':''}" onclick="toggleCamadaSB('${e.id}')"
+                id="ct-sb-${e.id}" style="--cor:${e.cor};">
+                <div class="camada-dot" style="background:${e.cor};box-shadow:0 0 5px ${e.cor};opacity:${ativa?1:.35};border-radius:3px;"></div>
+                <span class="camada-nome">${e.icon} ${e.label} <span style="font-size:9px;opacity:.4;">[SB]</span></span>
+                <span class="camada-count">${e.n}</span>
+            </div>`;
+        }).join('');
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LISTAS NO PAINEL
+// ─────────────────────────────────────────────────────────────────
+function renderListaPessoas(filtro='') {
+    const f = norm(filtro);
+    const lista = _sb.pessoas.filter(r => {
+        if (!f) return true;
+        const apelidos = (_idx.apelidosByPessoa[r.id] || []).join(' ');
+        return norm(r.nome||'').includes(f)
+            || norm(r.cpf||'').includes(f)
+            || norm(r.rg||'').includes(f)
+            || norm(apelidos).includes(f);
+    });
+    const el = document.getElementById('lista-pessoas');
+    if (!el) return;
+    if (!lista.length) {
+        el.innerHTML = `<div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+            ${_sb.pessoas.length ? 'Nenhum resultado' : 'Nenhuma pessoa cadastrada'}</div>`;
+        return;
+    }
+    el.innerHTML = lista.slice(0,80).map(r => {
+        const apels   = apelidosPessoa(r.id);
+        const orcIds  = _idx.orcrimByPessoa[r.id]  || [];
+        const numBOs  = (_idx.regOfcByPessoa[r.id] || []).length;
+        const numVinc = (_idx.vinculosByPessoa[r.id] || []).length;
+        return `<div class="sb-card sb-card-pessoa" data-pid="${esc(String(r.id))}">
+            <div class="sb-nome">${esc(nomePessoa(r))}</div>
+            ${apels!='—' ? `<div style="color:#42a5f5;font-size:10px;margin-bottom:3px;">aka "${esc(apels)}"</div>` : ''}
+            <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+                <span class="sb-badge badge-pessoa">Pessoa</span>
+                ${r.situacao ? `<span class="sb-badge" style="background:#37474f;">${esc(r.situacao)}</span>` : ''}
+                ${orcIds.length ? `<span class="sb-badge badge-orcrim">${esc(nomeOrcrim(orcIds[0]))}</span>` : ''}
+                ${numBOs    ? `<span class="sb-badge badge-bo">📋 ${numBOs} BO</span>` : ''}
+                ${numVinc   ? `<span class="sb-badge badge-vinculo">🔗 ${numVinc}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+    // Delegação de eventos — evita onclick inline com IDs que podem ser não-string-seguras
+    el.querySelectorAll('.sb-card-pessoa').forEach(card => {
+        card.addEventListener('click', () => abrirDetalhe(card.dataset.pid));
+    });
+}
+
+function renderListaOrcrim(filtro='') {
+    const f = norm(filtro);
+    const todas = [
+        ..._sb.orcrim.map(o => ({ ...o, _tipo:'orcrim' })),
+        ..._sb.faccoes.map(f2 => ({ ...f2, _tipo:'faccao' })),
+    ];
+    const lista = todas.filter(r => !f || norm(r.nome||r.nome_organizacao||r.nome_faccao||'').includes(f));
+    const el = document.getElementById('lista-orcrim');
+    if (!el) return;
+    if (!lista.length) {
+        el.innerHTML = `<div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+            ${todas.length ? 'Nenhum resultado' : 'Nenhuma ORCRIM/Facção cadastrada'}</div>`;
+        return;
+    }
+    el.innerHTML = lista.slice(0,60).map(r => {
+        const ehOrc    = r._tipo === 'orcrim';
+        const cor      = ehOrc ? '#6a1b9a' : '#880e4f';
+        const icone    = ehOrc ? '🦹' : '⚔️';
+        const nome     = r.nome || r.nome_organizacao || r.nome_faccao || '—';
+        const membros  = ehOrc
+            ? _sb.orcrim_pessoas.filter(op => (op.orcrim_id||op.id_orcrim) == r.id).length
+            : _sb.faccao_pessoas.filter(fp => (fp.faccao_id||fp.id_faccao) == r.id).length;
+        const pessoas  = ehOrc
+            ? _sb.orcrim_pessoas.filter(op => (op.orcrim_id||op.id_orcrim) == r.id)
+                .map(op => _idx.pessoaById[op.pessoa_id||op.id_pessoa]).filter(Boolean)
+            : _sb.faccao_pessoas.filter(fp => (fp.faccao_id||fp.id_faccao) == r.id)
+                .map(fp => _idx.pessoaById[fp.pessoa_id||fp.id_pessoa]).filter(Boolean);
+        const membrosHtml = pessoas.length
+            ? `<div style="margin-top:6px;font-size:10px;color:rgba(255,255,255,.5);">
+                👥 Membros: ${pessoas.slice(0,4).map(p=>`<span style="color:#cde;">${esc(nomePessoa(p))}</span>`).join(', ')}
+                ${pessoas.length>4?`<span style="opacity:.4;"> +${pessoas.length-4}</span>`:''}
+               </div>` : '';
+        return `<div class="sb-card sb-card-orcrim" data-oid="${esc(String(r.id))}" data-tipo="${r._tipo}"
+                    style="border-left:3px solid ${cor};">
+            <div class="sb-nome">${icone} ${esc(nome)}</div>
+            <div>
+                <span class="sb-badge" style="background:${cor};">${ehOrc?'ORCRIM':'Facção'}</span>
+                ${r.tipo ? `<span class="sb-badge" style="background:#37474f;">${esc(r.tipo)}</span>` : ''}
+                <span style="font-size:10px;color:rgba(255,255,255,.4);">👥 ${membros} membro(s)</span>
+            </div>
+            ${membrosHtml}
+        </div>`;
+    }).join('');
+    // Delegação de eventos para cards ORCRIM/Facção
+    el.querySelectorAll('.sb-card-orcrim').forEach(card => {
+        card.addEventListener('click', () => _abrirDetalheOrcrim(card.dataset.oid, card.dataset.tipo));
+    });
+}
+
+function renderListaCrimes(filtro='') {
+    const f = norm(filtro);
+    const lista = _sb.registros.filter(r => {
+        if (!f) return true;
+        const numBO = String(r.numero_bo||r.num_bo||r.boletim||'');
+        const crimes = (_idx.crimesByRegOfc[r.id]||[]).map(c=>c.tipo||c.tipificacao||'').join(' ');
+        return norm(numBO).includes(f) || norm(crimes).includes(f)
+            || norm(r.local||r.logradouro||'').includes(f);
+    });
+    const el = document.getElementById('lista-crimes');
+    if (!el) return;
+    if (!lista.length) {
+        el.innerHTML = `<div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+            ${_sb.registros.length ? 'Nenhum resultado' : 'Nenhum registro cadastrado'}</div>`;
+        return;
+    }
+    el.innerHTML = lista.slice(0,60).map(r => {
+        // Número real do BO — nunca mostra o UUID interno
+        const numBO      = r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '';
+        const numBOlabel = numBO ? String(numBO).trim() : `#${String(r.id).substring(0,8)}…`;
+        const crimes     = _idx.crimesByRegOfc[r.id] || _idx.crimesByRegOfc[String(r.id)] || [];
+        const tiposCrime = crimes.map(c=>c.tipo||c.tipificacao||'').filter(Boolean);
+        const envolvidos = (_idx.pessByRegOfc[r.id] || _idx.pessByRegOfc[String(r.id)] || []).length;
+        // Verifica se tem GPS (Supabase ou Firebase)
+        let temGPS = coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng));
+        if (!temGPS && numBO) {
+            const fbReg = DADOS_FB.geral.find(g => String(g.BOLETIM||g.boletim||g.NUM_BO||'').trim().toUpperCase() === String(numBO).trim().toUpperCase());
+            if (fbReg) temGPS = coordValida(parseDec(fbReg.LATITUDE||fbReg.latitude), parseDec(fbReg.LONGITUDE||fbReg.longitude));
+        }
+        return `<div class="sb-card sb-card-crime" data-rid="${esc(String(r.id))}">
+            <div class="sb-nome">📋 Nº ${esc(numBOlabel)}</div>
+            <div style="color:rgba(255,255,255,.5);font-size:10px;margin-bottom:4px;">
+                ${r.data_fato||r.data||'—'} · ${esc(nomeBairro(r.bairro_id))}
+                ${temGPS ? '<span style="color:#4caf50;margin-left:4px;">📍</span>' : '<span style="color:rgba(255,255,255,.2);margin-left:4px;" title="Sem GPS">⚫</span>'}
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                <span class="sb-badge badge-bo">BO</span>
+                ${tiposCrime.slice(0,2).map(t=>`<span class="sb-badge badge-crime">${esc(t.substring(0,20))}</span>`).join('')}
+                ${envolvidos ? `<span class="sb-badge badge-pessoa">👥 ${envolvidos}</span>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+    // Delegação de eventos — evita onclick inline com IDs arbitrários
+    el.querySelectorAll('.sb-card-crime').forEach(card => {
+        card.addEventListener('click', () => _focarRegistro(card.dataset.rid));
+    });
+}
+
+function _focarRegistro(rid) {
+    const r = _idx.regOfcById[rid] || _idx.regOfcById[String(rid)];
+    if (!r) { console.warn('[_focarRegistro] Registro não encontrado:', rid); return; }
+
+    let lat = parseDec(r.latitude||r.lat);
+    let lng = parseDec(r.longitude||r.lng);
+
+    // Se não tem GPS, tenta pelo número do BO no Firebase
+    if (!coordValida(lat, lng)) {
+        const numBO = String(r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '').trim().toUpperCase();
+        if (numBO) {
+            const fbReg = DADOS_FB.geral.find(g => {
+                const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
+                return gbNum && gbNum === numBO;
+            });
+            if (fbReg) {
+                lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
+                lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
+            }
+        }
+    }
+
+    if (coordValida(lat, lng)) {
+        _mapaL.setView([lat, lng], 17, { animate:true });
+        L.popup({ maxWidth:380 }).setLatLng([lat, lng]).setContent(popupCrime(r)).openOn(_mapaL);
+    } else {
+        // Sem GPS em nenhuma fonte — abre o modal da ficha em vez disso
+        const pids = _idx.pessByRegOfc[r.id] || _idx.pessByRegOfc[String(r.id)] || [];
+        if (pids.length) abrirDetalhe(String(pids[0]));
+    }
+}
+
+function renderListaVinculos(filtro='') {
+    const f = norm(filtro);
+    const lista = _sb.vinculos.filter(r => {
+        if (!f) return true;
+        const pA = _idx.pessoaById[r.pessoa_id_a||r.id_pessoa_a||r.pessoa_a_id];
+        const pB = _idx.pessoaById[r.pessoa_id_b||r.id_pessoa_b||r.pessoa_b_id];
+        return norm(nomePessoa(pA)).includes(f) || norm(nomePessoa(pB)).includes(f)
+            || norm(r.tipo||r.tipo_vinculo||'').includes(f);
+    });
+    const el = document.getElementById('lista-vinculos');
+    if (!el) return;
+    if (!lista.length) {
+        el.innerHTML = `<div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
+            ${_sb.vinculos.length ? 'Nenhum resultado' : 'Nenhum vínculo cadastrado'}</div>`;
+        return;
+    }
+    el.innerHTML = lista.slice(0,80).map(v => {
+        const idA = (_vincFKa&&v[_vincFKa])||v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a;
+        const idB = (_vincFKb&&v[_vincFKb])||v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b;
+        const pA  = _idx.pessoaById[idA];
+        const pB  = _idx.pessoaById[idB];
+        const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+        const alvo = String(idA||idB||'');
+        return `<div class="sb-card sb-card-vinculo" data-pid="${esc(alvo)}">
+            <div class="sb-nome" style="font-size:11px;">
+                ${esc(nomePessoa(pA))} <span style="color:#ff7043;">↔</span> ${esc(nomePessoa(pB))}
+            </div>
+            <div>
+                <span class="sb-badge badge-vinculo">${esc(tipo)}</span>
+            </div>
+        </div>`;
+    }).join('');
+    el.querySelectorAll('.sb-card-vinculo').forEach(card => {
+        card.addEventListener('click', () => { if (card.dataset.pid) abrirDetalhe(card.dataset.pid); });
+    });
+}
+
+function filtrarLista(tipo) {
+    const val = (document.getElementById(`busca-${tipo}`) || {}).value || '';
+    if      (tipo === 'pessoas')  renderListaPessoas(val);
+    else if (tipo === 'orcrim')   renderListaOrcrim(val);
+    else if (tipo === 'crimes')   renderListaCrimes(val);
+    else if (tipo === 'vinculos') renderListaVinculos(val);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// LEGENDA
+// ═════════════════════════════════════════════════════════════════
+let _legendaCtrl = null;
+
+function adicionarLegenda() {
+    _legendaCtrl = L.control({ position:'bottomright' });
+    _legendaCtrl.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.id = 'mapa-legenda';
+        div.style.cssText = `background:rgba(15,20,40,.92);color:#eee;
+            padding:10px 14px;border-radius:10px;font-family:Arial,sans-serif;
+            font-size:11px;min-width:170px;max-width:230px;
+            box-shadow:0 4px 16px rgba(0,0,0,.5);backdrop-filter:blur(4px);`;
+        return div;
+    };
+    _legendaCtrl.addTo(_mapaL);
+    atualizarLegenda();
+}
+
+function atualizarLegenda() {
+    const div = document.getElementById('mapa-legenda');
+    if (!div) return;
+    const ativasFB = CAMADAS_CONFIG.filter(c => _camadasAtivas.has(c.id) && (_dadosMapa[c.id]||[]).length > 0);
+    let html = `<div style="font-weight:bold;margin-bottom:8px;font-size:12px;color:#fff;">🗺️ Legenda</div>`;
+    if (!ativasFB.length) html += `<div style="color:rgba(255,255,255,.4);font-size:10px;">Nenhuma camada ativa</div>`;
+    ativasFB.forEach(c => {
+        const n = (_dadosMapa[c.id]||[]).length;
+        html += `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+            <div style="width:12px;height:12px;border-radius:50%;background:${c.cor};flex-shrink:0;box-shadow:0 0 5px ${c.cor};"></div>
+            <span style="flex:1;">${c.icon} ${c.label.split('—')[0].trim()}</span>
+            <span style="color:rgba(255,255,255,.4);font-size:9px;">${n}</span>
+        </div>`;
+    });
+    // Supabase
+    const sbEntries = [
+        { cor:'#42a5f5', icon:'👤', label:'Pessoas [SB]',   n:_sb.pessoas.length },
+        { cor:'#9c27b0', icon:'🦹', label:'ORCRIM [SB]',    n:_sb.orcrim.length },
+        { cor:'#e65100', icon:'📋', label:'Registros [SB]', n:_sb.registros.length },
+        { cor:'#2e7d32', icon:'🏠', label:'End. de Pessoas [SB]',     n:_sb.enderecos.filter(e=>e.pessoa_id||e.id_pessoa||e.pessoas_id||e.fk_pessoa).length },
+        { cor:'#66bb6a', icon:'📍', label:'End. de Ocorrências [SB]', n:_sb.enderecos.filter(e=>!(e.pessoa_id||e.id_pessoa||e.pessoas_id||e.fk_pessoa)&&(e.registro_id||e.id_registro||e.registros_oficiais_id||e.fk_registro)).length },
+        { cor:'#880e4f', icon:'⚔️', label:'Facções [SB]',  n:_sb.faccoes.length },
+    ].filter(e => e.n > 0);
+    if (sbEntries.length) {
+        html += `<div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0;"></div>`;
+        sbEntries.forEach(e => {
+            html += `<div style="display:flex;align-items:center;gap:7px;margin-bottom:5px;">
+                <div style="width:12px;height:12px;border-radius:3px;background:${e.cor};flex-shrink:0;"></div>
+                <span style="flex:1;">${e.icon} ${e.label}</span>
+                <span style="color:rgba(255,255,255,.4);font-size:9px;">${e.n}</span>
+            </div>`;
+        });
+    }
+    div.innerHTML = html;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CONTROLES DE CAMADA
+// ═════════════════════════════════════════════════════════════════
+function toggleCamadaFB(id) {
+    if (_camadasAtivas.has(id)) _camadasAtivas.delete(id); else _camadasAtivas.add(id);
+    atualizarVisibilidadeFB();
+    const el = document.getElementById(`ct-fb-${id}`);
+    const dot = el?.querySelector('.camada-dot');
+    if (el)  el.classList.toggle('ativa', _camadasAtivas.has(id));
+    if (dot) dot.style.opacity = _camadasAtivas.has(id) ? '1' : '.35';
+    atualizarLegenda();
+}
+
+function toggleCamadaSB(id) {
+    if (_sbAtivas.has(id)) {
+        _sbAtivas.delete(id);
+        if (_sbLayers[id]) _mapaL.removeLayer(_sbLayers[id]);
+    } else {
+        _sbAtivas.add(id);
+        if (_sbLayers[id]) _sbLayers[id].addTo(_mapaL);
+    }
+    const el  = document.getElementById(`ct-sb-${id}`);
+    const dot = el?.querySelector('.camada-dot');
+    if (el)  el.classList.toggle('ativa', _sbAtivas.has(id));
+    if (dot) dot.style.opacity = _sbAtivas.has(id) ? '1' : '.35';
+    atualizarLegenda();
+}
+
+function atualizarVisibilidadeFB() {
+    for (const cfg of CAMADAS_CONFIG) {
+        const ativa = _camadasAtivas.has(cfg.id);
+        const hl = _heatLayers[cfg.id], cl = _clusterGroups[cfg.id];
+        if (ativa) {
+            if ((_modoVista==='heat'   ||_modoVista==='ambos') && hl && !_mapaL.hasLayer(hl)) hl.addTo(_mapaL);
+            if ((_modoVista==='cluster'||_modoVista==='ambos') && cl && !_mapaL.hasLayer(cl)) cl.addTo(_mapaL);
+        }
+        if (!ativa||_modoVista==='cluster') { if (hl&&_mapaL.hasLayer(hl)) _mapaL.removeLayer(hl); }
+        if (!ativa||_modoVista==='heat')    { if (cl&&_mapaL.hasLayer(cl)) _mapaL.removeLayer(cl); }
+    }
+    atualizarResumo();
+}
+
+function setModo(modo) {
+    _modoVista = modo;
+    ['heat','cluster','ambos'].forEach(m => document.getElementById(`btn-modo-${m}`)?.classList.toggle('active', m===modo));
+    atualizarVisibilidadeFB();
+}
+
+function marcarTodas()    { CAMADAS_CONFIG.forEach(c => _camadasAtivas.add(c.id)); renderPainelCamadas(); atualizarVisibilidadeFB(); atualizarLegenda(); }
+function desmarcarTodas() { _camadasAtivas.clear(); renderPainelCamadas(); atualizarVisibilidadeFB(); atualizarLegenda(); }
+
+function aplicarFiltros() {
+    const ini = document.getElementById('fil-ini')?.value;
+    const fim = document.getElementById('fil-fim')?.value;
+    _filtroIni = ini ? new Date(ini)               : null;
+    _filtroFim = fim ? new Date(fim+'T23:59:59') : null;
+    construirCamadasFB(); renderPainelCamadas(); atualizarLegenda();
+}
+function limparFiltros() {
+    const i = document.getElementById('fil-ini'), f = document.getElementById('fil-fim');
+    if (i) i.value=''; if (f) f.value='';
+    _filtroIni = null; _filtroFim = null;
+    construirCamadasFB(); renderPainelCamadas(); atualizarLegenda();
+}
+
+function fitBounds() {
+    const todos = Object.values(_dadosMapa).flat();
+    if (!todos.length) return;
+    const lats = todos.map(p=>p.lat), lngs = todos.map(p=>p.lng);
+    _mapaL.fitBounds([[Math.min(...lats),Math.min(...lngs)],[Math.max(...lats),Math.max(...lngs)]],{padding:[30,30]});
+}
+
+function atualizarResumo() {
+    const total = Object.values(_dadosMapa).reduce((s,a) => s+a.length, 0);
+    const el = document.getElementById('total-gps'), res = document.getElementById('resumo-total');
+    if (el)  el.textContent  = total.toLocaleString('pt-BR');
+    if (res) res.textContent = `${total.toLocaleString('pt-BR')} pts GPS`;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// ABAS DO PAINEL
+// ═════════════════════════════════════════════════════════════════
+function abrirTab(id) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(id)?.classList.add('active');
+    const ordem = ['tab-camadas','tab-pessoas','tab-orcrim','tab-crimes','tab-vinculos'];
+    const idx   = ordem.indexOf(id);
+    const btns  = document.querySelectorAll('.tab-btn');
+    if (btns[idx]) btns[idx].classList.add('active');
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SIDEBAR / TELA CHEIA / IMPRIMIR
+// ═════════════════════════════════════════════════════════════════
+function toggleSidebar() {
+    const painel = document.getElementById('painel-lateral');
+    const btn    = document.getElementById('btn-toggle-sidebar');
+    painel.classList.toggle('collapsed');
+    btn.textContent = painel.classList.contains('collapsed') ? '▶' : '◀';
+    setTimeout(() => _mapaL && _mapaL.invalidateSize(), 300);
+}
+function toggleTelaCheia() {
+    const w = document.getElementById('mapa-card-wrapper');
+    const f = document.fullscreenElement || document.webkitFullscreenElement;
+    if (!f) (w.requestFullscreen || w.webkitRequestFullscreen).call(w);
+    else    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+}
+document.addEventListener('fullscreenchange',       () => setTimeout(() => _mapaL&&_mapaL.invalidateSize(), 100));
+document.addEventListener('webkitfullscreenchange', () => setTimeout(() => _mapaL&&_mapaL.invalidateSize(), 100));
+function imprimirMapa() { window.print(); }
+
+// ═════════════════════════════════════════════════════════════════
+// FERRAMENTAS DE DESENHO
+// ═════════════════════════════════════════════════════════════════
+function toggleDesenharPoligono() {
+    const btn = document.getElementById('btn-poligono');
+    if (_modoDesenho === 'poligono') {
+        _modoDesenho = null; btn.classList.remove('active');
+        document.getElementById('mapa-calor').style.cursor = '';
+        setStatusFerramenta(''); _mapaL.off('click', _onMapClick);
+    } else {
+        _modoDesenho = 'poligono'; btn.classList.add('active');
+        document.getElementById('btn-add-marcador').classList.remove('active');
+        document.getElementById('mapa-calor').style.cursor = 'crosshair';
+        setStatusFerramenta('Clique para definir vértices. Duplo-clique para fechar.');
+        _mapaL.on('click', _onMapClick);
+    }
+}
+function toggleAdicionarMarcador() {
+    const btn = document.getElementById('btn-add-marcador');
+    if (_modoDesenho === 'marcador') {
+        _modoDesenho = null; btn.classList.remove('active');
+        document.getElementById('mapa-calor').style.cursor = '';
+        setStatusFerramenta(''); _mapaL.off('click', _onMapClick);
+    } else {
+        _modoDesenho = 'marcador'; btn.classList.add('active');
+        document.getElementById('btn-poligono').classList.remove('active');
+        document.getElementById('mapa-calor').style.cursor = 'crosshair';
+        setStatusFerramenta('Clique no mapa para adicionar um marcador com nota.');
+        _mapaL.on('click', _onMapClick);
+    }
+}
+function _onMapClick(e) {
+    if (_modoDesenho === 'marcador') {
+        const nota = prompt('Nota do marcador (opcional):') || '';
+        const mk = L.marker(e.latlng, { icon: L.divIcon({ className:'',
+            html:`<div style="background:#e65100;color:#fff;border-radius:50%;width:28px;height:28px;
+                display:flex;align-items:center;justify-content:center;font-size:14px;
+                border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.4);">📌</div>`,
+            iconSize:[28,28], iconAnchor:[14,14] }) }).addTo(_mapaL);
+        if (nota) mk.bindPopup(`<b>📌 Nota:</b> ${nota}`).openPopup();
+        _marcadoresUser.push(mk);
+        setStatusFerramenta(`✓ Marcador adicionado${nota?': "'+nota+'"':''}`);
+    } else if (_modoDesenho === 'poligono') {
+        _polyPontos.push(e.latlng);
+        L.circleMarker(e.latlng,{radius:4,fillColor:'#e65100',color:'#fff',weight:2,fillOpacity:1}).addTo(_mapaL);
+        if (_polyPontos.length===1) _mapaL.on('dblclick', _fecharPoligono);
+        setStatusFerramenta(`${_polyPontos.length} ponto(s) — duplo-clique para fechar.`);
+    }
+}
+function _fecharPoligono() {
+    if (_polyPontos.length < 3) { alert('Mínimo 3 pontos.'); return; }
+    const nome = prompt('Nome do polígono:') || 'Área';
+    const poly = L.polygon(_polyPontos,{color:'#e65100',weight:2,fillOpacity:.18}).addTo(_mapaL);
+    poly.bindPopup(`<b>🔷 ${nome}</b>`);
+    _poligonosFeitos.push(poly); _polyPontos = [];
+    _mapaL.off('dblclick', _fecharPoligono);
+    setStatusFerramenta(`✓ Polígono "${nome}" criado.`);
+}
+function limparDesenhos() {
+    _poligonosFeitos.forEach(p => _mapaL.removeLayer(p));
+    _marcadoresUser.forEach(m  => _mapaL.removeLayer(m));
+    _poligonosFeitos=[]; _marcadoresUser=[]; _polyPontos=[];
+    _modoDesenho=null;
+    document.getElementById('btn-poligono').classList.remove('active');
+    document.getElementById('btn-add-marcador').classList.remove('active');
+    document.getElementById('mapa-calor').style.cursor='';
+    setStatusFerramenta('Rascunhos removidos.');
+}
+
+// ═════════════════════════════════════════════════════════════════
+// IMPORTAÇÃO GEOJSON
+// ═════════════════════════════════════════════════════════════════
+function importarGeojson(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const geojson = JSON.parse(e.target.result);
+            const nome = file.name.replace(/\.(geojson|json)$/i,'');
+            const layer = L.geoJSON(geojson, {
+                style: { color:'#00e5ff', weight:2, fillOpacity:.15 },
+                onEachFeature: (feat, layer) => {
+                    const linhas = Object.entries(feat.properties||{}).slice(0,10).map(([k,v])=>`<b>${k}:</b> ${v}`).join('<br>');
+                    layer.bindPopup(`<b>${nome}</b><br>${linhas}`, { maxWidth:300 });
+                }
+            }).addTo(_mapaL);
+            _camadasImportadas.push({ nome, layer, cor:'#00e5ff' });
+            try { _mapaL.fitBounds(layer.getBounds(), { padding:[30,30] }); } catch(e) {}
+            setStatusFerramenta(`✅ "${nome}" importado — ${geojson.features?.length??'?'} feições.`);
+        } catch(e) { alert('Erro ao ler GeoJSON: '+e.message); }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ═════════════════════════════════════════════════════════════════
+// RELÓGIO
+// ═════════════════════════════════════════════════════════════════
+(function relogio() {
+    const el = document.getElementById('relogio-mapa');
+    if (el) el.textContent = new Date().toLocaleString('pt-BR');
+    setTimeout(relogio, 1000);
+})();
+
+// ═════════════════════════════════════════════════════════════════
+// INICIAR
+// ═════════════════════════════════════════════════════════════════
+carregarFirebase();
+carregarSupabase();
+
+</script>
+</body>
+</html>

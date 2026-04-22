@@ -72,7 +72,9 @@ const MAPA_AUTOR = {
     "CIDADE": ["Cidade Ocorrência"],
     "LOGRADOURO": ["Logradouro"],
     "MES": ["Mês da Ocorrência"],
-    "ANO": ["Ano da Ocorrência"]
+    "ANO": ["Ano da Ocorrência"],
+    "ENVOLVIMENTO": ["Tipo de Envolvimento", "Tipo Envolvido"],
+    "CPF": ["CPF"]
 };
 
 // ─────────────────────────────────────────────

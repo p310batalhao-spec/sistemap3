@@ -1,3 +1,4 @@
+/* ── Contêiner do Calendário ── */
 #calendar-container {
     background: white;
     margin-left: 10px;
@@ -12,25 +13,177 @@
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Cores por Porte */
-.event-pequeno {
-    background-color: #28a745 !important;
-    border-color: #28a745 !important;
+/* ── Cores por Porte ── */
+.event-pequeno { background-color: #28a745 !important; border-color: #28a745 !important; }
+.event-medio   { background-color: #ffc107 !important; border-color: #ffc107 !important; color: #000 !important; }
+.event-grande  { background-color: #dc3545 !important; border-color: #dc3545 !important; }
+
+/* ── Layout interno do evento no calendário ── */
+.fc-event-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 2px 3px;
+    line-height: 1.3;
+    width: 100%;
 }
 
-.event-medio {
-    background-color: #ffc107 !important;
-    border-color: #ffc107 !important;
-    color: #000 !important;
+.fc-event-hora {
+    font-size: 0.75em;
+    font-weight: bold;
+    opacity: 0.9;
+    white-space: nowrap;
 }
 
-.event-grande {
-    background-color: #dc3545 !important;
-    border-color: #dc3545 !important;
-}
-
-.fc-event-title {
+.fc-event-nome {
+    font-size: 0.82em;
     font-weight: bold;
     text-transform: uppercase;
-    font-size: 0.85em;
+    white-space: normal;          /* permite quebra de linha se necessário */
+    word-break: break-word;
 }
+
+/* ── Linha de badges de guarnição dentro do evento ── */
+.fc-event-guarnicoes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 2px;
+}
+
+/*
+ * CORREÇÃO (Problema 3):
+ * Badges coloridos de guarnição nos eventos do calendário.
+ * Nomenclatura: .cal-guarnicao + .cal-{nome}
+ * Deve cobrir exatamente os valores retornados da planilha (FT, RP, PELOPES).
+ */
+.cal-guarnicao {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 6px;
+    font-size: 9px;
+    font-weight: bold;
+    vertical-align: middle;
+    letter-spacing: 0.03em;
+}
+
+.cal-ft      { background: #ffc107; color: #000; }
+.cal-rp      { background: #1565c0; color: #fff; }
+.cal-pelopes { background: #212121; color: #fff; }
+
+/* ── Modal de Detalhes do Evento ── */
+#modal-evento {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    align-items: center;
+    justify-content: center;
+}
+#modal-evento.ativo { display: flex; }
+
+.modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+}
+
+.modal-box {
+    position: relative;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    width: 480px;
+    max-width: 95vw;
+    padding: 2rem 2rem 1.5rem 2rem;
+    z-index: 1;
+    animation: modalIn 0.22s ease;
+}
+
+@keyframes modalIn {
+    from { transform: translateY(-24px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+
+.modal-box h2 {
+    font-size: 1.1rem;
+    color: #0a448f;
+    border-bottom: 2px solid #0a448f;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.modal-linha {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.88rem;
+    align-items: flex-start;
+}
+
+.modal-label {
+    font-weight: bold;
+    color: #555;
+    min-width: 140px;
+    flex-shrink: 0;
+}
+
+.modal-valor { color: #222; }
+
+.modal-guarnicoes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/*
+ * CORREÇÃO (Problema 3 - Modal):
+ * Badges de guarnição dentro do modal.
+ * Nomenclatura: .modal-guarnicao-badge + .mgb-{nome}
+ */
+.modal-guarnicao-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    letter-spacing: 0.05em;
+}
+
+.mgb-ft      { background: #ffc107; color: #000; }
+.mgb-rp      { background: #1565c0; color: #fff; }
+.mgb-pelopes { background: #212121; color: #fff; }
+
+.modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.25rem;
+    justify-content: flex-end;
+}
+
+.btn-modal-opo {
+    background-color: #17a2b8;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.88rem;
+    transition: background 0.2s;
+}
+.btn-modal-opo:hover { background-color: #138496; }
+
+.btn-modal-fechar {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.88rem;
+    transition: background 0.2s;
+}
+.btn-modal-fechar:hover { background-color: #c0392b; }

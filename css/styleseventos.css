@@ -353,6 +353,76 @@ footer {
     justify-content: center;
     width: 100%;
 }
+
+/* --- GUARNIÇÕES --- */
+.guarnicao-btns {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+
+.btn-guarnicao {
+    padding: 0.5rem 1.1rem;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    cursor: pointer;
+    opacity: 0.45;
+    transition: opacity 0.2s, transform 0.1s;
+    letter-spacing: 0.05em;
+}
+
+.btn-guarnicao.ativo {
+    opacity: 1;
+    transform: scale(1.06);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+
+.btn-ft {
+    background-color: #ffc107;
+    color: #000;
+    border-color: #d4a000;
+}
+
+.btn-rp {
+    background-color: #1565c0;
+    color: #fff;
+    border-color: #0d47a1;
+}
+
+.btn-pelopes {
+    background-color: #212121;
+    color: #fff;
+    border-color: #000;
+}
+
+/* Badges de guarnição na tabela */
+.guarnicao-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: bold;
+    margin-right: 3px;
+    letter-spacing: 0.04em;
+}
+
+.guarnicao-ft {
+    background-color: #ffc107;
+    color: #000;
+}
+
+.guarnicao-rp {
+    background-color: #1565c0;
+    color: #fff;
+}
+
+.guarnicao-pelopes {
+    background-color: #212121;
+    color: #fff;
+}
 /* STYLES ANTIGOS (POSSÍVEIS CONFLITOS) 
 .sidbarform {
     position: fixed;
