@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Jurimétrica de TCO — P3/10º BPM</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ── Reset ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f8; }
+
+        /* ── Layout principal ── */
+        main {
+            flex: 1;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.1rem;
+            overflow-y: auto;
+        }
+
+        /* ── Saudação ── */
+        .saudacao {
+            background: linear-gradient(90deg, #0a448f 0%, #1464b5 60%, #3b6fb8 100%);
+            border-radius: 10px;
+            padding: 1rem 1.5rem;
+            color: #fff;
+        }
+        .saudacao h2 { font-size: 1.05rem; font-weight: bold; }
+        .saudacao p  { font-size: .78rem; opacity: .8; margin-top: .25rem; }
+
+        /* ── Card padrão ── */
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        }
+        .card-titulo {
+            font-size: .9rem;
+            font-weight: bold;
+            color: #1a1f36;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            border-bottom: 2px solid #e8ecf5;
+            padding-bottom: .6rem;
+        }
+
+        /* ── Upload ── */
+        .upload-area {
+            border: 2px dashed #b0bec5;
+            border-radius: 10px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all .25s;
+            background: #fafbff;
+            position: relative;
+        }
+        .upload-area:hover, .upload-area.over {
+            border-color: #1565c0;
+            background: #e8f0fe;
+        }
+        .upload-area input[type=file] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .upload-icon { font-size: 2.5rem; color: #90a4ae; margin-bottom: .5rem; }
+        .upload-txt  { font-size: .85rem; color: #546e7a; }
+        .upload-file-nome {
+            margin-top: .75rem;
+            font-size: .82rem;
+            color: #1565c0;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* ── Config API key ── */
+        .api-row {
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: .75rem;
+        }
+        .api-row label {
+            font-size: .82rem;
+            font-weight: bold;
+            color: #374263;
+            white-space: nowrap;
+        }
+        .api-row input {
+            flex: 1;
+            min-width: 0;
+            padding: 7px 12px;
+            border: 1.5px solid #d0d5e8;
+            border-radius: 6px;
+            font-size: .82rem;
+            font-family: monospace;
+        }
+        .api-row input:focus { outline: none; border-color: #1565c0; }
+        .api-aviso {
+            font-size: .72rem;
+            color: #f57f17;
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 5px;
+            padding: 6px 10px;
+            margin-bottom: .75rem;
+        }
+
+        /* ── Botão analisar ── */
+        .btn-analisar {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #1565c0, #0d47a1);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: .95rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: .6rem;
+            transition: opacity .2s, transform .15s;
+            margin-top: .75rem;
+        }
+        .btn-analisar:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+        .btn-analisar:disabled { opacity: .4; cursor: not-allowed; }
+        .btn-analisar .spinner {
+            width: 18px; height: 18px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: giro 1s linear infinite;
+            display: none;
+        }
+        @keyframes giro { to { transform: rotate(360deg); } }
+
+        /* ── Probabilidades ── */
+        .prob-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: .85rem;
+            margin-bottom: 1rem;
+        }
+        .prob-card {
+            border-radius: 10px;
+            padding: 1rem 1.1rem;
+            border-top: 4px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            gap: .3rem;
+            box-shadow: 0 1px 6px rgba(0,0,0,.06);
+        }
+        .prob-card.transacao { border-top-color: #2e7d32; background: #f1f8f1; }
+        .prob-card.anpp      { border-top-color: #1565c0; background: #e8f0fe; }
+        .prob-card.atipic    { border-top-color: #f57f17; background: #fff8e1; }
+        .prob-card.denuncia  { border-top-color: #c62828; background: #ffebee; }
+
+        .prob-label {
+            font-size: .7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            color: #546e7a;
+        }
+        .prob-pct {
+            font-size: 2rem;
+            font-weight: bold;
+            line-height: 1.1;
+        }
+        .prob-card.transacao .prob-pct { color: #2e7d32; }
+        .prob-card.anpp      .prob-pct { color: #1565c0; }
+        .prob-card.atipic    .prob-pct { color: #e65100; }
+        .prob-card.denuncia  .prob-pct { color: #c62828; }
+
+        .prob-barra-bg {
+            height: 6px; border-radius: 3px; background: rgba(0,0,0,.08);
+            margin-top: .2rem;
+        }
+        .prob-barra {
+            height: 6px; border-radius: 3px; width: 0%;
+            transition: width 1s ease;
+        }
+        .prob-card.transacao .prob-barra { background: #2e7d32; }
+        .prob-card.anpp      .prob-barra { background: #1565c0; }
+        .prob-card.atipic    .prob-barra { background: #e65100; }
+        .prob-card.denuncia  .prob-barra { background: #c62828; }
+
+        /* ── Análise textual ── */
+        .analise-bloco {
+            margin-top: .5rem;
+        }
+        .analise-secao {
+            margin-bottom: 1rem;
+        }
+        .analise-secao-titulo {
+            font-size: .82rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #374263;
+            border-left: 4px solid #1565c0;
+            padding-left: .6rem;
+            margin-bottom: .5rem;
+        }
+        .analise-texto {
+            font-size: .83rem;
+            color: #374263;
+            line-height: 1.7;
+            background: #f8f9ff;
+            border-radius: 6px;
+            padding: .75rem 1rem;
+            border: 1px solid #e8ecf5;
+            white-space: pre-wrap;
+        }
+
+        /* ── Checklist do que falta ── */
+        .checklist {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: .4rem;
+            margin: 0;
+            padding: 0;
+        }
+        .checklist li {
+            display: flex;
+            align-items: flex-start;
+            gap: .5rem;
+            font-size: .82rem;
+            color: #374263;
+            padding: .45rem .75rem;
+            border-radius: 6px;
+            background: #f8f9ff;
+            border: 1px solid #e8ecf5;
+        }
+        .checklist li.ok     { background: #f1f8f1; border-color: #c8e6c9; }
+        .checklist li.falta  { background: #fff3e0; border-color: #ffe0b2; }
+        .checklist li.sugest { background: #e3f2fd; border-color: #bbdefb; }
+        .checklist li i { margin-top: 2px; flex-shrink: 0; font-size: .8rem; }
+        .checklist li.ok     i { color: #2e7d32; }
+        .checklist li.falta  i { color: #e65100; }
+        .checklist li.sugest i { color: #1565c0; }
+
+        /* ── Dados principais em table ── */
+        .dados-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .82rem;
+        }
+        .dados-table th {
+            background: #f0f2f8;
+            color: #374263;
+            font-weight: bold;
+            padding: 7px 12px;
+            text-align: left;
+            border-bottom: 2px solid #d0d5e8;
+            width: 35%;
+        }
+        .dados-table td {
+            padding: 7px 12px;
+            border-bottom: 1px solid #edf0f8;
+            color: #1a1f36;
+        }
+        .dados-table tr:last-child td,
+        .dados-table tr:last-child th { border-bottom: none; }
+
+        /* ── Loader full ── */
+        .loader-full {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            padding: 3rem;
+            color: #546e7a;
+            font-size: .9rem;
+        }
+        .loader-full .big-spinner {
+            width: 48px; height: 48px;
+            border: 5px solid #e8ecf5;
+            border-top-color: #1565c0;
+            border-radius: 50%;
+            animation: giro 1s linear infinite;
+        }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed;
+            bottom: 1.5rem; right: 1.5rem;
+            background: #1a1f36;
+            color: #fff;
+            padding: .75rem 1.25rem;
+            border-radius: 8px;
+            font-size: .82rem;
+            box-shadow: 0 4px 16px rgba(0,0,0,.25);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            gap: .5rem;
+            max-width: 340px;
+        }
+        .toast.show { display: flex; }
+        .toast.ok   { background: #2e7d32; }
+        .toast.err  { background: #c62828; }
+        .toast.warn { background: #e65100; }
+
+        /* ── Seção resultado (oculta inicialmente) ── */
+        #resultado-section { display: none; }
+
+        @media (max-width: 768px) {
+            .prob-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER PADRÃO P3 -->
+<header>
+    <div class="header-info-left">
+        <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+        <div class="cabecalhotexto">
+            <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+            <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+        </div>
+    </div>
+    <div class="header-info-right">
+        <div class="relogio" id="relogio"></div>
+        <div class="exibirusuario" id="user-info"></div>
+    </div>
+</header>
+
+<section class="pagecomplete">
+
+    <!-- NAVEGAÇÃO -->
+    <nav class="navegacao">
+        <a href="../index.html">
+            <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
+            <p>Home</p>
+        </a>
+        <a href="../page/dashboard-p3.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard"/>
+            <p>Dashboard</p>
+        </a>
+        <a href="../page/cadastroocorrencias.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
+            <p>Cadastro de Ocorrências</p>
+        </a>
+        <a href="../page/materiais.html">
+            <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
+            <p>Materiais Apreendidos</p>
+        </a>
+        <a href="../page/solucoesia.html" class="active">
+            <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
+            <p>Soluções IA</p>
+        </a>
+        <button id="btn-logout" class="btn-logout">
+            <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
+            <p>Sair</p>
+        </button>
+    </nav>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main>
+
+        <!-- Cabeçalho da seção -->
+        <div class="saudacao">
+            <h2><i class="fas fa-balance-scale" style="margin-right:.4rem;"></i>Análise Jurimétrica de TCO</h2>
+            <p>Faça upload do PDF do TCO para obter análise probabilística fundamentada na legislação brasileira (CP, LCP, Lei 9.099/95, CTB, súmulas STJ/STF).</p>
+        </div>
+
+        <!-- Card de upload + configuração -->
+        <div class="card">
+            <div class="card-titulo">
+                <i class="fas fa-file-pdf" style="color:#c62828;"></i>
+                Upload do TCO em PDF
+            </div>
+
+            <!-- API Key -->
+            <div class="api-aviso">
+                <i class="fas fa-key" style="margin-right:.3rem;"></i>
+                <strong>Chave da API Gemini:</strong> Insira sua chave gratuita do
+                <a href="https://aistudio.google.com/app/apikey" target="_blank"
+                   style="color:#e65100;font-weight:bold;">Google AI Studio</a>.
+                A chave não é salva em nenhum servidor.
+            </div>
+            <div class="api-row">
+                <label><i class="fas fa-key"></i> API Key:</label>
+                <input type="password" id="api-key" placeholder="AIzaSy..." autocomplete="off">
+                <button onclick="toggleApiKey()" style="padding:6px 12px;border:1.5px solid #d0d5e8;
+                        border-radius:6px;background:#f8f9ff;cursor:pointer;font-size:.8rem;">
+                    <i class="fas fa-eye" id="eye-icon"></i>
+                </button>
+            </div>
+
+            <!-- Área de drop -->
+            <div class="upload-area" id="upload-area">
+                <input type="file" id="inp-pdf" accept="application/pdf" onchange="onArquivoSelecionado(event)">
+                <div class="upload-icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="upload-txt">
+                    Arraste o PDF do TCO aqui ou <strong>clique para selecionar</strong><br>
+                    <small style="color:#90a4ae;">Máximo 20 MB · somente PDF</small>
+                </div>
+                <div class="upload-file-nome" id="nome-arquivo">
+                    <i class="fas fa-check-circle" style="color:#2e7d32;"></i>
+                    <span id="txt-nome-arquivo"></span>
+                </div>
+            </div>
+
+            <!-- Botão analisar -->
+            <button class="btn-analisar" id="btn-analisar" disabled onclick="analisarTCO()">
+                <i class="fas fa-search"></i>
+                <span id="btn-txt">REALIZAR ANÁLISE JURIMÉTRICA</span>
+                <div class="spinner" id="spinner"></div>
+            </button>
+        </div>
+
+        <!-- ── SEÇÃO DE RESULTADO (aparece após análise) ── -->
+        <div id="resultado-section">
+
+            <!-- Loader durante análise -->
+            <div class="card" id="card-loader" style="display:none;">
+                <div class="loader-full">
+                    <div class="big-spinner"></div>
+                    <div>
+                        <strong>Analisando o TCO com Gemini...</strong><br>
+                        <span style="font-size:.78rem;color:#90a4ae;">
+                            Leitura jurídica completa em andamento. Aguarde.
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 1. Dados principais -->
+            <div class="card" id="card-dados" style="display:none;">
+                <div class="card-titulo">
+                    <i class="fas fa-id-card" style="color:#1565c0;"></i>
+                    Dados Principais do TCO
+                </div>
+                <table class="dados-table" id="tabela-dados">
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <!-- 2. Probabilidades -->
+            <div class="card" id="card-prob" style="display:none;">
+                <div class="card-titulo">
+                    <i class="fas fa-chart-pie" style="color:#1565c0;"></i>
+                    Previsão Jurimétrica
+                    <span style="font-size:.7rem;font-weight:normal;color:#9ea3b5;margin-left:.5rem;">
+                        (probabilidades devem somar 100%)
+                    </span>
+                </div>
+                <div class="prob-grid">
+                    <div class="prob-card transacao">
+                        <div class="prob-label"><i class="fas fa-handshake"></i> Transação Penal / Sursis Processual</div>
+                        <div class="prob-pct" id="pct-transacao">—</div>
+                        <div class="prob-barra-bg"><div class="prob-barra" id="barra-transacao"></div></div>
+                        <div style="font-size:.68rem;color:#546e7a;" id="sub-transacao"></div>
+                    </div>
+                    <div class="prob-card anpp">
+                        <div class="prob-label"><i class="fas fa-file-signature"></i> Arquivamento por ANPP</div>
+                        <div class="prob-pct" id="pct-anpp">—</div>
+                        <div class="prob-barra-bg"><div class="prob-barra" id="barra-anpp"></div></div>
+                        <div style="font-size:.68rem;color:#546e7a;" id="sub-anpp"></div>
+                    </div>
+                    <div class="prob-card atipic">
+                        <div class="prob-label"><i class="fas fa-ban"></i> Arquivamento por Atipicidade</div>
+                        <div class="prob-pct" id="pct-atipic">—</div>
+                        <div class="prob-barra-bg"><div class="prob-barra" id="barra-atipic"></div></div>
+                        <div style="font-size:.68rem;color:#546e7a;" id="sub-atipic"></div>
+                    </div>
+                    <div class="prob-card denuncia">
+                        <div class="prob-label"><i class="fas fa-gavel"></i> Recebimento da Denúncia</div>
+                        <div class="prob-pct" id="pct-denuncia">—</div>
+                        <div class="prob-barra-bg"><div class="prob-barra" id="barra-denuncia"></div></div>
+                        <div style="font-size:.68rem;color:#546e7a;" id="sub-denuncia"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Análise completa do caso -->
+            <div class="card" id="card-analise" style="display:none;">
+                <div class="card-titulo">
+                    <i class="fas fa-file-contract" style="color:#1565c0;"></i>
+                    Análise Completa do Caso
+                </div>
+                <div class="analise-bloco" id="analise-bloco"></div>
+            </div>
+
+            <!-- 4. O que falta / O que seria interessante -->
+            <div class="card" id="card-checklist" style="display:none;">
+                <div class="card-titulo">
+                    <i class="fas fa-clipboard-check" style="color:#1565c0;"></i>
+                    Avaliação Documental do TCO
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;" id="grid-checklist">
+                    <div>
+                        <div style="font-size:.8rem;font-weight:bold;color:#2e7d32;margin-bottom:.5rem;">
+                            <i class="fas fa-check-circle"></i> Pontos positivos / Presentes
+                        </div>
+                        <ul class="checklist" id="lista-ok"></ul>
+                    </div>
+                    <div>
+                        <div style="font-size:.8rem;font-weight:bold;color:#e65100;margin-bottom:.5rem;">
+                            <i class="fas fa-exclamation-triangle"></i> O que falta / Lacunas
+                        </div>
+                        <ul class="checklist" id="lista-falta"></ul>
+                    </div>
+                </div>
+                <div style="margin-top:1rem;">
+                    <div style="font-size:.8rem;font-weight:bold;color:#1565c0;margin-bottom:.5rem;">
+                        <i class="fas fa-lightbulb"></i> O que seria interessante incluir
+                    </div>
+                    <ul class="checklist" id="lista-sugest"></ul>
+                </div>
+            </div>
+
+            <!-- 5. Fundamentação legal -->
+            <div class="card" id="card-legal" style="display:none;">
+                <div class="card-titulo">
+                    <i class="fas fa-book-open" style="color:#1565c0;"></i>
+                    Fundamentação Legal Aplicável
+                </div>
+                <div id="legal-conteudo" class="analise-texto"></div>
+            </div>
+
+        </div><!-- fim resultado-section -->
+
+    </main>
+</section>
+
+<footer>
+    <div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div>
+</footer>
+
+<!-- Toast de notificação -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// ANÁLISE JURIMÉTRICA DE TCO — P3 / 10º BPM
+// Chama a API Gemini diretamente do browser (sem Apps Script)
+// Modelo: gemini-2.0-flash (gratuito via Google AI Studio)
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Estado ────────────────────────────────────────────────────────
+let _pdfBase64 = null;
+let _pdfNome   = '';
+
+// ── Relógio ───────────────────────────────────────────────────────
+(function relogio() {
+    const tick = () => {
+        const n    = new Date();
+        const opts = { weekday:'short', day:'2-digit', month:'long', year:'numeric' };
+        const str  = `${n.toLocaleDateString('pt-BR',opts)} | ${n.toLocaleTimeString('pt-BR')}`;
+        const el   = document.getElementById('relogio');
+        if (el) el.innerHTML = str;
+    };
+    tick(); setInterval(tick, 1000);
+})();
+
+// ── Login check ───────────────────────────────────────────────────
+(function checkLogin() {
+    const grad = localStorage.getItem('userGraduacao');
+    const nome = localStorage.getItem('userNomeGuerra');
+    const el   = document.getElementById('user-info');
+    if (grad && nome) {
+        if (el) el.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${grad} ${nome}</p>`;
+    } else {
+        window.location.href = '../page/login.html';
+    }
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', () => {
+        localStorage.clear(); window.location.href = '../page/login.html';
+    });
+})();
+
+// ── Upload de arquivo ─────────────────────────────────────────────
+const dropArea = document.getElementById('upload-area');
+dropArea.addEventListener('dragover',  e => { e.preventDefault(); dropArea.classList.add('over'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('over'));
+dropArea.addEventListener('drop', e => {
+    e.preventDefault(); dropArea.classList.remove('over');
+    const f = e.dataTransfer.files[0];
+    if (f) processarArquivo(f);
+});
+
+function onArquivoSelecionado(event) {
+    const f = event.target.files[0];
+    if (f) processarArquivo(f);
+}
+
+function processarArquivo(file) {
+    if (file.type !== 'application/pdf') {
+        toast('Selecione um arquivo PDF válido.', 'err'); return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+        toast('Arquivo muito grande. Limite: 20 MB.', 'err'); return;
+    }
+
+    _pdfNome = file.name;
+    const reader = new FileReader();
+    reader.onload = e => {
+        // Converte ArrayBuffer para Base64
+        const bytes  = new Uint8Array(e.target.result);
+        let bin = '';
+        for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+        _pdfBase64 = btoa(bin);
+
+        // UI feedback
+        document.getElementById('nome-arquivo').style.display = 'flex';
+        document.getElementById('nome-arquivo').style.alignItems = 'center';
+        document.getElementById('nome-arquivo').style.gap = '6px';
+        document.getElementById('txt-nome-arquivo').textContent = file.name;
+        document.getElementById('btn-analisar').disabled = false;
+        toast('PDF carregado. Clique em Analisar.', 'ok');
+    };
+    reader.onerror = () => toast('Erro ao ler o PDF.', 'err');
+    reader.readAsArrayBuffer(file);
+}
+
+// ── Toggle visibilidade da API key ────────────────────────────────
+function toggleApiKey() {
+    const inp = document.getElementById('api-key');
+    const ico = document.getElementById('eye-icon');
+    if (inp.type === 'password') { inp.type = 'text'; ico.className = 'fas fa-eye-slash'; }
+    else                         { inp.type = 'password'; ico.className = 'fas fa-eye'; }
+}
+
+// ── Prompt para o Gemini ──────────────────────────────────────────
+const SYSTEM_PROMPT = `Você é o "JECRIM Jurimetria TCO Predictor", um analista jurídico especializado em Juizados Especiais Criminais (JECRIM) no Brasil.
+
+Sua tarefa é analisar o Termo Circunstanciado de Ocorrência (TCO) em PDF e fornecer:
+1. Uma análise jurimétrica completa com probabilidades fundamentadas.
+2. Uma avaliação documental detalhada (o que está presente, o que falta e o que seria interessante).
+
+Base legal obrigatória: Código Penal Brasileiro, Lei de Contravenções Penais, Código Florestal, Lei 9.099/95, Súmulas do STJ e STF, Código de Processo Penal, Código de Trânsito Brasileiro.
+
+RETORNE EXCLUSIVAMENTE um JSON válido com esta estrutura (sem markdown, sem texto fora do JSON):
+
+{
+  "dados": {
+    "tipificacao": "string — crime(s) ou contravenção(ões) identificados",
+    "autor": "string — nome completo do autor conforme consta no documento",
+    "vitima": "string — nome da vítima ou 'Não identificada'",
+    "data_ocorrencia": "string — DD/MM/AAAA",
+    "local": "string — Cidade/Estado",
+    "numero_tco": "string — número do boletim/TCO",
+    "circunstancias": "string — resumo fático objetivo em 2-3 frases"
+  },
+  "probabilidades": {
+    "transacao_penal": {
+      "pct": 0,
+      "descricao": "string — justificativa objetiva de 1-2 frases para esta probabilidade"
+    },
+    "arquivamento_anpp": {
+      "pct": 0,
+      "descricao": "string — justificativa objetiva de 1-2 frases"
+    },
+    "arquivamento_atipicidade": {
+      "pct": 0,
+      "descricao": "string — justificativa objetiva de 1-2 frases"
+    },
+    "recepcao_denuncia": {
+      "pct": 0,
+      "descricao": "string — justificativa objetiva de 1-2 frases"
+    }
+  },
+  "analise_completa": {
+    "pontos_fortes": "string — análise dos elementos que fortalecem o TCO (mínimo 3 parágrafos)",
+    "pontos_fracos": "string — análise das fragilidades jurídicas encontradas (mínimo 2 parágrafos)",
+    "fundamentacao": "string — artigos de lei e súmulas aplicáveis ao caso com explicação de cada um",
+    "prognose": "string — prognóstico do desfecho mais provável com fundamentação"
+  },
+  "avaliacao_documental": {
+    "presentes": ["string", "string"],
+    "faltam": ["string", "string"],
+    "sugestoes": ["string", "string"]
+  },
+  "nota_final": "string — observação importante ou alerta relevante ao caso"
+}
+
+REGRAS OBRIGATÓRIAS:
+- As quatro probabilidades devem somar EXATAMENTE 100.
+- Cada valor de pct deve ser um número inteiro (0 a 100), não string.
+- Retorne APENAS o JSON. Nenhum texto antes ou depois.
+- Se algum dado não estiver no TCO, use "Não consta no documento".`;
+
+// ── Chamar API Gemini diretamente no browser ──────────────────────
+async function chamarGemini(apiKey, base64Pdf) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    const body = {
+        contents: [{
+            parts: [
+                { text: "Analise este Termo Circunstanciado de Ocorrência (TCO) e retorne o JSON conforme instruído." },
+                { inlineData: { mimeType: 'application/pdf', data: base64Pdf } }
+            ]
+        }],
+        systemInstruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+        },
+        generationConfig: {
+            temperature:     0.2,   // baixa criatividade para análise jurídica
+            responseMimeType: 'application/json'
+        }
+    };
+
+    const resp = await fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        const msg = err?.error?.message || `HTTP ${resp.status}`;
+        throw new Error(msg);
+    }
+
+    const data = await resp.json();
+    const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!texto) throw new Error('Resposta vazia da API Gemini.');
+
+    // Remove possíveis blocos markdown ```json ... ``` se a API ignorar responseMimeType
+    const limpo = texto.replace(/^```json\s*/i,'').replace(/\s*```$/,'').trim();
+    return JSON.parse(limpo);
+}
+
+// ── Função principal de análise ───────────────────────────────────
+async function analisarTCO() {
+    const apiKey = document.getElementById('api-key').value.trim();
+    if (!apiKey) { toast('Informe a API Key do Google Gemini.', 'warn'); return; }
+    if (!_pdfBase64) { toast('Selecione um arquivo PDF.', 'warn'); return; }
+
+    // UI: loading
+    setLoading(true);
+    document.getElementById('resultado-section').style.display = 'block';
+    document.getElementById('card-loader').style.display = 'block';
+    ocultarCards();
+
+    try {
+        const resultado = await chamarGemini(apiKey, _pdfBase64);
+        renderizarResultado(resultado);
+        toast('Análise concluída com sucesso!', 'ok');
+    } catch(err) {
+        console.error('[Gemini]', err);
+        toast('Erro: ' + err.message, 'err');
+        document.getElementById('card-loader').innerHTML = `
+            <div class="loader-full">
+                <i class="fas fa-exclamation-triangle" style="font-size:2rem;color:#c62828;"></i>
+                <div style="text-align:center;">
+                    <strong>Erro na análise</strong><br>
+                    <span style="font-size:.78rem;color:#c62828;">${err.message}</span><br>
+                    <small style="color:#90a4ae;margin-top:.5rem;display:block;">
+                        Verifique: API Key válida · PDF legível · conexão com a internet
+                    </small>
+                </div>
+            </div>`;
+    } finally {
+        setLoading(false);
+    }
+}
+
+// ── Renderiza o resultado na tela ─────────────────────────────────
+function renderizarResultado(r) {
+    document.getElementById('card-loader').style.display = 'none';
+
+    // ── 1. Dados principais ──────────────────────────────────────
+    const dados = r.dados || {};
+    const mapaD = [
+        ['Nº TCO / Boletim',    dados.numero_tco],
+        ['Tipificação Penal',   dados.tipificacao],
+        ['Autor',               dados.autor],
+        ['Vítima',              dados.vitima],
+        ['Data da Ocorrência',  dados.data_ocorrencia],
+        ['Local',               dados.local],
+        ['Circunstâncias',      dados.circunstancias],
+    ];
+    document.getElementById('tabela-dados').querySelector('tbody').innerHTML =
+        mapaD.map(([k,v]) => `<tr>
+            <th>${k}</th>
+            <td>${v || 'Não consta'}</td>
+        </tr>`).join('');
+    document.getElementById('card-dados').style.display = 'block';
+
+    // ── 2. Probabilidades ────────────────────────────────────────
+    const prob = r.probabilidades || {};
+    const mapP = [
+        { key:'transacao_penal',          elPct:'pct-transacao', elBar:'barra-transacao', elSub:'sub-transacao' },
+        { key:'arquivamento_anpp',         elPct:'pct-anpp',      elBar:'barra-anpp',      elSub:'sub-anpp'      },
+        { key:'arquivamento_atipicidade',  elPct:'pct-atipic',    elBar:'barra-atipic',    elSub:'sub-atipic'    },
+        { key:'recepcao_denuncia',         elPct:'pct-denuncia',  elBar:'barra-denuncia',  elSub:'sub-denuncia'  },
+    ];
+    mapP.forEach(({ key, elPct, elBar, elSub }) => {
+        const p   = prob[key] || {};
+        const pct = typeof p.pct === 'number' ? p.pct : 0;
+        document.getElementById(elPct).textContent = pct + '%';
+        document.getElementById(elSub).textContent = p.descricao || '';
+        // Anima a barra com delay
+        setTimeout(() => {
+            document.getElementById(elBar).style.width = pct + '%';
+        }, 100);
+    });
+    document.getElementById('card-prob').style.display = 'block';
+
+    // ── 3. Análise completa ──────────────────────────────────────
+    const ac = r.analise_completa || {};
+    const secoes = [
+        { titulo:'Pontos Fortes do TCO',    conteudo: ac.pontos_fortes   },
+        { titulo:'Fragilidades Jurídicas',  conteudo: ac.pontos_fracos   },
+        { titulo:'Fundamentação Legal',     conteudo: ac.fundamentacao   },
+        { titulo:'Prognose do Caso',        conteudo: ac.prognose        },
+    ];
+    document.getElementById('analise-bloco').innerHTML = secoes
+        .filter(s => s.conteudo)
+        .map(s => `
+        <div class="analise-secao">
+            <div class="analise-secao-titulo">${s.titulo}</div>
+            <div class="analise-texto">${s.conteudo}</div>
+        </div>`).join('');
+    document.getElementById('card-analise').style.display = 'block';
+
+    // ── 4. Checklist documental ──────────────────────────────────
+    const av = r.avaliacao_documental || {};
+    const renderLista = (id, items, cls, icon) => {
+        document.getElementById(id).innerHTML = (items || [])
+            .map(it => `<li class="${cls}"><i class="fas fa-${icon}"></i><span>${it}</span></li>`)
+            .join('') || '<li style="color:#9ea3b5;font-size:.78rem;">Não identificado.</li>';
+    };
+    renderLista('lista-ok',     av.presentes, 'ok',     'check-circle');
+    renderLista('lista-falta',  av.faltam,    'falta',  'times-circle');
+    renderLista('lista-sugest', av.sugestoes, 'sugest', 'lightbulb');
+    document.getElementById('card-checklist').style.display = 'block';
+
+    // ── 5. Nota final ────────────────────────────────────────────
+    if (r.nota_final) {
+        document.getElementById('legal-conteudo').textContent = r.nota_final;
+        document.getElementById('card-legal').style.display = 'block';
+    }
+
+    // Scroll suave para o resultado
+    setTimeout(() => {
+        document.getElementById('resultado-section').scrollIntoView({ behavior:'smooth' });
+    }, 200);
+}
+
+// ── Helpers de UI ─────────────────────────────────────────────────
+function ocultarCards() {
+    ['card-dados','card-prob','card-analise','card-checklist','card-legal']
+        .forEach(id => { document.getElementById(id).style.display = 'none'; });
+}
+
+function setLoading(on) {
+    const btn = document.getElementById('btn-analisar');
+    const sp  = document.getElementById('spinner');
+    const txt = document.getElementById('btn-txt');
+    btn.disabled         = on;
+    sp.style.display     = on ? 'block' : 'none';
+    txt.textContent      = on ? 'Analisando...' : 'REALIZAR ANÁLISE JURIMÉTRICA';
+}
+
+// ── Toast ─────────────────────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, tipo) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = `toast show ${tipo || ''}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
+}
+</script>
+</body>
+</html>
