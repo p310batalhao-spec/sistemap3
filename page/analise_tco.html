@@ -81,40 +81,6 @@
             display: none;
         }
 
-        /* ── Config API key ── */
-        .api-row {
-            display: flex;
-            gap: .75rem;
-            align-items: center;
-            flex-wrap: wrap;
-            margin-bottom: .75rem;
-        }
-        .api-row label {
-            font-size: .82rem;
-            font-weight: bold;
-            color: #374263;
-            white-space: nowrap;
-        }
-        .api-row input {
-            flex: 1;
-            min-width: 0;
-            padding: 7px 12px;
-            border: 1.5px solid #d0d5e8;
-            border-radius: 6px;
-            font-size: .82rem;
-            font-family: monospace;
-        }
-        .api-row input:focus { outline: none; border-color: #1565c0; }
-        .api-aviso {
-            font-size: .72rem;
-            color: #f57f17;
-            background: #fff8e1;
-            border: 1px solid #ffe082;
-            border-radius: 5px;
-            padding: 6px 10px;
-            margin-bottom: .75rem;
-        }
-
         /* ── Botão analisar ── */
         .btn-analisar {
             width: 100%;
@@ -386,23 +352,6 @@
                 Upload do TCO em PDF
             </div>
 
-            <!-- API Key -->
-            <div class="api-aviso">
-                <i class="fas fa-key" style="margin-right:.3rem;"></i>
-                <strong>Chave da API Gemini:</strong> Insira sua chave gratuita do
-                <a href="https://aistudio.google.com/app/apikey" target="_blank"
-                   style="color:#e65100;font-weight:bold;">Google AI Studio</a>.
-                A chave não é salva em nenhum servidor.
-            </div>
-            <div class="api-row">
-                <label><i class="fas fa-key"></i> API Key:</label>
-                <input type="password" id="api-key" placeholder="AIzaSy..." autocomplete="off">
-                <button onclick="toggleApiKey()" style="padding:6px 12px;border:1.5px solid #d0d5e8;
-                        border-radius:6px;background:#f8f9ff;cursor:pointer;font-size:.8rem;">
-                    <i class="fas fa-eye" id="eye-icon"></i>
-                </button>
-            </div>
-
             <!-- Área de drop -->
             <div class="upload-area" id="upload-area">
                 <input type="file" id="inp-pdf" accept="application/pdf" onchange="onArquivoSelecionado(event)">
@@ -630,14 +579,6 @@ function processarArquivo(file) {
     reader.readAsArrayBuffer(file);
 }
 
-// ── Toggle visibilidade da API key ────────────────────────────────
-function toggleApiKey() {
-    const inp = document.getElementById('api-key');
-    const ico = document.getElementById('eye-icon');
-    if (inp.type === 'password') { inp.type = 'text'; ico.className = 'fas fa-eye-slash'; }
-    else                         { inp.type = 'password'; ico.className = 'fas fa-eye'; }
-}
-
 // ── Prompt para o Gemini ──────────────────────────────────────────
 const SYSTEM_PROMPT = `Você é o "JECRIM Jurimetria TCO Predictor", um analista jurídico especializado em Juizados Especiais Criminais (JECRIM) no Brasil.
 
@@ -697,23 +638,27 @@ REGRAS OBRIGATÓRIAS:
 - Retorne APENAS o JSON. Nenhum texto antes ou depois.
 - Se algum dado não estiver no TCO, use "Não consta no documento".`;
 
+// ── Chave da API (embutida — mova para arquivo .js separado depois) ──
+const GEMINI_API_KEY = 'AIzaSyBbgrDDPuu2UwWwz0usYYRbSPEALmSTaDk';
+
 // ── Chamar API Gemini diretamente no browser ──────────────────────
-async function chamarGemini(apiKey, base64Pdf) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCvOAUuZ0J5LR5UNKK84Q1bcza73RKZyDs`;
+async function chamarGemini(base64Pdf) {
+    // v1beta é obrigatório para suportar systemInstruction e responseMimeType
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
     const body = {
+        system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+        },
         contents: [{
             parts: [
                 { text: "Analise este Termo Circunstanciado de Ocorrência (TCO) e retorne o JSON conforme instruído." },
-                { inlineData: { mimeType: 'application/pdf', data: base64Pdf } }
+                { inline_data: { mime_type: 'application/pdf', data: base64Pdf } }
             ]
         }],
-        systemInstruction: {
-            parts: [{ text: SYSTEM_PROMPT }]
-        },
-        generationConfig: {
-            temperature:     0.2,   // baixa criatividade para análise jurídica
-            responseMimeType: 'application/json'
+        generation_config: {
+            temperature: 0.2,
+            response_mime_type: 'application/json'
         }
     };
 
@@ -740,8 +685,6 @@ async function chamarGemini(apiKey, base64Pdf) {
 
 // ── Função principal de análise ───────────────────────────────────
 async function analisarTCO() {
-    const apiKey = document.getElementById('api-key').value.trim();
-    if (!apiKey) { toast('Informe a API Key do Google Gemini.', 'warn'); return; }
     if (!_pdfBase64) { toast('Selecione um arquivo PDF.', 'warn'); return; }
 
     // UI: loading
@@ -751,7 +694,7 @@ async function analisarTCO() {
     ocultarCards();
 
     try {
-        const resultado = await chamarGemini(apiKey, _pdfBase64);
+        const resultado = await chamarGemini(_pdfBase64);
         renderizarResultado(resultado);
         toast('Análise concluída com sucesso!', 'ok');
     } catch(err) {

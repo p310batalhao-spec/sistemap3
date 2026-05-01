@@ -205,8 +205,7 @@
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Adicionar"/>
                         Adicionar Novo Evento
                     </button>
-                    <a href="https://script.google.com/macros/s/AKfycbw7PcNaoXUERn9ZuIBdiWG5_JeZZf-r0B1xjAKZU7fz-k-7Pg8PtNFIvyZIF091nbtkTg/exec"
-                        target="_blank" class="btnQuadroEventos">Gerar Quadro de Eventos</a>
+                    <button class="btnQuadroEventos" id="btn-gerar-quadro" type="button">📋 Gerar Quadro de Eventos</button>
                     <a href="calendario.html" class="btnQuadroEventos">Calendário de Eventos</a>
                     <p id="mensagem-carregamento" style="display:none;">Carregando dados, aguarde...</p>
                 </div>
@@ -254,6 +253,71 @@
             </div>
         </main>
     </section>
+
+    <!-- ══════════════════════════════════════════════
+         MODAL — Selecionar Período do Quadro de Eventos
+    ══════════════════════════════════════════════ -->
+    <div id="modal-periodo" style="
+        display:none; position:fixed; inset:0; z-index:9999;
+        background:rgba(0,0,0,0.55); align-items:center; justify-content:center;">
+
+        <div style="
+            background:#fff; border-radius:10px; padding:32px 28px;
+            width:380px; max-width:95vw; box-shadow:0 8px 32px rgba(0,0,0,0.3);
+            position:relative;">
+
+            <!-- Fechar -->
+            <button onclick="fecharModalPeriodo()" style="
+                position:absolute; top:12px; right:14px;
+                background:none; border:none; font-size:20px;
+                cursor:pointer; color:#555;" title="Fechar">✕</button>
+
+            <h3 style="margin-bottom:6px; color:#003366; font-size:16px;">
+                📋 Gerar Quadro de Eventos
+            </h3>
+            <p style="color:#555; font-size:12px; margin-bottom:20px;">
+                Selecione o período para filtrar os eventos que constarão no quadro.
+            </p>
+
+            <div style="margin-bottom:14px;">
+                <label style="font-size:12px; font-weight:bold; color:#333; display:block; margin-bottom:4px;">
+                    DATA INICIAL
+                </label>
+                <input type="date" id="modal-data-inicio" style="
+                    width:100%; padding:9px 12px; border:1px solid #ccc;
+                    border-radius:6px; font-size:14px;">
+            </div>
+
+            <div style="margin-bottom:22px;">
+                <label style="font-size:12px; font-weight:bold; color:#333; display:block; margin-bottom:4px;">
+                    DATA FINAL
+                </label>
+                <input type="date" id="modal-data-fim" style="
+                    width:100%; padding:9px 12px; border:1px solid #ccc;
+                    border-radius:6px; font-size:14px;">
+            </div>
+
+            <div id="modal-erro" style="
+                display:none; background:#fde8e8; color:#c0392b;
+                border:1px solid #e74c3c; border-radius:6px;
+                padding:8px 12px; font-size:12px; margin-bottom:14px;">
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button onclick="fecharModalPeriodo()" style="
+                    padding:10px 20px; border:1px solid #ccc; background:#f5f5f5;
+                    border-radius:6px; cursor:pointer; font-size:13px; color:#333;">
+                    Cancelar
+                </button>
+                <button onclick="confirmarGerarQuadro()" style="
+                    padding:10px 22px; border:none; background:#003366;
+                    color:#fff; border-radius:6px; cursor:pointer;
+                    font-size:13px; font-weight:bold;">
+                    Gerar Quadro ➜
+                </button>
+            </div>
+        </div>
+    </div>
 
     <footer>
         <div>
@@ -537,6 +601,41 @@
         }
     }
 
+    // ── Modal Gerar Quadro de Eventos (escopo global) ──
+    function abrirModalPeriodo() {
+        const hoje = new Date();
+        const fmt  = d => d.toISOString().split('T')[0];
+        document.getElementById('modal-data-inicio').value = fmt(hoje);
+        document.getElementById('modal-data-fim').value    = fmt(hoje);
+        document.getElementById('modal-erro').style.display = 'none';
+        document.getElementById('modal-periodo').style.display = 'flex';
+    }
+
+    function fecharModalPeriodo() {
+        document.getElementById('modal-periodo').style.display = 'none';
+    }
+
+    function confirmarGerarQuadro() {
+        const ini  = document.getElementById('modal-data-inicio').value;
+        const fim  = document.getElementById('modal-data-fim').value;
+        const erro = document.getElementById('modal-erro');
+
+        if (!ini || !fim) {
+            erro.textContent = '⚠ Informe as duas datas antes de continuar.';
+            erro.style.display = 'block';
+            return;
+        }
+        if (ini > fim) {
+            erro.textContent = '⚠ A data inicial não pode ser posterior à data final.';
+            erro.style.display = 'block';
+            return;
+        }
+
+        erro.style.display = 'none';
+        fecharModalPeriodo();
+        window.open(`../relatorios/quadroEventos.html?inicio=${ini}&fim=${fim}`, '_blank');
+    }
+
     // ── 8. Inicialização ───────────────────────────────────────
     document.addEventListener('DOMContentLoaded', function () {
         checkLogin();
@@ -552,6 +651,12 @@
         // Logout
         const btnLogout = document.getElementById('btn-logout');
         if (btnLogout) btnLogout.onclick = logout;
+
+        // Modal Quadro de Eventos
+        document.getElementById('btn-gerar-quadro').onclick = abrirModalPeriodo;
+        document.getElementById('modal-periodo').addEventListener('click', function(e) {
+            if (e.target === this) fecharModalPeriodo();
+        });
 
         // ── Submissão do Formulário ──────────────────────────
         sidebar.onsubmit = async (e) => {
@@ -611,7 +716,6 @@
             }
         };
 
-        // Filtros
         document.getElementById('btn-aplicar-filtro').onclick = () => {
             const tipo  = document.getElementById('filtro-tipo').value;
             const valor = document.getElementById('filtro-valor-text').value.toUpperCase();

@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendário de Eventos — 10º BPM</title>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+    <style>
+        /* ══════════════════════════════════════════════
+           RESET & BASE
+        ══════════════════════════════════════════════ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            background: #f2f4f8;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ══════════════════════════════════════════════
+           CABEÇALHO INSTITUCIONAL
+        ══════════════════════════════════════════════ */
+        header {
+            background: linear-gradient(135deg, #003366 0%, #00224d 100%);
+            color: #fff;
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .header-left img {
+            width: 58px;
+            height: auto;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.4));
+        }
+        .header-texto h1 {
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 0.04em;
+            line-height: 1.3;
+        }
+        .header-texto h3 {
+            font-size: 12px;
+            font-weight: normal;
+            opacity: 0.85;
+            letter-spacing: 0.03em;
+        }
+        .header-right {
+            text-align: right;
+            font-size: 12px;
+            opacity: 0.85;
+            line-height: 1.6;
+            white-space: nowrap;
+        }
+
+        /* ══════════════════════════════════════════════
+           BADGE DE ACESSO PÚBLICO
+        ══════════════════════════════════════════════ */
+        .badge-publico {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 11px;
+            letter-spacing: 0.05em;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        /* ══════════════════════════════════════════════
+           LEGENDA DE PORTE
+        ══════════════════════════════════════════════ */
+        .legenda-bar {
+            background: #fff;
+            border-bottom: 1px solid #dde3ed;
+            padding: 8px 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .legenda-bar span {
+            font-size: 11px;
+            font-weight: bold;
+            color: #555;
+            letter-spacing: 0.03em;
+        }
+        .legenda-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #444;
+        }
+        .legenda-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        .dot-pequeno { background: #2e7d32; }
+        .dot-medio   { background: #e69d00; }
+        .dot-grande  { background: #b71c1c; }
+
+        /* ══════════════════════════════════════════════
+           CONTEÚDO PRINCIPAL
+        ══════════════════════════════════════════════ */
+        main {
+            flex: 1;
+            padding: 24px 28px;
+            max-width: 1300px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* ══════════════════════════════════════════════
+           FULLCALENDAR — CUSTOMIZAÇÃO
+        ══════════════════════════════════════════════ */
+        #calendar {
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.09);
+            padding: 16px;
+        }
+
+        /* Toolbar do calendário */
+        .fc .fc-toolbar-title {
+            font-size: 17px;
+            font-weight: bold;
+            color: #003366;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .fc .fc-button {
+            background: #003366 !important;
+            border-color: #003366 !important;
+            font-size: 12px !important;
+            padding: 5px 12px !important;
+            border-radius: 5px !important;
+        }
+        .fc .fc-button:hover { background: #00224d !important; }
+        .fc .fc-button-active { background: #00224d !important; }
+
+        /* Cabeçalho dos dias */
+        .fc .fc-col-header-cell {
+            background: #003366;
+            color: #fff;
+            font-size: 12px;
+            padding: 6px 0;
+        }
+        .fc .fc-col-header-cell-cushion { color: #fff !important; text-decoration: none !important; }
+
+        /* Células do calendário */
+        .fc .fc-daygrid-day { border-color: #e0e6f0 !important; }
+        .fc .fc-daygrid-day-number {
+            font-size: 12px;
+            color: #003366;
+            font-weight: bold;
+            text-decoration: none !important;
+        }
+        .fc .fc-day-today { background: #e8f0fb !important; }
+
+        /* Eventos */
+        .fc-event {
+            border: none !important;
+            border-radius: 4px !important;
+            margin-bottom: 2px !important;
+            cursor: pointer;
+        }
+        .fc-event-inner {
+            padding: 2px 5px;
+            line-height: 1.3;
+        }
+        .fc-event-hora {
+            font-weight: bold;
+            font-size: 10px;
+            margin-right: 3px;
+            opacity: 0.9;
+        }
+        .fc-event-nome {
+            font-size: 10px;
+        }
+        .fc-event-guarnicoes {
+            margin-top: 2px;
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+
+        /* Cores por porte */
+        .event-pequeno { background-color: #2e7d32 !important; color: #fff !important; }
+        .event-medio   { background-color: #e69d00 !important; color: #fff !important; }
+        .event-grande  { background-color: #b71c1c !important; color: #fff !important; }
+
+        /* Badges de guarnição no calendário */
+        .cal-guarnicao {
+            display: inline-block;
+            font-size: 9px;
+            font-weight: bold;
+            padding: 0px 4px;
+            border-radius: 3px;
+            color: #fff;
+            opacity: 0.95;
+        }
+        .cal-ft      { background: #d3be00; }
+        .cal-rp      { background: #0056c6; }
+        .cal-pelopes { background: #000d0b; }
+
+        /* Listagem */
+        .fc-list-event-title a { color: inherit !important; text-decoration: none !important; }
+        .fc .fc-list-day-cushion { background: #003366 !important; color: #fff !important; }
+
+        /* ══════════════════════════════════════════════
+           MODAL DE DETALHES
+        ══════════════════════════════════════════════ */
+        #modal-evento {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-evento.ativo { display: flex; }
+
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(2px);
+        }
+        .modal-box {
+            position: relative;
+            z-index: 1;
+            background: #fff;
+            border-radius: 12px;
+            padding: 28px 26px 20px;
+            width: 420px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.28);
+        }
+        .modal-box h2 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #003366;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #003366;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .modal-linha {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        .modal-linha:last-of-type { border-bottom: none; }
+        .modal-label {
+            font-weight: bold;
+            color: #444;
+            min-width: 115px;
+            flex-shrink: 0;
+        }
+        .modal-valor { color: #222; }
+
+        /* Badges de guarnição no modal */
+        .modal-guarnicao-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #fff;
+            margin-right: 4px;
+        }
+        .mgb-ft      { background: #1565c0; }
+        .mgb-rp      { background: #6a1b9a; }
+        .mgb-pelopes { background: #00695c; }
+
+        .modal-footer {
+            margin-top: 18px;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .btn-modal-fechar {
+            background: #003366;
+            color: #fff;
+            border: none;
+            padding: 9px 22px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        .btn-modal-fechar:hover { background: #00224d; }
+
+        /* ══════════════════════════════════════════════
+           RODAPÉ
+        ══════════════════════════════════════════════ */
+        footer {
+            background: #003366;
+            color: rgba(255,255,255,0.75);
+            text-align: center;
+            padding: 12px;
+            font-size: 11px;
+            letter-spacing: 0.04em;
+        }
+
+        /* ══════════════════════════════════════════════
+           RESPONSIVO
+        ══════════════════════════════════════════════ */
+        @media (max-width: 600px) {
+            header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .header-right { text-align: left; }
+            main { padding: 14px; }
+            #calendar { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ── Cabeçalho Institucional ── -->
+<header>
+    <div class="header-left">
+        <img src="../img/brasao.png" alt="Brasão 10º BPM"
+             onerror="this.style.display='none'">
+        <div class="header-texto">
+            <h1>POLÍCIA MILITAR DE ALAGOAS</h1>
+            <h3>10º BATALHÃO DE POLÍCIA MILITAR — P3 | SEÇÃO DE PLANEJAMENTO</h3>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="badge-publico">🌐 ACESSO PÚBLICO</div>
+        <div id="relogio" style="margin-top:6px;"></div>
+    </div>
+</header>
+
+<!-- ── Legenda de porte ── -->
+<div class="legenda-bar">
+    <span>PORTE DO EVENTO:</span>
+    <div class="legenda-item"><div class="legenda-dot dot-pequeno"></div>Pequeno (até 500 pessoas)</div>
+    <div class="legenda-item"><div class="legenda-dot dot-medio"></div>Médio (501 – 1000 pessoas)</div>
+    <div class="legenda-item"><div class="legenda-dot dot-grande"></div>Grande (acima de 1000 pessoas)</div>
+</div>
+
+<!-- ── Calendário ── -->
+<main>
+    <div id="calendar"></div>
+</main>
+
+<!-- ── Modal de Detalhes ── -->
+<div id="modal-evento">
+    <div class="modal-overlay" onclick="fecharModal()"></div>
+    <div class="modal-box">
+        <h2 id="modal-titulo">Detalhes do Evento</h2>
+
+        <div class="modal-linha">
+            <span class="modal-label">📅 Data:</span>
+            <span class="modal-valor" id="modal-data"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">⏰ Horário:</span>
+            <span class="modal-valor" id="modal-horario"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">📍 Local:</span>
+            <span class="modal-valor" id="modal-local"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">🏙️ Cidade:</span>
+            <span class="modal-valor" id="modal-cidade"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">👥 Público Est.:</span>
+            <span class="modal-valor" id="modal-publico"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">🏢 Organização:</span>
+            <span class="modal-valor" id="modal-organizacao"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">👤 Responsável:</span>
+            <span class="modal-valor" id="modal-responsavel"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label">📞 Telefone:</span>
+            <span class="modal-valor" id="modal-telefone"></span>
+        </div>
+        <div class="modal-linha">
+            <span class="modal-label"> 🚔 Guarnição:</span>
+            <span class="modal-valor" id="modal-guarnicao"></span>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-modal-fechar" onclick="fecharModal()">✕ Fechar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Rodapé ── -->
+<footer>
+    SEÇÃO DE PLANEJAMENTO, ESTATÍSTICA E INSTRUÇÃO — P3 / 10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS
+</footer>
+
+<script>
+    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+
+    /* ── Relógio ── */
+    function atualizarRelogio() {
+        const el = document.getElementById('relogio');
+        if (!el) return;
+        const agora = new Date();
+        el.innerHTML =
+            agora.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'long', year:'numeric' }) +
+            '<br>' + agora.toLocaleTimeString('pt-BR');
+    }
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+
+    /* ── Modal ── */
+    function fecharModal() {
+        document.getElementById('modal-evento').classList.remove('ativo');
+    }
+
+    function abrirModal(eventInfo) {
+        const props = eventInfo.event.extendedProps;
+
+        // Remove prefixo "HH:MM - " do título
+        const titulo = (eventInfo.event.title || '').replace(/^\S+\s-\s/, '');
+        document.getElementById('modal-titulo').textContent = titulo || 'Evento';
+
+        document.getElementById('modal-data').textContent        = props.dataFormatada || '—';
+        document.getElementById('modal-local').textContent       = props.local         || '—';
+        document.getElementById('modal-cidade').textContent      = props.cidade        || '—';
+        document.getElementById('modal-organizacao').textContent = props.organizacao   || '—';
+        document.getElementById('modal-responsavel').textContent = props.responsavel   || '—';
+        document.getElementById('modal-telefone').textContent    = props.telefone      || '—';
+        document.getElementById('modal-publico').textContent     =
+            props.publico ? props.publico + ' pessoas' : '—';
+        document.getElementById('modal-horario').textContent     =
+            props.horarioInicio
+                ? props.horarioInicio + (props.horarioTermino ? ' até ' + props.horarioTermino : '')
+                : '—';
+        document.getElementById('modal-guarnicao').textContent   = props.guarnicoes    || '—';
+
+        document.getElementById('modal-evento').classList.add('ativo');
+    }
+
+    /* ── FullCalendar ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+            locale: 'pt-br',
+            initialView: 'dayGridMonth',
+            headerToolbar: {
+                left:   'prev,next today',
+                center: 'title',
+                right:  'dayGridMonth,timeGridWeek,listMonth'
+            },
+
+            events: async function (info, successCallback, failureCallback) {
+                try {
+                    const response = await fetch(WEB_APP_URL + '?action=read', {
+                        method: 'GET', mode: 'cors', redirect: 'follow'
+                    });
+                    const data = await response.json();
+
+                    const events = data.map(item => {
+                        // DD/MM/YYYY → YYYY-MM-DD
+                        const partes  = (item.DATA || '').split('/');
+                        const dataIso = partes.length === 3
+                            ? `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`
+                            : item.DATA;
+
+                        // Cor por porte
+                        const publico = parseInt(item['ESTIMATIVA DE PÚBLICO']) || 0;
+                        let classe = 'event-pequeno';
+                        if (publico > 500  && publico <= 1000) classe = 'event-medio';
+                        if (publico > 1000)                    classe = 'event-grande';
+
+                        // Badges de guarnição
+                        const guarnicoesList = (item['GUARNICOES'] || '')
+                            .split(',').map(g => g.trim()).filter(Boolean);
+                        const guarHtml = guarnicoesList.map(g =>
+                            `<span class="cal-guarnicao cal-${g.toLowerCase()}">${g}</span>`
+                        ).join('');
+
+                        return {
+                            id:        item.ID,
+                            title:     `${item['HORÁRIO DE INÍCIO'] || ''} - ${item['NOME DO EVENTO'] || ''}`,
+                            start:     dataIso,
+                            className: classe,
+                            extendedProps: {
+                                cidade:         item.CIDADE,
+                                local:          item['LOCAL DO EVENTO'],
+                                dataFormatada:  item.DATA,
+                                horarioInicio:  item['HORÁRIO DE INÍCIO'],
+                                horarioTermino: item['HORÁRIO DE TÉRMINO'],
+                                publico:        item['ESTIMATIVA DE PÚBLICO'],
+                                organizacao:    item['ORGANIZAÇÃO'],
+                                responsavel:    item['NOME DO RESPONSÁVEL'],
+                                telefone:       item.TELEFONE,
+                                guarnicoes:     item['GUARNICOES'] || '',
+                                guarHtml
+                            }
+                        };
+                    });
+
+                    successCallback(events);
+                } catch (err) {
+                    console.error('Erro ao carregar calendário:', err);
+                    failureCallback(err);
+                }
+            },
+
+            eventContent: function (arg) {
+                const props    = arg.event.extendedProps;
+                const guarHtml = props.guarHtml || '';
+                const hora     = props.horarioInicio || '';
+                const nome     = arg.event.title.replace(/^\S+\s-\s/, '');
+                return {
+                    html: `
+                    <div class="fc-event-inner">
+                        <span class="fc-event-hora">${hora}</span>
+                        <span class="fc-event-nome">${nome}</span>
+                        ${guarHtml ? `<div class="fc-event-guarnicoes">${guarHtml}</div>` : ''}
+                    </div>`
+                };
+            },
+
+            eventClick: function (info) { abrirModal(info); }
+        });
+
+        calendar.render();
+
+        // ESC fecha modal
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') fecharModal();
+        });
+    });
+</script>
+</body>
+</html>

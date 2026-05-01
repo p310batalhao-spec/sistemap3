@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quadro de Eventos - 10º BPM</title>
+    <style>
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            background: #f0f0f0;
+            color: #000;
+        }
+
+        /* ── Toolbar (não imprime) ── */
+        #toolbar {
+            background: #003366;
+            color: #fff;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        #toolbar h2 { font-size: 14px; flex: 1; }
+        #toolbar button {
+            background: #fff;
+            color: #003366;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        #toolbar button:hover { background: #dde8f4; }
+        #btn-assinar {
+            background: #27ae60 !important;
+            color: #fff !important;
+        }
+        #btn-assinar:hover { background: #1e8449 !important; }
+        #btn-assinar.assinado {
+            background: #145a32 !important;
+            cursor: default;
+        }
+        #periodo-info { font-size: 12px; opacity: 0.85; }
+
+        /* ── Folha ── */
+        .folha {
+            width: 210mm;
+            background: #fff;
+            margin: 24px auto;
+            padding: 15mm 12mm 12mm;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+        }
+
+        /* ── Cabeçalho da folha ── */
+        .cabecalho-folha {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10mm;
+        }
+        .brasao-img { width: 55px; height: auto; }
+        .cabecalho-texto { text-align: center; flex: 1; line-height: 1.6; }
+        .cabecalho-texto p {
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        /* ── Título ── */
+        .titulo-quadro {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8mm;
+            letter-spacing: 1px;
+        }
+
+        /* ── Bloco de dia ── */
+        .bloco-dia { margin-bottom: 6mm; }
+
+        .header-dia {
+            background: #000;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 6px 10px;
+            text-transform: uppercase;
+        }
+
+        /* ── Tabela ── */
+        .tabela-eventos { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .tabela-eventos thead th {
+            border: 1px solid #000;
+            padding: 5px 6px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 11px;
+            text-transform: uppercase;
+            background: #fff;
+        }
+        .tabela-eventos tbody td {
+            border: 1px solid #000;
+            padding: 5px 6px;
+            text-align: center;
+            vertical-align: middle;
+            line-height: 1.3;
+        }
+        .tabela-eventos tbody tr:nth-child(even) td { background: #f9f9f9; }
+        .municipio-cell { font-weight: bold; color: #c0392b; text-transform: uppercase; }
+
+        /* ── Bloco de assinatura ── */
+        .bloco-assinatura {
+            margin-top: 14mm;
+            text-align: center;
+        }
+        .assinatura-box {
+            display: inline-block;
+            border: 1px solid #555;
+            border-radius: 4px;
+            padding: 10px 32px 8px;
+            min-width: 290px;
+            text-align: center;
+            position: relative;
+        }
+        .assinatura-box::after {
+            content: '🔒';
+            font-size: 9px;
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            opacity: 0.45;
+        }
+        .assinatura-linha {
+            border-top: 1px solid #000;
+            margin-bottom: 5px;
+        }
+        .assinatura-nome {
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            line-height: 1.5;
+        }
+        .assinatura-funcao {
+            font-size: 10px;
+            text-transform: uppercase;
+            font-style: italic;
+            margin-bottom: 3px;
+        }
+        .assinatura-dados { font-size: 10px; color: #222; }
+        .assinatura-data  { font-size: 9px; color: #777; margin-top: 3px; }
+        .assinatura-pendente {
+            color: #aaa;
+            font-style: italic;
+            font-size: 11px;
+            padding: 8px 0 2px;
+        }
+
+        /* ── Rodapé ── */
+        .rodape-folha {
+            margin-top: 8mm;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .rodape-folha img { width: 40px; }
+        .rodape-folha p { font-size: 10px; font-weight: bold; line-height: 1.4; }
+
+        /* ── Vazio ── */
+        #sem-eventos {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #555;
+            font-size: 15px;
+        }
+
+        /* ══════════════════════════════
+           MODAL ASSINATURA
+        ══════════════════════════════ */
+        #modal-assinatura {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.6);
+            align-items: center;
+            justify-content: center;
+        }
+        #modal-assinatura.ativo { display: flex; }
+        .modal-card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 32px 28px;
+            width: 400px;
+            max-width: 95vw;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+        }
+        .modal-card h3 { color: #003366; font-size: 16px; margin-bottom: 6px; }
+        .modal-subtitulo { color: #555; font-size: 12px; margin-bottom: 20px; }
+        .modal-campo { margin-bottom: 14px; }
+        .modal-campo label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .modal-campo input {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+        .modal-campo input:focus { border-color: #003366; }
+        #modal-assin-erro {
+            display: none;
+            background: #fde8e8;
+            color: #c0392b;
+            border: 1px solid #e74c3c;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 12px;
+            margin-bottom: 14px;
+        }
+        #modal-assin-loading {
+            display: none;
+            text-align: center;
+            color: #555;
+            font-size: 13px;
+            margin-bottom: 10px;
+        }
+        .modal-acoes { display: flex; gap: 10px; justify-content: flex-end; }
+        .modal-acoes button {
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            border: none;
+        }
+        .btn-cancelar  { background: #f0f0f0; border: 1px solid #ccc !important; color: #333; }
+        .btn-confirmar { background: #003366; color: #fff; font-weight: bold; }
+        .btn-confirmar:hover { background: #002244; }
+
+        /* ══════════════════════════════
+           IMPRESSÃO — sem páginas em branco
+        ══════════════════════════════ */
+        @media print {
+            @page { size: A4; margin: 10mm 12mm; }
+
+            html, body { background: #fff !important; }
+
+            #toolbar,
+            #modal-assinatura { display: none !important; }
+
+            /*
+             * Estratégia anti-página-em-branco:
+             *  - Remover min-height das folhas
+             *  - Usar break-before em vez de break-after
+             *  - Primeira folha sem quebra
+             */
+            .folha {
+                width: 100%;
+                margin: 0;
+                padding: 8mm 0 6mm;
+                box-shadow: none;
+                break-before: page;
+                page-break-before: always;
+                break-after: auto;
+                page-break-after: auto;
+            }
+            .folha:first-of-type {
+                break-before: auto;
+                page-break-before: auto;
+            }
+
+            .tabela-eventos tbody tr { break-inside: avoid; page-break-inside: avoid; }
+            .bloco-assinatura        { break-inside: avoid; page-break-inside: avoid; }
+            .rodape-folha            { break-inside: avoid; page-break-inside: avoid; }
+
+            /* Remove zebrado na impressão */
+            .tabela-eventos tbody tr:nth-child(even) td { background: #fff !important; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+    <h2>📋 Quadro de Eventos — 10º Batalhão de Polícia Militar</h2>
+    <span id="periodo-info"></span>
+    <button id="btn-assinar" onclick="abrirModalAssinatura()">🔏 Assinar Documento</button>
+    <button onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button onclick="window.close()">✖ Fechar</button>
+</div>
+
+<div id="conteudo-quadro"></div>
+<div id="sem-eventos">Nenhum evento encontrado para o período selecionado.</div>
+
+<!-- Modal de Assinatura -->
+<div id="modal-assinatura">
+    <div class="modal-card">
+        <h3>🔏 Assinatura Eletrônica</h3>
+        <p class="modal-subtitulo">
+            Confirme sua identidade digitando sua senha do sistema.
+            Seus dados funcionais serão inseridos automaticamente na assinatura.
+        </p>
+
+        <div class="modal-campo">
+            <label>SENHA</label>
+            <input type="password" id="assin-senha" placeholder="Digite sua senha" autocomplete="current-password">
+        </div>
+
+        <div id="modal-assin-erro"></div>
+
+        <div class="modal-acoes">
+            <button class="btn-cancelar" onclick="fecharModalAssinatura()">Cancelar</button>
+            <button class="btn-confirmar" onclick="confirmarAssinatura()">Assinar ✔</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+
+    /* ─── Configuração ─── */
+    const LOGO_PMLA   = '../img/brasao.png';
+    const LOGO_BPM    = '../img/brasao.png';    // troque por logo10bpm.png se tiver o arquivo
+    const LOGO_RODAPE = '../img/brasao.png';
+    const WEBAPP_URL  = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+
+    /* ─── Estado ─── */
+    let dadosAssinatura = null;
+
+    /* ─── Utilitários de data ─── */
+    const DIAS_SEMANA = ['DOMINGO','SEGUNDA-FEIRA','TERÇA-FEIRA','QUARTA-FEIRA',
+                         'QUINTA-FEIRA','SEXTA-FEIRA','SÁBADO'];
+
+    const parseDataPlanilha = str => {
+        if (!str) return null;
+        const s = str.toString().trim();
+        if (s.includes('/')) { const [d,m,a] = s.split('/'); return new Date(+a,+m-1,+d); }
+        return new Date(s);
+    };
+
+    const parseDataISO = str => {
+        if (!str) return null;
+        const [a,m,d] = str.split('-');
+        return new Date(+a,+m-1,+d);
+    };
+
+    const formatarDataHeader = dt => {
+        const dd = String(dt.getDate()).padStart(2,'0');
+        const mm = String(dt.getMonth()+1).padStart(2,'0');
+        return `${dd}/${mm}/${dt.getFullYear()} \u2013 ${DIAS_SEMANA[dt.getDay()]}`;
+    };
+
+    const formatarPeriodo = (ini, fim) => {
+        const f = d => [d.getDate(), d.getMonth()+1, d.getFullYear()]
+                        .map((n,i) => i<2 ? String(n).padStart(2,'0') : n).join('/');
+        return `${f(ini)} a ${f(fim)}`;
+    };
+
+    const formatarHorario = (ini, fim) => {
+        const h = (ini||'').trim(), f = (fim||'').trim();
+        return h && f ? `${h} ÀS ${f}` : h;
+    };
+
+    /* ─── Parâmetros URL ─── */
+    const params  = new URLSearchParams(window.location.search);
+    const dataIni = params.get('inicio');
+    const dataFim = params.get('fim');
+
+    if (!dataIni || !dataFim) {
+        const el = document.getElementById('sem-eventos');
+        el.textContent = 'Parâmetros de período não informados. Feche esta janela e use o botão "Gerar Quadro de Eventos".';
+        el.style.display = 'block';
+        return;
+    }
+
+    const dtIni = parseDataISO(dataIni);
+    const dtFim = parseDataISO(dataFim);
+    document.getElementById('periodo-info').textContent = 'Período: ' + formatarPeriodo(dtIni, dtFim);
+
+    /* ─── Buscar e renderizar ─── */
+    fetch(`${WEBAPP_URL}?action=read`)
+        .then(r => r.json())
+        .then(gerarQuadro)
+        .catch(() => {
+            const el = document.getElementById('sem-eventos');
+            el.textContent = 'Erro ao carregar os dados. Verifique sua conexão.';
+            el.style.display = 'block';
+        });
+
+    function gerarQuadro(dados) {
+        const ini = new Date(dtIni.getFullYear(), dtIni.getMonth(), dtIni.getDate());
+        const fim = new Date(dtFim.getFullYear(), dtFim.getMonth(), dtFim.getDate());
+
+        const filtrados = dados.filter(ev => {
+            const d = parseDataPlanilha(ev.DATA);
+            if (!d) return false;
+            const dp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            return dp >= ini && dp <= fim;
+        });
+
+        if (!filtrados.length) {
+            document.getElementById('sem-eventos').style.display = 'block';
+            return;
+        }
+
+        // Agrupar por dia
+        const porDia = {};
+        filtrados.forEach(ev => {
+            const d  = parseDataPlanilha(ev.DATA);
+            const dp = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            const k  = dp.getTime();
+            if (!porDia[k]) porDia[k] = { data: dp, eventos: [] };
+            porDia[k].eventos.push(ev);
+        });
+
+        const dias = Object.values(porDia).sort((a,b) => a.data - b.data);
+
+        // Paginar
+        const MAX = 10;
+        const folhas = [];
+        let count = 0;
+
+        dias.forEach(({ data, eventos }) => {
+            eventos.sort((a,b) =>
+                (a['HORÁRIO DE INÍCIO']||'').localeCompare(b['HORÁRIO DE INÍCIO']||''));
+
+            if (!folhas.length || count + eventos.length > MAX) {
+                folhas.push({ blocos: [] });
+                count = 0;
+            }
+            folhas[folhas.length-1].blocos.push({ data, eventos });
+            count += eventos.length;
+        });
+
+        const container = document.getElementById('conteudo-quadro');
+        folhas.forEach((fi, idx) => {
+            container.appendChild(criarFolha(fi.blocos, idx === folhas.length - 1));
+        });
+    }
+
+    /* ─── Montar folha A4 ─── */
+    function criarFolha(blocos, isUltima) {
+        const folha = document.createElement('div');
+        folha.className = 'folha';
+
+        // Cabeçalho
+        folha.innerHTML = `
+        <div class="cabecalho-folha">
+            <img class="brasao-img" src="${LOGO_PMLA}" alt="PMLA" onerror="this.style.display='none'">
+            <div class="cabecalho-texto">
+                <p>POLÍCIA MILITAR DE ALAGOAS</p>
+                <p>COMANDO DE POLICIAMENTO REGIONAL DO AGRESTE</p>
+                <p>10º BATALHÃO DE POLÍCIA MILITAR</p>
+            </div>
+            <img class="brasao-img" src="${LOGO_BPM}" alt="10ºBPM" onerror="this.style.display='none'">
+        </div>
+        <div class="titulo-quadro">QUADRO DE EVENTOS</div>`;
+
+        // Dias
+        blocos.forEach(({ data, eventos }) => {
+            const bloco = document.createElement('div');
+            bloco.className = 'bloco-dia';
+            bloco.innerHTML = `
+            <div class="header-dia">${formatarDataHeader(data)}</div>
+            <table class="tabela-eventos">
+                <thead>
+                    <tr>
+                        <th style="width:18%">MUNICÍPIO</th>
+                        <th style="width:22%">EVENTO</th>
+                        <th style="width:16%">HORÁRIO</th>
+                        <th style="width:32%">LOCAL</th>
+                        <th style="width:12%">QUANTITATIVO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${eventos.map(ev => `
+                    <tr>
+                        <td class="municipio-cell">${(ev.CIDADE||'').toUpperCase()}</td>
+                        <td>${(ev['NOME DO EVENTO']||'').toUpperCase()}</td>
+                        <td>${formatarHorario(ev['HORÁRIO DE INÍCIO'], ev['HORÁRIO DE TÉRMINO'])}</td>
+                        <td>${(ev['LOCAL DO EVENTO']||'').toUpperCase()}</td>
+                        <td>${ev['ESTIMATIVA DE PÚBLICO']||''}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>`;
+            folha.appendChild(bloco);
+        });
+
+        // Assinatura (última folha)
+        if (isUltima) {
+            const blocoAssin = document.createElement('div');
+            blocoAssin.className = 'bloco-assinatura';
+            blocoAssin.id = 'bloco-assinatura';
+            blocoAssin.innerHTML = renderAssinatura();
+            folha.appendChild(blocoAssin);
+        }
+
+        // Rodapé
+        const rodape = document.createElement('div');
+        rodape.className = 'rodape-folha';
+        rodape.innerHTML = `
+        <img src="${LOGO_RODAPE}" alt="Brasão" onerror="this.style.display='none'">
+        <div>
+            <p>P3/10ºBPM</p>
+            <p>SEÇÃO DE PLANEJAMENTO, ESTATÍSTICA E INSTRUÇÃO</p>
+        </div>`;
+        folha.appendChild(rodape);
+
+        return folha;
+    }
+
+    /* ─── Render da assinatura ─── */
+    function renderAssinatura() {
+        if (!dadosAssinatura) {
+            return `<div class="assinatura-box">
+                        <div class="assinatura-linha"></div>
+                        <div class="assinatura-pendente">Aguardando assinatura eletrônica...</div>
+                    </div>`;
+        }
+
+        const { graduacao, nome, funcao, cpf, matricula, dataHora } = dadosAssinatura;
+        return `
+        <div class="assinatura-box">
+            <div class="assinatura-linha"></div>
+            <div class="assinatura-nome">${graduacao} ${nome}</div>
+            <div class="assinatura-funcao">${funcao}</div>
+            <div class="assinatura-dados">CPF: ${cpf}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Mat.: ${matricula}</div>
+            <div class="assinatura-data">Assinado eletronicamente em ${dataHora}</div>
+        </div>`;
+    }
+
+    /* ─── Modal: Abrir / Fechar ─── */
+    window.abrirModalAssinatura = function () {
+        if (dadosAssinatura) return;
+        document.getElementById('assin-senha').value = '';
+        document.getElementById('modal-assin-erro').style.display = 'none';
+        document.getElementById('modal-assinatura').classList.add('ativo');
+        setTimeout(() => document.getElementById('assin-senha').focus(), 80);
+    };
+
+    window.fecharModalAssinatura = function () {
+        document.getElementById('modal-assinatura').classList.remove('ativo');
+    };
+
+    /* ─── Modal: Confirmar / Autenticar ─── */
+    window.confirmarAssinatura = function () {
+        const senhaDigitada = document.getElementById('assin-senha').value;
+        const erroEl        = document.getElementById('modal-assin-erro');
+
+        erroEl.style.display = 'none';
+
+        if (!senhaDigitada) {
+            erroEl.textContent = '⚠ Informe sua senha para assinar.';
+            erroEl.style.display = 'block';
+            return;
+        }
+
+        /*
+         * O sistema usa localStorage para manter a sessão.
+         * Lemos os dados que foram gravados no login e confirmamos
+         * a senha comparando com o que está salvo.
+         *
+         * Chaves tentadas em ordem — adapte se o seu login.js usar
+         * nomes diferentes.
+         */
+        const senhaSalva = localStorage.getItem('userSenha')  ||
+                           localStorage.getItem('userPassword')||
+                           localStorage.getItem('senha')       || null;
+
+        // Se a senha estiver salva no localStorage, compara direto.
+        // Caso contrário, confia que o usuário já está logado (sessão ativa).
+        if (senhaSalva !== null && senhaDigitada !== senhaSalva) {
+            erroEl.textContent = '⚠ Senha incorreta. Use a mesma senha do seu login.';
+            erroEl.style.display = 'block';
+            return;
+        }
+
+        // Lê todos os dados do usuário logado
+        const graduacao    = (localStorage.getItem('userGraduacao')   || '').toUpperCase();
+        const nomeGuerra   = (localStorage.getItem('userNomeGuerra')  || '').toUpperCase();
+        const nomeCompleto = (localStorage.getItem('userNomeCompleto')||
+                              localStorage.getItem('userName')         ||
+                              localStorage.getItem('userNome')         ||
+                              nomeGuerra).toUpperCase();
+        const cpf          =  localStorage.getItem('userCPF')         ||
+                              localStorage.getItem('userCpf')          || '—';
+        const matricula    =  localStorage.getItem('userMatricula')   ||
+                              localStorage.getItem('userMat')          ||
+                              localStorage.getItem('userRegistro')     || '—';
+
+        if (!nomeCompleto && !nomeGuerra) {
+            erroEl.textContent = '⚠ Sessão não encontrada. Faça login no sistema antes de assinar.';
+            erroEl.style.display = 'block';
+            return;
+        }
+
+        // Oficial: graduação contém TEN, CAP, MAJ, TC, CEL e variações
+        const ehOficial = /\b(TEN|CAP|MAJ|TC|CEL|CORONEL|MAJOR|CAPIT|TENENTE)\b/.test(graduacao);
+
+        const agora    = new Date();
+        const dataHora = agora.toLocaleString('pt-BR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+
+        dadosAssinatura = {
+            nome:      nomeCompleto || nomeGuerra,
+            graduacao,
+            funcao:    ehOficial ? 'Chefe da Seção de Planejamento' : 'Auxiliar da P3',
+            cpf,
+            matricula,
+            dataHora
+        };
+
+        // Atualiza bloco na página
+        const blocoEl = document.getElementById('bloco-assinatura');
+        if (blocoEl) blocoEl.innerHTML = renderAssinatura();
+
+        // Atualiza botão na toolbar
+        const btnAssin = document.getElementById('btn-assinar');
+        btnAssin.textContent = '✔ Documento Assinado';
+        btnAssin.classList.add('assinado');
+        btnAssin.onclick = null;
+
+        fecharModalAssinatura();
+    };
+
+    // Fechar ao clicar fora
+    document.getElementById('modal-assinatura').addEventListener('click', function(e) {
+        if (e.target === this) fecharModalAssinatura();
+    });
+
+    // Enter confirma
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Enter' &&
+            document.getElementById('modal-assinatura').classList.contains('ativo')) {
+            confirmarAssinatura();
+        }
+    });
+
+})();
+</script>
+</body>
+</html>

@@ -60,7 +60,11 @@ async function clicarBotaoGerar() {
             fetchData('geral'), fetchData('cvp'), fetchData('cvli'), fetchData('droga')
         ]);
         const dados = processarDados(rpSelecionada, { geral, cvp, cvli, droga });
-        container.innerHTML = gerarTemplateHTML(dados);
+        const { html, linhasIniciais } = gerarTemplateHTML(dados);
+        container.innerHTML = html;
+        // Popula o tbody APÓS o innerHTML estar no DOM — scripts inline em innerHTML não executam
+        const tbody = container.querySelector('#tbody-cartao');
+        if (tbody) _renderizarTbody(tbody, linhasIniciais);
         document.getElementById('btn-imprimir').style.display = "inline-block";
     } catch (err) {
         container.innerHTML = "<p style='color:red;text-align:center;'>Erro ao carregar dados.</p>";
@@ -484,21 +488,183 @@ function processarDados(cidadeFiltro, db) {
 }
 
 // ================================================================
-// TEMPLATE HTML
+// TEMPLATE HTML — EDITÁVEL
 // ================================================================
+
+/**
+ * Serializa as linhas atuais da tabela para um array de objetos,
+ * lendo os inputs/contenteditable presentes no DOM.
+ * Usado pelo botão "Adicionar Linha" para obter o estado atual.
+ */
+function _lerLinhasDoDOM(tbody) {
+    const linhas = [];
+    tbody.querySelectorAll('tr[data-idx]').forEach(tr => {
+        const critica = tr.dataset.critica === 'true';
+        // Ignora col-drag (indice 0) e col-acoes (ultimo) — so le as 4 colunas de dados
+        const tds = Array.from(tr.querySelectorAll('td')).filter(
+            td => !td.classList.contains('col-drag') && !td.classList.contains('col-acoes')
+        );
+        const val = (td) => {
+            const inp = td ? td.querySelector('input') : null;
+            if (inp) return inp.value;
+            // Rota critica: bairros ficam num <span>, ignora o lock-badge
+            const span = td ? td.querySelector('span:not(.lock-badge)') : null;
+            return span ? span.innerText.trim() : (td ? td.innerText.trim() : '');
+        };
+        linhas.push({
+            ini:     val(tds[0]),
+            fim:     val(tds[1]),
+            miss:    val(tds[2]),
+            det:     val(tds[3]),
+            critica,
+            h:       tr.dataset.h || null,
+        });
+    });
+    return linhas;
+}
+
+/**
+ * Renderiza o <tbody> completo a partir de um array de objetos de linha.
+ * É chamado na geração inicial e sempre que uma linha é adicionada/removida.
+ *
+ * Regras de edição:
+ *  - Linha normal (h !== 'red'):  todos os 4 campos editáveis via <input>
+ *  - Linha de rota crítica (h === 'red'):
+ *      · INÍCIO, FIM e MISSÃO → editáveis via <input>
+ *      · BAIRROS/LOGRADOUROS  → somente leitura (gerado pela análise criminal)
+ *
+ * Todas as linhas têm botão "×" para exclusão.
+ * O botão "+ Linha" abaixo da tabela adiciona uma linha em branco ao final.
+ */
+function _renderizarTbody(tbody, linhas) {
+    tbody.innerHTML = '';
+
+    linhas.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.idx     = idx;
+        tr.dataset.critica = item.critica ? 'true' : 'false';
+        tr.dataset.h       = item.h || '';
+
+        if (item.h === 'red')    { tr.style.backgroundColor = '#ffcccc'; tr.style.fontWeight = 'bold'; }
+        if (item.h === 'orange') { tr.style.backgroundColor = '#ffe0b2'; tr.style.fontWeight = 'bold'; }
+        if (item.h === 'green')  { tr.style.backgroundColor = '#e8f5e9'; }
+
+        const inputStyle = `
+            width:100%; box-sizing:border-box; border:none; background:transparent;
+            font-family:inherit; font-size:inherit; font-weight:inherit;
+            color:inherit; padding:2px 3px; outline:none;
+        `;
+        const readonlyStyle = `
+            width:100%; box-sizing:border-box; padding:2px 3px;
+            font-family:inherit; font-size:inherit; font-weight:inherit;
+            color:#333; background:transparent;
+        `;
+        const tdBase = `border:1px solid #333; padding:4px 6px;`;
+        const bloquearBairros = (item.h === 'red');
+
+        const detHTML = bloquearBairros
+            ? `<span style="${readonlyStyle}" title="Campo gerado pela analise criminal">${item.det}</span>
+               <span class="lock-badge" style="font-size:8px;color:#b71c1c;display:block;margin-top:2px;">&#128274; analise criminal</span>`
+            : `<input type="text" value="${item.det.replace(/"/g, '&quot;')}" style="${inputStyle}" />`;
+
+        tr.innerHTML = `
+            <td class="col-drag" style="border:none;padding:0 6px;text-align:center;cursor:grab;color:#aaa;font-size:18px;user-select:none;" title="Arrastar para reordenar">&#8942;</td>
+            <td style="${tdBase} text-align:center;white-space:nowrap;">
+                <input type="text" value="${item.ini}" style="${inputStyle} text-align:center;" />
+            </td>
+            <td style="${tdBase} text-align:center;white-space:nowrap;">
+                <input type="text" value="${item.fim}" style="${inputStyle} text-align:center;" />
+            </td>
+            <td style="${tdBase} font-weight:bold;">
+                <input type="text" value="${item.miss.replace(/"/g, '&quot;')}" style="${inputStyle} font-weight:bold;text-transform:uppercase;" />
+            </td>
+            <td style="${tdBase}">
+                ${detHTML}
+            </td>
+            <td class="col-acoes" style="border:none;padding:0 4px;text-align:center;white-space:nowrap;">
+                <button onclick="_removerLinha(this)" title="Remover linha"
+                    style="background:#c0392b;color:white;border:none;border-radius:4px;
+                           padding:3px 8px;cursor:pointer;font-size:12px;line-height:1;">&#215;</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    _iniciarSortable(tbody);
+}
+
+/**
+ * Carrega SortableJS via CDN (uma vez) e ativa drag-and-drop no tbody.
+ */
+function _iniciarSortable(tbody) {
+    const _ativar = () => {
+        if (tbody._sortable) tbody._sortable.destroy();
+        tbody._sortable = new Sortable(tbody, {
+            animation:   150,
+            handle:      '.col-drag',
+            ghostClass:  'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd() {
+                // Apenas reindexar data-idx — sem re-renderizar o tbody inteiro
+                // (evita loop e preserva todos os valores digitados nos inputs)
+                tbody.querySelectorAll('tr[data-idx]').forEach((tr, i) => {
+                    tr.dataset.idx = i;
+                });
+            }
+        });
+    };
+    if (typeof Sortable !== 'undefined') {
+        _ativar();
+    } else {
+        // Carrega o script apenas se ainda nao estiver no DOM
+        if (!document.querySelector('script[data-sortable]')) {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js';
+            s.dataset.sortable = '1';
+            s.onload = _ativar;
+            document.head.appendChild(s);
+        }
+    }
+}
+
+
+/**
+ * Remove a linha cujo botão "×" foi clicado.
+ * Relê todo o estado atual antes de remover para preservar edições feitas.
+ */
+function _removerLinha(btn) {
+    const tr    = btn.closest('tr');
+    const tbody = tr.closest('tbody');
+    const idx   = parseInt(tr.dataset.idx, 10);
+    const linhas = _lerLinhasDoDOM(tbody);
+    linhas.splice(idx, 1);
+    _renderizarTbody(tbody, linhas);
+}
+
+/**
+ * Adiciona uma linha em branco após a última linha da tabela.
+ * Preserva todas as edições já feitas pelo usuário.
+ */
+function _adicionarLinha(btn) {
+    const tbody  = btn.closest('.card-programa').querySelector('tbody');
+    const linhas = _lerLinhasDoDOM(tbody);
+    linhas.push({ ini: '00:00', fim: '00:00', miss: 'NOVA MISSÃO', det: '', critica: false, h: null });
+    _renderizarTbody(tbody, linhas);
+}
+
 function gerarTemplateHTML(data) {
 
-    const linhas = data.cronograma.map(i => {
-        let cls   = i.h && i.h !== 'orange' ? `highlight-${i.h}` : '';
-        let style = i.h === 'orange' ? 'background-color:#ffe0b2; font-weight:bold;' : '';
-        return `
-        <tr class="${cls}" style="${style}">
-            <td style="text-align:center;border:1px solid #333;padding:5px;white-space:nowrap;">${i.ini}</td>
-            <td style="text-align:center;border:1px solid #333;padding:5px;white-space:nowrap;">${i.fim}</td>
-            <td style="font-weight:bold;border:1px solid #333;padding:5px;">${i.miss.toUpperCase()}</td>
-            <td style="border:1px solid #333;padding:5px;">${i.det.toUpperCase()}</td>
-        </tr>`;
-    }).join('');
+    // Converte o cronograma para o formato interno (adiciona flag critica)
+    // Retornamos também as linhas para que clicarBotaoGerar possa popular o tbody
+    // APÓS o innerHTML ser inserido no DOM (scripts inline em innerHTML não executam).
+    const linhasIniciais = data.cronograma.map(i => ({
+        ini:     i.ini,
+        fim:     i.fim,
+        miss:    i.miss || '',
+        det:     i.det  || '',
+        critica: i.h === 'red',
+        h:       i.h || null,
+    }));
 
     const resumoHTML = data.totalQtd > 0 ? `
         <div style="margin:8px 0;padding:6px 10px;background:#f0f5ff;
@@ -528,14 +694,49 @@ function gerarTemplateHTML(data) {
             <span style="font-size:8px;color:#777;">Prioridade: GRAVIDADE &gt; QUANTIDADE</span>
         </div>`;
 
-    return `
+    const html = `
     <style>
-        .card-programa{border:3px solid #003366;padding:15px;background:#fff;font-family:Arial,sans-serif;font-size:11px;}
-        .table-c{width:100%;border-collapse:collapse;margin-top:10px;}
-        .table-c th{background:#003366;color:white;padding:8px;border:1px solid #333;}
-        .highlight-red{background-color:#ffcccc;font-weight:bold;}
-        .highlight-white{background-color:#fffff;}
-        .assinatura{text-align:center;margin-top:20px;}
+        .card-programa {
+            border:3px solid #003366; padding:15px; background:#fff;
+            font-family:Arial,sans-serif; font-size:11px;
+        }
+        .table-c { width:100%; border-collapse:collapse; margin-top:10px; }
+        .table-c th { background:#003366; color:white; padding:8px; border:1px solid #333; }
+
+        /* Drag-and-drop visual feedback */
+        .sortable-ghost   { opacity:0.4; background:#cfe2ff !important; }
+        .sortable-chosen  { box-shadow:0 2px 8px rgba(0,0,0,0.25); }
+        .col-drag:hover   { color:#003366 !important; }
+
+        .table-c input:focus { background:#fffde7 !important; outline:1px solid #003366; border-radius:2px; }
+        .assinatura { text-align:center; margin-top:20px; }
+        .btn-add-linha {
+            margin-top:8px; padding:6px 16px; background:#003366; color:white;
+            border:none; border-radius:5px; cursor:pointer; font-size:11px; font-weight:bold;
+        }
+        .btn-add-linha:hover { background:#0056b3; }
+        .barra-edicao {
+            display:flex; align-items:center; gap:8px; margin-top:6px;
+            padding:6px 8px; background:#f0f5ff; border:1px dashed #90a4ae;
+            border-radius:5px; font-size:10px; color:#37474f;
+        }
+
+        /* ===== IMPRESSAO LIMPA ===== */
+        @media print {
+            .col-acoes,
+            .col-drag,
+            .barra-edicao,
+            .btn-add-linha,
+            .lock-badge           { display:none !important; }
+
+            .table-c input {
+                border:none !important;
+                background:transparent !important;
+                pointer-events:none;
+                -webkit-appearance:none;
+                appearance:none;
+            }
+        }
     </style>
     <div class="card-programa">
         <div style="display:flex;justify-content:space-between;align-items:center;
@@ -555,16 +756,27 @@ function gerarTemplateHTML(data) {
         ${resumoHTML}
         ${legendaHTML}
 
+        <div class="barra-edicao">
+            ✏️ <strong>Modo edição ativo:</strong>
+            clique em qualquer campo para editar.
+            Linhas 🔒 ROTA CRÍTICA têm bairros protegidos (análise criminal).
+            Use <strong>×</strong> para remover e o botão abaixo para adicionar linhas.
+        </div>
+
         <table class="table-c">
             <thead>
                 <tr>
+                    <th class="col-drag" style="background:#003366;border:1px solid #333;padding:8px;width:20px;"></th>
                     <th>INÍCIO</th><th>FIM</th>
                     <th>MISSÃO</th>
                     <th>BAIRROS / LOGRADOUROS DE PATRULHAMENTO</th>
+                    <th class="col-acoes" style="background:#003366;border:1px solid #333;padding:8px;width:32px;"></th>
                 </tr>
             </thead>
-            <tbody>${linhas}</tbody>
+            <tbody id="tbody-cartao"></tbody>
         </table>
+
+        <button class="btn-add-linha" onclick="_adicionarLinha(this)">＋ Adicionar Linha</button>
 
         <div class="assinatura">
             <p>_______________________________________________________</p>
@@ -582,4 +794,6 @@ function gerarTemplateHTML(data) {
             <strong style="font-size:10px;color:#003366;">SEÇÃO DE PLANEJAMENTO, INSTRUÇÃO E ESTATÍSTICA - P3/10ºBPM</strong>
         </div>
     </div>`;
+
+    return { html, linhasIniciais };
 }
