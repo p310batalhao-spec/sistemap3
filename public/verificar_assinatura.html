@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação de Assinatura Eletrônica — P3/10º BPM</title>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase compat -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f8;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(90deg, #0a2d6b, #0a448f, #1464b5);
+            color: #fff;
+            padding: 1.1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            box-shadow: 0 3px 12px rgba(0,0,0,.2);
+        }
+        .header-brasao { height: 52px; }
+        .header-txt h1 { font-size: 1rem; font-weight: bold; letter-spacing: .04em; }
+        .header-txt h3 { font-size: .75rem; opacity: .75; font-weight: normal; margin-top: 2px; }
+
+        /* ── Conteúdo ── */
+        .wrap {
+            max-width: 680px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        /* ── Título da seção ── */
+        .secao-titulo {
+            text-align: center;
+            padding: 1.5rem 1rem 1rem;
+        }
+        .secao-titulo .icone {
+            font-size: 2.8rem;
+            margin-bottom: .5rem;
+            display: block;
+        }
+        .secao-titulo h2 {
+            font-size: 1.25rem;
+            color: #1a237e;
+            font-weight: bold;
+        }
+        .secao-titulo p {
+            font-size: .82rem;
+            color: #546e7a;
+            margin-top: .4rem;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,.08);
+        }
+
+        /* ── Campo de busca ── */
+        .busca-row {
+            display: flex;
+            gap: .75rem;
+            align-items: center;
+        }
+        .busca-row input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #d0d5e8;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: monospace;
+            letter-spacing: .06em;
+            text-transform: uppercase;
+            transition: border-color .2s;
+        }
+        .busca-row input:focus {
+            outline: none;
+            border-color: #1565c0;
+        }
+        .busca-row input::placeholder {
+            font-family: Arial, sans-serif;
+            letter-spacing: normal;
+            text-transform: none;
+            color: #90a4ae;
+        }
+        .btn-verificar {
+            padding: 12px 20px;
+            background: #1565c0;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: .9rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            white-space: nowrap;
+            transition: background .2s;
+        }
+        .btn-verificar:hover { background: #0d47a1; }
+        .btn-verificar:disabled { opacity: .5; cursor: not-allowed; }
+
+        /* ── Resultado: válido ── */
+        .resultado-valido {
+            display: none;
+            border: 2px solid #2e7d32;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .resultado-valido .topo {
+            background: linear-gradient(135deg, #2e7d32, #388e3c);
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .resultado-valido .topo .check-icon {
+            width: 48px; height: 48px;
+            background: rgba(255,255,255,.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .resultado-valido .topo h3 { font-size: 1.1rem; font-weight: bold; }
+        .resultado-valido .topo p  { font-size: .78rem; opacity: .85; margin-top: 2px; }
+
+        .resultado-valido .corpo {
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+        }
+
+        /* ── Resultado: inválido ── */
+        .resultado-invalido {
+            display: none;
+            border: 2px solid #c62828;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .resultado-invalido .topo {
+            background: linear-gradient(135deg, #c62828, #e53935);
+            color: #fff;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .resultado-invalido .topo .x-icon {
+            width: 48px; height: 48px;
+            background: rgba(255,255,255,.2);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+        .resultado-invalido .topo h3 { font-size: 1.1rem; font-weight: bold; }
+        .resultado-invalido .topo p  { font-size: .78rem; opacity: .85; margin-top: 2px; }
+        .resultado-invalido .corpo {
+            padding: 1.25rem 1.5rem;
+            font-size: .85rem;
+            color: #546e7a;
+            line-height: 1.6;
+        }
+
+        /* ── Linhas de dado ── */
+        .dado-row {
+            display: flex;
+            align-items: flex-start;
+            padding: .65rem 0;
+            border-bottom: 1px solid #f0f2f8;
+            gap: .75rem;
+            font-size: .85rem;
+        }
+        .dado-row:last-child { border-bottom: none; }
+        .dado-label {
+            color: #546e7a;
+            font-weight: bold;
+            min-width: 180px;
+            flex-shrink: 0;
+            font-size: .78rem;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            padding-top: 2px;
+        }
+        .dado-valor {
+            color: #1a1f36;
+            word-break: break-word;
+        }
+
+        /* ── Badge de código ── */
+        .badge-codigo {
+            display: inline-block;
+            font-family: monospace;
+            font-size: 1.05rem;
+            font-weight: bold;
+            letter-spacing: .1em;
+            color: #1a237e;
+            background: #e8eaf6;
+            border: 1.5px solid #7986cb;
+            border-radius: 5px;
+            padding: 3px 10px;
+        }
+
+        /* ── Badge status ── */
+        .badge-valido {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+            color: #2e7d32;
+            border-radius: 4px;
+            padding: 3px 10px;
+            font-size: .78rem;
+            font-weight: bold;
+        }
+
+        /* ── Bloco de dados do documento ── */
+        .doc-bloco {
+            margin-top: .5rem;
+            background: #f8f9ff;
+            border: 1px solid #e8ecf5;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+        }
+        .doc-bloco-titulo {
+            font-size: .75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #546e7a;
+            margin-bottom: .6rem;
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+        }
+
+        /* ── Loader ── */
+        .loader-row {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: .75rem;
+            padding: 1.5rem;
+            color: #546e7a;
+            font-size: .85rem;
+        }
+        .spinner {
+            width: 22px; height: 22px;
+            border: 3px solid #e8ecf5;
+            border-top-color: #1565c0;
+            border-radius: 50%;
+            animation: giro 1s linear infinite;
+        }
+        @keyframes giro { to { transform: rotate(360deg); } }
+
+        /* ── Aviso legal ── */
+        .aviso-legal {
+            background: #fff8e1;
+            border: 1px solid #ffe082;
+            border-radius: 8px;
+            padding: .85rem 1rem;
+            font-size: .75rem;
+            color: #5d4037;
+            line-height: 1.6;
+        }
+        .aviso-legal strong { color: #e65100; }
+
+        /* ── Footer ── */
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: .75rem;
+            color: #90a4ae;
+            border-top: 1px solid #e8ecf5;
+            margin-top: auto;
+        }
+        footer img { height: 22px; vertical-align: middle; margin-right: 6px; }
+
+        @media (max-width: 500px) {
+            .busca-row { flex-direction: column; }
+            .btn-verificar { width: 100%; justify-content: center; }
+            .dado-label { min-width: 130px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <img src="../img/brasao.png" class="header-brasao" alt="brasão 10º BPM">
+    <div class="header-txt">
+        <h1>SISTEMA DE GERENCIAMENTO P3 — 10º BPM</h1>
+        <h3>Polícia Militar de Alagoas · Autenticação de Documentos Eletrônicos</h3>
+    </div>
+</div>
+
+<div class="wrap">
+
+    <!-- Título -->
+    <div class="secao-titulo">
+        <span class="icone">🔐</span>
+        <h2>Verificação de Assinatura Eletrônica</h2>
+        <p>Digite o código de autenticação do documento para verificar sua validade e autenticidade.</p>
+    </div>
+
+    <!-- Campo de busca -->
+    <div class="card">
+        <div style="margin-bottom:.75rem;font-size:.82rem;font-weight:bold;color:#374263;">
+            <i class="fas fa-search" style="margin-right:.3rem;color:#1565c0;"></i>
+            Código de Autenticação
+        </div>
+        <div class="busca-row">
+            <input type="text" id="inp-codigo"
+                placeholder="Ex: P3-A1B2C3D4"
+                maxlength="12"
+                oninput="this.value = this.value.toUpperCase()"
+                onkeydown="if(event.key==='Enter') verificar()">
+            <button class="btn-verificar" id="btn-verificar" onclick="verificar()">
+                <i class="fas fa-shield-alt"></i>
+                Verificar
+            </button>
+        </div>
+        <div style="font-size:.72rem;color:#90a4ae;margin-top:.5rem;">
+            O código está no rodapé do documento assinado, no formato P3-XXXXXXXX.
+        </div>
+
+        <!-- Loader -->
+        <div class="loader-row" id="loader">
+            <div class="spinner"></div>
+            Consultando a base de dados...
+        </div>
+    </div>
+
+    <!-- Resultado: VÁLIDO -->
+    <div class="resultado-valido" id="res-valido">
+        <div class="topo">
+            <div class="check-icon">✅</div>
+            <div>
+                <h3>Assinatura Eletrônica Válida</h3>
+                <p id="res-valido-sub">Documento autenticado com sucesso no sistema P3/10º BPM.</p>
+            </div>
+        </div>
+        <div class="corpo">
+
+            <!-- Dados da assinatura -->
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-hashtag"></i> Código</span>
+                <span class="dado-valor"><span class="badge-codigo" id="rv-codigo"></span></span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-check-circle"></i> Status</span>
+                <span class="dado-valor">
+                    <span class="badge-valido">
+                        <i class="fas fa-lock"></i> Assinatura Válida e Íntegra
+                    </span>
+                </span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-user"></i> Assinante</span>
+                <span class="dado-valor" id="rv-nome"></span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-id-badge"></i> Graduação / Cargo</span>
+                <span class="dado-valor" id="rv-cargo"></span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-id-card"></i> CPF</span>
+                <span class="dado-valor" id="rv-cpf"></span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-calendar-check"></i> Data / Hora</span>
+                <span class="dado-valor" id="rv-datahora"></span>
+            </div>
+            <div class="dado-row">
+                <span class="dado-label"><i class="fas fa-file-alt"></i> Tipo de Documento</span>
+                <span class="dado-valor" id="rv-tipo"></span>
+            </div>
+
+            <!-- Dados do documento -->
+            <div class="doc-bloco" id="rv-doc-bloco">
+                <div class="doc-bloco-titulo">
+                    <i class="fas fa-file-contract"></i> Dados do Documento
+                </div>
+                <div id="rv-doc-conteudo"></div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Resultado: INVÁLIDO / NÃO ENCONTRADO -->
+    <div class="resultado-invalido" id="res-invalido">
+        <div class="topo">
+            <div class="x-icon">❌</div>
+            <div>
+                <h3>Código Não Encontrado</h3>
+                <p>Este código não foi localizado na base de dados do sistema P3/10º BPM.</p>
+            </div>
+        </div>
+        <div class="corpo">
+            <p>
+                O código <strong id="ri-codigo"></strong> não está registrado ou foi revogado.<br><br>
+                Possíveis causas:
+            </p>
+            <ul style="margin-top:.75rem;padding-left:1.5rem;line-height:2;">
+                <li>O código foi digitado incorretamente</li>
+                <li>O documento foi gerado antes da implantação do sistema de assinaturas</li>
+                <li>A assinatura foi revogada por autoridade competente</li>
+                <li>O documento é falso ou adulterado</li>
+            </ul>
+            <p style="margin-top:1rem;font-weight:bold;color:#c62828;">
+                <i class="fas fa-exclamation-triangle"></i>
+                Em caso de suspeita de falsificação, comunique imediatamente à P3/10º BPM.
+            </p>
+        </div>
+    </div>
+
+    <!-- Aviso legal -->
+    <div class="aviso-legal">
+        <strong>⚖️ Validade Jurídica:</strong>
+        Esta assinatura eletrônica é produzida e armazenada no sistema de gerenciamento P3 do 10º Batalhão de
+        Polícia Militar de Alagoas. A autenticidade é garantida pelo registro em banco de dados seguro com
+        identificação funcional do servidor. Esta verificação <strong>não substitui</strong> a validação por
+        certificado digital ICP-Brasil, mas constitui evidência documental válida no âmbito administrativo interno.
+    </div>
+
+</div>
+
+<footer>
+    <img src="../img/brasao.png" alt="brasão">
+    Seção de Planejamento, Instrução e Estatística — P3/10ºBPM · Sistema de Autenticação de Documentos
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// VERIFICAÇÃO DE ASSINATURA — P3/10º BPM
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Firebase ───────────────────────────────────────────────────────
+const firebaseConfig = {
+    apiKey:            "AIzaSyAFflO2pvI7nFDNwFdK86-TK18o6_cpXr4",
+    authDomain:        "sistema-p3.firebaseapp.com",
+    projectId:         "sistema-p3",
+    storageBucket:     "sistema-p3.firebasestorage.app",
+    messagingSenderId: "186813662716",
+    appId:             "1:186813662716:web:e2a85cc956ed561c541e79",
+    databaseURL:       "https://sistema-p3-default-rtdb.firebaseio.com"
+};
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ── Mapa de tipos de documento para exibição ───────────────────────
+const TIPOS_DOC = {
+    requerimento_pericia: 'Requisição de Exame Pericial',
+    tco:                  'Termo Circunstanciado de Ocorrência',
+    documento:            'Documento Administrativo',
+};
+
+// ── Lê código da URL (query string ?codigo=P3-XXXXXXXX) ───────────
+window.addEventListener('DOMContentLoaded', () => {
+    const params = new URLSearchParams(window.location.search);
+    const codigo = params.get('codigo');
+    if (codigo) {
+        document.getElementById('inp-codigo').value = codigo.toUpperCase();
+        verificar();
+    }
+});
+
+// ── Verificar assinatura ───────────────────────────────────────────
+async function verificar() {
+    const rawInput = document.getElementById('inp-codigo').value.trim().toUpperCase();
+    if (!rawInput) {
+        document.getElementById('inp-codigo').focus();
+        return;
+    }
+
+    // Garante formato P3-XXXXXXXX
+    const codigo = rawInput.startsWith('P3-') ? rawInput : 'P3-' + rawInput;
+
+    // UI: loader
+    esconderResultados();
+    document.getElementById('loader').style.display = 'flex';
+    document.getElementById('btn-verificar').disabled = true;
+
+    try {
+        const snap = await db.ref(`assinaturas/${codigo}`).once('value');
+        const dados = snap.val();
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('btn-verificar').disabled = false;
+
+        if (!dados || dados.valido === false) {
+            mostrarInvalido(codigo);
+        } else {
+            mostrarValido(dados, codigo);
+        }
+    } catch(err) {
+        console.error('[Verificação]', err);
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('btn-verificar').disabled = false;
+        mostrarInvalido(codigo, true);
+    }
+}
+
+// ── Exibe resultado VÁLIDO ─────────────────────────────────────────
+function mostrarValido(d, codigo) {
+    document.getElementById('rv-codigo').textContent   = codigo;
+    document.getElementById('rv-nome').textContent     = d.assinante_nome || '—';
+    document.getElementById('rv-cargo').textContent    = `${d.assinante_grad || ''} · ${d.assinante_cargo || ''}`;
+    document.getElementById('rv-cpf').textContent      = d.assinante_cpf || '—';
+    document.getElementById('rv-datahora').textContent = d.data_hora || '—';
+    document.getElementById('rv-tipo').textContent     = TIPOS_DOC[d.tipo_documento] || d.tipo_documento || '—';
+
+    // Dados do documento referenciado
+    const doc = d.documento || {};
+    const camposDoc = [
+        { label: 'Nº do Ofício/Boletim', valor: doc.numero_oficio || doc.num_tco || '—' },
+        { label: 'Nº do Lacre',          valor: doc.num_lacre     || '—' },
+        { label: 'Autor/Envolvido',      valor: doc.autor         || '—' },
+        { label: 'Data da Ocorrência',   valor: doc.data_ocorrencia || '—' },
+        { label: 'Substância/Material',  valor: doc.substancia    || '—' },
+    ].filter(c => c.valor && c.valor !== '—');
+
+    document.getElementById('rv-doc-conteudo').innerHTML = camposDoc.length
+        ? camposDoc.map(c => `
+            <div style="display:flex;gap:.75rem;padding:5px 0;border-bottom:1px solid #e8ecf5;
+                        font-size:.82rem;">
+                <span style="color:#546e7a;min-width:160px;flex-shrink:0;font-weight:bold;
+                             font-size:.75rem;text-transform:uppercase;letter-spacing:.03em;
+                             padding-top:2px;">${c.label}</span>
+                <span style="color:#1a1f36;">${c.valor}</span>
+            </div>`).join('')
+        : '<span style="color:#90a4ae;font-size:.78rem;">Dados do documento não disponíveis.</span>';
+
+    document.getElementById('res-valido-sub').textContent =
+        `Assinado por ${d.assinante_nome} em ${d.data_hora}`;
+
+    // Animação de entrada
+    const el = document.getElementById('res-valido');
+    el.style.display = 'block';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(10px)';
+    requestAnimationFrame(() => {
+        el.style.transition = 'opacity .4s, transform .4s';
+        el.style.opacity = '1';
+        el.style.transform = 'translateY(0)';
+    });
+}
+
+// ── Exibe resultado INVÁLIDO ───────────────────────────────────────
+function mostrarInvalido(codigo, erroConexao = false) {
+    document.getElementById('ri-codigo').textContent = codigo;
+    if (erroConexao) {
+        document.querySelector('#res-invalido .topo h3').textContent = 'Erro de Conexão';
+        document.querySelector('#res-invalido .topo p').textContent =
+            'Não foi possível consultar o banco de dados. Verifique sua internet.';
+    } else {
+        document.querySelector('#res-invalido .topo h3').textContent = 'Código Não Encontrado';
+        document.querySelector('#res-invalido .topo p').textContent =
+            'Este código não foi localizado na base de dados do sistema P3/10º BPM.';
+    }
+    const el = document.getElementById('res-invalido');
+    el.style.display = 'block';
+    el.style.opacity = '0';
+    requestAnimationFrame(() => {
+        el.style.transition = 'opacity .4s';
+        el.style.opacity = '1';
+    });
+}
+
+function esconderResultados() {
+    document.getElementById('res-valido').style.display   = 'none';
+    document.getElementById('res-invalido').style.display = 'none';
+}
+</script>
+</body>
+</html>

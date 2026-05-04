@@ -8,6 +8,45 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/styledrogas.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <!-- Firebase para consulta de assinaturas -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+    <style>
+        /* ── Badges de status de requerimento/assinatura ── */
+        .badge-assinado {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #e8f5e9; color: #2e7d32;
+            border: 1px solid #a5d6a7; border-radius: 4px;
+            padding: 2px 7px; font-size: 10px; font-weight: bold;
+            white-space: nowrap; cursor: pointer;
+            text-decoration: none;
+        }
+        .badge-assinado:hover { background: #c8e6c9; }
+        .badge-pendente {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #fff8e1; color: #e65100;
+            border: 1px solid #ffe082; border-radius: 4px;
+            padding: 2px 7px; font-size: 10px; font-weight: bold;
+            white-space: nowrap;
+        }
+        .badge-sem-req {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: #f5f5f5; color: #9e9e9e;
+            border: 1px solid #e0e0e0; border-radius: 4px;
+            padding: 2px 7px; font-size: 10px;
+            white-space: nowrap;
+        }
+        .badge-loading {
+            display: inline-block;
+            width: 12px; height: 12px;
+            border: 2px solid #e0e0e0;
+            border-top-color: #1565c0;
+            border-radius: 50%;
+            animation: spin-badge 1s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin-badge { to { transform: rotate(360deg); } }
+    </style>
 </head>
 
 <body>
@@ -173,6 +212,7 @@
                                 <th>NUMERO_LACRE</th>
                                 <th>MOVIMENTAÇÃO</th>
                                 <th>NOME DO AUTOR</th>
+                                <th>REQUERIMENTO</th>
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
@@ -477,10 +517,16 @@
                 <td>${doc['NUMERO_LACRE'] || ""}</td>
                 <td>${doc['Movimentação'] || doc.MOVIMENTAÇÃO || ""}</td>
                 <td>${doc['NOME DO AUTOR'] || doc.AUTOR || ""}</td>
+                <td id="req-status-${doc.BOLETIM || doc.id_realtime}">
+                    <span class="badge-loading"></span>
+                </td>
                 <td><button class="btn-editar" onclick='preencherParaEditar(${stringDoc})'>EDITAR</button></td>
             `;
             tbody.appendChild(tr);
         });
+
+        // Consulta Firebase para cada linha — busca assinatura pelo num_tco (boletim)
+        carregarStatusAssinaturas(data);
     }
 
     // --- 3. CARDS ---
@@ -727,12 +773,90 @@
 
             localStorage.setItem('dadosRequerimento', JSON.stringify(dadosParaRequerimento));
             document.getElementById('modal-busca-requerimento').style.display = 'none';
+            invalidarCacheAssinaturas(); // força reload do status ao voltar
             window.open('../termos/requerimento_pericia.html', '_blank');
+
+            // Recarrega status após 8s para capturar assinatura feita na nova aba
+            setTimeout(() => {
+                invalidarCacheAssinaturas();
+                carregarStatusAssinaturas(filtradosAtivos || allDrogas);
+            }, 8000);
 
         } catch (err) {
             console.error("Erro ao gerar requerimento:", err);
             alert("Erro técnico ao cruzar dados dos autores.");
         }
+    }
+
+    // ── Firebase (assinaturas) ───────────────────────────────────────
+    const FB_CONFIG = {
+        apiKey:            "AIzaSyAFflO2pvI7nFDNwFdK86-TK18o6_cpXr4",
+        authDomain:        "sistema-p3.firebaseapp.com",
+        databaseURL:       "https://sistema-p3-default-rtdb.firebaseio.com",
+        projectId:         "sistema-p3",
+        storageBucket:     "sistema-p3.firebasestorage.app",
+        messagingSenderId: "186813662716",
+        appId:             "1:186813662716:web:e2a85cc956ed561c541e79"
+    };
+    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
+    const dbFB = firebase.database();
+
+    // Cache local para não repetir consultas ao Firebase
+    const _cacheAssinaturas = {}; // { numBoletim: { codigo, data_hora, assinante_nome } | null }
+
+    // ── Carrega status de assinatura de todos os registros exibidos ──
+    // Consulta o nó /assinaturas e filtra pelo num_tco do documento
+    let _assinaturasCarregadas = null; // snapshot único para evitar N leituras
+
+    async function carregarStatusAssinaturas(listaRegistros) {
+        try {
+            // Carrega todas as assinaturas uma vez (snapshot único)
+            if (!_assinaturasCarregadas) {
+                const snap = await dbFB.ref('assinaturas').once('value');
+                _assinaturasCarregadas = snap.val() || {};
+            }
+
+            listaRegistros.forEach(doc => {
+                const boletim = String(doc.BOLETIM || '').trim();
+                const cellId  = `req-status-${boletim || doc.id_realtime}`;
+                const cell    = document.getElementById(cellId);
+                if (!cell) return;
+
+                // Procura assinatura cujo documento.num_tco === boletim
+                const assinatura = Object.values(_assinaturasCarregadas).find(a =>
+                    a && a.documento && String(a.documento.num_tco || '').trim() === boletim
+                );
+
+                if (assinatura) {
+                    // ✅ Requerimento gerado E assinado
+                    const urlVerif = `../page/verificar_assinatura.html?codigo=${assinatura.codigo}`;
+                    cell.innerHTML = `
+                        <a href="${urlVerif}" target="_blank" class="badge-assinado"
+                           title="Assinado por ${assinatura.assinante_nome} em ${assinatura.data_hora}. Clique para verificar.">
+                            ✅ Assinado
+                        </a>
+                        <div style="font-size:9px;color:#546e7a;margin-top:2px;">
+                            ${assinatura.assinante_nome}<br>${assinatura.data_hora}
+                        </div>`;
+                } else if (boletim) {
+                    // ⏳ Boletim existe mas sem assinatura registrada
+                    cell.innerHTML = `
+                        <span class="badge-pendente" title="Requerimento ainda não assinado eletronicamente">
+                            ⏳ Pendente
+                        </span>`;
+                } else {
+                    // Sem boletim
+                    cell.innerHTML = `<span class="badge-sem-req">—</span>`;
+                }
+            });
+        } catch(err) {
+            console.warn('[Assinaturas]', err);
+        }
+    }
+
+    // Invalida cache ao gerar novo requerimento (para atualizar status após assinar)
+    function invalidarCacheAssinaturas() {
+        _assinaturasCarregadas = null;
     }
 
     // --- INICIALIZAÇÃO ---

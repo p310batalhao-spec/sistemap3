@@ -40,7 +40,8 @@
             margin: 25px 0;
         }
 
-        th, td {
+        th,
+        td {
             border: 1px solid black;
             padding: 6px;
             text-align: center;
@@ -66,6 +67,56 @@
             margin-right: auto;
         }
 
+        /* Bloco exibido quando documento JÁ FOI assinado anteriormente */
+        #bloco-ja-assinado {
+            border: 2px solid #2e7d32;
+            border-radius: 8px;
+            padding: 16px 20px;
+            background: #f1f8f1;
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #1b5e20;
+        }
+        #bloco-ja-assinado .ja-assinado-titulo {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #bloco-ja-assinado .ja-assinado-dado {
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        #bloco-ja-assinado .ja-assinado-codigo {
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: bold;
+            color: #1a237e;
+            background: #e8eaf6;
+            border: 1px solid #9fa8da;
+            border-radius: 4px;
+            padding: 2px 8px;
+            letter-spacing: .08em;
+        }
+        #bloco-ja-assinado a {
+            color: #1565c0;
+            font-size: 11px;
+            display: block;
+            margin-top: 8px;
+        }
+        #bloco-ja-assinado .aviso-bloqueio {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #fff3e0;
+            border: 1px solid #ffe0b2;
+            border-radius: 5px;
+            color: #e65100;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
         /* Bloco visível ANTES de assinar */
         #bloco-pendente {
             border: 1.5px dashed #999;
@@ -76,11 +127,13 @@
             font-family: Arial, sans-serif;
             font-size: 13px;
         }
+
         #bloco-pendente p {
             margin: 0 0 12px;
             font-style: italic;
             color: #888;
         }
+
         #bloco-pendente input {
             display: block;
             width: 100%;
@@ -92,6 +145,7 @@
             font-family: Arial, sans-serif;
             box-sizing: border-box;
         }
+
         #bloco-pendente button {
             width: 100%;
             padding: 9px;
@@ -104,7 +158,11 @@
             font-family: Arial, sans-serif;
             margin-top: 4px;
         }
-        #bloco-pendente button:hover { background: #0d5ab5; }
+
+        #bloco-pendente button:hover {
+            background: #0d5ab5;
+        }
+
         #msg-erro-assinatura {
             color: #c0392b;
             font-size: 12px;
@@ -113,46 +171,152 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Bloco visível APÓS assinar */
+        /* ═══════════════════════════════════════════════════
+   BLOCO DE ASSINATURA ELETRÔNICA — após assinar
+   ═══════════════════════════════════════════════════ */
         #bloco-assinado {
             display: none;
-            border-top: 2px solid #000;
-            padding-top: 10px;
+            margin-top: 0;
         }
-        #bloco-assinado .nome-assinante {
+
+        /* Emblema institucional — estilo SEI!/gov.br */
+        .emblema-assinatura {
+            display: flex;
+            align-items: stretch;
+            border: 1.5px solid #1a3a6b;
+            border-radius: 6px;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            background: #fff;
+            box-shadow: 0 1px 4px rgba(0,0,0,.12);
+            margin-bottom: 12px;
+            text-align: left;
+            page-break-inside: avoid;
+        }
+
+        /* Faixa lateral azul — identidade do sistema P3 */
+        .emblema-lateral {
+            background: linear-gradient(180deg, #0a2d6b 0%, #1464b5 100%);
+            color: #fff;
+            width: 64px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 10px 4px;
+        }
+        .emblema-lateral .sist-icone {
+            font-size: 22px;
+            line-height: 1;
+            margin-bottom: 3px;
+        }
+        .emblema-lateral .sist-sigla {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: .05em;
+            line-height: 1;
+            color: #fff;
+        }
+        .emblema-lateral .sist-nome {
+            font-size: 7px;
+            font-weight: 600;
+            color: rgba(255,255,255,.85);
+            text-align: center;
+            line-height: 1.3;
+            margin-top: 1px;
+        }
+        .emblema-lateral .sist-tag {
+            font-size: 6px;
+            color: rgba(255,255,255,.65);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            border-top: 1px solid rgba(255,255,255,.25);
+            padding-top: 4px;
+            margin-top: 4px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        /* Área de conteúdo do emblema */
+        .emblema-corpo {
+            padding: 9px 13px;
+            flex: 1;
+            line-height: 1.55;
+            color: #1a1a2e;
+            border-left: 3px solid #e8eef8;
+        }
+        .emblema-corpo .emb-titulo {
+            font-size: 9.5px;
+            font-weight: bold;
+            color: #0a2d6b;
+            text-transform: uppercase;
+            letter-spacing: .07em;
+            margin-bottom: 4px;
+        }
+        .emblema-corpo .emb-nome {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            text-transform: uppercase;
+        }
+        .emblema-corpo .emb-linha {
+            font-size: 10.5px;
+            color: #222;
+        }
+        .emblema-corpo .emb-codigo {
+            font-family: 'Courier New', monospace;
+            font-size: 10.5px;
+            font-weight: bold;
+            color: #1a237e;
+            letter-spacing: .06em;
+        }
+        .emblema-corpo .emb-link {
+            font-size: 10px;
+            color: #1565c0;
+            text-decoration: none;
+            word-break: break-all;
+        }
+
+        /* Linha de assinatura abaixo do emblema */
+        .linha-assinatura {
+            border-top: 2px solid #000;
+            margin: 12px 0 8px;
+        }
+
+        /* Dados do assinante centralizados abaixo da linha */
+        .sign-dados-abaixo .nome-assinante {
             font-weight: bold;
             font-size: 13px;
             text-transform: uppercase;
-            letter-spacing: 0.03em;
+            letter-spacing: .03em;
         }
-        #bloco-assinado .cargo-assinante {
+        .sign-dados-abaixo .cargo-assinante {
             font-size: 12px;
             margin: 2px 0;
         }
-        #bloco-assinado .cpf-assinante {
+        .sign-dados-abaixo .cpf-assinante {
             font-size: 11px;
             color: #333;
         }
-        #bloco-assinado .selo-assinatura {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 10px;
-            background: #e8f4e8;
-            border: 1px solid #4a9d6f;
-            border-radius: 5px;
-            padding: 4px 12px;
-            font-family: Arial, sans-serif;
-            font-size: 11px;
-            color: #2d6a4f;
-        }
-        #bloco-assinado .selo-assinatura svg {
-            flex-shrink: 0;
-        }
 
         @media print {
-            .no-print { display: none !important; }
-            #bloco-pendente { display: none !important; }
+            .no-print {
+                display: none !important;
+            }
+
+            #bloco-ja-assinado { display: none !important; }
+            .emblema-assinatura { box-shadow: none !important; page-break-inside: avoid; }
+            #bloco-assinado {
+                display: block !important;
+            }
+
+            #bloco-pendente {
+                display: none !important;
+            }
+
             /* só imprime bloco-assinado se visível */
             [contenteditable] {
                 border-bottom: none !important;
@@ -164,6 +328,7 @@
         [contenteditable]:hover {
             background: #fffbe6;
         }
+
         [contenteditable]:focus {
             background: #fffbe6;
             border-bottom-color: #0a448f !important;
@@ -176,7 +341,10 @@
             border-top: solid 1px #000;
             margin-top: 60px;
         }
-        .brasao { height: 30px; }
+
+        .brasao {
+            height: 30px;
+        }
     </style>
 </head>
 
@@ -192,13 +360,9 @@
         10° BATALHÃO DE POLÍCIA MILITAR
     </div>
 
-    <div class="oficio-num">Ofício n°&nbsp;<span
-            id="campo-oficio"
-            contenteditable="true"
-            title="Clique para editar o número do ofício"
-            style="min-width:80px;display:inline-block;border-bottom:1.5px dashed #888;
-                   outline:none;padding:0 2px;cursor:text;"
-            >__________</span>/2026-P3/10ºBPM</div>
+    <div class="oficio-num">Ofício n°&nbsp;<span id="campo-oficio" contenteditable="true"
+            title="Clique para editar o número do ofício" style="min-width:80px;display:inline-block;border-bottom:1.5px dashed #888;
+                   outline:none;padding:0 2px;cursor:text;">__________</span>/2026-P3/10ºBPM</div>
 
     <div class="destinatario">
         Ao Senhor <br>
@@ -251,7 +415,35 @@
     <!-- ═══════════════════════════════════════════════════
          ÁREA DE ASSINATURA ELETRÔNICA
          ═══════════════════════════════════════════════════ -->
+    <!-- Selo de assinatura válida -->
+    <div class="selo-assinatura">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" stroke-width="2.5">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+        Assinado eletronicamente em <span id="sign-datahora"></span>
+    </div>
+
     <div class="assinatura-espaco">
+
+        <!-- Estado: documento JÁ ASSINADO anteriormente — exibido ao carregar se já existe assinatura -->
+        <div id="bloco-ja-assinado" style="display:none;">
+            <div class="ja-assinado-titulo">
+                ✅ Documento já assinado eletronicamente
+            </div>
+            <div class="ja-assinado-dado"><strong>Assinante:</strong> <span id="ja-sign-nome"></span></div>
+            <div class="ja-assinado-dado"><strong>Cargo:</strong> <span id="ja-sign-cargo"></span></div>
+            <div class="ja-assinado-dado"><strong>Data/Hora:</strong> <span id="ja-sign-datahora"></span></div>
+            <div class="ja-assinado-dado">
+                <strong>Código:</strong>
+                <span class="ja-assinado-codigo" id="ja-sign-codigo"></span>
+            </div>
+            <a id="ja-sign-link" href="#" target="_blank">🔗 Verificar autenticidade</a>
+            <div class="aviso-bloqueio">
+                ⛔ Este documento já possui assinatura eletrônica registrada.<br>
+                Uma nova assinatura não pode ser aplicada. Para contestar, entre em contato com a P3/10ºBPM.
+            </div>
+        </div>
 
         <!-- Estado: aguardando assinatura -->
         <div id="bloco-pendente">
@@ -265,16 +457,51 @@
 
         <!-- Estado: assinado — preenchido pelo JS -->
         <div id="bloco-assinado">
-            <div class="nome-assinante" id="sign-nome"></div>
-            <div class="cargo-assinante" id="sign-cargo"></div>
-            <div class="cpf-assinante" id="sign-cpf"></div>
-            <div class="selo-assinatura">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2d6a4f" stroke-width="2.5">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                Assinado eletronicamente em <span id="sign-datahora"></span>
+
+            <!-- ══ EMBLEMA DE ASSINATURA ELETRÔNICA ══ -->
+            <!-- Posicionado ACIMA da linha, estilo SEI!/gov.br -->
+            <div class="emblema-assinatura">
+
+                <!-- Faixa lateral: identidade SGP3 -->
+                <div class="emblema-lateral">
+                    <div class="sist-icone">🛡️</div>
+                    <div class="sist-sigla">SGP3</div>
+                    <div class="sist-nome">Sistema de<br>Gerenciamento<br>P3</div>
+                    <div class="sist-tag">assinatura<br>eletrônica</div>
+                </div>
+
+                <!-- Corpo do emblema -->
+                <div class="emblema-corpo">
+                    <div class="emb-titulo">Documento Assinado Eletronicamente</div>
+                    <div class="emb-nome" id="sign-nome"></div>
+                    <div class="emb-linha" id="sign-cargo"></div>
+                    <div class="emb-linha" id="sign-cpf"></div>
+                    <div class="emb-linha">
+                        Data: <span id="sign-datahora"></span>,
+                        conforme horário oficial de Brasília
+                    </div>
+                    <div class="emb-linha" style="margin-top:3px;">
+                        Código: <span class="emb-codigo" id="sign-codigo"></span>
+                    </div>
+                    <div class="emb-linha" style="margin-top:2px;">
+                        Verifique em:
+                        <a class="emb-link" id="sign-link-verif" href="#" target="_blank"></a>
+                    </div>
+                </div>
+
             </div>
+            <!-- ══ FIM DO EMBLEMA ══ -->
+
+            <!-- Linha de assinatura -->
+            <div class="linha-assinatura"></div>
+
+            <!-- Dados do assinante abaixo da linha -->
+            <div class="sign-dados-abaixo">
+                <div class="nome-assinante" id="sign-nome-baixo"></div>
+                <div class="cargo-assinante" id="sign-cargo-baixo"></div>
+                <div class="cpf-assinante" id="sign-cpf-baixo"></div>
+            </div>
+
         </div>
 
     </div>
@@ -306,19 +533,80 @@
         const db = firebase.database();
 
         // ── Preenche tabela com dados do localStorage ─────────────────────────
-        window.onload = function () {
+        window.onload = async function () {
             const item = JSON.parse(localStorage.getItem('dadosRequerimento'));
             if (item) {
-                document.getElementById('res-lacre').textContent     = item.NUMERO_LACRE || '';
-                document.getElementById('res-tco').textContent       = item.NUMERO_TCO   || '';
-                document.getElementById('res-autor').textContent     = item.NOME_AUTOR   || '';
-                document.getElementById('res-data').textContent      = item.DATA         || '';
+                document.getElementById('res-lacre').textContent = item.NUMERO_LACRE || '';
+                document.getElementById('res-tco').textContent = item.NUMERO_TCO || '';
+                document.getElementById('res-autor').textContent = item.NOME_AUTOR || '';
+                document.getElementById('res-data').textContent = item.DATA || '';
                 const substancia = item.TIPO_DROGA || '';
-                const peso       = item.PESO       || '0';
+                const peso = item.PESO || '0';
                 document.getElementById('res-substancia').textContent =
                     `${substancia}, pesando aprox. ${peso} Kg`;
+
+                // ── Verifica se já existe assinatura para este boletim ────────
+                const numTco = String(item.NUMERO_TCO || '').trim();
+                if (numTco) await verificarAssinaturaExistente(numTco);
             }
         };
+
+        // ── Consulta Firebase: já existe assinatura para este TCO? ───────────
+        async function verificarAssinaturaExistente(numTco) {
+            try {
+                const snap = await db.ref('assinaturas').once('value');
+                const todas = snap.val() || {};
+
+                const existente = Object.values(todas).find(a =>
+                    a && a.documento && String(a.documento.num_tco || '').trim() === numTco
+                );
+
+                if (!existente) return; // ainda não assinado — fluxo normal
+
+                // Preenche bloco informativo "já assinado"
+                document.getElementById('ja-sign-nome').textContent     = existente.assinante_nome || '—';
+                document.getElementById('ja-sign-cargo').textContent    =
+                    `${existente.assinante_grad || ''} · ${existente.assinante_cargo || ''}`;
+                document.getElementById('ja-sign-datahora').textContent = existente.data_hora || '—';
+                document.getElementById('ja-sign-codigo').textContent   = existente.codigo || '—';
+
+                const linkJa = document.getElementById('ja-sign-link');
+                if (linkJa && existente.codigo) {
+                    linkJa.href = `../page/verificar_assinatura.html?codigo=${existente.codigo}`;
+                }
+
+                // Mostra aviso e ESCONDE campo de nova assinatura
+                document.getElementById('bloco-ja-assinado').style.display = 'block';
+                document.getElementById('bloco-pendente').style.display    = 'none';
+
+                // Preenche bloco-assinado para impressão
+                // Emblema (acima da linha)
+                document.getElementById('sign-nome').textContent     = `${existente.assinante_nome || ''} - ${existente.assinante_grad || ''}`;
+                document.getElementById('sign-cargo').textContent    = existente.assinante_cargo || '';
+                document.getElementById('sign-cpf').textContent      = `CPF: ${existente.assinante_cpf || ''}`;
+                document.getElementById('sign-datahora').textContent = existente.data_hora || '';
+                document.getElementById('sign-codigo').textContent   = existente.codigo || '';
+                // Abaixo da linha
+                const nomeGrad = `${existente.assinante_nome || ''} - ${existente.assinante_grad || ''}`;
+                document.getElementById('sign-nome-baixo').textContent  = nomeGrad;
+                document.getElementById('sign-cargo-baixo').textContent = existente.assinante_cargo || '';
+                document.getElementById('sign-cpf-baixo').textContent   = `CPF: ${existente.assinante_cpf || ''}`;
+
+                const linkVerif = document.getElementById('sign-link-verif');
+                if (linkVerif && existente.codigo) {
+                    const url = `../page/verificar_assinatura.html?codigo=${existente.codigo}`;
+                    linkVerif.href = url;
+                    linkVerif.textContent = url;
+                }
+
+                // Exibe bloco-assinado (visível na impressão)
+                document.getElementById('bloco-assinado').style.display = 'block';
+
+            } catch(err) {
+                console.warn('[verificarAssinaturaExistente]', err);
+                // Erro de rede: não bloqueia — usuário pode assinar normalmente
+            }
+        }
 
         // ── Máscara CPF ───────────────────────────────────────────────────────
         function mascararCPF(input) {
@@ -360,15 +648,45 @@
             });
         }
 
-        // ── Assinar ───────────────────────────────────────────────────────────
+        // ── Gerar código único de autenticação ───────────────────────────────
+        // Formato: P3-XXXXXXXX (8 chars hex) — derivado de timestamp + cpf
+        function gerarCodigo(cpf) {
+            const base = Date.now().toString(36).toUpperCase() +
+                cpf.slice(-4).toUpperCase();
+            // Embaralha e pega 8 chars
+            return 'P3-' + btoa(base).replace(/[^A-Z0-9]/gi, '')
+                .substring(0, 8).toUpperCase();
+        }
+
+        // ── Identifica tipo de documento para salvar no Firebase ──────────────
+        function identificarTipoDocumento() {
+            const titulo = document.querySelector('.cabecalho')?.textContent || '';
+            if (titulo.toLowerCase().includes('pericial')) return 'requerimento_pericia';
+            if (titulo.toLowerCase().includes('tco')) return 'tco';
+            return 'documento';
+        }
+
+        // ── Coleta conteúdo resumido do documento ─────────────────────────────
+        function coletarDadosDocumento() {
+            return {
+                numero_oficio: document.getElementById('campo-oficio')?.textContent?.trim() || '',
+                num_lacre: document.getElementById('res-lacre')?.textContent?.trim() || '',
+                num_tco: document.getElementById('res-tco')?.textContent?.trim() || '',
+                autor: document.getElementById('res-autor')?.textContent?.trim() || '',
+                data_ocorrencia: document.getElementById('res-data')?.textContent?.trim() || '',
+                substancia: document.getElementById('res-substancia')?.textContent?.trim() || '',
+            };
+        }
+
+        // ── Assinar e salvar no Firebase ──────────────────────────────────────
         async function assinarDocumento() {
             const msgErro = document.getElementById('msg-erro-assinatura');
             msgErro.style.display = 'none';
             msgErro.textContent = '';
 
-            const btn    = document.querySelector('#bloco-pendente button');
+            const btn = document.querySelector('#bloco-pendente button');
             const cpfRaw = document.getElementById('input-cpf').value.replace(/\D/g, '').trim();
-            const senha  = document.getElementById('input-senha').value.trim();
+            const senha = document.getElementById('input-senha').value.trim();
 
             if (!cpfRaw || cpfRaw.length < 11) {
                 return mostrarErro('Informe um CPF válido (11 dígitos).');
@@ -377,59 +695,87 @@
                 return mostrarErro('Informe a senha.');
             }
 
-            // Feedback visual no botão
-            btn.disabled    = true;
+            btn.disabled = true;
             btn.textContent = '⏳ Verificando...';
 
             try {
-                let usuario = null;
-
-                // ── Busca direta pela chave: /usuarios/{cpf} ──
-                // (estrutura real do sistema — chave do nó É o CPF)
+                // 1. Busca usuário no Firebase
                 const snap = await db.ref(`usuarios/${cpfRaw}`).once('value');
-                usuario = snap.val();
+                const usuario = snap.val();
 
                 if (!usuario) {
-                    btn.disabled    = false;
+                    btn.disabled = false;
                     btn.textContent = '✍️ Assinar Eletronicamente';
                     return mostrarErro('CPF não encontrado no sistema.');
                 }
-
-                // ── Verifica se conta está ativa ──
                 if (usuario.ativo === false) {
-                    btn.disabled    = false;
+                    btn.disabled = false;
                     btn.textContent = '✍️ Assinar Eletronicamente';
                     return mostrarErro('Usuário inativo. Contate o administrador.');
                 }
-
-                // ── Valida senha ──
                 if ((usuario.senha || '').toString() !== senha) {
-                    btn.disabled    = false;
+                    btn.disabled = false;
                     btn.textContent = '✍️ Assinar Eletronicamente';
                     return mostrarErro('Senha incorreta. Verifique e tente novamente.');
                 }
 
-                // ── Tudo certo: preenche o bloco de assinatura ──
-                const nome      = (usuario.nome      || '').toString().toUpperCase();
-                const graduacao = (usuario.graduacao  || '').toString().toUpperCase();
-                const cpfFmt    = cpfRaw.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-                const cargo     = resolverCargo(usuario.graduacao);
-                const dataHora  = agora();
+                // 2. Monta dados da assinatura
+                const nome = (usuario.nome || '').toString().toUpperCase();
+                const graduacao = (usuario.graduacao || '').toString().toUpperCase();
+                const cpfFmt = cpfRaw.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                const cargo = resolverCargo(usuario.graduacao);
+                const dataHora = agora();
+                const codigo = gerarCodigo(cpfRaw);
+                const tipoDoc = identificarTipoDocumento();
+                const dadosDoc = coletarDadosDocumento();
 
+                const registroAssinatura = {
+                    codigo,
+                    tipo_documento: tipoDoc,
+                    assinante_nome: nome,
+                    assinante_grad: graduacao,
+                    assinante_cargo: cargo,
+                    assinante_cpf: cpfFmt,
+                    data_hora: dataHora,
+                    data_iso: new Date().toISOString(),
+                    valido: true,
+                    documento: dadosDoc,
+                    ip_info: 'navegador-cliente'
+                };
+
+                // 3. Salva no Firebase: /assinaturas/{codigo}
+                btn.textContent = '⏳ Salvando assinatura...';
+                await db.ref(`assinaturas/${codigo}`).set(registroAssinatura);
+
+                // 4. Preenche bloco de assinatura na tela
+                // Emblema (acima da linha)
                 document.getElementById('sign-nome').textContent     = `${nome} - ${graduacao}`;
                 document.getElementById('sign-cargo').textContent    = cargo;
                 document.getElementById('sign-cpf').textContent      = `CPF: ${cpfFmt}`;
                 document.getElementById('sign-datahora').textContent = dataHora;
+                document.getElementById('sign-codigo').textContent   = codigo;
+                // Dados abaixo da linha de assinatura
+                document.getElementById('sign-nome-baixo').textContent  = `${nome} - ${graduacao}`;
+                document.getElementById('sign-cargo-baixo').textContent = cargo;
+                document.getElementById('sign-cpf-baixo').textContent   = `CPF: ${cpfFmt}`;
 
-                // Troca os blocos
+                // 5. Preenche link de verificação
+                const urlVerif = `../public/verificar_assinatura.html?codigo=${codigo}`;
+                const linkEl = document.getElementById('sign-link-verif');
+                if (linkEl) {
+                    linkEl.href = urlVerif;
+                    linkEl.textContent = urlVerif;
+                }
+
+                // 6. Troca os blocos
                 document.getElementById('bloco-pendente').style.display = 'none';
-                document.getElementById('bloco-assinado').style.display  = 'block';
+                document.getElementById('bloco-assinado').style.display = 'block';
 
             } catch (err) {
-                console.error('Erro ao buscar usuário no Firebase:', err);
-                btn.disabled    = false;
+                console.error('Erro ao assinar:', err);
+                btn.disabled = false;
                 btn.textContent = '✍️ Assinar Eletronicamente';
-                mostrarErro('Erro de conexão com o servidor. Verifique sua internet e tente novamente.');
+                mostrarErro('Erro de conexão com o servidor. Tente novamente.');
             }
         }
 
@@ -439,7 +785,6 @@
             el.style.display = 'block';
         }
 
-        // Permite assinar pressionando Enter nos campos
         ['input-cpf', 'input-senha'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', e => {
                 if (e.key === 'Enter') assinarDocumento();
