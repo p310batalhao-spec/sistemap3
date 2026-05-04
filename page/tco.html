@@ -8,6 +8,285 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/stylestco.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+
+    <style>
+        /* ══════════════════════════════════════════════════════════
+           ESTILO EXCLUSIVO DA LISTA DE TCO (estilo AppSheet)
+           Não sobrescreve nada do stylestco.css
+           ══════════════════════════════════════════════════════════ */
+
+        /* Skeletons de carregamento */
+        .skeleton-item {
+            height: 64px;
+            margin-bottom: .45rem;
+            border-radius: 10px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.2s infinite;
+        }
+        @keyframes shimmer {
+            0%   { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Cabeçalho da lista */
+        .lista-tco-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .5rem 0 .75rem;
+            border-bottom: 2px solid #e5e9f2;
+            margin-bottom: .4rem;
+        }
+        .lista-tco-header h3 {
+            font-size: .95rem;
+            font-weight: 700;
+            color: #1a3d5d;
+            margin: 0;
+        }
+        .badge-total-lista {
+            background: #e8eef5;
+            color: #1a3d5d;
+            font-size: .75rem;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 20px;
+        }
+
+        /* Separador de grupo por mês */
+        .grupo-mes {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .75rem 0 .3rem;
+        }
+        .grupo-mes-titulo {
+            font-size: .75rem;
+            font-weight: 700;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            white-space: nowrap;
+        }
+        .grupo-mes-linha {
+            flex: 1;
+            height: 1px;
+            background: #e5e9f2;
+        }
+        .grupo-mes-count {
+            font-size: .72rem;
+            color: #9ca3af;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        /* Card de cada TCO */
+        .item-tco {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            border-radius: 10px;
+            padding: .85rem 1rem;
+            margin-bottom: .4rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,.07);
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: border-color .15s, box-shadow .15s, transform .1s;
+            gap: .8rem;
+        }
+        .item-tco:hover {
+            border-color: #1a3d5d;
+            box-shadow: 0 3px 12px rgba(26,61,93,.13);
+            transform: translateX(3px);
+        }
+
+        /* Ícone circular */
+        .item-tco-icone {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #eef2fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: .95rem;
+        }
+
+        /* Bloco de texto central */
+        .item-tco-corpo {
+            flex: 1;
+            min-width: 0;
+        }
+        .item-tco-tipificacao {
+            font-size: .88rem;
+            font-weight: 700;
+            color: #111827;
+            text-transform: uppercase;
+            letter-spacing: .01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-tco-meta {
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+            margin-top: .2rem;
+            flex-wrap: wrap;
+        }
+        .meta-cop {
+            font-size: .76rem;
+            color: #374151;
+            font-weight: 600;
+        }
+        .meta-sep {
+            width: 3px; height: 3px;
+            border-radius: 50%;
+            background: #d1d5db;
+            flex-shrink: 0;
+        }
+        .meta-data {
+            font-size: .73rem;
+            color: #9ca3af;
+        }
+
+        /* Badge de movimentação */
+        .badge-movimentacao {
+            flex-shrink: 0;
+            font-size: .7rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 150px;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+        .mov-PROTOCOLADO  { background: #d1fae5; color: #065f46; }
+        .mov-ARQUIVADO    { background: #f3f4f6; color: #374151; }
+        .mov-PENDENTE     { background: #fef3c7; color: #92400e; }
+        .mov-REFAZER      { background: #fee2e2; color: #991b1b; }
+        .mov-CAPA         { background: #dbeafe; color: #1e40af; }
+        .mov-ENCAMINHADO  { background: #ede9fe; color: #5b21b6; }
+        .mov-DIGITALIZADO { background: #e0f2fe; color: #0c4a6e; }
+        .mov-VISTORIADO   { background: #fce7f3; color: #9d174d; }
+        .mov-ASSINADO     { background: #d1fae5; color: #065f46; }
+        .mov-RECEBIDO     { background: #fef9c3; color: #713f12; }
+        .mov-PRONTO       { background: #dcfce7; color: #14532d; }
+        .mov-DEFAULT      { background: #f3f4f6; color: #374151; }
+
+        /* Botão editar */
+        .btn-editar-item {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            color: #9ca3af;
+            flex-shrink: 0;
+            transition: color .15s, background .15s;
+            line-height: 0;
+        }
+        .btn-editar-item:hover {
+            color: #1a3d5d;
+            background: #e8eef5;
+        }
+
+        /* Filtros avançados (idêntico ao original, sem dependência de stylestco.css) */
+        .filtros-bloco {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            margin-bottom: 1rem;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .filtros-bloco input[type="text"],
+        .filtros-bloco input[type="date"],
+        .filtros-bloco select {
+            padding: 8px 10px;
+            border: 1.5px solid #d0d5e8;
+            border-radius: 6px;
+            font-size: .85rem;
+            outline: none;
+        }
+        .filtros-busca-linha {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+        }
+        .filtros-busca-linha input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid #d0d5e8;
+            border-radius: 8px;
+            font-size: .88rem;
+            box-sizing: border-box;
+        }
+        .btn-limpar-av {
+            padding: 9px 16px;
+            background: #f5f5f5;
+            border: 1.5px solid #d0d5e8;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .83rem;
+            white-space: nowrap;
+            color: #555;
+        }
+        .filtros-avancados-details {
+            border: 1.5px solid #d0d5e8;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .filtros-avancados-details summary {
+            padding: .6rem 1rem;
+            cursor: pointer;
+            font-size: .83rem;
+            font-weight: bold;
+            color: #1a3d5d;
+            background: #f0f5ff;
+            user-select: none;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .filtros-avancados-corpo {
+            padding: .9rem 1rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: .75rem;
+            background: #fff;
+        }
+        .filtro-campo {
+            display: flex;
+            flex-direction: column;
+            gap: .3rem;
+            min-width: 140px;
+        }
+        .filtro-campo label {
+            font-size: .72rem;
+            font-weight: bold;
+            color: #374263;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+        }
+        .filtros-rodape {
+            padding: .5rem 1rem;
+            background: #f0f5ff;
+            border-top: 1px solid #e0e8f5;
+            font-size: .78rem;
+            color: #1a3d5d;
+        }
+
+        @media print {
+            .sidbarform, .overlay-sidebar, .filtros-bloco,
+            .adicionar-cadastro-container, nav, header, footer,
+            .btn-editar-item, .grupo-mes { display: none !important; }
+        }
+    </style>
 </head>
 
 <body>
@@ -19,40 +298,34 @@
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
             </div>
         </div>
-
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info">
-            </div>
+            <div class="exibirusuario" id="user-info"></div>
         </div>
     </header>
 
     <section class="pagecomplete">
         <nav class="navegacao">
             <a href="../index.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
-                    alt="home--v1" />
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home--v1" />
                 <p>Home</p>
-            </a><!--termina home-->
+            </a>
             <a href="../page/dashboard.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
-                    alt="performance-macbook" />
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook" />
                 <p>Dashboard</p>
-            </a><!--termina dashboard-->
+            </a>
             <a href="../page/cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
                 <p>Cadastro de Ocorrências</p>
-            </a><!--termina cadastroocorrencias-->
+            </a>
             <a href="../page/materiais.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                 <p>Materiais Apreendidos</p>
-            </a><!--termina materiais apreendidos-->
+            </a>
             <a href="../page/eventos.html">
-                <img width="32" height="32"
-                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
-                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
+                <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos" />
                 <p>Eventos</p>
-            </a><!--termina eventos-->
+            </a>
             <a href="../page/instrucoes.html">
                 <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
                 <p>Instrução</p>
@@ -60,12 +333,12 @@
             <a href="../page/solucoesia.html">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
                 <p>Soluções IA</p>
-            </a><!--termina solucoes ia-->
+            </a>
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
                 <p>Sair</p>
-            </button><!--termina sair-->
-        </nav><!--termina navegacao-->
+            </button>
+        </nav>
 
         <main>
             <div class="saudacao">
@@ -73,216 +346,143 @@
                 <p>Gerenciamento de TCO</p>
             </div>
 
+            <!-- Cards de contagem -->
             <section class="totalcards">
                 <div class="cardnumero" id="totalanoanterior">
                     <h3>Total de TCOs - Ano Anterior</h3>
                     <p id="total-ano-anterior">--</p>
-                </div> <!--totalanoanterior-->
+                </div>
                 <div class="cardnumero" id="totaldoano">
                     <h3>Total de TCOs - Ano Atual</h3>
                     <p id="total-ano-atual">--</p>
-                </div><!--totaldoano-->
-            </section> <!--terminatotalcards-->
+                </div>
+            </section>
 
-            <div class="TabelaEventos">
-                <h3>Cadastro de TCO</h3>
+            <!-- Barra de ações -->
+            <div class="adicionar-cadastro-container">
+                <button id="btn-adicionar-cadastro">
+                    <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png" alt="Adicionar" />
+                    Adicionar Novo TCO
+                </button>
+                <button id="btn-imprimir" class="adicionar-cadastro">
+                    <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/ffffff/print--v1.png" alt="Imprimir" />
+                    Imprimir
+                </button>
+                <button id="btn-sincronizar-esaj-tco"
+                    style="background-color:#1a3d5d; color:white; border:none; padding:8px 14px;
+                           border-radius:4px; cursor:pointer; display:inline-flex; align-items:center;
+                           gap:6px; font-size:14px;">
+                    <img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png" />
+                    Sincronizar e-SAJ
+                </button>
+                <p id="mensagem-carregamento" style="font-size:.85rem; color:#555; display:none;">
+                    ⏳ Carregando dados, aguarde...
+                </p>
+                <a href="../page/jurimetria.html">Analisador Jurimétrico</a>
+                <a href="../relatorios/prescricao.html">Analisador Prescricional</a>
+            </div>
+            <p id="ultima-sincronizacao" style="font-size:.75rem; color:#9ca3af; margin:.25rem 0 1rem 0;">
+                🔄 Carregando última sincronização...
+            </p>
 
-                <div class="adicionar-cadastro-container">
-                    <button id="btn-adicionar-cadastro">
-                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
-                            alt="Adicionar" />
-                        Adicionar Novo TCO
-                    </button>
-                    <button id="btn-imprimir" class="adicionar-cadastro">
-                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/print--v1.png"
-                            alt="Imprimir" />
-                        Imprimir Tabela
-                    </button>
-                    <button id="btn-sincronizar-esaj-tco"
-                        style="background-color:#1a3d5d; color:white; border:none; padding:8px 14px; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:14px;"><img
-                            width="20" height="20"
-                            src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png" /> Sincronizar
-                        e-SAJ</button>
-                    <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
-                    <p id="ultima-sincronizacao" style="font-size:13px; color:#555; margin:4px 0 0 2px;">
-                        🔄 Carregando última sincronização...
-                    </p>
-                    <a href="../page/jurimetria.html">Analisador Jurimétrico</a>
-                    <a href="../relatorios/prescricao.html">Analisador Prescricional</a>
+            <!-- Filtros avançados -->
+            <div class="filtros-bloco">
+                <div class="filtros-busca-linha">
+                    <input type="text" id="busca-geral-av"
+                        placeholder="🔍  Buscar por tipificação, nº ocorrência, operador, movimentação..."
+                        oninput="filtroAvancado()">
+                    <button class="btn-limpar-av" onclick="limparFiltroAvancado()">✕ Limpar filtros</button>
                 </div>
 
-                <!-- ═══════════════════════════════════════════════════════════
-                     FILTROS AVANÇADOS
-                     Todos os IDs têm sufixo -av para não conflitar com o tco.js
-                     ═══════════════════════════════════════════════════════════ -->
-                <div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;font-family:Arial,sans-serif;">
-
-                    <!-- Busca geral -->
-                    <div style="display:flex;align-items:center;gap:.6rem;">
-                        <div style="position:relative;flex:1;">
-                            <input type="text" id="busca-geral-av"
-                                placeholder="🔍 Busca geral — Nº ocorrência, operador, tipicidade, movimentação..."
-                                style="width:100%;padding:10px 14px;border:1.5px solid #d0d5e8;border-radius:8px;
-                                       font-size:.88rem;box-sizing:border-box;"
+                <details class="filtros-avancados-details">
+                    <summary>
+                        <span>⚡ Filtros avançados (cruzamento de dados)</span>
+                        <span id="badge-av"
+                            style="display:none; background:#1a3d5d; color:#fff; font-size:.72rem;
+                                   padding:2px 8px; border-radius:10px; margin-left:.5rem;"></span>
+                        <span style="opacity:.5; font-size:.8rem;">▼</span>
+                    </summary>
+                    <div class="filtros-avancados-corpo">
+                        <div class="filtro-campo">
+                            <label>Data início</label>
+                            <input type="date" id="data-ini-av" onchange="filtroAvancado()">
+                        </div>
+                        <div class="filtro-campo">
+                            <label>Data fim</label>
+                            <input type="date" id="data-fim-av" onchange="filtroAvancado()">
+                        </div>
+                        <div class="filtro-campo" style="min-width:200px;">
+                            <label>Tipicidade Geral</label>
+                            <input type="text" id="tipicidade-av" placeholder="Ex.: lesão, ameaça, furto..."
                                 oninput="filtroAvancado()">
                         </div>
-                        <button onclick="limparFiltroAvancado()"
-                            style="padding:9px 16px;background:#f5f5f5;border:1.5px solid #d0d5e8;
-                                   border-radius:8px;cursor:pointer;font-size:.83rem;white-space:nowrap;color:#555;">
-                            ✕ Limpar filtros
-                        </button>
+                        <div class="filtro-campo" style="min-width:200px;">
+                            <label>Movimentação</label>
+                            <select id="movimentacao-av" onchange="filtroAvancado()">
+                                <option value="">Todas</option>
+                                <option>ASSINADO TENENTE</option>
+                                <option>ARQUIVADO</option>
+                                <option>CAPA FEITA</option>
+                                <option>CAPA CORRIGIDA</option>
+                                <option>DIGITALIZADO</option>
+                                <option>ENCAMINHADO TENENTE</option>
+                                <option>ENCAMINHADO SECRETARIA</option>
+                                <option>PRONTO PARA PROTOCOLAR</option>
+                                <option>PROTOCOLADO ESAJ</option>
+                                <option>PENDENTE</option>
+                                <option>REFAZER CAPA</option>
+                                <option>RECEBIDO</option>
+                                <option>VISTORIADO</option>
+                            </select>
+                        </div>
+                        <div class="filtro-campo" style="min-width:160px;">
+                            <label>Operador Capa</label>
+                            <input type="text" id="operador-av" placeholder="Nome do operador..."
+                                oninput="filtroAvancado()">
+                        </div>
+                        <div class="filtro-campo">
+                            <label>Mês</label>
+                            <select id="mes-av" onchange="filtroAvancado()">
+                                <option value="">Todos</option>
+                                <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+                                <option>Abril</option><option>Maio</option><option>Junho</option>
+                                <option>Julho</option><option>Agosto</option><option>Setembro</option>
+                                <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+                            </select>
+                        </div>
                     </div>
+                    <div class="filtros-rodape" id="contador-av">Carregando registros...</div>
+                </details>
+            </div>
 
-                    <!-- Filtros cruzados -->
-                    <details style="border:1.5px solid #d0d5e8;border-radius:8px;overflow:hidden;">
-                        <summary style="padding:.6rem 1rem;cursor:pointer;font-size:.83rem;font-weight:bold;
-                            color:#1a3d5d;background:#f0f5ff;user-select:none;list-style:none;
-                            display:flex;align-items:center;justify-content:space-between;">
-                            <span>⚡ Filtros avançados (cruzamento de dados)</span>
-                            <span id="badge-av"
-                                style="display:none;background:#1a3d5d;color:#fff;font-size:.72rem;
-                                       padding:2px 8px;border-radius:10px;margin-left:.5rem;"></span>
-                            <span style="opacity:.5;font-size:.8rem;">▼</span>
-                        </summary>
-
-                        <div style="padding:.9rem 1rem;display:flex;flex-wrap:wrap;gap:.75rem;background:#fff;">
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Data início</label>
-                                <input type="date" id="data-ini-av"
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="filtroAvancado()">
-                            </div>
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Data fim</label>
-                                <input type="date" id="data-fim-av"
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="filtroAvancado()">
-                            </div>
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:200px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Tipicidade Geral</label>
-                                <input type="text" id="tipicidade-av"
-                                    placeholder="Ex.: lesão, ameaça, furto..."
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    oninput="filtroAvancado()">
-                            </div>
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:200px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Movimentação</label>
-                                <select id="movimentacao-av"
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="filtroAvancado()">
-                                    <option value="">Todas</option>
-                                    <option>ASSINADO TENENTE</option>
-                                    <option>ARQUIVADO</option>
-                                    <option>CAPA FEITA</option>
-                                    <option>CAPA CORRIGIDA</option>
-                                    <option>DIGITALIZADO</option>
-                                    <option>ENCAMINHADO TENENTE</option>
-                                    <option>ENCAMINHADO SECRETARIA</option>
-                                    <option>PRONTO PARA PROTOCOLAR</option>
-                                    <option>PROTOCOLADO ESAJ</option>
-                                    <option>PENDENTE</option>
-                                    <option>REFAZER CAPA</option>
-                                    <option>RECEBIDO</option>
-                                    <option>VISTORIADO</option>
-                                </select>
-                            </div>
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:160px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Operador Capa</label>
-                                <input type="text" id="operador-av"
-                                    placeholder="Nome do operador..."
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    oninput="filtroAvancado()">
-                            </div>
-
-                            <div style="display:flex;flex-direction:column;gap:.3rem;min-width:140px;">
-                                <label style="font-size:.75rem;font-weight:bold;color:#374263;
-                                    text-transform:uppercase;letter-spacing:.04em;">Mês</label>
-                                <select id="mes-av"
-                                    style="padding:8px 10px;border:1.5px solid #d0d5e8;border-radius:6px;font-size:.85rem;"
-                                    onchange="filtroAvancado()">
-                                    <option value="">Todos</option>
-                                    <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
-                                    <option>Abril</option><option>Maio</option><option>Junho</option>
-                                    <option>Julho</option><option>Agosto</option><option>Setembro</option>
-                                    <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
-                                </select>
-                            </div>
-
-                        </div>
-
-                        <div id="contador-av"
-                            style="padding:.5rem 1rem;background:#f0f5ff;border-top:1px solid #e0e8f5;
-                                   font-size:.78rem;color:#1a3d5d;">
-                            Carregando registros...
-                        </div>
-                    </details>
-                </div>
-                <!-- ═══════════════════════════════════════════════════════════
-                     IDs ORIGINAIS do tco.js — ocultos, necessários para o script
-                     ═══════════════════════════════════════════════════════════ -->
-                <div class="filtros-container" style="display:none;">
-                    <label for="filtro-tipo">Filtrar por:</label>
-                    <select id="filtro-tipo">
-                        <option value="">Selecione o campo</option>
-                        <option value="Nº Ocorrência">Nº Ocorrência</option>
-                        <option value="DATA">Data</option>
-                        <option value="OPERADOR CAPA">Operador Capa</option>
-                        <option value="Movimentação">Movimentação</option>
-                        <option value="Tipicidade Geral">Tipicidade Geral</option>
-                        <option value="ESAJ">ESAJ</option>
-                    </select>
-                    <input type="text" id="filtro-valor-text" placeholder="Digite o valor..." style="display: block;">
-                    <button id="btn-aplicar-filtro">Aplicar Filtro</button>
-                    <button id="btn-limpar-filtro" style="display: none;">Limpar Filtro</button>
+            <!-- ══════════════════════════════════════════
+                 LISTA ESTILO APPSHEET
+                 ══════════════════════════════════════════ -->
+            <div class="TabelaEventos">
+                <div class="lista-tco-header">
+                    <h3>Cadastro de TCO</h3>
+                    <span class="badge-total-lista" id="badge-total">--</span>
                 </div>
 
-                <div class="tabela-container">
-                    <table id="tabela-tco">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Dia da Semana</th>
-                                <th>Mês</th>
-                                <th>Hora</th>
-                                <th>Nº Ocorrência</th>
-                                <th>DATA</th>
-                                <th>SERVIÇO</th>
-                                <th>OPERADOR CAPA</th>
-                                <th>SISDOC</th>
-                                <th>Tipicidade Geral</th>
-                                <th>Movimentação</th>
-                                <th>OBS:</th>
-                                <th>Material Apreendido</th>
-                                <th>Data Envio</th>
-                                <th>LocalE-SAJ</th>
-                                <th>PETICIONADOR</th>
-                                <th>Endereço</th>
-                                <th>Vistoriou?</th>
-                                <th>NUMERO_LACRE</th>
-                                <th>AÇÕES</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        </tbody>
-                    </table><!--tabela-tco-->
-                </div><!--tabela-container-->
-            </div> <!--TabelaEventos-->
+                <!-- Skeletons enquanto carrega -->
+                <div id="lista-skeletons">
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                    <div class="skeleton-item"></div>
+                </div>
 
+                <!-- Lista real preenchida pelo tco.js -->
+                <div id="lista-tco" style="max-height:600px; overflow-y:auto; overflow-x:hidden; padding-right:4px; scrollbar-width:thin;"></div>
+            </div>
+
+            <!-- Overlay + Sidebar (form) — IDs mantidos para compatibilidade com tco.js -->
             <div id="overlay" class="overlay-sidebar"></div>
 
             <form class="sidbarform" id="form-tco">
                 <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
-                <h4>Cadastro de TCO</h4>
+                <h4 style="margin:0 0 1rem; color:#1a3d5d;">Cadastro de TCO</h4>
 
                 <input type="hidden" name="id_realtime" id="form-id-tco">
 
@@ -290,75 +490,32 @@
                     <p>Dia da Semana:</p>
                     <select name="Dia da Semana" id="diadasemana">
                         <option value=""></option>
-                        <option value="Segunda-feira">Segunda-feira</option>
-                        <option value="Terça-feira">Terça-feira</option>
-                        <option value="Quarta-feira">Quarta-feira</option>
-                        <option value="Quinta-feira">Quinta-feira</option>
-                        <option value="Sexta-feira">Sexta-feira</option>
-                        <option value="Sábado">Sábado</option>
-                        <option value="Domingo">Domingo</option>
+                        <option>Segunda-feira</option><option>Terça-feira</option><option>Quarta-feira</option>
+                        <option>Quinta-feira</option><option>Sexta-feira</option><option>Sábado</option><option>Domingo</option>
                     </select>
                 </div>
-
                 <div class="formulario">
                     <p>Mês:</p>
                     <select name="Mês" id="mes">
                         <option value=""></option>
-                        <option value="Janeiro">Janeiro</option>
-                        <option value="Fevereiro">Fevereiro</option>
-                        <option value="Março">Março</option>
-                        <option value="Abril">Abril</option>
-                        <option value="Maio">Maio</option>
-                        <option value="Junho">Junho</option>
-                        <option value="Julho">Julho</option>
-                        <option value="Agosto">Agosto</option>
-                        <option value="Setembro">Setembro</option>
-                        <option value="Outubro">Outubro</option>
-                        <option value="Novembro">Novembro</option>
-                        <option value="Dezembro">Dezembro</option>
+                        <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+                        <option>Abril</option><option>Maio</option><option>Junho</option>
+                        <option>Julho</option><option>Agosto</option><option>Setembro</option>
+                        <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
                     </select>
                 </div>
-
-                <div class="formulario">
-                    <p>Hora:</p>
-                    <input type="time" name="Hora" id="hora">
-                </div>
-
-                <div class="formulario">
-                    <p>Nº Ocorrência:</p>
-                    <input type="text" name="Nº Ocorrência" id="numeroocorrencia">
-                </div>
-
-                <div class="formulario">
-                    <p>Data:</p>
-                    <input type="date" name="DATA" id="data">
-                </div>
-
-                <div class="formulario">
-                    <p>SERVIÇO:</p>
-                    <input type="text" name="SERVIÇO" id="servico">
-                </div>
-
-                <div class="formulario">
-                    <p>OPERADOR CAPA:</p>
-                    <input type="text" name="OPERADOR CAPA" id="operadorcapa">
-                </div>
-
-                <div class="formulario">
-                    <p>SISDOC:</p>
-                    <input type="text" name="SISDOC" id="sisdoc">
-                </div>
-
-                <div class="formulario">
-                    <p>Tipicidade Geral:</p>
-                    <input type="text" name="Tipicidade Geral" id="tipicidadegeral">
-                </div>
-
+                <div class="formulario"><p>Hora:</p><input type="time" name="Hora" id="hora"></div>
+                <div class="formulario"><p>Nº Ocorrência:</p><input type="text" name="Nº Ocorrência" id="numeroocorrencia"></div>
+                <div class="formulario"><p>Data:</p><input type="date" name="DATA" id="data"></div>
+                <div class="formulario"><p>SERVIÇO:</p><input type="text" name="SERVIÇO" id="servico"></div>
+                <div class="formulario"><p>OPERADOR CAPA:</p><input type="text" name="OPERADOR CAPA" id="operadorcapa"></div>
+                <div class="formulario"><p>SISDOC:</p><input type="text" name="SISDOC" id="sisdoc"></div>
+                <div class="formulario"><p>Tipicidade Geral:</p><input type="text" name="Tipicidade Geral" id="tipicidadegeral"></div>
                 <div class="formulario">
                     <p>Movimentação:</p>
                     <select name="Movimentação" id="movimentacao">
                         <option value="ASSINADO TENENTE">ASSINADO TENENTE</option>
-                        <option value="Arquivado">ARQUIVADO</option>
+                        <option value="ARQUIVADO">ARQUIVADO</option>
                         <option value="CAPA FEITA">CAPA FEITA</option>
                         <option value="CAPA CORRIGIDA">CAPA CORRIGIDA</option>
                         <option value="DIGITALIZADO">DIGITALIZADO</option>
@@ -372,37 +529,12 @@
                         <option value="VISTORIADO">VISTORIADO</option>
                     </select>
                 </div>
-
-                <div class="formulario">
-                    <p>OBS:</p>
-                    <input type="text" name="OBS:" id="obs">
-                </div>
-
-                <div class="formulario">
-                    <p>Material Apreendido:</p>
-                    <input type="text" name="Material Apreendido" id="materialapreendido">
-                </div>
-
-                <div class="formulario">
-                    <p>Data Envio:</p>
-                    <input type="date" name="Data Envio" id="dataenvio">
-                </div>
-
-                <div class="formulario">
-                    <p>LocalE-SAJ:</p>
-                    <input type="text" name="LocalE-SAJ" id="locale-saj">
-                </div>
-
-                <div class="formulario">
-                    <p>PETICIONADOR:</p>
-                    <input type="text" name="PETICIONADOR" id="peticionador">
-                </div>
-
-                <div class="formulario">
-                    <p>Endereço:</p>
-                    <input type="text" name="Endereço" id="endereco">
-                </div>
-
+                <div class="formulario"><p>OBS:</p><input type="text" name="OBS:" id="obs"></div>
+                <div class="formulario"><p>Material Apreendido:</p><input type="text" name="Material Apreendido" id="materialapreendido"></div>
+                <div class="formulario"><p>Data Envio:</p><input type="date" name="Data Envio" id="dataenvio"></div>
+                <div class="formulario"><p>LocalE-SAJ:</p><input type="text" name="LocalE-SAJ" id="locale-saj"></div>
+                <div class="formulario"><p>PETICIONADOR:</p><input type="text" name="PETICIONADOR" id="peticionador"></div>
+                <div class="formulario"><p>Endereço:</p><input type="text" name="Endereço" id="endereco"></div>
                 <div class="formulario">
                     <p>Vistoriou?</p>
                     <select name="Vistoriou?" id="vistoriou">
@@ -410,178 +542,23 @@
                         <option value="Não">Não</option>
                     </select>
                 </div>
-
-                <div class="formulario">
-                    <p>NUMERO_LACRE:</p>
-                    <input type="text" name="NUMERO_LACRE" id="numero_lacre">
-                </div>
+                <div class="formulario"><p>NUMERO_LACRE:</p><input type="text" name="NUMERO_LACRE" id="numero_lacre"></div>
 
                 <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
-                    style="width: 100%; padding: 15px; margin-top: 20px; margin-bottom: 40px;">
+                    style="width:100%; padding:15px; margin-top:20px; margin-bottom:40px;">
                     SALVAR TCO
                 </button>
             </form>
-        </main><!--termina main-->
-    </section><!--termina pagecomplete-->
+
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    </footer>
+
+    <script src="../js/tco.js"></script>
 </body>
-<footer>
-    <div>
-        <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
-    </div>
-</footer>
-
-<!-- tco.js original: carrega dadosTCO de tco_geral, renderTable, toggleSidebar, sincronizarEsajTCO, etc. -->
-<script src="../js/tco.js"></script>
-
-<!-- Filtros avançados: camada separada que lê dadosTCO e chama renderTable do tco.js -->
-<script>
-// ═══════════════════════════════════════════════════════════════════
-// FILTROS AVANÇADOS DO TCO
-// Lê dadosTCO (var global do tco.js) e chama renderTable() do tco.js
-// Todos os IDs têm sufixo -av para não conflitar com os do tco.js
-// ═══════════════════════════════════════════════════════════════════
-
-function _normAv(texto) {
-    if (!texto) return '';
-    return texto.toString()
-        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        .toUpperCase().trim();
-}
-
-// Converte qualquer formato de data para AAAA-MM-DD para comparação
-// Suporta: AAAA-MM-DD, DD/MM/AAAA, e timestamps ISO completos
-function _toISOAv(str) {
-    if (!str) return '';
-    str = str.toString().trim();
-
-    // Já é ISO (AAAA-MM-DD ou AAAA-MM-DDTHH:MM...)
-    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
-        return str.substring(0, 10);
-    }
-
-    // Formato DD/MM/AAAA
-    if (str.includes('/')) {
-        const p = str.split('/');
-        if (p.length === 3 && p[2].length === 4) {
-            return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-        }
-    }
-
-    return '';
-}
-
-// Retorna o valor do primeiro campo encontrado no objeto
-function _getAv(doc, ...chaves) {
-    for (const k of chaves) {
-        const v = doc[k];
-        if (v !== undefined && v !== null && v !== '') return String(v);
-    }
-    return '';
-}
-
-function filtroAvancado() {
-    if (!dadosTCO || !dadosTCO.length) return;
-
-    const busca = _normAv(document.getElementById('busca-geral-av')?.value);
-    const ini   = document.getElementById('data-ini-av')?.value  || '';
-    const fim   = document.getElementById('data-fim-av')?.value  || '';
-    const tipic = _normAv(document.getElementById('tipicidade-av')?.value);
-    const movi  = _normAv(document.getElementById('movimentacao-av')?.value);
-    const oper  = _normAv(document.getElementById('operador-av')?.value);
-    const mes   = _normAv(document.getElementById('mes-av')?.value);
-
-    // Nenhum filtro ativo → mostra tudo sem processar
-    if (!busca && !ini && !fim && !tipic && !movi && !oper && !mes) {
-        renderTable(dadosTCO);
-        _badgeAv(dadosTCO.length);
-        return;
-    }
-
-    const resultado = dadosTCO.filter(doc => {
-
-        // Converte a DATA do registro para AAAA-MM-DD
-        const docISO = _toISOAv(_getAv(doc, 'DATA', 'data'));
-
-        // ── Busca geral ───────────────────────────────────────────
-        if (busca && !_normAv(Object.values(doc).join(' ')).includes(busca))
-            return false;
-
-        // ── Período ───────────────────────────────────────────────
-        // Registros SEM data válida são mantidos (não excluídos pelo período)
-        if (ini || fim) {
-            if (docISO) {
-                if (ini && docISO < ini) return false;
-                if (fim && docISO > fim) return false;
-            }
-            // sem docISO: não filtra — mantém o registro
-        }
-
-        // ── Tipicidade Geral ──────────────────────────────────────
-        if (tipic) {
-            const v = _normAv(_getAv(doc,
-                'Tipicidade Geral', 'Tipicidade_Geral', 'TIPIFICACAO', 'TIPIFICACAO_GERAL'));
-            if (!v.includes(tipic)) return false;
-        }
-
-        // ── Movimentação ──────────────────────────────────────────
-        if (movi) {
-            const v = _normAv(_getAv(doc, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO'));
-            if (!v.includes(movi)) return false;
-        }
-
-        // ── Operador Capa ─────────────────────────────────────────
-        if (oper) {
-            const v = _normAv(_getAv(doc, 'OPERADOR CAPA', 'OPERADOR_CAPA', 'Operador Capa'));
-            if (!v.includes(oper)) return false;
-        }
-
-        // ── Mês ───────────────────────────────────────────────────
-        if (mes) {
-            const v = _normAv(_getAv(doc, 'Mês', 'Mes', 'MES'));
-            if (!v.includes(mes)) return false;
-        }
-
-        return true;
-    });
-
-    renderTable(resultado);
-    _badgeAv(resultado.length);
-}
-
-function limparFiltroAvancado() {
-    ['busca-geral-av', 'data-ini-av', 'data-fim-av',
-     'tipicidade-av', 'movimentacao-av', 'operador-av', 'mes-av']
-        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-
-    if (typeof dadosTCO !== 'undefined' && typeof renderTable === 'function')
-        renderTable(dadosTCO);
-
-    _badgeAv(typeof dadosTCO !== 'undefined' ? dadosTCO.length : 0);
-}
-
-function _badgeAv(total) {
-    const badge    = document.getElementById('badge-av');
-    const contador = document.getElementById('contador-av');
-    const totalG   = typeof dadosTCO !== 'undefined' ? dadosTCO.length : 0;
-
-    if (total < totalG) {
-        if (badge)    { badge.textContent = `${total} de ${totalG}`; badge.style.display = 'inline-block'; }
-        if (contador) { contador.textContent = `Mostrando ${total} de ${totalG} registros`; contador.style.color = '#c0392b'; }
-    } else {
-        if (badge)    badge.style.display = 'none';
-        if (contador) { contador.textContent = `Mostrando todos os ${totalG} registros`; contador.style.color = '#1a3d5d'; }
-    }
-}
-
-// Aguarda dadosTCO ser preenchido e atualiza o contador
-(function aguardarDados() {
-    const iv = setInterval(() => {
-        if (typeof dadosTCO !== 'undefined' && dadosTCO.length > 0) {
-            clearInterval(iv);
-            _badgeAv(dadosTCO.length);
-        }
-    }, 300);
-})();
-</script>
-
 </html>

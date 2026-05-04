@@ -193,17 +193,18 @@ main {
     color: black;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
     align-items: flex-start;
-    height: 9.375rem; /* 150px */
-    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1); 
+    min-height: 9.375rem; /* cresce se necessário para acomodar a data */
+    height: auto;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
 }
 
 .btn:hover {
     transition: transform 0.5s;
     transform: translateY(-0.3125rem);
     cursor: pointer;
-    border-top: 0.25rem (4px) solid rgba(59, 111, 184, 1); 
+    border-top: 0.25rem (4px) solid rgba(59, 111, 184, 1);
 }
 
 .btn .numero {
@@ -211,6 +212,22 @@ main {
     color: rgba(10, 68, 143, 1);
     font-weight: bold;
     margin-top: 0.625rem;
+}
+
+/* ── Data de última atualização dentro dos cards ── */
+.ultima-atualizacao {
+    display: block;
+    font-size: 0.65rem;
+    color: #b0bac8;
+    margin-top: auto;  /* empurra para baixo dentro do card */
+    padding-top: 0.5rem;
+    border-top: 0.0625rem solid #f0f0f5;
+    width: 100%;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+}
+.ultima-atualizacao.atualizado {
+    color: #4a9d6f; /* verde discreto quando tem data real */
 }
 
 /* --- FOOTER ORIGINAL --- */

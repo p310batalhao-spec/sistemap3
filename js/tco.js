@@ -1,17 +1,19 @@
-// CONFIGURAÇÕES DO FIREBASE
-const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
-const NODE_TCO = 'tco_geral';
-const NODE_META = '_meta_tco';
-
-// URL do Apps Script — proxy para o DataJud (evita bloqueio CORS)
-const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
+// ====================================================================
+// CONFIGURAÇÃO — URL do Web App do Apps Script (planilha TCO GERAL)
+// ====================================================================
+const APPS_SCRIPT_TCO_URL = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
 
 var dadosTCO = [];  // var garante acesso via window.dadosTCO de outros scripts
 
+// ====================================================================
+// RELÓGIO E LOGIN
+// ====================================================================
 function atualizarRelogio() {
     const agora = new Date();
     const el = document.getElementById('relogio');
-    if (el) el.innerHTML = agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) + '<br>' + agora.toLocaleTimeString('pt-BR');
+    if (el) el.innerHTML =
+        agora.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' }) +
+        '<br>' + agora.toLocaleTimeString('pt-BR');
 }
 
 function checkLogin() {
@@ -25,86 +27,107 @@ function checkLogin() {
     }
 }
 
-async function exibirUltimaSincronizacao() {
-    try {
-        const res = await fetch(`${DATABASE_URL}/${NODE_META}/ultima_sincronizacao.json`);
-        const data = await res.json();
-        const el = document.getElementById('ultima-sincronizacao');
-        if (!el) return;
-        if (!data || !data.timestamp) {
-            el.textContent = 'Última sincronização: nunca realizada';
-            return;
+// ====================================================================
+// ÚLTIMA SINCRONIZAÇÃO (agora via localStorage)
+// ====================================================================
+function exibirUltimaSincronizacao() {
+    const el = document.getElementById('ultima-sincronizacao');
+    if (!el) return;
+    const salvo = localStorage.getItem('tco_ultima_sync');
+    if (salvo) {
+        try {
+            const d = JSON.parse(salvo);
+            el.innerHTML = `🔄 Última sincronização: <b>${d.data}</b>` +
+                (d.atualizados !== undefined ? ` — ${d.atualizados} atualizados` : '') +
+                (d.naoEncontrados !== undefined ? `, ${d.naoEncontrados} não encontrados` : '');
+        } catch {
+            el.textContent = `🔄 Última sincronização: ${salvo}`;
         }
-        const dt = new Date(data.timestamp);
-        const formatada = dt.toLocaleDateString('pt-BR', { timeZone: 'America/Maceio' }) + ' às ' +
-            dt.toLocaleTimeString('pt-BR', { timeZone: 'America/Maceio', hour: '2-digit', minute: '2-digit' });
-        el.innerHTML = `🔄 Última sincronização automática: <b>${formatada}</b>` +
-            (data.atualizados !== undefined ? ` — ${data.atualizados} atualizados` : '') +
-            (data.naoEncontrados !== undefined ? `, ${data.naoEncontrados} não encontrados` : '');
-    } catch (e) {
-        console.warn('Não foi possível carregar a última sincronização:', e);
+    } else {
+        el.textContent = '🔄 Última sincronização: nunca realizada';
     }
 }
 
-async function registrarSincronizacao(atualizados, naoEncontrados, origem) {
-    await fetch(`${DATABASE_URL}/${NODE_META}/ultima_sincronizacao.json`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            timestamp: new Date().toISOString(),
-            atualizados: atualizados || 0,
-            naoEncontrados: naoEncontrados || 0,
-            origem: origem || 'manual'
-        })
-    });
+function registrarSincronizacao(atualizados, naoEncontrados, origem) {
+    const dados = {
+        data: new Date().toLocaleString('pt-BR', { timeZone: 'America/Maceio' }),
+        atualizados: atualizados || 0,
+        naoEncontrados: naoEncontrados || 0,
+        origem: origem || 'manual'
+    };
+    localStorage.setItem('tco_ultima_sync', JSON.stringify(dados));
+    exibirUltimaSincronizacao();
 }
 
+// ====================================================================
+// CARREGAR DADOS DO GOOGLE SHEETS
+// ====================================================================
 async function loadTCO() {
+    const msgCarregamento = document.getElementById('mensagem-carregamento');
+    if (msgCarregamento) msgCarregamento.style.display = 'block';
+
+    const skeletons = document.getElementById('lista-skeletons');
+    if (skeletons) skeletons.style.display = 'block';
+
     try {
-        const msgCarregamento = document.getElementById('mensagem-carregamento');
-        if (msgCarregamento) msgCarregamento.style.display = 'block';
+        const res = await fetch(`${APPS_SCRIPT_TCO_URL}?action=getTCO`, { redirect: 'follow' });
+        const json = await res.json();
 
-        const resTco = await fetch(`${DATABASE_URL}/${NODE_TCO}.json`);
-        const dataTco = await resTco.json();
-
-        if (!dataTco) {
-            renderTable([]);
+        // CORREÇÃO: em vez de falhar silenciosamente, exibe mensagem de erro visível
+        if (!Array.isArray(json)) {
+            console.error('Resposta inesperada ao carregar TCO:', json);
+            const lista = document.getElementById('lista-tco');
+            if (lista) {
+                lista.innerHTML = `
+                    <div style="text-align:center; padding:2rem 1rem; color:#991b1b;
+                                background:#fee2e2; border-radius:8px; margin-top:.5rem;">
+                        <strong>⚠️ Erro ao carregar dados da planilha.</strong><br>
+                        <small style="color:#7f1d1d;">
+                            ${json?.message || 'Resposta inválida da API. Verifique se o doGet foi publicado no Apps Script.'}
+                        </small>
+                    </div>`;
+            }
             atualizarContadores([]);
-            if (msgCarregamento) msgCarregamento.style.display = 'none';
             return;
         }
 
-        dadosTCO = Object.keys(dataTco).map(id => {
-            let item = dataTco[id];
-            if (!item) return null;
-            item.id_realtime = id;
-            return item;
-        }).filter(item => item !== null);
-
-        // Converte DATA para timestamp — suporta AAAA-MM-DD e DD/MM/AAAA
+        // Ordena por DATA decrescente
         const parseTCODate = str => {
             if (!str) return 0;
             str = str.toString().trim();
-            // Formato DD/MM/AAAA
             if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
                 const [d, m, a] = str.split('/');
                 return new Date(`${a}-${m}-${d}T00:00:00Z`).getTime() || 0;
             }
-            // Formato ISO AAAA-MM-DD (com ou sem hora)
             const t = new Date(str).getTime();
             return isNaN(t) ? 0 : t;
         };
-        dadosTCO.sort((a, b) => parseTCODate(b.DATA) - parseTCODate(a.DATA));
+
+        dadosTCO = json.sort((a, b) => parseTCODate(b['DATA']) - parseTCODate(a['DATA']));
 
         renderTable(dadosTCO);
         atualizarContadores(dadosTCO);
-        if (msgCarregamento) msgCarregamento.style.display = 'none';
 
     } catch (err) {
-        console.error("Erro ao carregar TCO:", err);
+        console.error('Erro ao carregar TCO:', err);
+        const lista = document.getElementById('lista-tco');
+        if (lista) {
+            lista.innerHTML = `
+                <div style="text-align:center; padding:2rem 1rem; color:#991b1b;
+                            background:#fee2e2; border-radius:8px; margin-top:.5rem;">
+                    <strong>⚠️ Falha de conexão com a API.</strong><br>
+                    <small style="color:#7f1d1d;">${err.message}</small>
+                </div>`;
+        }
+    } finally {
+        if (msgCarregamento) msgCarregamento.style.display = 'none';
+        if (skeletons) skeletons.style.display = 'none';
     }
 }
 
+// ====================================================================
+// CONTADORES DE ANO
+// ====================================================================
 function atualizarContadores(dados) {
     const anoAtual = new Date().getFullYear();
     const anoAnterior = anoAtual - 1;
@@ -112,11 +135,11 @@ function atualizarContadores(dados) {
 
     dados.forEach(item => {
         if (!item['DATA']) return;
-        let ano = null;
         const val = item['DATA'].toString().trim();
+        let ano = null;
         if (val.includes('/')) {
-            const partes = val.split('/');
-            if (partes.length === 3) ano = parseInt(partes[2], 10);
+            const p = val.split('/');
+            if (p.length === 3) ano = parseInt(p[2], 10);
         } else if (val.includes('-')) {
             ano = parseInt(val.split('-')[0], 10);
         }
@@ -131,92 +154,238 @@ function atualizarContadores(dados) {
     if (elAnterior) elAnterior.textContent = totalAnterior;
 }
 
-function renderTable(data) {
-    const tbody = document.querySelector('#tabela-tco tbody');
-    tbody.innerHTML = '';
-
-    data.forEach(item => {
-        const tr = document.createElement('tr');
-
-        let dataFormatada = "";
-        if (item['DATA']) {
-            const d = new Date(item['DATA']);
-            dataFormatada = !isNaN(d) ? d.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : item['DATA'];
-        }
-
-        let horaFormatada = item['Hora'] || "";
-        if (horaFormatada.includes('T')) {
-            horaFormatada = horaFormatada.split('T')[1].substring(0, 5);
-        }
-
-        const stringDoc = JSON.stringify(item).replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-        const numEsaj = item['LocalE-SAJ'] || item['E-SAJ'] || item['ESAJ'] || "";
-        const numLimpo = numEsaj.replace(/\D/g, '');
-
-        const linkEsaj = numEsaj
-            ? `<a href="https://www2.tjal.jus.br/cpopg/search.do?conversationId=&cbPesquisa=NUMPROC&dadosConsulta.valorConsulta=${numLimpo}&numeroDigitado=${numLimpo}" target="_blank" style="color:#1a3d5d; font-weight:bold; text-decoration:underline;">${numEsaj}</a>`
-            : "";
-
-        tr.innerHTML = `
-            <td>${item['ID'] || ""}</td>
-            <td>${item['Dia da Semana'] || ""}</td>
-            <td>${item['Mês'] || ""}</td>
-            <td>${horaFormatada}</td>
-            <td>${item['Nº Ocorrência'] || ""}</td>
-            <td>${dataFormatada}</td>
-            <td>${item['SERVIÇO'] || ""}</td>
-            <td>${item['OPERADOR CAPA'] || ""}</td>
-            <td>${item['SISDOC'] || ""}</td>
-            <td>${item['Tipicidade Geral'] || ""}</td>
-            <td>${item['Movimentação'] || ""}</td>
-            <td>${item['OBS:'] || ""}</td>
-            <td>${item['Material Apreendido'] || ""}</td>
-            <td>${item['Data Envio'] || ""}</td>
-            <td>${linkEsaj}</td>
-            <td>${item['PETICIONADOR'] || ""}</td>
-            <td>${item['Endereço'] || ""}</td>
-            <td>${item['Vistoriou?'] || ""}</td>
-            <td>${item['NUMERO_LACRE'] || ""}</td>
-            <td><button class="btn-editar" onclick='preencherParaEditar(${stringDoc})'>EDITAR</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
+// ====================================================================
+// RENDERIZAR LISTA (estilo AppSheet)
+// ====================================================================
+function classeBadge(mov) {
+    if (!mov) return 'mov-DEFAULT';
+    const m = mov.toString().toUpperCase().trim();
+    if (m.includes('PROTOCOLADO'))  return 'mov-PROTOCOLADO';
+    if (m.includes('ARQUIVADO'))    return 'mov-ARQUIVADO';
+    if (m.includes('PENDENTE'))     return 'mov-PENDENTE';
+    if (m.includes('REFAZER'))      return 'mov-REFAZER';
+    if (m.includes('CAPA'))         return 'mov-CAPA';
+    if (m.includes('ENCAMINHADO'))  return 'mov-ENCAMINHADO';
+    if (m.includes('DIGITALIZADO')) return 'mov-DIGITALIZADO';
+    if (m.includes('VISTORIADO'))   return 'mov-VISTORIADO';
+    if (m.includes('ASSINADO'))     return 'mov-ASSINADO';
+    if (m.includes('RECEBIDO'))     return 'mov-RECEBIDO';
+    if (m.includes('PRONTO'))       return 'mov-PRONTO';
+    return 'mov-DEFAULT';
 }
 
-// ====================================================================
-// FILTRO E LIMPAR FILTRO
-// ====================================================================
-function aplicarFiltro() {
-    const tipo = document.getElementById('filtro-tipo').value;
-    const valor = document.getElementById('filtro-valor-text').value.toLowerCase().trim();
+function renderTable(dados) {
+    const lista = document.getElementById('lista-tco');
+    if (!lista) return;
+    lista.innerHTML = '';
 
-    if (!tipo || !valor) {
-        alert('Selecione um campo e digite um valor para filtrar.');
+    const badgeTotal = document.getElementById('badge-total');
+    if (badgeTotal) badgeTotal.textContent = dados.length + ' registro' + (dados.length !== 1 ? 's' : '');
+
+    if (!dados.length) {
+        lista.innerHTML = `
+            <div style="text-align:center; padding:3rem 1rem; color:#9ca3af;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="1.5" style="opacity:.3; display:block; margin:0 auto .75rem;">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                </svg>
+                <p>Nenhum TCO encontrado.</p>
+            </div>`;
         return;
     }
 
-    const filtrados = dadosTCO.filter(item =>
-        (item[tipo] || '').toString().toLowerCase().includes(valor)
-    );
+    // Aplica scroll limitado à lista
+    lista.style.maxHeight = '600px';
+    lista.style.overflowY = 'auto';
+    lista.style.overflowX = 'hidden';
+    lista.style.paddingRight = '4px';
+    lista.style.scrollbarWidth = 'thin';
 
-    renderTable(filtrados);
+    // Função de parse de data (reutilizada na ordenação interna dos grupos)
+    const parseDateMs = str => {
+        if (!str) return 0;
+        str = str.toString().trim();
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+            const [d, m, a] = str.split('/');
+            return new Date(`${a}-${m}-${d}T00:00:00Z`).getTime() || 0;
+        }
+        const t = new Date(str).getTime();
+        return isNaN(t) ? 0 : t;
+    };
 
-    const btnLimpar = document.getElementById('btn-limpar-filtro');
-    if (btnLimpar) btnLimpar.style.display = 'inline-block';
+    // Agrupa por mês preservando a ordem cronológica (dados já vêm ordenados desc por DATA)
+    const grupos = {};
+    const gruposOrdem = []; // mantém a ordem de inserção (mais recente primeiro)
+    const ordemMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                        'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+    dados.forEach(d => {
+        const mes = d['Mês'] || '—';
+        if (!grupos[mes]) {
+            grupos[mes] = [];
+            gruposOrdem.push(mes);
+        }
+        grupos[mes].push(d);
+    });
+
+    // Ordena cada grupo internamente por DATA decrescente (mais recente no topo)
+    gruposOrdem.forEach(mes => {
+        grupos[mes].sort((a, b) => parseDateMs(b['DATA']) - parseDateMs(a['DATA']));
+    });
+
+    // Ordena os grupos pelo mês mais recente que contém (usa a data do primeiro item)
+    const gruposOrdenados = gruposOrdem.sort((a, b) => {
+        const dataA = parseDateMs(grupos[a][0]?.['DATA']);
+        const dataB = parseDateMs(grupos[b][0]?.['DATA']);
+        return dataB - dataA; // decrescente
+    });
+
+    gruposOrdenados.forEach(mes => {
+        const items = grupos[mes];
+
+        const sep = document.createElement('div');
+        sep.className = 'grupo-mes';
+        sep.innerHTML = `
+            <span class="grupo-mes-titulo">${mes}</span>
+            <span class="grupo-mes-linha"></span>
+            <span class="grupo-mes-count">${items.length}</span>`;
+        lista.appendChild(sep);
+
+        items.forEach(d => {
+            const tipificacao = d['Tipicidade Geral'] || '—';
+            const numCop      = d['Nº Ocorrência']    || '—';
+            const dataFato    = formatarData(d['DATA']);
+            const mov         = d['Movimentação']     || '—';
+
+            const card = document.createElement('div');
+            card.className = 'item-tco';
+
+            card.innerHTML = `
+                <div class="item-tco-icone">⚖️</div>
+                <div class="item-tco-corpo">
+                    <div class="item-tco-tipificacao" title="${tipificacao}">${tipificacao}</div>
+                    <div class="item-tco-meta">
+                        <span class="meta-cop">Nº ${numCop}</span>
+                        <span class="meta-sep"></span>
+                        <span class="meta-data">${dataFato}</span>
+                    </div>
+                </div>
+                <span class="badge-movimentacao ${classeBadge(mov)}">${mov}</span>
+                <button class="btn-editar-item" title="Editar">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                </button>`;
+
+            card.addEventListener('click', (e) => {
+                if (e.target.closest('.btn-editar-item')) return;
+                preencherParaEditar(d);
+            });
+            card.querySelector('.btn-editar-item').addEventListener('click', () => preencherParaEditar(d));
+
+            lista.appendChild(card);
+        });
+    });
 }
 
-function limparFiltro() {
-    document.getElementById('filtro-tipo').value = '';
-    document.getElementById('filtro-valor-text').value = '';
-
-    const btnLimpar = document.getElementById('btn-limpar-filtro');
-    if (btnLimpar) btnLimpar.style.display = 'none';
-
-    renderTable(dadosTCO);
+function formatarData(val) {
+    if (!val) return '—';
+    if (/^\d{2}\/\d{2}\/\d{4}/.test(val.toString().trim())) return val;
+    const d = new Date(val);
+    if (!isNaN(d)) return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    return val;
 }
 
 // ====================================================================
-// SINCRONIZAÇÃO EM LOTES
+// SALVAR (POST para Apps Script)
+// ====================================================================
+async function salvarDados(e) {
+    e.preventDefault();
+    const btnSalvar = document.getElementById('btn-salvar-form');
+    const formData = new FormData(e.target);
+    const payload  = Object.fromEntries(formData.entries());
+    const idForm   = payload.id_realtime || payload['ID'] || '';
+    delete payload.id_realtime;
+
+    if (idForm) payload['ID'] = idForm;
+
+    const action = idForm ? 'updateTCO' : 'createTCO';
+
+    if (!idForm) payload['ID'] = 'TCO-' + Date.now();
+
+    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Gravando...'; }
+
+    try {
+        const res = await fetch(APPS_SCRIPT_TCO_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, ...payload })
+        });
+        const json = await res.json();
+
+        if (json.status === 'success') {
+            alert('Dados salvos com sucesso!');
+            toggleSidebar(false);
+            loadTCO();
+        } else {
+            alert('Erro ao salvar: ' + (json.message || 'resposta inesperada'));
+        }
+    } catch (err) {
+        console.error('Erro ao salvar TCO:', err);
+        alert('Erro de conexão ao salvar TCO.');
+    } finally {
+        if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = 'SALVAR TCO'; }
+    }
+}
+
+// ====================================================================
+// TOGGLE SIDEBAR
+// ====================================================================
+function toggleSidebar(show) {
+    const sidebar = document.getElementById('form-tco');
+    const overlay = document.getElementById('overlay');
+    if (show) {
+        sidebar.classList.add('active');
+        if (overlay) overlay.classList.add('active');
+    } else {
+        sidebar.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
+        const inputId = document.getElementById('form-id-tco');
+        if (inputId) inputId.value = '';
+        sidebar.reset();
+    }
+}
+
+// ====================================================================
+// PREENCHER PARA EDITAR
+// ====================================================================
+window.preencherParaEditar = (item) => {
+    const form = document.getElementById('form-tco');
+    form.reset();
+
+    const inputId = document.getElementById('form-id-tco');
+    if (inputId) inputId.value = item['ID'] || item.id_realtime || '';
+
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(campo => {
+        const name = campo.getAttribute('name');
+        if (!name || name === 'id_realtime') return;
+        if (item[name] !== undefined) {
+            let valor = item[name];
+            if (campo.type === 'date' && typeof valor === 'string' && valor.includes('/')) {
+                const p = valor.split('/');
+                valor = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+            }
+            campo.value = valor;
+        }
+    });
+    toggleSidebar(true);
+};
+
+// ====================================================================
+// SINCRONIZAÇÃO e-SAJ
 // ====================================================================
 async function sincronizarEsajTCO() {
     const btn = document.getElementById('btn-sincronizar-esaj-tco');
@@ -230,8 +399,7 @@ async function sincronizarEsajTCO() {
             display:inline-flex; align-items:center; gap:10px;
             background:#1a3d5d; color:#fff; border-radius:6px;
             padding:7px 14px; font-size:13px; margin-left:8px;
-            vertical-align:middle; max-width:520px; flex-wrap:wrap;
-        `;
+            vertical-align:middle; max-width:520px; flex-wrap:wrap;`;
         btn.insertAdjacentElement('afterend', painel);
     }
 
@@ -249,12 +417,11 @@ async function sincronizarEsajTCO() {
     btn.innerHTML = '<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...';
 
     let totalAtualizados = 0, totalNaoEncontrados = 0, totalErros = 0;
-    let offset = 0;
-    let totalElegivel = null;
+    let offset = 0, totalElegivel = null;
 
     try {
         while (true) {
-            const url = `${WEBAPP_URL_TCO}?action=sincronizarTCOFirebase&offset=${offset}`;
+            const url = `${APPS_SCRIPT_TCO_URL}?action=sincronizarTCOFirebase&offset=${offset}`;
 
             painel.style.display = 'inline-flex';
             if (totalElegivel) {
@@ -278,15 +445,12 @@ async function sincronizarEsajTCO() {
             if (dados.status === 'concluido' || dados.proximoOffset === null || dados.proximoOffset === undefined) break;
 
             const novoOffset = parseInt(dados.proximoOffset, 10);
-            if (novoOffset <= offset) {
-                console.warn('Offset não avançou! Abortando.', { offset, novoOffset });
-                break;
-            }
+            if (novoOffset <= offset) { console.warn('Offset não avançou! Abortando.'); break; }
             offset = novoOffset;
             await new Promise(r => setTimeout(r, 1000));
         }
 
-        await registrarSincronizacao(totalAtualizados, totalNaoEncontrados, 'manual');
+        registrarSincronizacao(totalAtualizados, totalNaoEncontrados, 'manual');
 
         painel.style.background = '#155724';
         painel.innerHTML = `
@@ -294,15 +458,14 @@ async function sincronizarEsajTCO() {
             ${totalElegivel ?? '?'} verificados &nbsp;|&nbsp;
             ${totalAtualizados} atualizados &nbsp;|&nbsp;
             ${totalNaoEncontrados} não encontrados
-            ${totalErros > 0 ? ` | <span style="color:#f9c74f">${totalErros} com erro</span>` : ''}
-        `;
+            ${totalErros > 0 ? ` | <span style="color:#f9c74f">${totalErros} com erro</span>` : ''}`;
         setTimeout(() => { painel.style.display = 'none'; painel.style.background = '#1a3d5d'; }, 15000);
 
-        await exibirUltimaSincronizacao();
+        exibirUltimaSincronizacao();
         await loadTCO();
 
     } catch (err) {
-        console.error("Erro na sincronização:", err);
+        console.error('Erro na sincronização:', err);
         painel.style.background = '#7b1c1c';
         painel.innerHTML = `❌ <b>Erro:</b> ${err.message}`;
         setTimeout(() => { painel.style.display = 'none'; painel.style.background = '#1a3d5d'; }, 10000);
@@ -313,107 +476,105 @@ async function sincronizarEsajTCO() {
 }
 
 // ====================================================================
-// PREENCHER PARA EDITAR
+// FILTROS AVANÇADOS
 // ====================================================================
-window.preencherParaEditar = (item) => {
-    const form = document.getElementById('form-tco');
-    form.reset();
-    const inputId = document.getElementById('form-id-tco');
-    if (inputId) inputId.value = item.id_realtime || "";
-    const inputs = form.querySelectorAll('input, select, textarea');
-    inputs.forEach(campo => {
-        const name = campo.getAttribute('name');
-        if (name && item[name] !== undefined) {
-            let valor = item[name];
-            if (campo.type === 'date' && typeof valor === 'string' && valor.includes('/')) {
-                const p = valor.split('/');
-                valor = `${p[2]}-${p[1]}-${p[0]}`;
-            }
-            campo.value = valor;
+function _normAv(texto) {
+    if (!texto) return '';
+    return texto.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
+}
+
+function _toISOAv(str) {
+    if (!str) return '';
+    str = str.toString().trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10);
+    if (str.includes('/')) {
+        const p = str.split('/');
+        if (p.length === 3 && p[2].length === 4)
+            return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+    }
+    return '';
+}
+
+function _getAv(doc, ...chaves) {
+    for (const k of chaves) {
+        const v = doc[k];
+        if (v !== undefined && v !== null && v !== '') return String(v);
+    }
+    return '';
+}
+
+function filtroAvancado() {
+    if (!dadosTCO || !dadosTCO.length) return;
+
+    const busca = _normAv(document.getElementById('busca-geral-av')?.value);
+    const ini   = document.getElementById('data-ini-av')?.value  || '';
+    const fim   = document.getElementById('data-fim-av')?.value  || '';
+    const tipic = _normAv(document.getElementById('tipicidade-av')?.value);
+    const movi  = _normAv(document.getElementById('movimentacao-av')?.value);
+    const oper  = _normAv(document.getElementById('operador-av')?.value);
+    const mes   = _normAv(document.getElementById('mes-av')?.value);
+
+    if (!busca && !ini && !fim && !tipic && !movi && !oper && !mes) {
+        renderTable(dadosTCO);
+        _badgeAv(dadosTCO.length);
+        return;
+    }
+
+    const resultado = dadosTCO.filter(doc => {
+        const docISO = _toISOAv(_getAv(doc, 'DATA'));
+
+        if (busca && !_normAv(Object.values(doc).join(' ')).includes(busca)) return false;
+
+        if ((ini || fim) && docISO) {
+            if (ini && docISO < ini) return false;
+            if (fim && docISO > fim) return false;
         }
+
+        if (tipic) {
+            const v = _normAv(_getAv(doc, 'Tipicidade Geral', 'TIPIFICACAO'));
+            if (!v.includes(tipic)) return false;
+        }
+
+        if (movi) {
+            const v = _normAv(_getAv(doc, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO'));
+            if (!v.includes(movi)) return false;
+        }
+
+        if (oper) {
+            const v = _normAv(_getAv(doc, 'OPERADOR CAPA'));
+            if (!v.includes(oper)) return false;
+        }
+
+        if (mes) {
+            const v = _normAv(_getAv(doc, 'Mês', 'Mes', 'MES'));
+            if (!v.includes(mes)) return false;
+        }
+
+        return true;
     });
-    toggleSidebar(true);
-};
 
-// ====================================================================
-// ESPELHAR NA PLANILHA
-// ====================================================================
-function espelharNaPlanilha(payload, firebaseId) {
-    const params = new URLSearchParams();
-    params.set('action', 'espelharTCONaPlanilha');
-    params.set('firebaseId', firebaseId || '');
-    for (const [k, v] of Object.entries(payload)) {
-        params.set(k, v);
-    }
-    fetch(`${WEBAPP_URL_TCO}?${params.toString()}`, { method: 'GET', redirect: 'follow' })
-        .then(r => r.json())
-        .then(d => {
-            if (d.status === 'success') {
-                console.log('[Planilha] Espelhado com sucesso:', d.nrOcorrencia || firebaseId);
-            } else {
-                console.warn('[Planilha] Retorno inesperado:', d);
-            }
-        })
-        .catch(err => console.warn('[Planilha] Falha ao espelhar (não crítico):', err.message));
+    renderTable(resultado);
+    _badgeAv(resultado.length);
 }
 
-// ====================================================================
-// SALVAR (POST/PATCH)
-// ====================================================================
-async function salvarDados(e) {
-    e.preventDefault();
-    const btnSalvar = document.getElementById('btn-salvar-form');
-    const formData = new FormData(e.target);
-    const payload = Object.fromEntries(formData.entries());
-    const id = payload.id_realtime;
-    delete payload.id_realtime;
-
-    const url = id
-        ? `${DATABASE_URL}/${NODE_TCO}/${id}.json`
-        : `${DATABASE_URL}/${NODE_TCO}.json`;
-
-    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = "Gravando..."; }
-
-    try {
-        const res = await fetch(url, {
-            method: id ? 'PATCH' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            let firebaseId = id;
-            if (!id) {
-                const resData = await res.json();
-                firebaseId = resData?.name || '';
-            }
-            espelharNaPlanilha(payload, firebaseId);
-            alert("Dados salvos com sucesso!");
-            toggleSidebar(false);
-            loadTCO();
-        }
-    } catch (err) {
-        console.error("Erro ao salvar:", err);
-    } finally {
-        if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = "SALVAR TCO"; }
-    }
+function limparFiltroAvancado() {
+    ['busca-geral-av','data-ini-av','data-fim-av','tipicidade-av','movimentacao-av','operador-av','mes-av']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    renderTable(dadosTCO);
+    _badgeAv(dadosTCO.length);
 }
 
-// ====================================================================
-// TOGGLE SIDEBAR
-// ====================================================================
-function toggleSidebar(show) {
-    const sidebar = document.getElementById('form-tco');
-    const overlay = document.getElementById('overlay');
-    if (show) {
-        sidebar.classList.add('active');
-        if (overlay) overlay.classList.add('active');
+function _badgeAv(total) {
+    const badge    = document.getElementById('badge-av');
+    const contador = document.getElementById('contador-av');
+    const totalG   = dadosTCO.length;
+
+    if (total < totalG) {
+        if (badge)    { badge.textContent = `${total} de ${totalG}`; badge.style.display = 'inline-block'; }
+        if (contador) { contador.textContent = `Mostrando ${total} de ${totalG} registros`; contador.style.color = '#c0392b'; }
     } else {
-        sidebar.classList.remove('active');
-        if (overlay) overlay.classList.remove('active');
-        const inputId = document.getElementById('form-id-tco');
-        if (inputId) inputId.value = "";
-        sidebar.reset();
+        if (badge)    badge.style.display = 'none';
+        if (contador) { contador.textContent = `Mostrando todos os ${totalG} registros`; contador.style.color = '#1a3d5d'; }
     }
 }
 
@@ -436,15 +597,22 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFechar = document.getElementById('btn-fechar-sidebar');
     if (btnFechar) btnFechar.onclick = () => toggleSidebar(false);
 
+    const overlay = document.getElementById('overlay');
+    if (overlay) overlay.onclick = () => toggleSidebar(false);
+
     const btnSincronizar = document.getElementById('btn-sincronizar-esaj-tco');
     if (btnSincronizar) btnSincronizar.onclick = sincronizarEsajTCO;
 
-    const btnAplicar = document.getElementById('btn-aplicar-filtro');
-    if (btnAplicar) btnAplicar.onclick = aplicarFiltro;
-
-    const btnLimpar = document.getElementById('btn-limpar-filtro');
-    if (btnLimpar) btnLimpar.onclick = limparFiltro;
-
     const btnImprimir = document.getElementById('btn-imprimir');
     if (btnImprimir) btnImprimir.onclick = () => window.print();
+
+    // Aguarda dadosTCO e atualiza contador
+    (function aguardarDados() {
+        const iv = setInterval(() => {
+            if (typeof dadosTCO !== 'undefined' && dadosTCO.length > 0) {
+                clearInterval(iv);
+                _badgeAv(dadosTCO.length);
+            }
+        }, 300);
+    })();
 });

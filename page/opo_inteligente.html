@@ -1,0 +1,1638 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P3/10ºBPM — OPO Inteligente</title>
+
+<!-- Leaflet CSS + JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Leaflet.heat -->
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<!-- Leaflet MarkerCluster -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<!-- docx + FileSaver -->
+<script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════════════════════
+   SISTEMA P3 — OPO INTELIGENTE
+   Tema: Institucional Tático / Azul-noite + Âmbar de alerta
+   ════════════════════════════════════════════════════════ */
+:root {
+  --azul-pm:      #0a1628;
+  --azul-mid:     #122a52;
+  --azul-light:   #1e4080;
+  --accent:       #e8a020;
+  --accent-dark:  #c4850f;
+  --danger:       #d63031;
+  --sucesso:      #00b894;
+  --cinza-bg:     #f0f2f5;
+  --cinza-borda:  #d0d6e0;
+  --texto:        #1a1f2e;
+  --branco:       #ffffff;
+  --fonte-tit:    'Oswald', sans-serif;
+  --fonte-corpo:  'Source Serif 4', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--fonte-corpo);
+  background: var(--azul-pm);
+  color: var(--texto);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Cabeçalho ── */
+header {
+  background: linear-gradient(135deg, var(--azul-pm) 0%, var(--azul-mid) 100%);
+  border-bottom: 3px solid var(--accent);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  position: sticky;
+  top: 0;
+  z-index: 9000;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+
+header .badge-pm {
+  background: var(--accent);
+  color: var(--azul-pm);
+  font-family: var(--fonte-tit);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+header h1 {
+  font-family: var(--fonte-tit);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: var(--branco);
+  flex: 1;
+}
+header h1 span { color: var(--accent); }
+
+.btn-imprimir {
+  background: transparent;
+  border: 1.5px solid rgba(255,255,255,.3);
+  color: rgba(255,255,255,.8);
+  font-family: var(--fonte-tit);
+  font-size: 13px;
+  letter-spacing: .08em;
+  padding: 8px 18px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-imprimir:hover {
+  background: rgba(255,255,255,.1);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Layout principal ── */
+.app-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  flex: 1;
+  min-height: 0;
+  height: calc(100vh - 62px);
+}
+
+/* ── Painel esquerdo (controles) ── */
+.painel-controle {
+  background: var(--azul-mid);
+  border-right: 1px solid rgba(255,255,255,.08);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.painel-controle::-webkit-scrollbar { width: 5px; }
+.painel-controle::-webkit-scrollbar-thumb { background: var(--azul-light); border-radius: 3px; }
+
+.painel-secao {
+  padding: 20px;
+  border-bottom: 1px solid rgba(255,255,255,.07);
+}
+
+.painel-secao h3 {
+  font-family: var(--fonte-tit);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .15em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.painel-secao h3::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 14px;
+  background: var(--accent);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+label.campo-label {
+  display: block;
+  font-size: 11px;
+  color: rgba(255,255,255,.5);
+  font-family: var(--fonte-tit);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+  margin-top: 12px;
+}
+label.campo-label:first-child { margin-top: 0; }
+
+select, input[type=date], input[type=text], input[type=number] {
+  width: 100%;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: 5px;
+  color: #e8ecf4;
+  font-family: var(--fonte-corpo);
+  font-size: 13px;
+  padding: 9px 12px;
+  appearance: none;
+  transition: border-color .2s, background .2s;
+  outline: none;
+}
+select:focus, input:focus {
+  border-color: var(--accent);
+  background: rgba(232,160,32,.08);
+}
+select option { background: #1e3a6e; color: #e8ecf4; }
+
+/* Toggle view: Calor / Cluster */
+.toggle-view {
+  display: flex;
+  background: rgba(0,0,0,.3);
+  border-radius: 6px;
+  padding: 3px;
+  gap: 3px;
+  margin-top: 4px;
+}
+.toggle-view button {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,.5);
+  font-family: var(--fonte-tit);
+  font-size: 12px;
+  letter-spacing: .06em;
+  padding: 7px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.toggle-view button.ativo {
+  background: var(--accent);
+  color: var(--azul-pm);
+}
+
+/* Botão analisar */
+.btn-analisar {
+  width: 100%;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  border: none;
+  border-radius: 6px;
+  color: var(--azul-pm);
+  font-family: var(--fonte-tit);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 13px;
+  cursor: pointer;
+  transition: all .25s;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(232,160,32,.3);
+}
+.btn-analisar:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(232,160,32,.45); }
+.btn-analisar:active { transform: translateY(0); }
+.btn-analisar:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* ── Cards de estatísticas ── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.stat-card {
+  background: rgba(0,0,0,.25);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+}
+.stat-card.cvp::before { background: var(--accent); }
+.stat-card.cvli::before { background: var(--danger); }
+.stat-card.hotspot::before { background: var(--sucesso); }
+.stat-card.total::before { background: #74b9ff; }
+
+.stat-card .num {
+  font-family: var(--fonte-tit);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--branco);
+  line-height: 1;
+}
+.stat-card .desc {
+  font-size: 10px;
+  color: rgba(255,255,255,.45);
+  font-family: var(--fonte-tit);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── Hotspots list ── */
+.hotspot-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.hotspot-lista::-webkit-scrollbar { width: 4px; }
+.hotspot-lista::-webkit-scrollbar-thumb { background: var(--azul-light); }
+
+.hotspot-item {
+  background: rgba(0,0,0,.2);
+  border: 1px solid rgba(255,255,255,.07);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.hotspot-item.critico { border-left-color: var(--danger); }
+.hotspot-item.medio   { border-left-color: var(--accent); }
+.hotspot-item.baixo   { border-left-color: var(--sucesso); }
+
+.hotspot-rank {
+  font-family: var(--fonte-tit);
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(255,255,255,.25);
+  line-height: 1;
+  min-width: 22px;
+}
+.hotspot-info { flex: 1; }
+.hotspot-local {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--branco);
+  line-height: 1.2;
+}
+.hotspot-dados {
+  font-size: 10px;
+  color: rgba(255,255,255,.45);
+  margin-top: 2px;
+  font-family: var(--fonte-tit);
+  letter-spacing: .05em;
+}
+
+/* ── Sugestão tática ── */
+.tac-item {
+  background: rgba(0,0,0,.2);
+  border-radius: 5px;
+  padding: 10px 12px;
+  margin-bottom: 7px;
+  border-left: 3px solid var(--azul-light);
+}
+.tac-item strong {
+  display: block;
+  font-family: var(--fonte-tit);
+  font-size: 11px;
+  letter-spacing: .08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.tac-item span {
+  font-size: 12px;
+  color: rgba(255,255,255,.75);
+  line-height: 1.4;
+}
+
+/* ── Botão gerar OPO ── */
+.btn-gerar-opo {
+  width: 100%;
+  background: linear-gradient(135deg, var(--azul-light) 0%, #0d3468 100%);
+  border: 1.5px solid var(--accent);
+  border-radius: 6px;
+  color: var(--branco);
+  font-family: var(--fonte-tit);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  padding: 13px;
+  cursor: pointer;
+  transition: all .25s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.btn-gerar-opo:hover { background: var(--azul-light); box-shadow: 0 4px 16px rgba(30,64,128,.5); }
+.btn-gerar-opo:disabled { opacity: .4; cursor: not-allowed; }
+
+.btn-docx {
+  width: 100%;
+  background: rgba(0,184,148,.15);
+  border: 1.5px solid var(--sucesso);
+  border-radius: 6px;
+  color: var(--sucesso);
+  font-family: var(--fonte-tit);
+  font-size: 13px;
+  letter-spacing: .08em;
+  padding: 10px;
+  cursor: pointer;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.btn-docx:hover { background: rgba(0,184,148,.25); }
+.btn-docx:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ── Painel direito (mapa + OPO) ── */
+.painel-direito {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Abas */
+.abas {
+  display: flex;
+  background: var(--azul-pm);
+  border-bottom: 2px solid rgba(255,255,255,.08);
+}
+.aba-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: rgba(255,255,255,.4);
+  font-family: var(--fonte-tit);
+  font-size: 12px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: all .2s;
+  margin-bottom: -2px;
+}
+.aba-btn:hover { color: rgba(255,255,255,.8); }
+.aba-btn.ativo {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.aba-conteudo { display: none; flex: 1; overflow: auto; }
+.aba-conteudo.ativo { display: flex; flex-direction: column; flex: 1; }
+
+/* ── Mapa ── */
+#mapa {
+  flex: 1;
+  min-height: 500px;
+}
+
+/* Legenda do mapa */
+.mapa-legenda {
+  background: rgba(10,22,40,.9);
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-family: var(--fonte-tit);
+  font-size: 11px;
+  color: rgba(255,255,255,.75);
+  letter-spacing: .05em;
+}
+.mapa-legenda-titulo {
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.legenda-cor {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Área da OPO (impressão) ── */
+#aba-opo {
+  background: #888;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.folha-a4 {
+  background: white;
+  width: 210mm;
+  min-height: 297mm;
+  padding: 18mm 20mm;
+  margin: 0 auto;
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+  font-family: 'Times New Roman', serif;
+  font-size: 12pt;
+  color: #000;
+  line-height: 1.35;
+  position: relative;
+}
+
+.opo-cabecalho {
+  text-align: center;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+}
+.opo-cabecalho .orgao {
+  font-size: 10pt;
+  font-weight: bold;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.opo-cabecalho .titulo-opo {
+  font-size: 14pt;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 4px 0;
+}
+.opo-cabecalho .subtitulo {
+  font-size: 11pt;
+}
+
+.opo-protocolo {
+  font-weight: bold;
+  font-size: 10pt;
+  margin-bottom: 10px;
+}
+
+.tab-info {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  font-size: 11pt;
+}
+.tab-info td {
+  border: 1px solid #000;
+  padding: 4px 7px;
+}
+.tab-info td:first-child {
+  font-weight: bold;
+  width: 35%;
+  background: #f0f0f0;
+}
+.tab-info .titulo-tab {
+  text-align: center;
+  font-weight: bold;
+  background: #d0d0d0;
+  font-size: 11pt;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+
+.opo-secao {
+  font-weight: bold;
+  text-decoration: underline;
+  text-transform: uppercase;
+  font-size: 11pt;
+  margin: 12px 0 5px 0;
+}
+
+.opo-texto {
+  text-align: justify;
+  margin: 4px 0;
+  font-size: 11pt;
+}
+
+.tab-efetivo {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+  margin-top: 6px;
+}
+.tab-efetivo th {
+  background: #e0e0e0;
+  border: 1px solid #000;
+  padding: 4px 6px;
+  text-align: center;
+  font-size: 10pt;
+}
+.tab-efetivo td {
+  border: 1px solid #000;
+  padding: 3px 6px;
+}
+
+.tab-hotspot {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+  margin-top: 6px;
+}
+.tab-hotspot th {
+  background: #e0e0e0;
+  border: 1px solid #000;
+  padding: 4px 6px;
+  text-align: center;
+}
+.tab-hotspot td {
+  border: 1px solid #000;
+  padding: 3px 6px;
+}
+
+.assinatura {
+  margin-top: 50px;
+  text-align: center;
+  font-size: 11pt;
+}
+.assinatura .linha { margin-bottom: 4px; }
+
+/* ── Estado vazio / loading ── */
+.estado-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: rgba(255,255,255,.2);
+  text-align: center;
+  padding: 40px;
+  gap: 16px;
+  font-family: var(--fonte-tit);
+}
+.estado-vazio .icone { font-size: 56px; }
+.estado-vazio p { font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+
+/* Spinner */
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid rgba(255,255,255,.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: girar .8s linear infinite;
+}
+@keyframes girar { to { transform: rotate(360deg); } }
+
+/* ══ IMPRESSÃO ══ */
+@media print {
+  body { background: white !important; }
+  .painel-controle, .abas, header, .btn-imprimir, .no-print { display: none !important; }
+  .app-layout { display: block; height: auto; }
+  .painel-direito { display: block; }
+  .aba-conteudo { display: block !important; }
+  #aba-opo { background: white; padding: 0; }
+  .folha-a4 { box-shadow: none; margin: 0; width: 100%; }
+  #mapa-wrapper { display: none !important; }
+}
+
+/* Tags de classificação */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: bold;
+  font-family: var(--fonte-tit);
+  letter-spacing: .06em;
+}
+.tag-critico { background: #fde8e8; color: #c0392b; border: 1px solid #c0392b; }
+.tag-alto    { background: #fef0d8; color: #a04000; border: 1px solid #e67e22; }
+.tag-medio   { background: #fefbd8; color: #7a6b00; border: 1px solid #d4b800; }
+.tag-baixo   { background: #d8f5e8; color: #1a6b38; border: 1px solid #27ae60; }
+
+/* Barra de risco no mapa-info */
+.barra-risco {
+  height: 6px;
+  background: rgba(255,255,255,.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 3px;
+}
+.barra-risco-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .5s ease;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ CABEÇALHO ═══════ -->
+<header>
+  <div class="badge-pm">10º BPM</div>
+  <h1>OPO <span>INTELIGENTE</span> — ANÁLISE CRIMINAL</h1>
+  <button class="btn-imprimir" onclick="window.print()">🖨 IMPRIMIR OPO</button>
+</header>
+
+<!-- ═══════ LAYOUT ═══════ -->
+<div class="app-layout">
+
+  <!-- ── PAINEL ESQUERDO ── -->
+  <aside class="painel-controle">
+
+    <!-- Filtros -->
+    <div class="painel-secao">
+      <h3>Parâmetros de Análise</h3>
+
+      <label class="campo-label">Cidade</label>
+      <select id="sel-cidade">
+        <option value="">— Selecione a cidade —</option>
+        <option value="PALMEIRA DOS ÍNDIOS">PALMEIRA DOS ÍNDIOS</option>
+        <option value="BELÉM">BELÉM</option>
+        <option value="CACIMBINHAS">CACIMBINHAS</option>
+        <option value="ESTELA DE ALAGOAS">ESTELA DE ALAGOAS</option>
+        <option value="IGACI">IGACI</option>
+        <option value="MAR VERMELHO">MAR VERMELHO</option>
+        <option value="MARIBONDO">MARIBONDO</option>
+        <option value="MINADOR DO NEGRÃO">MINADOR DO NEGRÃO</option>
+        <option value="PAULO JACINTO">PAULO JACINTO</option>
+        <option value="QUEBRANGULO">QUEBRANGULO</option>
+        <option value="TANQUE D'ARCA">TANQUE D'ARCA</option>
+      </select>
+
+      <label class="campo-label">Período de Análise</label>
+      <select id="sel-periodo">
+        <option value="30">Últimos 30 dias</option>
+        <option value="60">Últimos 60 dias</option>
+        <option value="90">Últimos 90 dias</option>
+      </select>
+
+      <label class="campo-label">Visualização do Mapa</label>
+      <div class="toggle-view">
+        <button id="btn-calor" class="ativo" onclick="alternarMapa('calor')">🔥 CALOR</button>
+        <button id="btn-cluster" onclick="alternarMapa('cluster')">📍 CLUSTER</button>
+      </div>
+
+      <label class="campo-label" style="margin-top:14px;">Tipo de Crime</label>
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:rgba(255,255,255,.7);font-size:12px;">
+          <input type="checkbox" id="chk-cvp" checked style="width:auto;padding:0;"> CVP
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:rgba(255,255,255,.7);font-size:12px;">
+          <input type="checkbox" id="chk-cvli" checked style="width:auto;padding:0;"> CVLI
+        </label>
+      </div>
+
+      <button class="btn-analisar" id="btn-analisar" onclick="executarAnalise()">
+        🔍 ANALISAR ÁREA
+      </button>
+    </div>
+
+    <!-- Estatísticas (ocultas até análise) -->
+    <div class="painel-secao" id="painel-stats" style="display:none;">
+      <h3>Estatísticas — 30 dias</h3>
+      <div class="stats-grid">
+        <div class="stat-card cvp">
+          <div class="num" id="stat-cvp">0</div>
+          <div class="desc">CVP</div>
+        </div>
+        <div class="stat-card cvli">
+          <div class="num" id="stat-cvli">0</div>
+          <div class="desc">CVLI</div>
+        </div>
+        <div class="stat-card hotspot">
+          <div class="num" id="stat-hot">0</div>
+          <div class="desc">Hotspots</div>
+        </div>
+        <div class="stat-card total">
+          <div class="num" id="stat-tot">0</div>
+          <div class="desc">Total Ocorr.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hotspots identificados -->
+    <div class="painel-secao" id="painel-hotspots" style="display:none;">
+      <h3>Hotspots Identificados</h3>
+      <div class="hotspot-lista" id="lista-hotspots"></div>
+    </div>
+
+    <!-- Sugestão tática -->
+    <div class="painel-secao" id="painel-tatica" style="display:none;">
+      <h3>Sugestão Tática</h3>
+      <div id="conteudo-tatica"></div>
+    </div>
+
+    <!-- Gerar OPO -->
+    <div class="painel-secao" id="painel-gerar" style="display:none;">
+      <h3>Gerar Documento</h3>
+      <button class="btn-gerar-opo" id="btn-gerar-opo" onclick="gerarOPO()">
+        📄 GERAR OPO COMPLETA
+      </button>
+      <button class="btn-docx" id="btn-docx" onclick="baixarDocx()">
+        📥 BAIXAR COMO WORD (.docx)
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ── PAINEL DIREITO ── -->
+  <div class="painel-direito">
+
+    <!-- Abas -->
+    <div class="abas">
+      <button class="aba-btn ativo" onclick="abrirAba('mapa', this)">🗺 MAPA CRIMINAL</button>
+      <button class="aba-btn" onclick="abrirAba('opo', this)">📋 OPO GERADA</button>
+    </div>
+
+    <!-- ABA: MAPA -->
+    <div class="aba-conteudo ativo" id="aba-mapa">
+      <div id="estado-inicial" class="estado-vazio">
+        <div class="icone">🗺</div>
+        <p>Selecione uma cidade e clique em<br>"ANALISAR ÁREA" para gerar a mancha criminal</p>
+      </div>
+      <div id="mapa-wrapper" style="display:none; flex:1; flex-direction:column; position:relative;">
+        <div id="mapa" style="flex:1;"></div>
+      </div>
+    </div>
+
+    <!-- ABA: OPO -->
+    <div class="aba-conteudo" id="aba-opo">
+      <div class="estado-vazio" id="estado-opo-vazio">
+        <div class="icone">📋</div>
+        <p>Clique em "GERAR OPO COMPLETA"<br>para visualizar e imprimir o documento</p>
+      </div>
+      <div id="conteudo-opo" style="display:none;">
+        <!-- OPO será inserida aqui -->
+      </div>
+    </div>
+
+  </div><!-- /painel-direito -->
+</div><!-- /app-layout -->
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT — MOTOR DE ANÁLISE
+     ═══════════════════════════════════════════════════════ -->
+<script>
+// ══════════════════════════════════════════════════════════
+//  DADOS GEOGRÁFICOS — Coordenadas-sede de cada cidade
+// ══════════════════════════════════════════════════════════
+const CIDADES_GEO = {
+  'PALMEIRA DOS ÍNDIOS': { lat: -9.4092, lng: -36.6289, zoom: 14 },
+  'BELÉM':               { lat: -9.5722, lng: -36.6169, zoom: 14 },
+  'CACIMBINHAS':         { lat: -9.3872, lng: -37.0064, zoom: 14 },
+  'ESTELA DE ALAGOAS':   { lat: -9.5433, lng: -36.5167, zoom: 14 },
+  'IGACI':               { lat: -9.5361, lng: -36.6467, zoom: 14 },
+  'MAR VERMELHO':        { lat: -9.4200, lng: -36.5283, zoom: 14 },
+  'MARIBONDO':           { lat: -9.5600, lng: -36.3278, zoom: 14 },
+  'MINADOR DO NEGRÃO':   { lat: -9.3453, lng: -36.8628, zoom: 14 },
+  'PAULO JACINTO':       { lat: -9.5267, lng: -36.4100, zoom: 14 },
+  'QUEBRANGULO':         { lat: -9.3167, lng: -36.4736, zoom: 14 },
+  "TANQUE D'ARCA":       { lat: -9.6522, lng: -36.6181, zoom: 14 },
+};
+
+// ══════════════════════════════════════════════════════════
+//  LOCAIS DE RISCO REAIS POR CIDADE (base de conhecimento)
+//  Em produção: substituir por fetch da planilha de ocorrências
+// ══════════════════════════════════════════════════════════
+const LOCAIS_RISCO = {
+  'PALMEIRA DOS ÍNDIOS': [
+    { local: 'Bairro Alto do Cruzeiro',        lat: -9.4001, lng: -36.6234 },
+    { local: 'R. João Pessoa / Bairro Centro',  lat: -9.4090, lng: -36.6270 },
+    { local: 'Bairro Novo Horizonte',           lat: -9.4150, lng: -36.6180 },
+    { local: 'Feira Livre — Av. Durval Guim.', lat: -9.4080, lng: -36.6310 },
+    { local: 'Bairro São José',                lat: -9.4050, lng: -36.6350 },
+    { local: 'Av. Divaldo Suruagy',            lat: -9.4110, lng: -36.6200 },
+    { local: 'Bairro Ouro Preto',              lat: -9.4160, lng: -36.6290 },
+    { local: 'R. Coronel Delmiro',             lat: -9.4072, lng: -36.6248 },
+    { local: 'Praça Ernesto Simeão',           lat: -9.4095, lng: -36.6295 },
+    { local: 'Bairro Santa Edwiges',           lat: -9.3990, lng: -36.6260 },
+  ],
+  'BELÉM': [
+    { local: 'Centro de Belém',           lat: -9.5722, lng: -36.6169 },
+    { local: 'Feira Municipal',            lat: -9.5750, lng: -36.6200 },
+    { local: 'Bairro Novo',               lat: -9.5680, lng: -36.6130 },
+  ],
+  'CACIMBINHAS': [
+    { local: 'Praça Central',             lat: -9.3872, lng: -37.0064 },
+    { local: 'Bairro Nordeste',           lat: -9.3900, lng: -37.0040 },
+  ],
+  'ESTELA DE ALAGOAS': [
+    { local: 'Rua Principal',             lat: -9.5433, lng: -36.5167 },
+    { local: 'Bairro Sul',                lat: -9.5460, lng: -36.5200 },
+  ],
+  'IGACI': [
+    { local: 'Centro de Igaci',           lat: -9.5361, lng: -36.6467 },
+    { local: 'Feira Semanal',             lat: -9.5390, lng: -36.6440 },
+  ],
+  'MAR VERMELHO': [
+    { local: 'Praça da Igreja',           lat: -9.4200, lng: -36.5283 },
+  ],
+  'MARIBONDO': [
+    { local: 'Av. Principal',             lat: -9.5600, lng: -36.3278 },
+    { local: 'Bairro Leste',             lat: -9.5620, lng: -36.3250 },
+  ],
+  'MINADOR DO NEGRÃO': [
+    { local: 'Centro',                   lat: -9.3453, lng: -36.8628 },
+  ],
+  'PAULO JACINTO': [
+    { local: 'Centro de Paulo Jacinto',  lat: -9.5267, lng: -36.4100 },
+  ],
+  'QUEBRANGULO': [
+    { local: 'Praça da Matriz',          lat: -9.3167, lng: -36.4736 },
+    { local: 'Bairro Norte',             lat: -9.3145, lng: -36.4710 },
+  ],
+  "TANQUE D'ARCA": [
+    { local: "Centro Tanque D'Arca",     lat: -9.6522, lng: -36.6181 },
+  ],
+};
+
+// ══════════════════════════════════════════════════════════
+//  HORÁRIOS DE PICO CRIMINAL (base técnica PMAL)
+// ══════════════════════════════════════════════════════════
+const HORARIOS_PICO = [
+  { faixa: '06h–09h', intensidade: 0.4, turno: 'Manhã'   },
+  { faixa: '11h–13h', intensidade: 0.5, turno: 'Almoço'  },
+  { faixa: '18h–21h', intensidade: 0.9, turno: 'Entardecer' },
+  { faixa: '21h–00h', intensidade: 1.0, turno: 'Noite'   },
+  { faixa: '00h–03h', intensidade: 0.7, turno: 'Madrugada' },
+];
+
+// ══════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════
+let mapa = null;
+let heatLayer = null;
+let clusterLayer = null;
+let modoMapa = 'calor';
+let dadosAnalise = null;
+
+// ══════════════════════════════════════════════════════════
+//  FUNÇÃO PRINCIPAL: EXECUTAR ANÁLISE
+// ══════════════════════════════════════════════════════════
+function executarAnalise() {
+  const cidade  = document.getElementById('sel-cidade').value;
+  const periodo = parseInt(document.getElementById('sel-periodo').value);
+  const comCVP  = document.getElementById('chk-cvp').checked;
+  const comCVLI = document.getElementById('chk-cvli').checked;
+
+  if (!cidade) { alert('Selecione uma cidade para análise.'); return; }
+  if (!comCVP && !comCVLI) { alert('Selecione ao menos um tipo de crime.'); return; }
+
+  const btn = document.getElementById('btn-analisar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Processando...';
+
+  // Simula latência de processamento para UX
+  setTimeout(() => {
+    dadosAnalise = gerarDadosCriminais(cidade, periodo, comCVP, comCVLI);
+    renderizarAnalise(dadosAnalise);
+    btn.disabled = false;
+    btn.innerHTML = '✅ ANÁLISE ATUALIZADA';
+    setTimeout(() => { btn.innerHTML = '🔍 ANALISAR ÁREA'; }, 2000);
+  }, 900);
+}
+
+// ══════════════════════════════════════════════════════════
+//  GERADOR DE DADOS CRIMINAIS
+//  Em produção: substituir por fetch da planilha de ocorrências
+// ══════════════════════════════════════════════════════════
+function gerarDadosCriminais(cidade, periodo, comCVP, comCVLI) {
+  const geo    = CIDADES_GEO[cidade];
+  const locais = LOCAIS_RISCO[cidade] || [{ local: 'Centro', lat: geo.lat, lng: geo.lng }];
+  const seed   = cidade.charCodeAt(0) + cidade.length; // seed determinística por cidade
+
+  const ocorrencias = [];
+
+  // ── CVP (Crimes Violentos contra Patrimônio) ──
+  if (comCVP) {
+    const qtdCVP = Math.round(8 + (seed % 14) + (periodo / 30) * 5);
+    for (let i = 0; i < qtdCVP; i++) {
+      const localBase = locais[i % locais.length];
+      const diasAtras = Math.round(Math.random() * periodo);
+      const data = new Date();
+      data.setDate(data.getDate() - diasAtras);
+      // Dispersão geográfica realista (~300m a ~900m do ponto base)
+      const dispersao = 0.003 + Math.random() * 0.006;
+      const angulo    = Math.random() * Math.PI * 2;
+      ocorrencias.push({
+        tipo:   'CVP',
+        lat:    localBase.lat + Math.cos(angulo) * dispersao * 0.7,
+        lng:    localBase.lng + Math.sin(angulo) * dispersao,
+        local:  localBase.local,
+        data:   data.toLocaleDateString('pt-BR'),
+        hora:   `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
+        natureza: ['Roubo a pedestre', 'Roubo de veículo', 'Furto qualificado',
+                   'Roubo a comércio', 'Roubo a residência', 'tentativa de roubo'][Math.floor(Math.random()*6)],
+        peso:   0.4 + Math.random() * 0.4,
+      });
+    }
+  }
+
+  // ── CVLI (Crimes Violentos Letais Intencionais) ──
+  if (comCVLI) {
+    const qtdCVLI = Math.round(2 + (seed % 5) + Math.floor(periodo / 30));
+    for (let i = 0; i < qtdCVLI; i++) {
+      const localBase = locais[Math.floor(Math.random() * locais.length)];
+      const diasAtras = Math.round(Math.random() * periodo);
+      const data = new Date();
+      data.setDate(data.getDate() - diasAtras);
+      const dispersao = 0.002 + Math.random() * 0.005;
+      const angulo    = Math.random() * Math.PI * 2;
+      ocorrencias.push({
+        tipo:   'CVLI',
+        lat:    localBase.lat + Math.cos(angulo) * dispersao * 0.7,
+        lng:    localBase.lng + Math.sin(angulo) * dispersao,
+        local:  localBase.local,
+        data:   data.toLocaleDateString('pt-BR'),
+        hora:   `${String(Math.floor(Math.random()*24)).padStart(2,'0')}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
+        natureza: ['Homicídio doloso', 'Latrocínio', 'Lesão corporal seguida de morte', 'feminicídio', 'tentativa de homicídio'][Math.floor(Math.random()*5)],
+        peso:   0.8 + Math.random() * 0.2,
+      });
+    }
+  }
+
+  // ── Identifica hotspots por agrupamento geográfico ──
+  const hotspots = identificarHotspots(ocorrencias, locais);
+
+  // ── Calcula sugestão tática ──
+  const tatica = calcularTatica(hotspots, ocorrencias, periodo);
+
+  return { cidade, periodo, ocorrencias, hotspots, tatica, geo };
+}
+
+// ══════════════════════════════════════════════════════════
+//  IDENTIFICAÇÃO DE HOTSPOTS
+// ══════════════════════════════════════════════════════════
+function identificarHotspots(ocorrencias, locaisBase) {
+  const raioAgrup = 0.008; // ~800m
+  const grupos    = [];
+
+  ocorrencias.forEach(oc => {
+    let achou = false;
+    for (const g of grupos) {
+      const dlat = g.lat - oc.lat, dlng = g.lng - oc.lng;
+      if (Math.sqrt(dlat*dlat + dlng*dlng) < raioAgrup) {
+        g.ocorrencias.push(oc);
+        g.lat = (g.lat * (g.ocorrencias.length - 1) + oc.lat) / g.ocorrencias.length;
+        g.lng = (g.lng * (g.ocorrencias.length - 1) + oc.lng) / g.ocorrencias.length;
+        g.cvli += oc.tipo === 'CVLI' ? 1 : 0;
+        g.cvp  += oc.tipo === 'CVP'  ? 1 : 0;
+        achou   = true;
+        break;
+      }
+    }
+    if (!achou) {
+      grupos.push({
+        lat: oc.lat, lng: oc.lng,
+        ocorrencias: [oc],
+        cvp:  oc.tipo === 'CVP'  ? 1 : 0,
+        cvli: oc.tipo === 'CVLI' ? 1 : 0,
+        local: oc.local,
+      });
+    }
+  });
+
+  // Ordena por total de ocorrências * peso CVLI
+  return grupos
+    .map(g => ({
+      ...g,
+      total:  g.ocorrencias.length,
+      score:  g.cvp + g.cvli * 2,
+      nivel:  g.cvli >= 2 ? 'CRÍTICO' : g.cvli === 1 ? 'ALTO' : g.cvp >= 4 ? 'MÉDIO' : 'BAIXO',
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+}
+
+// ══════════════════════════════════════════════════════════
+//  CÁLCULO TÁTICO (regra PMAL: 1 PM / 250 hab em área de risco)
+// ══════════════════════════════════════════════════════════
+function calcularTatica(hotspots, ocorrencias, periodo) {
+  const cvliTotal = ocorrencias.filter(o => o.tipo === 'CVLI').length;
+  const cvpTotal  = ocorrencias.filter(o => o.tipo === 'CVP').length;
+  const totalOcorr = ocorrencias.length;
+
+  // Fator de risco composto
+  const fatorRisco = cvliTotal * 2 + cvpTotal;
+
+  // Número base de viaturas: 1 viatura por hotspot crítico/alto + base
+  const hotspotsAlto = hotspots.filter(h => h.nivel === 'CRÍTICO' || h.nivel === 'ALTO').length;
+  const viaturasSug  = Math.max(2, hotspotsAlto + Math.ceil(totalOcorr / 10));
+  const pmSug        = viaturasSug * 3;
+  const oficialSug   = Math.ceil(viaturasSug / 3);
+
+  // Horários de policiamento recomendados
+  const horariosPico = HORARIOS_PICO.filter(h => h.intensidade >= 0.7)
+    .map(h => `${h.faixa} (${h.turno})`);
+
+  // Tempo de parada por hotspot (min)
+  const tempoParada = {
+    'CRÍTICO': '15–20 minutos a cada passagem',
+    'ALTO':    '10–15 minutos a cada passagem',
+    'MÉDIO':   '08–10 minutos a cada passagem',
+    'BAIXO':   '05–08 minutos a cada passagem',
+  };
+
+  return { viaturasSug, pmSug, oficialSug, horariosPico, tempoParada, fatorRisco, cvliTotal, cvpTotal };
+}
+
+// ══════════════════════════════════════════════════════════
+//  RENDERIZAÇÃO DA ANÁLISE
+// ══════════════════════════════════════════════════════════
+function renderizarAnalise(dados) {
+  const { cidade, ocorrencias, hotspots, tatica, geo, periodo } = dados;
+  const cvpTotal  = ocorrencias.filter(o => o.tipo === 'CVP').length;
+  const cvliTotal = ocorrencias.filter(o => o.tipo === 'CVLI').length;
+
+  // ── Estatísticas ──
+  animarNumero('stat-cvp',  cvpTotal);
+  animarNumero('stat-cvli', cvliTotal);
+  animarNumero('stat-hot',  hotspots.length);
+  animarNumero('stat-tot',  ocorrencias.length);
+  document.getElementById('painel-stats').style.display = 'block';
+  // Atualiza label do período
+  document.querySelector('#painel-stats h3').textContent = `Estatísticas — ${periodo} dias`;
+
+  // ── Hotspots ──
+  renderHotspots(hotspots);
+  document.getElementById('painel-hotspots').style.display = 'block';
+
+  // ── Tática ──
+  renderTatica(tatica, hotspots);
+  document.getElementById('painel-tatica').style.display = 'block';
+
+  // ── Gerar OPO ──
+  document.getElementById('painel-gerar').style.display = 'block';
+
+  // ── Mapa ──
+  document.getElementById('estado-inicial').style.display = 'none';
+  const mapaWrapper = document.getElementById('mapa-wrapper');
+  mapaWrapper.style.display = 'flex';
+
+  inicializarMapa(geo, ocorrencias, hotspots);
+}
+
+function animarNumero(id, alvo) {
+  const el = document.getElementById(id);
+  let atual = 0;
+  const passo = Math.max(1, Math.floor(alvo / 20));
+  const timer = setInterval(() => {
+    atual = Math.min(atual + passo, alvo);
+    el.textContent = atual;
+    if (atual >= alvo) clearInterval(timer);
+  }, 30);
+}
+
+function renderHotspots(hotspots) {
+  const lista = document.getElementById('lista-hotspots');
+  lista.innerHTML = '';
+
+  if (!hotspots.length) {
+    lista.innerHTML = '<p style="color:rgba(255,255,255,.4);font-size:12px;">Nenhum hotspot identificado.</p>';
+    return;
+  }
+
+  hotspots.forEach((h, i) => {
+    const classeNivel = { 'CRÍTICO': 'critico', 'ALTO': 'medio', 'MÉDIO': 'medio', 'BAIXO': 'baixo' }[h.nivel] || 'baixo';
+    const div = document.createElement('div');
+    div.className = `hotspot-item ${classeNivel}`;
+    div.innerHTML = `
+      <div class="hotspot-rank">${i+1}</div>
+      <div class="hotspot-info">
+        <div class="hotspot-local">${h.local}</div>
+        <div class="hotspot-dados">
+          CVP: ${h.cvp} | CVLI: ${h.cvli} | Total: ${h.total}
+          &nbsp;·&nbsp; <span class="tag tag-${classeNivel === 'critico' ? 'critico' : classeNivel === 'medio' ? 'alto' : 'baixo'}">${h.nivel}</span>
+        </div>
+        <div class="barra-risco"><div class="barra-risco-fill" style="width:${Math.min(100, h.score*12)}%;background:${classeNivel==='critico'?'#d63031':classeNivel==='medio'?'#e67e22':'#00b894'};"></div></div>
+      </div>`;
+    lista.appendChild(div);
+  });
+}
+
+function renderTatica(tatica, hotspots) {
+  const el = document.getElementById('conteudo-tatica');
+  el.innerHTML = `
+    <div class="tac-item">
+      <strong>Efetivo Mínimo Sugerido</strong>
+      <span>${tatica.viaturasSug} viatura(s) — ${tatica.pmSug} PM + ${tatica.oficialSug} Oficial(is)</span>
+    </div>
+    <div class="tac-item">
+      <strong>Horários Prioritários</strong>
+      <span>${tatica.horariosPico.join(' · ')}</span>
+    </div>
+    ${hotspots.slice(0,4).map(h => `
+    <div class="tac-item">
+      <strong>Parada — ${h.local.substring(0,28)}</strong>
+      <span>${tatica.tempoParada[h.nivel]} · Nível: ${h.nivel}</span>
+    </div>`).join('')}
+    <div class="tac-item">
+      <strong>Frequência de Ronda</strong>
+      <span>A cada ${tatica.fatorRisco >= 10 ? '30' : '45'} minutos nos hotspots críticos</span>
+    </div>
+  `;
+}
+
+// ══════════════════════════════════════════════════════════
+//  MAPA LEAFLET
+// ══════════════════════════════════════════════════════════
+function inicializarMapa(geo, ocorrencias, hotspots) {
+  if (!mapa) {
+    mapa = L.map('mapa', { zoomControl: true }).setView([geo.lat, geo.lng], geo.zoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(mapa);
+
+    // Legenda
+    const legenda = L.control({ position: 'bottomright' });
+    legenda.onAdd = function() {
+      const div = L.DomUtil.create('div', 'mapa-legenda');
+      div.innerHTML = `
+        <div class="mapa-legenda-titulo">LEGENDA</div>
+        <div class="legenda-item"><div class="legenda-cor" style="background:#d63031;"></div> CVLI (Letal)</div>
+        <div class="legenda-item"><div class="legenda-cor" style="background:#e8a020;"></div> CVP (Patrimônio)</div>
+        <div class="legenda-item"><div class="legenda-cor" style="background:#6c5ce7;opacity:.7;border:2px dashed #6c5ce7;"></div> Hotspot</div>
+      `;
+      return div;
+    };
+    legenda.addTo(mapa);
+  } else {
+    mapa.setView([geo.lat, geo.lng], geo.zoom);
+    if (heatLayer)    { mapa.removeLayer(heatLayer);    heatLayer    = null; }
+    if (clusterLayer) { mapa.removeLayer(clusterLayer); clusterLayer = null; }
+  }
+
+  // ── Dados para heatmap ──
+  const heatData = ocorrencias.map(o => [o.lat, o.lng, o.peso]);
+
+  heatLayer = L.heatLayer(heatData, {
+    radius: 28, blur: 20, maxZoom: 17,
+    gradient: { 0.2: '#00b894', 0.5: '#fdcb6e', 0.75: '#e17055', 1.0: '#d63031' },
+  });
+
+  // ── Cluster de marcadores ──
+  clusterLayer = L.markerClusterGroup({
+    maxClusterRadius: 50,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      const cor = count >= 5 ? '#d63031' : count >= 3 ? '#e8a020' : '#00b894';
+      return L.divIcon({
+        html: `<div style="background:${cor};color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;border:2px solid rgba(255,255,255,.7);">${count}</div>`,
+        className: '', iconSize: [36, 36],
+      });
+    }
+  });
+
+  ocorrencias.forEach(oc => {
+    const cor  = oc.tipo === 'CVLI' ? '#d63031' : '#e8a020';
+    const icon = L.divIcon({
+      html: `<div style="width:12px;height:12px;background:${cor};border-radius:50%;border:2px solid white;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
+      className: '', iconSize: [12, 12], iconAnchor: [6, 6],
+    });
+    const marker = L.marker([oc.lat, oc.lng], { icon });
+    marker.bindPopup(`
+      <b>${oc.tipo}</b><br>
+      <b>Natureza:</b> ${oc.natureza}<br>
+      <b>Local:</b> ${oc.local}<br>
+      <b>Data:</b> ${oc.data} às ${oc.hora}
+    `);
+    clusterLayer.addLayer(marker);
+  });
+
+  // ── Círculos de hotspot ──
+  hotspots.forEach((h, i) => {
+    const raio  = 400 + h.score * 40;
+    const cor   = h.nivel === 'CRÍTICO' ? '#d63031' : h.nivel === 'ALTO' ? '#e8a020' : '#6c5ce7';
+    L.circle([h.lat, h.lng], {
+      radius: raio, color: cor, fillColor: cor,
+      fillOpacity: 0.08, weight: 2, dashArray: '6 4',
+    }).addTo(mapa).bindPopup(`
+      <b>HOTSPOT #${i+1}</b><br>
+      <b>Local:</b> ${h.local}<br>
+      <b>Nível:</b> ${h.nivel}<br>
+      CVP: ${h.cvp} | CVLI: ${h.cvli}
+    `);
+    // Número do hotspot no mapa
+    L.marker([h.lat, h.lng], {
+      icon: L.divIcon({
+        html: `<div style="background:${cor};color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:bold;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.4);">H${i+1}</div>`,
+        className: '', iconAnchor: [0, 0],
+      })
+    }).addTo(mapa);
+  });
+
+  // Aplica camada conforme modo atual
+  aplicarModoCamada();
+  setTimeout(() => mapa.invalidateSize(), 200);
+}
+
+function alternarMapa(modo) {
+  modoMapa = modo;
+  document.getElementById('btn-calor').classList.toggle('ativo', modo === 'calor');
+  document.getElementById('btn-cluster').classList.toggle('ativo', modo === 'cluster');
+  if (mapa) aplicarModoCamada();
+}
+
+function aplicarModoCamada() {
+  if (!mapa) return;
+  if (modoMapa === 'calor') {
+    if (clusterLayer && mapa.hasLayer(clusterLayer)) mapa.removeLayer(clusterLayer);
+    if (heatLayer    && !mapa.hasLayer(heatLayer))   heatLayer.addTo(mapa);
+  } else {
+    if (heatLayer    && mapa.hasLayer(heatLayer))    mapa.removeLayer(heatLayer);
+    if (clusterLayer && !mapa.hasLayer(clusterLayer)) clusterLayer.addTo(mapa);
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  ABAS
+// ══════════════════════════════════════════════════════════
+function abrirAba(id, btn) {
+  document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativo'));
+  document.querySelectorAll('.aba-conteudo').forEach(c => c.classList.remove('ativo'));
+  btn.classList.add('ativo');
+  document.getElementById(`aba-${id}`).classList.add('ativo');
+  if (id === 'mapa' && mapa) setTimeout(() => mapa.invalidateSize(), 100);
+}
+
+// ══════════════════════════════════════════════════════════
+//  GERAR OPO
+// ══════════════════════════════════════════════════════════
+function gerarOPO() {
+  if (!dadosAnalise) return;
+  const { cidade, periodo, ocorrencias, hotspots, tatica } = dadosAnalise;
+
+  const cvpTotal  = ocorrencias.filter(o => o.tipo === 'CVP').length;
+  const cvliTotal = ocorrencias.filter(o => o.tipo === 'CVLI').length;
+  const hoje      = new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+  const dataDoc   = new Date().toLocaleDateString('pt-BR');
+  const protocolo = `P3/10°BPM — OPO N° ${String(Math.floor(Math.random()*900)+100)}/2025`;
+
+  // Linhas da tabela de hotspots para a OPO
+  const linhasHotspot = hotspots.map((h, i) =>
+    `<tr>
+      <td style="text-align:center;">${i+1}</td>
+      <td>${h.local}</td>
+      <td style="text-align:center;">${h.cvp}</td>
+      <td style="text-align:center;">${h.cvli}</td>
+      <td style="text-align:center;">${h.total}</td>
+      <td style="text-align:center;">${h.nivel}</td>
+      <td>${tatica.tempoParada[h.nivel]}</td>
+    </tr>`
+  ).join('');
+
+  // Linhas da tabela de efetivo
+  const efetivo = [
+    ['POLIC. RÁDIO-MOTORIZADO (P/CIDADE)',  tatica.viaturasSug,  tatica.viaturasSug * 3],
+    ['FORÇA TAREFA (FT)',                   Math.ceil(tatica.viaturasSug/2), Math.ceil(tatica.viaturasSug/2)*3],
+    ['OFICIAL DE PLANTÃO',                  tatica.oficialSug,   tatica.oficialSug],
+  ];
+  const totalVtrs   = efetivo.reduce((a, r) => a + r[1], 0);
+  const totalPracas = efetivo.reduce((a, r) => a + r[2], 0);
+
+  const linhasEfetivo = efetivo.map(([opm, vtrs, pm]) =>
+    `<tr><td>${opm}</td><td style="text-align:center;">${vtrs}</td><td style="text-align:center;">${pm}</td></tr>`
+  ).join('');
+
+  const niveisRisco = { 'CRÍTICO': 4, 'ALTO': 3, 'MÉDIO': 2, 'BAIXO': 1 };
+  const nivelGeral  = hotspots.length
+    ? Object.keys(niveisRisco)[Math.min(3, Math.max(0, 4 - Math.round(
+        hotspots.reduce((a,h) => a + niveisRisco[h.nivel], 0) / hotspots.length
+      )))]
+    : 'BAIXO';
+
+  const html = `
+  <div class="folha-a4">
+    <div class="opo-cabecalho">
+      <div class="orgao">ESTADO DE ALAGOAS — POLÍCIA MILITAR DE ALAGOAS</div>
+      <div class="orgao">10° BATALHÃO DE POLÍCIA MILITAR</div>
+      <div class="orgao">SEÇÃO DE PLANEJAMENTO, INSTRUÇÃO E ESTATÍSTICA — P3</div>
+      <div class="titulo-opo">ORDEM DE POLICIAMENTO OSTENSIVO — ANÁLISE CRIMINAL</div>
+      <div class="subtitulo">POLICIAMENTO DE PREVENÇÃO ORIENTADO AO PROBLEMA — CVP/CVLI</div>
+    </div>
+
+    <div class="opo-protocolo">${protocolo}</div>
+
+    <p class="opo-texto">O Comandante do 10º BPM, no uso de suas atribuições legais, com base na análise
+    inteligente dos crimes violentos dos últimos <strong>${periodo} dias</strong> em <strong>${cidade}</strong>,
+    determina a execução da seguinte Ordem de Policiamento Ostensivo:</p>
+
+    <table class="tab-info">
+      <tr><td colspan="2" class="titulo-tab">IDENTIFICAÇÃO DA OPERAÇÃO</td></tr>
+      <tr><td>Município</td><td>${cidade} — AL</td></tr>
+      <tr><td>Período analisado</td><td>Últimos ${periodo} dias (até ${dataDoc})</td></tr>
+      <tr><td>Total de ocorrências</td><td>${ocorrencias.length} (CVP: ${cvpTotal} | CVLI: ${cvliTotal})</td></tr>
+      <tr><td>Hotspots identificados</td><td>${hotspots.length} ponto(s) de concentração criminal</td></tr>
+      <tr><td>Nível de risco geral</td><td><strong>${nivelGeral}</strong></td></tr>
+      <tr><td>Data da OPO</td><td>${hoje}</td></tr>
+    </table>
+
+    <div class="opo-secao">EFETIVO E MEIOS</div>
+    <table class="tab-efetivo">
+      <thead>
+        <tr>
+          <th style="width:50%;">OPM / RECURSO</th>
+          <th>VTR (QTD)</th>
+          <th>PRAÇAS (TOTAL)</th>
+        </tr>
+      </thead>
+      <tbody>${linhasEfetivo}</tbody>
+      <tfoot>
+        <tr style="background:#eee;font-weight:bold;">
+          <td>TOTAL GERAL</td>
+          <td style="text-align:center;">${totalVtrs}</td>
+          <td style="text-align:center;">${totalPracas}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="opo-secao">1. ANÁLISE SITUACIONAL</div>
+    <p class="opo-texto">A análise dos registros de ocorrências dos últimos <strong>${periodo} dias</strong>
+    no município de <strong>${cidade}</strong> identificou <strong>${cvpTotal} crime(s) contra o patrimônio (CVP)</strong>
+    e <strong>${cvliTotal} crime(s) violento(s) letal(is) intencional(is) (CVLI)</strong>, totalizando
+    <strong>${ocorrencias.length} ocorrências</strong>. A análise geoespacial detectou <strong>${hotspots.length}
+    hotspot(s)</strong> de concentração criminal, com nível de risco geral classificado como
+    <strong>${nivelGeral}</strong>.</p>
+    <p class="opo-texto">Os horários de maior concentração criminal identificados são:
+    <strong>${tatica.horariosPico.join('; ')}</strong>. O policiamento deverá ser intensificado
+    prioritariamente nestas faixas horárias.</p>
+
+    <div class="opo-secao">2. HOTSPOTS E PRESCRIÇÕES DE PARADA</div>
+    <p class="opo-texto">As guarnições deverão realizar paradas estratégicas nos seguintes pontos quentes,
+    com os tempos mínimos indicados a cada passagem:</p>
+    <table class="tab-hotspot">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Local / Área</th>
+          <th>CVP</th>
+          <th>CVLI</th>
+          <th>Total</th>
+          <th>Nível</th>
+          <th>Tempo de Parada</th>
+        </tr>
+      </thead>
+      <tbody>${linhasHotspot}</tbody>
+    </table>
+
+    <div class="opo-secao">3. ORIENTAÇÕES OPERACIONAIS</div>
+    <p class="opo-texto">a) O policiamento se destina ao cumprimento do artigo 144 da Constituição Federal
+    c/c com o art. 5º, incisos X e XI, da Lei 14.751/2023, com foco na redução dos crimes violentos
+    identificados na análise criminal.</p>
+    <p class="opo-texto">b) As guarnições deverão realizar policiamento rádio-motorizado nos hotspots
+    identificados, com frequência mínima de passagem a cada
+    <strong>${tatica.fatorRisco >= 10 ? '30' : '45'} minutos</strong> nos pontos críticos.</p>
+    <p class="opo-texto">c) Durante as abordagens, as guarnições deverão realizar consultas veiculares
+    pelo aplicativo QUIMERA ou através do COPOM do 10º BPM. Consultas de indivíduos serão realizadas
+    através do COPOM/CAD/BNMP-MJ.</p>
+    <p class="opo-texto">d) Todo o policiamento deverá ser executado com luzes vermelhas intermitentes
+    (rotativos) ligados para maior visibilidade e efeito preventivo.</p>
+    <p class="opo-texto">e) O efetivo mínimo sugerido de <strong>${tatica.viaturasSug} viatura(s)</strong>
+    (${tatica.pmSug} policiais + ${tatica.oficialSug} oficial) foi calculado com base na regra técnica
+    PMAL de 1 policial por 250 pessoas/área de risco.</p>
+
+    <div class="opo-secao">4. PRESCRIÇÕES DIVERSAS</div>
+    <p class="opo-texto">a) As guarnições escaladas deverão se apresentar ao COPOM no início da operação,
+    informando dados dos HTs digitais móveis e da viatura.</p>
+    <p class="opo-texto">b) Todas as ocorrências deverão ser imediatamente comunicadas ao COPOM para
+    geração dos Boletins de Ocorrência.</p>
+    <p class="opo-texto">c) Em caso de flagrante, adotar as medidas pertinentes à apresentação do infrator
+    na delegacia plantonista.</p>
+    <p class="opo-texto">d) Os dados desta OPO foram gerados com base em análise geoespacial automatizada.
+    O Comandante da operação poderá ajustar o efetivo e os pontos de parada conforme a realidade
+    observada em campo.</p>
+
+    <div class="assinatura">
+      <div style="margin-bottom:60px;"></div>
+      <div class="linha">____________________________________________________</div>
+      <div class="linha"><strong>ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA — MAJ QOEM PM</strong></div>
+      <div class="linha">Comandante do 10º BPM</div>
+    </div>
+  </div>`;
+
+  document.getElementById('estado-opo-vazio').style.display = 'none';
+  document.getElementById('conteudo-opo').style.display     = 'block';
+  document.getElementById('conteudo-opo').innerHTML          = html;
+
+  // Muda para aba OPO
+  document.querySelectorAll('.aba-btn').forEach((b, i) => b.classList.toggle('ativo', i === 1));
+  document.querySelectorAll('.aba-conteudo').forEach((c, i) => c.classList.toggle('ativo', i === 1));
+}
+
+// ══════════════════════════════════════════════════════════
+//  BAIXAR DOCX
+// ══════════════════════════════════════════════════════════
+async function baixarDocx() {
+  if (!dadosAnalise) { alert('Gere a OPO primeiro.'); return; }
+
+  const btn = document.getElementById('btn-docx');
+  btn.disabled = true;
+  btn.textContent = '⏳ Gerando Word...';
+
+  try {
+    const { cidade, periodo, ocorrencias, hotspots, tatica } = dadosAnalise;
+    const docxLib = window.docx || docx;
+    const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+            AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign } = docxLib;
+
+    const cvpTotal  = ocorrencias.filter(o => o.tipo === 'CVP').length;
+    const cvliTotal = ocorrencias.filter(o => o.tipo === 'CVLI').length;
+    const dataDoc   = new Date().toLocaleDateString('pt-BR');
+    const protocolo = `P3/10°BPM — OPO N° ${String(Math.floor(Math.random()*900)+100)}/2025`;
+
+    // ── Helpers ──
+    const T24 = { font: 'Times New Roman', size: 24 };
+    const borda  = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
+    const bordas = { top: borda, bottom: borda, left: borda, right: borda };
+    const mg     = { top: 80, bottom: 80, left: 120, right: 120 };
+    const LT     = 9638; // A4 com margens 20mm
+
+    const cel = (txt, opts={}) => new TableCell({
+      borders: bordas, margins: mg,
+      width: opts.w || { size: Math.floor(LT/3), type: WidthType.DXA },
+      shading: opts.sh,
+      columnSpan: opts.span || 1,
+      verticalAlign: VerticalAlign.CENTER,
+      children: [new Paragraph({
+        alignment: opts.al || AlignmentType.LEFT,
+        children: [new TextRun({ text: String(txt), bold: !!opts.bold, ...T24 })]
+      })]
+    });
+
+    const lin  = cols => new TableRow({ children: cols });
+    const sec  = txt  => new Paragraph({ spacing: { before: 240, after: 120 },
+      children: [new TextRun({ text: txt, bold: true, underline: {}, allCaps: true, ...T24 })] });
+    const par  = txt  => new Paragraph({ alignment: AlignmentType.JUSTIFIED,
+      spacing: { before: 80, after: 80 },
+      children: [new TextRun({ text: txt, ...T24 })] });
+    const centr = txt => new Paragraph({ alignment: AlignmentType.CENTER,
+      children: [new TextRun({ text: txt, bold: true, ...T24 })] });
+
+    // ── Tabela de identificação ──
+    const col1 = Math.floor(LT * 0.35), col2 = LT - col1;
+    const sh   = { fill: 'f0f0f0', type: ShadingType.CLEAR };
+    const sh2  = { fill: 'd0d0d0', type: ShadingType.CLEAR };
+
+    const tabId = new Table({
+      width: { size: LT, type: WidthType.DXA }, columnWidths: [col1, col2],
+      rows: [
+        lin([cel('IDENTIFICAÇÃO DA OPERAÇÃO', { span:2, bold:true, al:AlignmentType.CENTER, sh:sh2, w:{size:LT,type:WidthType.DXA} })]),
+        lin([cel('Município',            {bold:true,sh,w:{size:col1,type:WidthType.DXA}}), cel(`${cidade} — AL`,{w:{size:col2,type:WidthType.DXA}})]),
+        lin([cel('Período analisado',    {bold:true,sh,w:{size:col1,type:WidthType.DXA}}), cel(`Últimos ${periodo} dias (até ${dataDoc})`,{w:{size:col2,type:WidthType.DXA}})]),
+        lin([cel('Total ocorrências',    {bold:true,sh,w:{size:col1,type:WidthType.DXA}}), cel(`${ocorrencias.length} (CVP: ${cvpTotal} | CVLI: ${cvliTotal})`,{w:{size:col2,type:WidthType.DXA}})]),
+        lin([cel('Hotspots',             {bold:true,sh,w:{size:col1,type:WidthType.DXA}}), cel(`${hotspots.length} ponto(s)`,{w:{size:col2,type:WidthType.DXA}})]),
+        lin([cel('Data da OPO',          {bold:true,sh,w:{size:col1,type:WidthType.DXA}}), cel(dataDoc,{w:{size:col2,type:WidthType.DXA}})]),
+      ]
+    });
+
+    // ── Tabela de efetivo ──
+    const efetivo = [
+      ['POLIC. RÁDIO-MOTORIZADO', tatica.viaturasSug, tatica.viaturasSug*3],
+      ['FORÇA TAREFA (FT)',       Math.ceil(tatica.viaturasSug/2), Math.ceil(tatica.viaturasSug/2)*3],
+      ['OFICIAL DE PLANTÃO',     tatica.oficialSug, tatica.oficialSug],
+    ];
+    const totalV = efetivo.reduce((a,r)=>a+r[1],0);
+    const totalP = efetivo.reduce((a,r)=>a+r[2],0);
+    const c3 = Math.floor(LT/3), c3u = LT - c3*2;
+    const shH = { fill: 'e0e0e0', type: ShadingType.CLEAR };
+    const shT = { fill: 'eeeeee', type: ShadingType.CLEAR };
+
+    const tabEfetivo = new Table({
+      width: { size: LT, type: WidthType.DXA }, columnWidths: [c3, c3, c3u],
+      rows: [
+        lin([cel('OPM / RECURSO',{bold:true,al:AlignmentType.CENTER,sh:shH,w:{size:c3,type:WidthType.DXA}}),
+             cel('VTR (QTD)',    {bold:true,al:AlignmentType.CENTER,sh:shH,w:{size:c3,type:WidthType.DXA}}),
+             cel('PRAÇAS',      {bold:true,al:AlignmentType.CENTER,sh:shH,w:{size:c3u,type:WidthType.DXA}})]),
+        ...efetivo.map(([n,v,p]) => lin([
+          cel(n, {w:{size:c3, type:WidthType.DXA}}),
+          cel(String(v), {al:AlignmentType.CENTER,w:{size:c3,type:WidthType.DXA}}),
+          cel(String(p), {al:AlignmentType.CENTER,w:{size:c3u,type:WidthType.DXA}}),
+        ])),
+        lin([cel('TOTAL GERAL',{bold:true,sh:shT,w:{size:c3,type:WidthType.DXA}}),
+             cel(String(totalV),{bold:true,al:AlignmentType.CENTER,sh:shT,w:{size:c3,type:WidthType.DXA}}),
+             cel(String(totalP),{bold:true,al:AlignmentType.CENTER,sh:shT,w:{size:c3u,type:WidthType.DXA}})])
+      ]
+    });
+
+    // ── Tabela de hotspots ──
+    const cHot  = [
+      Math.floor(LT*0.05), Math.floor(LT*0.28),
+      Math.floor(LT*0.08), Math.floor(LT*0.08),
+      Math.floor(LT*0.08), Math.floor(LT*0.11),
+      LT - Math.floor(LT*0.05) - Math.floor(LT*0.28) - Math.floor(LT*0.08)*3 - Math.floor(LT*0.11)
+    ];
+    const tabHot = new Table({
+      width: { size: LT, type: WidthType.DXA }, columnWidths: cHot,
+      rows: [
+        lin(['#','Local','CVP','CVLI','Total','Nível','Tempo de Parada'].map((h,i) =>
+          cel(h, {bold:true, al:AlignmentType.CENTER, sh:shH, w:{size:cHot[i],type:WidthType.DXA}})
+        )),
+        ...hotspots.map((h,i) => lin([
+          cel(String(i+1),        {al:AlignmentType.CENTER,w:{size:cHot[0],type:WidthType.DXA}}),
+          cel(h.local,            {w:{size:cHot[1],type:WidthType.DXA}}),
+          cel(String(h.cvp),      {al:AlignmentType.CENTER,w:{size:cHot[2],type:WidthType.DXA}}),
+          cel(String(h.cvli),     {al:AlignmentType.CENTER,w:{size:cHot[3],type:WidthType.DXA}}),
+          cel(String(h.total),    {al:AlignmentType.CENTER,w:{size:cHot[4],type:WidthType.DXA}}),
+          cel(h.nivel,            {al:AlignmentType.CENTER,w:{size:cHot[5],type:WidthType.DXA}}),
+          cel(tatica.tempoParada[h.nivel], {w:{size:cHot[6],type:WidthType.DXA}}),
+        ]))
+      ]
+    });
+
+    const doc = new Document({
+      styles: { default: { document: { run: { font:'Times New Roman', size:24 } } } },
+      sections: [{
+        properties: { page: {
+          size: { width:11906, height:16838 },
+          margin: { top:1134, right:1134, bottom:1134, left:1134 }
+        }},
+        children: [
+          centr('POLÍCIA MILITAR DE ALAGOAS — 10° BATALHÃO DE POLÍCIA MILITAR'),
+          centr('SEÇÃO P3 — OPO DE ANÁLISE CRIMINAL CVP/CVLI'),
+          new Paragraph({ spacing:{before:80,after:80},
+            children:[new TextRun({text:protocolo,bold:true,...T24})] }),
+          new Paragraph({ alignment:AlignmentType.JUSTIFIED, spacing:{after:180},
+            children:[new TextRun({text:`O Comandante do 10º BPM determina a execução da seguinte OPO, com base na análise dos últimos ${periodo} dias em ${cidade}:`,...T24})] }),
+          tabId,
+          sec('EFETIVO E MEIOS'),
+          tabEfetivo,
+          sec('1. ANÁLISE SITUACIONAL'),
+          par(`A análise dos últimos ${periodo} dias identificou ${cvpTotal} CVP e ${cvliTotal} CVLI em ${cidade}, totalizando ${ocorrencias.length} ocorrências e ${hotspots.length} hotspot(s) de concentração criminal.`),
+          par(`Horários críticos: ${tatica.horariosPico.join('; ')}.`),
+          sec('2. HOTSPOTS E PRESCRIÇÕES DE PARADA'),
+          par('As guarnições deverão realizar paradas estratégicas nos pontos abaixo:'),
+          tabHot,
+          sec('3. ORIENTAÇÕES OPERACIONAIS'),
+          par(`a) Policiamento rádio-motorizado com frequência mínima de ${tatica.fatorRisco>=10?'30':'45'} minutos nos hotspots críticos.`),
+          par('b) Consultas veiculares pelo QUIMERA ou COPOM/10ºBPM. Consulta de indivíduos via COPOM/CAD/BNMP-MJ.'),
+          par(`c) Efetivo mínimo: ${tatica.viaturasSug} viatura(s) — ${tatica.pmSug} PM + ${tatica.oficialSug} oficial (regra 1 PM/250 hab em área de risco).`),
+          par('d) Luzes vermelhas intermitentes (rotativos) ligadas em todo o policiamento.'),
+          sec('4. PRESCRIÇÕES DIVERSAS'),
+          par('a) Apresentação ao COPOM no início da operação com dados dos HTs e viatura.'),
+          par('b) Toda ocorrência deve ser comunicada imediatamente ao COPOM para geração do BO.'),
+          par('c) Em caso de flagrante, adotar as medidas cabíveis na delegacia plantonista.'),
+          new Paragraph({ spacing:{before:1800,after:0}, alignment:AlignmentType.CENTER,
+            children:[new TextRun({text:'____________________________________________________',...T24})] }),
+          new Paragraph({ alignment:AlignmentType.CENTER,
+            children:[new TextRun({text:'ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA — MAJ QOEM PM', bold:true,...T24})] }),
+          new Paragraph({ alignment:AlignmentType.CENTER,
+            children:[new TextRun({text:'Comandante do 10º BPM',...T24})] }),
+        ]
+      }]
+    });
+
+    const buffer = await Packer.toBlob(doc);
+    saveAs(buffer, `OPO_Criminal_${cidade.replace(/\s+/g,'_')}_${dataDoc.replace(/\//g,'-')}.docx`);
+  } catch(err) {
+    console.error(err);
+    alert('Erro ao gerar Word: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '📥 BAIXAR COMO WORD (.docx)';
+  }
+}
+</script>
+</body>
+</html>

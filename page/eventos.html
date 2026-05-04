@@ -188,6 +188,19 @@
                     <p>QUANTIDADE DE VIATURAS</p>
                     <input type="number" name="VIATURAS" id="viaturas-evento" min="0" placeholder="Ex: 3">
                 </div>
+                <!-- ── NOVO: Sugestão automática de efetivo ── -->
+                <div class="formulario" id="box-sugestao-efetivo" style="display:none; background:#eaf4ff; border:1px solid #3498db; border-radius:6px; padding:8px 12px;">
+                    <p style="color:#1a5276; font-weight:bold; margin-bottom:4px;">💡 SUGESTÃO DE EFETIVO (PMAL)</p>
+                    <p id="txt-sugestao-efetivo" style="color:#2c3e50; font-size:13px; margin:0;"></p>
+                </div>
+                <!-- ── NOVO: Observações Adicionais ── -->
+                <div class="formulario">
+                    <p>OBSERVAÇÕES ADICIONAIS</p>
+                    <textarea name="OBSERVACOES" id="observacoes-evento"
+                        rows="4" placeholder="Observações que constarão na seção '4. Prescrições Diversas' da OPO..."
+                        style="width:100%; padding:8px; border:1px solid #ccc; border-radius:4px;
+                               font-family:inherit; font-size:14px; resize:vertical;"></textarea>
+                </div>
             </div>
 
             <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
@@ -403,6 +416,10 @@
                 document.getElementById('cpf-responsavel').value    = data.CPF || '';
                 document.getElementById('telefone-responsavel').value = data.TELEFONE || '';
                 document.getElementById('viaturas-evento').value    = data['VIATURAS'] || '';
+                // NOVO: Observações
+                document.getElementById('observacoes-evento').value = data['OBSERVACOES'] || '';
+                // NOVO: Reseta flag de edição manual de viaturas ao carregar dados
+                document.getElementById('viaturas-evento').dataset.manualEdit = '';
 
                 // DATA: planilha retorna DD/MM/YYYY, input[type=date] precisa de YYYY-MM-DD
                 if (data.DATA) {
@@ -427,6 +444,9 @@
 
             } else {
                 titulo.textContent = 'Cadastro de Eventos';
+                // NOVO: Limpa sugestão de efetivo ao abrir formulário em branco
+                document.getElementById('box-sugestao-efetivo').style.display = 'none';
+                document.getElementById('viaturas-evento').dataset.manualEdit = '';
             }
 
             sidebar.classList.add('active');
@@ -561,6 +581,66 @@
         });
     }
 
+    // ── NOVO: Máscaras de CPF e Telefone ──────────────────────
+    function mascaraCPF(v) {
+        v = v.replace(/\D/g, '').substring(0, 11);
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        return v;
+    }
+
+    function mascaraTelefone(v) {
+        v = v.replace(/\D/g, '').substring(0, 11);
+        if (v.length <= 10) {
+            v = v.replace(/(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        } else {
+            v = v.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+        }
+        return v.trim().replace(/-$/, '');
+    }
+
+    // ── NOVO: Sugestão automática de efetivo (regra 1/250, 3 PM/viatura) ──
+    function sugerirEfetivo(publico) {
+        const n = parseInt(publico) || 0;
+        if (n <= 0) {
+            document.getElementById('box-sugestao-efetivo').style.display = 'none';
+            return;
+        }
+
+        // Fórmula PMAL: 1 PM para cada 250 pessoas → Math.ceil(n/750) viaturas (3 PM/viatura)
+        const viaturasSugeridas = Math.ceil(n / 750);
+        const pmTotal           = viaturasSugeridas * 3;
+
+        // Define guarnições recomendadas por porte
+        const guarnicoesSugeridas = [];
+        if (n > 0)    guarnicoesSugeridas.push('FT');
+        if (n > 500)  guarnicoesSugeridas.push('RP');
+        if (n > 1000) guarnicoesSugeridas.push('PELOPES');
+
+        // Preenche campo de viaturas automaticamente
+        const inputViaturas = document.getElementById('viaturas-evento');
+        if (!inputViaturas.dataset.manualEdit) {
+            inputViaturas.value = viaturasSugeridas;
+        }
+
+        // Marca guarnições sugeridas que ainda não foram selecionadas pelo usuário
+        guarnicoesSugeridas.forEach(g => {
+            if (!selectedGuarnicoes.has(g)) {
+                selectedGuarnicoes.add(g);
+            }
+        });
+        atualizarBotoesGuarnicao();
+
+        // Exibe caixa de sugestão
+        const porte = n <= 500 ? 'PEQUENO' : n <= 1000 ? 'MÉDIO' : 'GRANDE';
+        document.getElementById('txt-sugestao-efetivo').innerHTML =
+            `Porte: <b>${porte}</b> | Público: <b>${n}</b> pessoas<br>` +
+            `Efetivo mínimo sugerido: <b>${pmTotal} PM</b> → <b>${viaturasSugeridas} viatura(s)</b><br>` +
+            `Guarnições ativadas: <b>${guarnicoesSugeridas.join(', ') || '—'}</b>`;
+        document.getElementById('box-sugestao-efetivo').style.display = 'block';
+    }
+
     // ── 6. Comunicação com a Planilha ──────────────────────────
     // CORREÇÃO: fetchData definida apenas UMA vez (havia duplicata no código original)
     async function fetchData() {
@@ -642,6 +722,27 @@
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
         fetchData();
+
+        // ── NOVO: Máscaras de input ──────────────────────────
+        document.getElementById('cpf-responsavel').addEventListener('input', function () {
+            this.value = mascaraCPF(this.value);
+        });
+        document.getElementById('telefone-responsavel').addEventListener('input', function () {
+            this.value = mascaraTelefone(this.value);
+        });
+
+        // ── NOVO: Automação de efetivo ao digitar público ────
+        const inputPublico  = document.getElementById('estimativa-publico');
+        const inputViaturas = document.getElementById('viaturas-evento');
+
+        inputPublico.addEventListener('input', function () {
+            sugerirEfetivo(this.value);
+        });
+
+        // Marca edição manual de viaturas para não sobrescrever a digitação do usuário
+        inputViaturas.addEventListener('input', function () {
+            this.dataset.manualEdit = 'true';
+        });
 
         // Sidebar
         document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);

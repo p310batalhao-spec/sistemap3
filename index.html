@@ -8,6 +8,7 @@
     <title>Sistema de Gerenciamento P3</title>
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
 </head>
 
 <body>
@@ -17,8 +18,8 @@
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
                 <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
-            </div> <!--termina cabecalhotexto-->
-        </div><!--termina header-info-left-->
+            </div>
+        </div>
 
         <div class="header-info-right">
             <div class="relogio" id="relogio"></div>
@@ -31,25 +32,23 @@
                         <div class="notif-header">Notificações</div>
                         <div id="notif-items">
                             <p class="empty-msg">Nenhuma notificação nova</p>
-                        </div><!--termina notif-items-->
-                    </div><!--termina notif-dropdown-->
-                </div><!--termina notification-container-->
-            </div><!--termina user-notification-->
-        </div><!--termina header-info-right-->
-    </header><!--termina header-->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <section class="pagecomplete">
         <nav class="navegacao">
             <a href="index.html" class="active">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
-                    alt="home" />
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home" />
                 <p>Home</p>
             </a>
             <a href="page/dashboard-p3.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
-                    alt="performance-macbook" />
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook" />
                 <p>Dashboard</p>
-            </a><!--termina dashboard-->
+            </a>
             <a href="page/cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências" />
                 <p>Cadastro de Ocorrências</p>
@@ -77,6 +76,7 @@
                 <p>Sair</p>
             </button>
         </nav>
+
         <main>
             <div class="saudacao">
                 <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
@@ -84,76 +84,98 @@
             </div>
 
             <section class="dashboard">
+
+                <!-- MVI -->
                 <a href="page/mvi.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/skull.png" alt="skull" />
                     <p>MVI - Mortes Violentas</p>
                     <p id="numeromvi" class="numero">--</p>
-                </a><!--termina o mvi-->
+                    <span class="ultima-atualizacao" id="sync-mvi">--</span>
+                </a>
 
+                <!-- CVP -->
                 <a href="page/cvp.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/robber.png" alt="robber" />
                     <p>CVP</p>
                     <p id="numerocvp" class="numero">--</p>
+                    <span class="ultima-atualizacao" id="sync-cvp">--</span>
                 </a>
+
+                <!-- TCO -->
                 <a href="page/tco.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/morale.png" alt="morale" />
                     <p>TCO</p>
                     <p id="numerotco" class="numero">--</p>
-                </a> <!--termina o tco-->
+                    <span class="ultima-atualizacao" id="sync-tco">--</span>
+                </a>
 
+                <!-- Violência Doméstica -->
                 <a href="page/violenciadomestica.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/windows/32/hand.png" alt="hand" />
                     <p>Violência Doméstica</p>
                     <p id="numeroviolenciadomestica" class="numero">--</p>
-                </a> <!--termina violencia domestica-->
+                    <span class="ultima-atualizacao" id="sync-vd">--</span>
+                </a>
 
+                <!-- Armas Apreendidas -->
                 <a href="page/armas.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/gun.png" alt="gun" />
                     <p>Armas Apreendidas</p>
                     <p id="armasapreendidas" class="numero">--</p>
-                </a> <!--termina armas apreendidas-->
+                    <span class="ultima-atualizacao" id="sync-armas">--</span>
+                </a>
 
+                <!-- Drogas Apreendidas -->
                 <a href="page/drogas.html" class="btn">
-                    <img width="50" height="50" src="https://img.icons8.com/ios/50/marijuana-leaf.png"
-                        alt="Drogas Apreendidas" />
+                    <img width="50" height="50" src="https://img.icons8.com/ios/50/marijuana-leaf.png" alt="Drogas Apreendidas" />
                     <p>Drogas Apreendidas</p>
                     <p id="numerodrogas" class="numero">--</p>
-                </a> <!--termina drogas apreendidas-->
+                    <span class="ultima-atualizacao" id="sync-drogas">--</span>
+                </a>
 
+                <!-- AIT -->
                 <a href="page/ait.html" class="btn">
-                    <img width="50" height="50" src="https://img.icons8.com/ios-glyphs/30/policeman-male.png"
-                        alt="policeman-male" />
+                    <img width="50" height="50" src="https://img.icons8.com/ios-glyphs/30/policeman-male.png" alt="policeman-male" />
                     <p>Infrações de Trânsito</p>
-                    <p class="numero" id="numeroait">50</p>
-                </a> <!--termina o ait-->
+                    <p class="numero" id="numeroait">--</p>
+                    <span class="ultima-atualizacao" id="sync-ait">--</span>
+                </a>
 
+                <!-- Materiais Apreendidos -->
                 <a href="page/materiais.html" class="btn">
                     <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
                     <p>Materiais Apreendidos</p>
                     <p class="numero" id="numeromateriais">--</p>
-                </a><!--termina materiais apreendidos-->
+                    <span class="ultima-atualizacao" id="sync-materiais">--</span>
+                </a>
 
+                <!-- Mandados -->
                 <a href="page/mandado.html" class="btn">
                     <img width="50" height="50"
                         src="https://img.icons8.com/external-outlines-amoghdesign/32/external-balance-law-crime-and-justice-outlines-amoghdesign.png"
-                        alt="external-balance-law-crime-and-justice-outlines-amoghdesign" />
+                        alt="mandados" />
                     <p>Cumprimentos de Mandados</p>
                     <p id="numeromandados" class="numero">--</p>
-                </a><!--termina mandados-->
+                    <span class="ultima-atualizacao" id="sync-mandados">--</span>
+                </a>
+
+                <!-- Perturbação do Sossego -->
                 <a href="page/perturbacao.html" class="btn">
                     <img width="50" height="50"
                         src="https://img.icons8.com/external-xnimrodx-lineal-xnimrodx/64/external-boombox-music-xnimrodx-lineal-xnimrodx.png"
-                        alt="external-boombox-music-xnimrodx-lineal-xnimrodx" />
+                        alt="boombox" />
                     <p>Perturbação do Sossego</p>
                     <p id="numeroperturbacaodosossego" class="numero">--</p>
-                </a><!--termina perturbacao-->
+                    <span class="ultima-atualizacao" id="sync-sossego">--</span>
+                </a>
+
+                <!-- Visitas Orientativas -->
                 <a href="page/exibirvisitas.html" class="btn">
-                    <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png"
-                        alt="police-car" />
+                    <img width="30" height="30" src="https://img.icons8.com/ios-glyphs/30/police-car.png" alt="police-car" />
                     <p>Visitas Orientativas</p>
                     <p id="numerovistiasorientativas" class="numero">--</p>
-                </a><!--termina visitas-->
-
+                    <span class="ultima-atualizacao" id="sync-visitas">--</span>
+                </a>
 
             </section>
         </main>
@@ -168,26 +190,27 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
 
-    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script>
-        // ********************************************************************
-        // ** CONFIGURAÇÕES DE URLs **
-        // ********************************************************************
-        const WEBAPP_URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
-        const WEBAPP_URL_DROGAS = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
-        const WEBAPP_URL_TCO = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
+        // ====================================================================
+        // URLs das APIs
+        // ====================================================================
+        const WEBAPP_URL_AIT       = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
+        const WEBAPP_URL_DROGAS    = 'https://script.google.com/macros/s/AKfycbzw3yzJEf5hC7DtE_1P8OTvopqigWdVOilONhOMiii-2wLAHXO8v4uwDDD0895GzsEZQg/exec';
+        const WEBAPP_URL_TCO       = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
         const WEBAPP_URL_MATERIAIS = 'https://script.google.com/macros/s/AKfycbyftHcIS_0isNZsUsWrNBgOItkKeLMJbrhnpPz3zj4m0-5Vczkf2xDKrdpI-dMsI-9mQg/exec';
-        const API_URL_MVI = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
+        const API_URL_MVI          = "https://script.google.com/macros/s/AKfycbzpoyFungNK4VL99YrPj_jCF0GwBtUF0w8wXLhZxgbNUVbGbU3CxLS0n6-jOiqfASCJTA/exec";
         const WEBAPP_URL_PERTURBACAO = "https://script.google.com/macros/s/AKfycbwpkufWkoQ483xA3t8UGgf-q7Je3r3pXrRMcN9v_3RZQA9xjnEaocDa-9jsTu_c7P37/exec";
-        const WEBAPP_URL_CVP = 'https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec';
-        const WEBAPP_URL_VD = 'https://script.google.com/macros/s/AKfycbyyqS93ST2mawBpEEjmbgMHYBhh7nMJXv8_yTelXtNxZ2BhS03KfAlBGqpTjXCp3scbQQ/exec';
-        const WEBAPP_URL_VISITAS = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
-        const WEBAPP_URL_ARMAS = 'https://script.google.com/macros/s/AKfycbwYFUIiT7n0SCjK2kUY_6a68XC_rcvWkuPOkf1uDcvfKEN-cMyHw0TcovSoBv81E3So/exec';
-        const WEBAPP_URL_MANDADOS = 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec'; // Use a URL da nova implantação
-        // --- FUNÇÕES DE UTILIDADE ---
+        const WEBAPP_URL_CVP       = 'https://script.google.com/macros/s/AKfycbzgC94-IDT31Mzmz8T1u3yvuHvM3Y73WRqjEeWIG3cKxNHDACMH1rwRSNxiX3APUTWi/exec';
+        const WEBAPP_URL_VD        = 'https://script.google.com/macros/s/AKfycbyyqS93ST2mawBpEEjmbgMHYBhh7nMJXv8_yTelXtNxZ2BhS03KfAlBGqpTjXCp3scbQQ/exec';
+        const WEBAPP_URL_VISITAS   = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
+        const WEBAPP_URL_ARMAS     = 'https://script.google.com/macros/s/AKfycbwYFUIiT7n0SCjK2kUY_6a68XC_rcvWkuPOkf1uDcvfKEN-cMyHw0TcovSoBv81E3So/exec';
+        const WEBAPP_URL_MANDADOS  = 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec';
 
-        // ── UTILITÁRIO: extrai o ano do campo DATA (DD/MM/AAAA ou AAAA-MM-DD) ──
+        // ====================================================================
+        // UTILITÁRIOS
+        // ====================================================================
         const ANO_ATUAL = new Date().getFullYear();
+
         function anoDoRegistro(item) {
             const data = (item.DATA || item.data || '').toString().trim();
             if (!data || data === '---') return null;
@@ -200,244 +223,52 @@
         }
         function doAnoAtual(item) { return anoDoRegistro(item) === ANO_ATUAL; }
 
-        // ---- CHAMA OS DADOS DO FIREBASE PARA O MVI (HOMICÍDIOS) ---
-        async function atualizarContagemHomicidiosFirebase() {
-            const numeromviElement = document.getElementById('numeromvi');
-            const FIREBASE_MVI_URL = "https://sistema-p3-default-rtdb.firebaseio.com/geral.json";
-
-            try {
-                const response = await fetch(FIREBASE_MVI_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numeromviElement.innerText = "0";
-                    return;
-                }
-
-                const contagem = Object.values(dados).filter(item => {
-                    // 1. Verifica ano atual
-                    if (!doAnoAtual(item)) return false;
-
-                    // 2. Lê a tipificação — normaliza acentos e caixa para comparação segura
-                    const tip = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || "")
-                        .toString().trim()
-                        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-                        .toUpperCase();
-
-                    // 3. Se for HOMICÍDIO (direto, sem "TENTATIVA"), entra na contagem
-                    const ehHomicidio = tip.includes("HOMICIDIO") && !tip.includes("TENTATIVA");
-
-                    // 4. Se for TENTATIVA, verifica se OBITO === "S"
-                    const ehTentativa = tip.includes("TENTATIVA");
-                    const temObito = (item.OBITO || "").toString().trim().toUpperCase() === "S";
-                    const ehTentativaComObito = ehTentativa && temObito;
-
-                    return ehHomicidio || ehTentativaComObito;
-                }).length;
-
-                numeromviElement.innerText = contagem;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de homicídios:", error);
-                numeromviElement.innerText = "!";
-            }
+        /**
+         * Formata uma string ISO (import_at) para exibição amigável.
+         * Retorna "Atualizado em DD/MM/AAAA às HH:MM"
+         */
+        function formatarImportAt(isoStr) {
+            if (!isoStr) return null;
+            const d = new Date(isoStr);
+            if (isNaN(d)) return null;
+            const data = d.toLocaleDateString('pt-BR', { timeZone: 'America/Maceio' });
+            const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Maceio' });
+            return `Atualizado em ${data} às ${hora}`;
         }
 
-        //FUNÇÃO DE CONTAGEM DO CVP (CRIMES CONTRA O PATRIMÔNIO) - USANDO A MESMA ESTRUTURA DO MVI PARA GARANTIR CONSISTÊNCIA
-        async function atualizarContagemCVPFirebase() {
-            const numerocvpElement = document.getElementById('numerocvp');
-            const FIREBASE_CVP_URL = "https://sistema-p3-default-rtdb.firebaseio.com/cvp.json";
-
-            try {
-                const response = await fetch(FIREBASE_CVP_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numerocvpElement.innerText = "0";
-                    return;
-                }
-
-                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
-                numerocvpElement.innerText = contagemTotal;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de CVP:", error);
-                numerocvpElement.innerText = "!"; // Indica erro visualmente
-            }
+        /**
+         * Pega o import_at mais recente de um array de objetos do Firebase.
+         */
+        function maiorImportAt(objetos) {
+            let maior = null;
+            objetos.forEach(item => {
+                const val = item.import_at;
+                if (!val) return;
+                if (!maior || val > maior) maior = val;
+            });
+            return maior;
         }
 
-        //===== CONTAGEM DE TCOS FIREBASE ====//
-        async function atualizarContagemTCOFirebase() {
-            const numerotcoElement = document.getElementById('numerotco');
-            const FIREBASE_TCO_URL = "https://sistema-p3-default-rtdb.firebaseio.com/tco.json";
-
-            try {
-                const response = await fetch(FIREBASE_TCO_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numerotcoElement.innerText = "0";
-                    return;
-                }
-
-                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
-                numerotcoElement.innerText = contagemTotal;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de TCO:", error);
-                numerotcoElement.innerText = "!"; // Indica erro visualmente
-            }
-        }
-
-
-        // --- CONTAGEM DE VIOLÊNCIA DOMÉSTICA -- 
-        async function atualizarContagemViolenciaDomesticaFirebase() {
-            const numeroVDElement = document.getElementById('numeroviolenciadomestica');
-            const FIREBASE_VD_URL = "https://sistema-p3-default-rtdb.firebaseio.com/violencia_domestica.json";
-
-            try {
-                const response = await fetch(FIREBASE_VD_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numeroVDElement.innerText = "0";
-                    return;
-                }
-
-                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
-                numeroVDElement.innerText = contagemTotal;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de violência doméstica:", error);
-                numeroVDElement.innerText = "!"; // Indica erro visualmente
-            }
-        }
-
-        // CONTAGEM DAS ARMAS APREENDIDAS ---7
-        async function atualizarContagemArmasFirebase() {
-            const numeroArmasElement = document.getElementById('armasapreendidas');
-            const FIREBASE_ARMAS_URL = "https://sistema-p3-default-rtdb.firebaseio.com/arma.json";
-
-            try {
-                const response = await fetch(FIREBASE_ARMAS_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numeroArmasElement.innerText = "0";
-                    return;
-                }
-
-                const contagemTotal = Object.values(dados).filter(doAnoAtual).length;
-                numeroArmasElement.innerText = contagemTotal;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de armas:", error);
-                numeroArmasElement.innerText = "!"; // Indica erro visualmente
-            }
-        }
-        // CONTAGEM DE VISITAS ORIENTATIVAS --- 
-
-        async function atualizarContagemVisitasFirebase() {
-            const numerovisitasElement = document.getElementById('numerovistiasorientativas');
-            const FIREBASE_VISITAS_URL = "https://sistema-p3-default-rtdb.firebaseio.com/geral.json";
-
-            try {
-                const response = await fetch(FIREBASE_VISITAS_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numerovisitasElement.innerText = "0";
-                    return;
-                }
-
-                // Converte o objeto do Firebase em array e filtra pela tipificação
-                const contagem = Object.values(dados).filter(item => {
-                    return doAnoAtual(item) &&
-                           item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("VISITA");
-                }).length;
-
-                // Atualiza o ID numerovisitas no HTML
-                numerovisitasElement.innerText = contagem;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de homicídios:", error);
-                numerovisitasElement.innerText = "!"; // Indica erro visualmente
-            }
-        }
-
-        // -- PERTURBAÇÃO DO SOSSEGO ---
-
-        async function atualizarContagemPerturbacaoFirebase() {
-            const numeroperturbacaoElement = document.getElementById('numeroperturbacaodosossego');
-            const FIREBASE_PERTURBACAO_URL = "https://sistema-p3-default-rtdb.firebaseio.com/sossego.json";
-
-            try {
-                const response = await fetch(FIREBASE_PERTURBACAO_URL);
-                if (!response.ok) throw new Error("Erro ao acessar Firebase");
-
-                const dados = await response.json();
-
-                if (!dados) {
-                    numeroperturbacaoElement.innerText = "0";
-                    return;
-                }
-
-                // Converte o objeto do Firebase em array e filtra pela tipificação
-                const contagem = Object.values(dados).filter(item => {
-                    return doAnoAtual(item) &&
-                           item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("PERTURBAÇÃO");
-                }).length;
-
-                // Atualiza o ID numeroperturbacao no HTML
-                numeroperturbacaoElement.innerText = contagem;
-
-            } catch (error) {
-                console.error("Erro ao atualizar contagem de perturbação do sossego:", error);
-                numeroperturbacaoElement.innerText = "!"; // Indica erro visualmente
-            }
-        }
-
-
-        function atualizarRelogio() {
-            const agora = new Date();
-            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-            const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-            const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
-        }
-
-        function checkLogin() {
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
-
-            if (graduacao && nomeGuerra) {
-                userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        /**
+         * Atualiza o elemento de data do card.
+         * @param {string} elId  - ID do <span> de data (ex: 'sync-mvi')
+         * @param {string|null} isoStr - string ISO do import_at
+         */
+        function exibirDataAtualizacao(elId, isoStr) {
+            const el = document.getElementById(elId);
+            if (!el) return;
+            const texto = formatarImportAt(isoStr);
+            if (texto) {
+                el.textContent = texto;
+                el.classList.add('atualizado');
             } else {
-                window.location.href = '../page/login.html';
+                el.textContent = 'Nunca atualizado';
             }
         }
 
-        function logout() {
-            localStorage.removeItem('userGraduacao');
-            localStorage.removeItem('userNomeGuerra');
-            window.location.href = 'page/login.html';
-        }
-
-        // --- FUNÇÃO DE CONTAGEM UNIFICADA (Resolve Erro de Comunicação) ---
-
+        // ====================================================================
+        // CONTAGEM GENÉRICA via Apps Script (AIT, Materiais, Mandados)
+        // ====================================================================
         function updateCount(url, action, elementId) {
             const currentYear = new Date().getFullYear();
             const $el = $(`#${elementId}`);
@@ -449,15 +280,8 @@
                 data: { action: action, year: currentYear },
                 dataType: 'json',
                 success: function (response) {
-                    // Suporte para response.count (padrão) ou response.total (usado no MVI)
                     let valor = response.count !== undefined ? response.count : response.total;
-
-                    if (valor !== undefined) {
-                        $el.text(valor);
-                    } else {
-                        $el.text('0');
-                        console.warn(`Resposta sem contagem para ${elementId}:`, response);
-                    }
+                    $el.text(valor !== undefined ? valor : '0');
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     $el.text('!');
@@ -466,37 +290,267 @@
             });
         }
 
-        // --- FUNÇÃO DE DROGAS — soma peso direto do Firebase (nó 'droga') ---
+        // ====================================================================
+        // MVI (Homicídios) — Firebase /geral
+        // ====================================================================
+        async function atualizarContagemHomicidiosFirebase() {
+            const el = document.getElementById('numeromvi');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/geral.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+
+                const contagem = lista.filter(item => {
+                    if (!doAnoAtual(item)) return false;
+                    const tip = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || "")
+                        .toString().trim()
+                        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+                        .toUpperCase();
+                    const ehHomicidio = tip.includes("HOMICIDIO") && !tip.includes("TENTATIVA");
+                    const ehTentativa = tip.includes("TENTATIVA");
+                    const temObito = (item.OBITO || "").toString().trim().toUpperCase() === "S";
+                    return ehHomicidio || (ehTentativa && temObito);
+                }).length;
+
+                el.innerText = contagem;
+                exibirDataAtualizacao('sync-mvi', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar MVI:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // CVP — Firebase /cvp
+        // ====================================================================
+        async function atualizarContagemCVPFirebase() {
+            const el = document.getElementById('numerocvp');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/cvp.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                el.innerText = lista.filter(doAnoAtual).length;
+                exibirDataAtualizacao('sync-cvp', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar CVP:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // TCO — Firebase /tco
+        // ====================================================================
+        async function atualizarContagemTCOFirebase() {
+            const el = document.getElementById('numerotco');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/tco.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                el.innerText = lista.filter(doAnoAtual).length;
+                exibirDataAtualizacao('sync-tco', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar TCO:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // Violência Doméstica — Firebase /violencia_domestica
+        // ====================================================================
+        async function atualizarContagemViolenciaDomesticaFirebase() {
+            const el = document.getElementById('numeroviolenciadomestica');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/violencia_domestica.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                el.innerText = lista.filter(doAnoAtual).length;
+                exibirDataAtualizacao('sync-vd', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar Violência Doméstica:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // Armas Apreendidas — Firebase /arma
+        // ====================================================================
+        async function atualizarContagemArmasFirebase() {
+            const el = document.getElementById('armasapreendidas');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/arma.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                el.innerText = lista.filter(doAnoAtual).length;
+                exibirDataAtualizacao('sync-armas', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar Armas:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // Drogas — Firebase /droga
+        // ====================================================================
         async function atualizarDrogas() {
-            const elTotal = document.getElementById('numerodrogas');
+            const el = document.getElementById('numerodrogas');
             try {
                 const response = await fetch('https://sistema-p3-default-rtdb.firebaseio.com/droga.json');
                 if (!response.ok) throw new Error('Erro ao acessar Firebase');
-
                 const dados = await response.json();
-                if (!dados) { elTotal.innerText = '0 g'; return; }
 
+                if (!dados) { el.innerText = '0 g'; return; }
+
+                const lista = Object.values(dados);
                 let soma = 0;
-                Object.values(dados).filter(doAnoAtual).forEach(item => {
-                    // Tenta os dois campos possíveis: QUANTIDADE e PESO
+                lista.filter(doAnoAtual).forEach(item => {
                     const bruto = item.QUANTIDADE || item.PESO || '0';
                     const num = parseFloat(String(bruto).replace(',', '.'));
                     if (!isNaN(num)) soma += num;
                 });
 
-                // Exibe em gramas se < 1000g, ou em kg se >= 1000g
-                if (soma >= 1000) {
-                    elTotal.innerText = (soma / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' Kg';
-                } else {
-                    elTotal.innerText = soma.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' g';
-                }
+                el.innerText = soma >= 1000
+                    ? (soma / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' Kg'
+                    : soma.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' g';
+
+                exibirDataAtualizacao('sync-drogas', maiorImportAt(lista));
 
             } catch (error) {
                 console.error('Erro ao somar drogas:', error);
-                if (elTotal) elTotal.innerText = '!';
+                el.innerText = '!';
             }
         }
-        // --- NOTIFICAÇÕES ---
+
+        // ====================================================================
+        // Perturbação do Sossego — Firebase /sossego
+        // ====================================================================
+        async function atualizarContagemPerturbacaoFirebase() {
+            const el = document.getElementById('numeroperturbacaodosossego');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/sossego.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                const contagem = lista.filter(item =>
+                    doAnoAtual(item) &&
+                    item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("PERTURBAÇÃO")
+                ).length;
+
+                el.innerText = contagem;
+                exibirDataAtualizacao('sync-sossego', maiorImportAt(lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar Perturbação:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // Visitas Orientativas — Firebase /geral (filtro por TIPIFICACAO)
+        // ====================================================================
+        async function atualizarContagemVisitasFirebase() {
+            const el = document.getElementById('numerovistiasorientativas');
+            try {
+                const response = await fetch("https://sistema-p3-default-rtdb.firebaseio.com/geral.json");
+                if (!response.ok) throw new Error("Erro ao acessar Firebase");
+                const dados = await response.json();
+
+                if (!dados) { el.innerText = "0"; return; }
+
+                const lista = Object.values(dados);
+                const filtradas = lista.filter(item =>
+                    doAnoAtual(item) &&
+                    item.TIPIFICACAO && item.TIPIFICACAO.toString().toUpperCase().includes("VISITA")
+                );
+
+                el.innerText = filtradas.length;
+                exibirDataAtualizacao('sync-visitas', maiorImportAt(filtradas.length ? filtradas : lista));
+
+            } catch (error) {
+                console.error("Erro ao atualizar Visitas:", error);
+                el.innerText = "!";
+            }
+        }
+
+        // ====================================================================
+        // AIT — Apps Script (sem Firebase, sem import_at disponível)
+        // Usa a data local do último acesso guardada em localStorage
+        // ====================================================================
+        async function atualizarAIT() {
+            updateCount(WEBAPP_URL_AIT, 'countAITs', 'numeroait');
+
+            // Para AIT (que vem do Apps Script, não tem import_at),
+            // exibe a data da última vez que o index foi carregado com dados válidos
+            const chave = 'ait_ultima_carga';
+            const salvo = localStorage.getItem(chave);
+            if (salvo) {
+                exibirDataAtualizacao('sync-ait', salvo);
+            }
+
+            // Aguarda o valor aparecer no DOM e registra se mudou
+            setTimeout(() => {
+                const val = document.getElementById('numeroait')?.textContent;
+                if (val && val !== '--' && val !== '!') {
+                    localStorage.setItem(chave, new Date().toISOString());
+                }
+            }, 5000);
+        }
+
+        // ====================================================================
+        // Materiais e Mandados — Apps Script (mesma lógica do AIT)
+        // ====================================================================
+        async function atualizarMateriaisEMandados() {
+            // Materiais
+            updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
+            const chaveMat = 'materiais_ultima_carga';
+            const salvoMat = localStorage.getItem(chaveMat);
+            if (salvoMat) exibirDataAtualizacao('sync-materiais', salvoMat);
+            setTimeout(() => {
+                const val = document.getElementById('numeromateriais')?.textContent;
+                if (val && val !== '--' && val !== '!') localStorage.setItem(chaveMat, new Date().toISOString());
+            }, 5000);
+
+            // Mandados
+            updateCount(WEBAPP_URL_MANDADOS, 'countMandados', 'numeromandados');
+            const chaveMand = 'mandados_ultima_carga';
+            const salvoMand = localStorage.getItem(chaveMand);
+            if (salvoMand) exibirDataAtualizacao('sync-mandados', salvoMand);
+            setTimeout(() => {
+                const val = document.getElementById('numeromandados')?.textContent;
+                if (val && val !== '--' && val !== '!') localStorage.setItem(chaveMand, new Date().toISOString());
+            }, 5000);
+        }
+
+        // ====================================================================
+        // NOTIFICAÇÕES
+        // ====================================================================
         let lastCountAIT = localStorage.getItem('lastCountAIT') || 0;
 
         function checkNewNotifications() {
@@ -518,7 +572,6 @@
             const container = document.getElementById('notif-items');
             const emptyMsg = container.querySelector('.empty-msg');
             if (emptyMsg) emptyMsg.remove();
-
             const item = document.createElement('div');
             item.className = 'notif-item';
             item.innerHTML = `<strong>Novo Registro:</strong><br>${text}`;
@@ -531,8 +584,37 @@
             document.getElementById('notif-count').style.display = 'none';
         });
 
-        // --- INICIALIZAÇÃO GERAL ---
+        // ====================================================================
+        // RELÓGIO E LOGIN
+        // ====================================================================
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            document.getElementById('relogio').innerHTML =
+                agora.toLocaleDateString('pt-BR', opcoesData) + '<br>' +
+                agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        }
 
+        function checkLogin() {
+            const graduacao  = localStorage.getItem('userGraduacao');
+            const nomeGuerra = localStorage.getItem('userNomeGuerra');
+            const userInfoEl = document.getElementById('user-info');
+            if (graduacao && nomeGuerra) {
+                userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+            } else {
+                window.location.href = '../page/login.html';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('userGraduacao');
+            localStorage.removeItem('userNomeGuerra');
+            window.location.href = 'page/login.html';
+        }
+
+        // ====================================================================
+        // INICIALIZAÇÃO
+        // ====================================================================
         document.addEventListener('DOMContentLoaded', function () {
             atualizarRelogio();
             setInterval(atualizarRelogio, 1000);
@@ -541,40 +623,20 @@
             const btnLogout = document.getElementById('btn-logout');
             if (btnLogout) btnLogout.addEventListener('click', logout);
 
-            // 1. AIT
-            updateCount(WEBAPP_URL_AIT, 'countAITs', 'numeroait');
-
-            // 2. Drogas
-            atualizarDrogas();
-
-            // 3. TCO
-            atualizarContagemTCOFirebase();
-
-            // 4. MVI (Homicídios) - Agora via updateCount
+            // Firebase (tem import_at → data real de atualização)
             atualizarContagemHomicidiosFirebase();
-
-            // 5. Materiais Apreendidos
-            updateCount(WEBAPP_URL_MATERIAIS, 'countMateriais', 'numeromateriais');
-
-            // 6. Perturbação do Sossego
-            atualizarContagemPerturbacaoFirebase();
-
-            // 7. CVP (NOVO) - contagem CVP:
             atualizarContagemCVPFirebase();
-
-            // 8. VIOLENCIA DOMESTICA
+            atualizarContagemTCOFirebase();
             atualizarContagemViolenciaDomesticaFirebase();
-
-            // 9. MANDADOS JUDICIAIS
-            updateCount(WEBAPP_URL_MANDADOS, 'countMandados', 'numeromandados');
-
-            // 10. VISITAS ORIENTATIVAS
+            atualizarContagemArmasFirebase();
+            atualizarDrogas();
+            atualizarContagemPerturbacaoFirebase();
             atualizarContagemVisitasFirebase();
 
-            // 11. ARMAS APREENDIDAS
-            atualizarContagemArmasFirebase();
+            // Apps Script (sem import_at → usa localStorage como fallback)
+            atualizarAIT();
+            atualizarMateriaisEMandados();
         });
     </script>
-
 
 </html>

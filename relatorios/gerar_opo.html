@@ -214,7 +214,7 @@
             equipe da P3/10ºBPM.
         </div>
         <div class="secao-titulo">4. PRESCRIÇÕES DIVERSAS</div>
-        <div class="editavel" contenteditable="true">
+        <div class="editavel" id="prescricoes-diversas" contenteditable="true">
             As guarnições escaladas deverão se apresentar ao COPOM no início da operação
             informando os dados dos HTs digitais móveis e da viatura, para acompanhamento, controle
             e apoio do policiamento.
@@ -244,31 +244,56 @@
             fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' })
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('e-nome').innerText = (data['NOME DO EVENTO'] || '').toUpperCase();
-                    document.getElementById('e-data').innerText = data['DATA'];
-                    document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'];
-                    document.getElementById('e-cidade').innerText = data['CIDADE'];
-                    document.getElementById('e-inicio').innerText = data['HORÁRIO DE INÍCIO'];
-                    document.getElementById('e-fim').innerText = data['HORÁRIO DE TÉRMINO'];
-                    document.getElementById('ia-objetivo').innerText = (data.SUGESTAO_IA && data.SUGESTAO_IA.objetivo) ? data.SUGESTAO_IA.objetivo : '';
+                    document.getElementById('e-nome').innerText  = (data['NOME DO EVENTO'] || '').toUpperCase();
+                    document.getElementById('e-data').innerText  = data['DATA'] || '';
+                    document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'] || '';
+                    document.getElementById('e-cidade').innerText = data['CIDADE'] || '';
 
                     const formatarHora = (valor) => {
                         if (!valor) return "00:00";
-                        // Se o valor for muito longo (objeto de data), tenta extrair apenas o HH:mm
                         if (valor.length > 8) {
                             const d = new Date(valor);
                             return d.getHours().toString().padStart(2, '0') + ":" +
                                 d.getMinutes().toString().padStart(2, '0');
                         }
-                        return valor; // Se já vier como "15:00", apenas retorna
+                        return valor;
                     };
                     document.getElementById('e-inicio').innerText = formatarHora(data['HORÁRIO DE INÍCIO']);
-                    document.getElementById('e-fim').innerText = formatarHora(data['HORÁRIO DE TÉRMINO']);
+                    document.getElementById('e-fim').innerText    = formatarHora(data['HORÁRIO DE TÉRMINO']);
 
-                    const ia = data.SUGESTAO_IA || {};
-                    if (ia.ft > 0) addRow("FORÇA TAREFA", ia.ft);
-                    if (ia.vtrsFixas > 0) addRow("POLIC. CIDADE", ia.vtrsFixas);
-                    if (ia.pelopes > 0) addRow("PELOPES", ia.pelopes);
+                    // ── Integração SUGESTAO_IA ──────────────────────────────
+                    // Se o campo vier preenchido do banco, usa direto.
+                    // Caso contrário, calcula em tempo real (regra 1/250, 3 PM/viatura).
+                    let ia = data.SUGESTAO_IA;
+
+                    if (!ia || typeof ia !== 'object' || Object.keys(ia).length === 0) {
+                        // Fallback: calcula localmente com a mesma lógica do Apps Script
+                        const publico  = parseInt(data['ESTIMATIVA DE PÚBLICO']) || 0;
+                        const viaturas = Math.ceil(publico / 750) || 1;
+                        const nome     = (data['NOME DO EVENTO'] || '').toUpperCase();
+                        ia = {
+                            ft:       viaturas,
+                            vtrsFixas: 0,
+                            pelopes:  publico > 1000 ? 2 : 0,
+                            oficiais: publico > 1000 ? 2 : 1,
+                            objetivo: `assegurar o policiamento ostensivo e preventivo durante a realização do evento ${nome}, visando a preservação da ordem pública e a incolumidade das pessoas e do patrimônio.`
+                        };
+                    }
+
+                    document.getElementById('ia-objetivo').innerText = ia.objetivo || '';
+
+                    if (ia.ft       > 0) addRow("FORÇA TAREFA",    ia.ft);
+                    if (ia.vtrsFixas > 0) addRow("POLIC. CIDADE",  ia.vtrsFixas);
+                    if (ia.pelopes   > 0) addRow("PELOPES",         ia.pelopes);
+
+                    // ── Observações → Prescrições Diversas ─────────────────
+                    const obs = (data['OBSERVACOES'] || '').trim();
+                    if (obs) {
+                        const divPrescricoes = document.getElementById('prescricoes-diversas');
+                        if (divPrescricoes) {
+                            divPrescricoes.innerHTML += `<br><br><b>Observações do Operador:</b><br>${obs}`;
+                        }
+                    }
                 });
         };
 
@@ -301,15 +326,15 @@
                     AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign } = docxLib;
 
             // --- Coleta dados da página ---
-            const protocolo = document.querySelector('.protocolo').innerText;
-            const nome      = document.getElementById('e-nome').innerText;
-            const data      = document.getElementById('e-data').innerText;
-            const local     = document.getElementById('e-local').innerText;
-            const cidade    = document.getElementById('e-cidade').innerText;
-            const inicio    = document.getElementById('e-inicio').innerText;
-            const fim       = document.getElementById('e-fim').innerText;
-            const objetivo  = document.getElementById('ia-objetivo').innerText;
-            const totalVtrs  = document.getElementById('total-vtrs').innerText;
+            const protocolo   = document.querySelector('.protocolo').innerText;
+            const nome        = document.getElementById('e-nome').innerText;
+            const data        = document.getElementById('e-data').innerText;
+            const local       = document.getElementById('e-local').innerText;
+            const cidade      = document.getElementById('e-cidade').innerText;
+            const inicio      = document.getElementById('e-inicio').innerText;
+            const fim         = document.getElementById('e-fim').innerText;
+            const objetivo    = document.getElementById('ia-objetivo').innerText;
+            const totalVtrs   = document.getElementById('total-vtrs').innerText;
             const totalPracas = document.getElementById('total-pracas').innerText;
 
             // Coleta seções editáveis (textos dos blocos contenteditable)
@@ -326,97 +351,127 @@
             });
 
             // --- Helpers ---
-            const borda = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
+            // Times New Roman 12pt = 24 half-points (padrão docx.js)
+            const TNR24 = { font: 'Times New Roman', size: 24 };
+            const TNR28 = { font: 'Times New Roman', size: 28 };
+
+            const borda  = { style: BorderStyle.SINGLE, size: 1, color: '000000' };
             const bordas = { top: borda, bottom: borda, left: borda, right: borda };
             const margCell = { top: 80, bottom: 80, left: 120, right: 120 };
+
+            // ─── Largura real A4 com margens 20mm ───────────────────────
+            // A4: 11906 DXA | margem 20mm = 1134 DXA cada lado
+            // Área de conteúdo: 11906 - 1134*2 = 9638 DXA
+            const larguraTotal = 9638;
+            const col1 = 2892;  // ~30% para rótulos
+            const col2 = larguraTotal - col1; // ~70% para valores
 
             const celula = (texto, opts = {}) => new TableCell({
                 borders: bordas,
                 margins: margCell,
-                width: opts.width || { size: 4513, type: WidthType.DXA },
+                width: opts.width || { size: 4819, type: WidthType.DXA },
                 shading: opts.shading || undefined,
                 columnSpan: opts.span || 1,
                 verticalAlign: VerticalAlign.CENTER,
                 children: [new Paragraph({
                     alignment: opts.align || AlignmentType.LEFT,
-                    children: [new TextRun({ text: texto, bold: opts.bold || false, font: 'Times New Roman', size: opts.size || 24 })]
+                    children: [new TextRun({
+                        text: texto,
+                        bold: opts.bold || false,
+                        ...TNR24,
+                        ...(opts.size ? { size: opts.size } : {})
+                    })]
                 })]
             });
 
             const linha = (cols) => new TableRow({ children: cols });
 
             const secaoTitulo = (texto) => new Paragraph({
-                spacing: { before: 200, after: 100 },
-                children: [new TextRun({ text: texto, bold: true, underline: {}, font: 'Times New Roman', size: 24, allCaps: true })]
+                spacing: { before: 240, after: 120 },
+                children: [new TextRun({ text: texto, bold: true, underline: {}, allCaps: true, ...TNR24 })]
             });
 
             const paragrafo = (texto) => new Paragraph({
                 alignment: AlignmentType.JUSTIFIED,
-                spacing: { before: 60, after: 60 },
-                children: [new TextRun({ text: texto, font: 'Times New Roman', size: 24 })]
+                spacing: { before: 80, after: 80 },
+                children: [new TextRun({ text: texto, ...TNR24 })]
             });
 
-            // Largura A4 com margens 20mm: 11906 - 2268 - 2268 = 7370 DXA aprox
-            const larguraTotal = 9026;
-            const col1 = 2708;
-            const col2 = larguraTotal - col1;
-
-            // --- Tabela mestra (dados do evento) ---
+            // --- Tabela mestra (dados do evento) — 100% da largura ---
             const tabelaMestra = new Table({
                 width: { size: larguraTotal, type: WidthType.DXA },
                 columnWidths: [col1, col2],
                 rows: [
-                    linha([celula('ORDEM DE POLICIAMENTO OSTENSIVO', { span: 2, bold: true, align: AlignmentType.CENTER, width: { size: larguraTotal, type: WidthType.DXA }, shading: { fill: 'e9e9e9', type: ShadingType.CLEAR }, size: 28 })]),
-                    linha([celula('Evento/OPO', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(nome, { width: { size: col2, type: WidthType.DXA } })]),
-                    linha([celula('Data', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(data, { width: { size: col2, type: WidthType.DXA } })]),
-                    linha([celula('Local', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(local, { width: { size: col2, type: WidthType.DXA } })]),
-                    linha([celula('Cidade', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(cidade, { width: { size: col2, type: WidthType.DXA } })]),
-                    linha([celula('Horário', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(inicio + ' às ' + fim, { width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('ORDEM DE POLICIAMENTO OSTENSIVO', {
+                        span: 2, bold: true, align: AlignmentType.CENTER,
+                        width: { size: larguraTotal, type: WidthType.DXA },
+                        shading: { fill: 'e9e9e9', type: ShadingType.CLEAR },
+                        size: 28
+                    })]),
+                    linha([celula('Evento/OPO', { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(nome,  { width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('Data',       { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(data,  { width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('Local',      { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(local, { width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('Cidade',     { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(cidade,{ width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('Horário',    { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(inicio + ' às ' + fim, { width: { size: col2, type: WidthType.DXA } })]),
                 ]
             });
 
-            // --- Tabela de efetivo ---
+            // --- Tabela de efetivo — 100% da largura, 3 colunas iguais ---
             const col3 = Math.floor(larguraTotal / 3);
+            // Ajusta última coluna para fechar exatamente a largura total
+            const col3ult = larguraTotal - col3 * 2;
             const rowsEfetivo = [
                 linha([
-                    celula('OPM / RECURSO', { bold: true, width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
-                    celula('VTR (QTD)', { bold: true, width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
-                    celula('PRAÇAS (TOTAL)', { bold: true, width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
+                    celula('OPM / RECURSO',  { bold: true, width: { size: col3,    type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
+                    celula('VTR (QTD)',       { bold: true, width: { size: col3,    type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
+                    celula('PRAÇAS (TOTAL)',  { bold: true, width: { size: col3ult, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'f2f2f2', type: ShadingType.CLEAR } }),
                 ]),
                 ...linhasEfetivo.map(([opm, vtrs, prac]) => linha([
-                    celula(opm,  { width: { size: col3, type: WidthType.DXA }, align: AlignmentType.LEFT }),
-                    celula(vtrs, { width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER }),
-                    celula(prac, { width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER }),
+                    celula(opm,  { width: { size: col3,    type: WidthType.DXA }, align: AlignmentType.LEFT   }),
+                    celula(vtrs, { width: { size: col3,    type: WidthType.DXA }, align: AlignmentType.CENTER }),
+                    celula(prac, { width: { size: col3ult, type: WidthType.DXA }, align: AlignmentType.CENTER }),
                 ])),
                 linha([
-                    celula('TOTAL GERAL', { bold: true, width: { size: col3, type: WidthType.DXA }, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
-                    celula(totalVtrs, { bold: true, width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
-                    celula(totalPracas, { bold: true, width: { size: col3, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
+                    celula('TOTAL GERAL', { bold: true, width: { size: col3,    type: WidthType.DXA }, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
+                    celula(totalVtrs,     { bold: true, width: { size: col3,    type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
+                    celula(totalPracas,   { bold: true, width: { size: col3ult, type: WidthType.DXA }, align: AlignmentType.CENTER, shading: { fill: 'eeeeee', type: ShadingType.CLEAR } }),
                 ]),
             ];
 
             const tabelaEfetivo = new Table({
                 width: { size: larguraTotal, type: WidthType.DXA },
-                columnWidths: [col3, col3, col3],
+                columnWidths: [col3, col3, col3ult],
                 rows: rowsEfetivo
             });
 
             // --- Monta o documento ---
             const doc = new Document({
+                styles: {
+                    default: {
+                        document: { run: { font: 'Times New Roman', size: 24 } }
+                    }
+                },
                 sections: [{
                     properties: {
                         page: {
-                            size: { width: 11906, height: 16838 },
-                            margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }
+                            size: { width: 11906, height: 16838 }, // A4
+                            margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 } // 20mm
                         }
                     },
                     children: [
-                        new Paragraph({ children: [new TextRun({ text: protocolo, bold: true, font: 'Times New Roman', size: 24 })] }),
-                        new Paragraph({ spacing: { after: 120 }, children: [new TextRun({ text: 'O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de Policiamento Ostensivo:', font: 'Times New Roman', size: 24 })] }),
+                        new Paragraph({
+                            spacing: { after: 80 },
+                            children: [new TextRun({ text: protocolo, bold: true, ...TNR24 })]
+                        }),
+                        new Paragraph({
+                            alignment: AlignmentType.JUSTIFIED,
+                            spacing: { after: 180 },
+                            children: [new TextRun({ text: 'O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de Policiamento Ostensivo:', ...TNR24 })]
+                        }),
                         tabelaMestra,
-                        new Paragraph({ spacing: { before: 200, after: 100 }, children: [new TextRun({ text: 'EFETIVO E MEIOS', bold: true, underline: {}, font: 'Times New Roman', size: 24, allCaps: true })] }),
+                        secaoTitulo('EFETIVO E MEIOS'),
                         tabelaEfetivo,
-                        new Paragraph({ spacing: { before: 10 } }),
+                        new Paragraph({ spacing: { before: 80 } }),
                         secaoTitulo('1. ORIENTAÇÕES INICIAIS'),
                         ...secoes[0].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
                         secaoTitulo('2. MODALIDADES DO POLICIAMENTO EMPREGADO'),
@@ -425,9 +480,23 @@
                         ...secoes[2].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
                         secaoTitulo('4. PRESCRIÇÕES DIVERSAS'),
                         ...secoes[3].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
-                        new Paragraph({ spacing: { before: 800 }, alignment: AlignmentType.CENTER, children: [new TextRun({ text: '____________________________________________________', font: 'Times New Roman', size: 24 })] }),
-                        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - MAJ QOEM PM', bold: true, font: 'Times New Roman', size: 24 })] }),
-                        new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: 'Comandante do 10º BPM', font: 'Times New Roman', size: 24 })] }),
+
+                        // ── Assinatura com espaçamento ampliado (militar) ──
+                        new Paragraph({
+                            spacing: { before: 1800, after: 0 }, // ~3cm acima da linha
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: '____________________________________________________', ...TNR24 })]
+                        }),
+                        new Paragraph({
+                            spacing: { before: 0, after: 0 },
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: 'ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - MAJ QOEM PM', bold: true, ...TNR24 })]
+                        }),
+                        new Paragraph({
+                            spacing: { before: 0, after: 0 },
+                            alignment: AlignmentType.CENTER,
+                            children: [new TextRun({ text: 'Comandante do 10º BPM', ...TNR24 })]
+                        }),
                     ]
                 }]
             });
