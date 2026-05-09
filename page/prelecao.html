@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Preleção Operacional | P3 — 10º BPM</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+  <style>
+    /* ════════════════════════════════════════════════════════
+       DESIGN: "WAR ROOM" — High contrast tactical dashboard
+       Paleta: Azul profundo + verde neon + laranja vibrante
+       Tipografia: Rajdhani (display) + Share Tech Mono (data)
+    ════════════════════════════════════════════════════════ */
+    :root {
+      --bg:        #050c14;
+      --bg2:       #080f1a;
+      --bg3:       #0b1520;
+      --panel:     #0d1e35;
+      --border:    rgba(0,200,150,.15);
+      --border2:   rgba(0,200,150,.3);
+      --green:     #00ff9d;
+      --green-dim: #00c896;
+      --orange:    #ff6b00;
+      --red:       #ff2244;
+      --yellow:    #ffd700;
+      --blue:      #0af;
+      --text:      #c8d8e8;
+      --muted:     #3a5068;
+      --font-tit:  'Rajdhani', sans-serif;
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-ui:   'Barlow Condensed', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    header {
+      background: linear-gradient(90deg, #050c14 0%, #0a1e38 50%, #050c14 100%);
+      border-bottom: 1px solid var(--border2);
+      padding: 0 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 3.75rem;
+      flex-shrink: 0;
+      position: relative;
+    }
+    header::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green), var(--orange), var(--green), transparent);
+      animation: scanline 4s linear infinite;
+    }
+    @keyframes scanline {
+      0%   { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    .hdr-left { display: flex; align-items: center; gap: 1rem; }
+    .hdr-left img.brasao { height: 42px; object-fit: contain; }
+    .hdr-left .txt h1 {
+      font-family: var(--font-tit);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      line-height: 1.1;
+    }
+    .hdr-left .txt h3 {
+      font-size: .68rem;
+      color: var(--green-dim);
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .hdr-center {
+      position: absolute;
+      left: 50%; transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    /* Relógio tático */
+    .war-clock {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      color: var(--green);
+      letter-spacing: .1em;
+      text-shadow: 0 0 12px rgba(0,255,157,.5);
+    }
+    .war-date {
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-align: center;
+    }
+    .service-badge {
+      background: rgba(255,107,0,.15);
+      border: 1px solid rgba(255,107,0,.4);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-family: var(--font-tit);
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--orange);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .hdr-right { display: flex; align-items: center; gap: .6rem; }
+    .hdr-btn {
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 5px;
+      color: rgba(255,255,255,.7);
+      padding: 5px 12px;
+      font-family: var(--font-ui);
+      font-size: .72rem;
+      font-weight: 600;
+      letter-spacing: .05em;
+      cursor: pointer;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all .2s;
+    }
+    .hdr-btn:hover { background: rgba(0,255,157,.12); border-color: var(--green-dim); color: var(--green); }
+    .user-tag {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      color: var(--muted);
+      letter-spacing: .04em;
+    }
+
+    /* ── BLOCOS DE TURNO ─────────────────────────────────── */
+    .turnos-bar {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 6px 12px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .turno-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all .2s;
+      background: rgba(255,255,255,.03);
+      position: relative;
+      overflow: hidden;
+    }
+    .turno-btn::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+    }
+    .turno-btn.t0::before { background: #ffd700; }
+    .turno-btn.t1::before { background: #ff6b00; }
+    .turno-btn.t2::before { background: #0af; }
+    .turno-btn.t3::before { background: #9b59b6; }
+
+    .turno-btn.ativo { border-color: var(--green-dim); background: rgba(0,200,150,.08); }
+    .turno-btn.ativo.t0 { border-color: #ffd700; background: rgba(255,215,0,.06); }
+    .turno-btn.ativo.t1 { border-color: #ff6b00; background: rgba(255,107,0,.08); }
+    .turno-btn.ativo.t2 { border-color: #0af;    background: rgba(0,170,255,.06); }
+    .turno-btn.ativo.t3 { border-color: #9b59b6; background: rgba(155,89,182,.07); }
+
+    .turno-icone { font-size: 1.3rem; line-height: 1; }
+    .turno-info .turno-label {
+      font-family: var(--font-tit);
+      font-size: .85rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      color: #fff;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    .turno-info .turno-horas {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      color: var(--muted);
+    }
+    .turno-count {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--green);
+      text-shadow: 0 0 8px rgba(0,255,157,.4);
+    }
+    .turno-delta {
+      font-size: .62rem;
+      font-family: var(--font-mono);
+      border-radius: 3px;
+      padding: 1px 5px;
+    }
+    .turno-delta.up   { background: rgba(255,34,68,.2);  color: #ff4466; }
+    .turno-delta.down { background: rgba(0,255,157,.15); color: var(--green); }
+    .turno-delta.eq   { background: rgba(255,255,255,.08); color: var(--muted); }
+
+    /* ── LAYOUT PRINCIPAL ────────────────────────────────── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 260px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ── PAINEL ESQUERDO ─────────────────────────────────── */
+    .painel-esq {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .painel-esq::-webkit-scrollbar { width: 3px; }
+    .painel-esq::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    .sec-titulo {
+      font-family: var(--font-tit);
+      font-size: .72rem;
+      font-weight: 700;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      padding: 12px 14px 6px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sec-titulo::before {
+      content: '';
+      width: 3px; height: 12px;
+      background: var(--green);
+      border-radius: 1px;
+      box-shadow: 0 0 6px var(--green);
+    }
+
+    /* KPI cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      padding: 10px;
+    }
+    .kpi {
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 10px 8px;
+      text-align: center;
+    }
+    .kpi-val {
+      font-family: var(--font-mono);
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--green);
+      text-shadow: 0 0 10px rgba(0,255,157,.4);
+    }
+    .kpi-val.alert { color: var(--orange); text-shadow: 0 0 10px rgba(255,107,0,.4); }
+    .kpi-val.danger{ color: var(--red);    text-shadow: 0 0 10px rgba(255,34,68,.4);  }
+    .kpi-lbl {
+      font-family: var(--font-tit);
+      font-size: .65rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    /* Lista de hotspots */
+    .hotspot-list { padding: 6px 10px 10px; }
+    .hs-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 5px;
+      border-left: 3px solid var(--orange);
+      background: rgba(255,107,0,.05);
+      margin-bottom: 5px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .hs-item:hover { background: rgba(255,107,0,.1); }
+    .hs-item.nivel-critico { border-left-color: var(--red);    background: rgba(255,34,68,.06);  }
+    .hs-item.nivel-alto    { border-left-color: var(--orange); background: rgba(255,107,0,.05);  }
+    .hs-item.nivel-medio   { border-left-color: var(--yellow); background: rgba(255,215,0,.04);  }
+    .hs-num {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--muted);
+      min-width: 20px;
+    }
+    .hs-info .hs-local {
+      font-weight: 600;
+      font-size: .8rem;
+      color: #fff;
+      line-height: 1.2;
+    }
+    .hs-info .hs-sub {
+      font-family: var(--font-mono);
+      font-size: .65rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    .hs-badge {
+      margin-left: auto;
+      font-family: var(--font-mono);
+      font-size: .72rem;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .badge-c { background: rgba(255,34,68,.2);  color: #ff4466; border: 1px solid rgba(255,34,68,.3); }
+    .badge-a { background: rgba(255,107,0,.2);  color: #ff8533; border: 1px solid rgba(255,107,0,.3); }
+    .badge-m { background: rgba(255,215,0,.15); color: #ffd700; border: 1px solid rgba(255,215,0,.3); }
+    .badge-b { background: rgba(0,255,157,.12); color: var(--green); border: 1px solid var(--border2); }
+
+    /* ── CENTRO: MAPA ────────────────────────────────────── */
+    .mapa-container {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    #mapa { flex: 1; min-height: 0; }
+
+    .mapa-overlay-topo {
+      position: absolute;
+      top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 500;
+      background: rgba(5,12,20,.82);
+      border: 1px solid var(--border2);
+      border-radius: 6px;
+      padding: 5px 14px;
+      font-family: var(--font-mono);
+      font-size: .75rem;
+      color: var(--green);
+      letter-spacing: .08em;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    .mapa-legenda {
+      position: absolute;
+      bottom: 28px; right: 10px;
+      z-index: 500;
+      background: rgba(5,12,20,.88);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: .68rem;
+      font-family: var(--font-ui);
+      color: var(--text);
+      backdrop-filter: blur(6px);
+    }
+    .leg-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .leg-item:last-child { margin: 0; }
+    .leg-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ── PAINEL DIREITO ──────────────────────────────────── */
+    .painel-dir {
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    .painel-dir::-webkit-scrollbar { width: 3px; }
+    .painel-dir::-webkit-scrollbar-thumb { background: var(--border2); }
+
+    /* Gráfico de barras */
+    .chart-wrap { padding: 10px; }
+
+    /* Cards de missão */
+    .missao-card {
+      margin: 0 10px 8px;
+      background: rgba(0,0,0,.3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+    .missao-card.urgente { border-color: rgba(255,34,68,.4); background: rgba(255,34,68,.05); }
+    .missao-card.atencao { border-color: rgba(255,107,0,.4); background: rgba(255,107,0,.04); }
+    .missao-card.normal  { border-color: rgba(0,200,150,.25); }
+
+    .missao-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .missao-icon { font-size: 1rem; }
+    .missao-titulo {
+      font-family: var(--font-tit);
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+    .missao-texto {
+      font-size: .75rem;
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .missao-texto strong { color: var(--orange); }
+
+    /* Análise de tendência */
+    .tendencia-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: .75rem;
+    }
+    .tend-label { flex: 1; color: var(--text); }
+    .tend-val { font-family: var(--font-mono); font-size: .72rem; }
+    .tend-delta {
+      font-family: var(--font-mono);
+      font-size: .7rem;
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .tend-up   { color: var(--red);    background: rgba(255,34,68,.15); }
+    .tend-down { color: var(--green);  background: rgba(0,255,157,.1);  }
+    .tend-eq   { color: var(--muted);  background: rgba(255,255,255,.05); }
+
+    /* Loader */
+    #loader {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(5,12,20,.95);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .loader-ring {
+      width: 48px; height: 48px;
+      border: 3px solid rgba(0,200,150,.2);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: giro 1s linear infinite;
+    }
+    @keyframes giro { to { transform: rotate(360deg); } }
+    .loader-txt {
+      font-family: var(--font-mono);
+      font-size: .82rem;
+      color: var(--green-dim);
+      letter-spacing: .1em;
+    }
+
+    /* Scrollbar fino */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Leaflet tema escuro */
+    .leaflet-popup-content-wrapper {
+      background: #0d1e35 !important;
+      border: 1px solid rgba(0,200,150,.3) !important;
+      border-radius: 8px !important;
+      color: #c8d8e8 !important;
+    }
+    .leaflet-popup-tip { background: #0d1e35 !important; }
+    .leaflet-popup-close-button { color: rgba(255,255,255,.6) !important; }
+
+    @media print {
+      body { overflow: visible; height: auto; }
+      header::after, .turnos-bar, .loader { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-txt">CARREGANDO DADOS OPERACIONAIS…</div>
+</div>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════ -->
+<header>
+  <div class="hdr-left">
+    <img class="brasao" src="../img/brasao.png" alt="brasão" onerror="this.style.display='none'">
+    <div class="txt">
+      <h1>Preleção Operacional</h1>
+      <h3>10º Batalhão de Polícia Militar — Seção P3</h3>
+    </div>
+  </div>
+
+  <div class="hdr-center">
+    <div>
+      <div class="war-clock" id="war-clock">00:00:00</div>
+      <div class="war-date" id="war-date">—</div>
+    </div>
+    <div class="service-badge" id="service-badge">⚡ SERVIÇO 08H→08H</div>
+  </div>
+
+  <div class="hdr-right">
+    <span class="user-tag" id="user-tag">—</span>
+    <a class="hdr-btn" href="../page/dashboard-p3.html">
+      <i class="fas fa-tachometer-alt"></i> Dashboard
+    </a>
+    <a class="hdr-btn" href="../page/opo_inteligente.html">
+      <i class="fas fa-crosshairs"></i> OPO
+    </a>
+    <a class="hdr-btn" href="../page/dashboard-mapa.html">
+      <i class="fas fa-map"></i> Mapa
+    </a>
+  </div>
+</header>
+
+<!-- ═══ BARRA DE TURNOS ═══════════════════════════════════════════ -->
+<div class="turnos-bar">
+  <button class="turno-btn t0" id="btn-t0" onclick="selecionarTurno(0)">
+    <span class="turno-icone">🌅</span>
+    <div class="turno-info">
+      <div class="turno-label">Manhã</div>
+      <div class="turno-horas">08:00 → 14:00</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;">
+      <span class="turno-count" id="cnt-t0">—</span>
+      <span class="turno-delta" id="dlt-t0">—</span>
+    </div>
+  </button>
+  <button class="turno-btn t1" id="btn-t1" onclick="selecionarTurno(1)">
+    <span class="turno-icone">☀️</span>
+    <div class="turno-info">
+      <div class="turno-label">Tarde</div>
+      <div class="turno-horas">14:00 → 20:00</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;">
+      <span class="turno-count" id="cnt-t1">—</span>
+      <span class="turno-delta" id="dlt-t1">—</span>
+    </div>
+  </button>
+  <button class="turno-btn t2" id="btn-t2" onclick="selecionarTurno(2)">
+    <span class="turno-icone">🌙</span>
+    <div class="turno-info">
+      <div class="turno-label">Noite</div>
+      <div class="turno-horas">20:00 → 02:00</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;">
+      <span class="turno-count" id="cnt-t2">—</span>
+      <span class="turno-delta" id="dlt-t2">—</span>
+    </div>
+  </button>
+  <button class="turno-btn t3" id="btn-t3" onclick="selecionarTurno(3)">
+    <span class="turno-icone">🌃</span>
+    <div class="turno-info">
+      <div class="turno-label">Madrugada</div>
+      <div class="turno-horas">02:00 → 08:00</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto;">
+      <span class="turno-count" id="cnt-t3">—</span>
+      <span class="turno-delta" id="dlt-t3">—</span>
+    </div>
+  </button>
+</div>
+
+<!-- ═══ LAYOUT PRINCIPAL ══════════════════════════════════════════ -->
+<div class="main-grid">
+
+  <!-- ─── PAINEL ESQUERDO ─────────────────────────────────────── -->
+  <div class="painel-esq">
+
+    <div class="sec-titulo">Estatísticas do Turno</div>
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi"><div class="kpi-val" id="kpi-total">—</div><div class="kpi-lbl">Total</div></div>
+      <div class="kpi"><div class="kpi-val alert" id="kpi-cvp">—</div><div class="kpi-lbl">CVP</div></div>
+      <div class="kpi"><div class="kpi-val danger" id="kpi-cvli">—</div><div class="kpi-lbl">CVLI</div></div>
+      <div class="kpi"><div class="kpi-val" id="kpi-hot">—</div><div class="kpi-lbl">Hotspots</div></div>
+    </div>
+
+    <div class="sec-titulo">Pontos de Atenção</div>
+    <div class="hotspot-list" id="hotspot-list">
+      <div style="color:var(--muted);font-size:.75rem;text-align:center;padding:20px;">
+        Selecione um turno para ver os hotspots
+      </div>
+    </div>
+
+    <div class="sec-titulo" style="margin-top:4px;">Análise de Tendência</div>
+    <div id="tendencia-lista">
+      <div style="color:var(--muted);font-size:.72rem;padding:12px 14px;">
+        Comparativo: turno atual vs média das 3 semanas anteriores (mesmo dia)
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── MAPA CENTRAL ─────────────────────────────────────────── -->
+  <div class="mapa-container">
+    <div class="mapa-overlay-topo" id="mapa-label">
+      MANCHA CRIMINAL — AGUARDANDO DADOS
+    </div>
+    <div id="mapa"></div>
+    <div class="mapa-legenda">
+      <div class="leg-item"><div class="leg-dot" style="background:#ff2244;box-shadow:0 0 6px #ff2244;"></div> CVLI</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ff6b00;box-shadow:0 0 6px #ff6b00;"></div> CVP</div>
+      <div class="leg-item"><div class="leg-dot" style="background:#ffd700;box-shadow:0 0 6px #ffd700;opacity:.6;"></div> Hotspot</div>
+    </div>
+  </div>
+
+  <!-- ─── PAINEL DIREITO ────────────────────────────────────────── -->
+  <div class="painel-dir">
+
+    <div class="sec-titulo">Distribuição Horária</div>
+    <div class="chart-wrap" style="height:160px;">
+      <canvas id="chart-horas"></canvas>
+    </div>
+
+    <div class="sec-titulo">Diretrizes para a Tropa</div>
+    <div id="missao-cards">
+      <div style="color:var(--muted);font-size:.75rem;padding:14px;text-align:center;">
+        Aguardando análise…
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  PRELEÇÃO OPERACIONAL — P3 / 10º BPM
+//  Integração Firebase + Leaflet + Chart.js
+//  Turnos do serviço 08h→08h, cruzando a meia-noite
+// ════════════════════════════════════════════════════════════════
+
+// ── Firebase ─────────────────────────────────────────────────────
+const FB_CONFIG = {
+  apiKey:            'AIzaSyAFflO2pvI7nFDNwFdK86-TK18o6_cpXr4',
+  authDomain:        'sistema-p3.firebaseapp.com',
+  databaseURL:       'https://sistema-p3-default-rtdb.firebaseio.com',
+  projectId:         'sistema-p3',
+  storageBucket:     'sistema-p3.firebasestorage.app',
+  messagingSenderId: '186813662716',
+  appId:             '1:186813662716:web:e2a85cc956ed561c541e79',
+};
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.database();
+const NODE = 'geral';
+
+// ── Coordenadas das cidades ───────────────────────────────────────
+const CIDADES_GEO = {
+  'PALMEIRA DOS ÍNDIOS': { lat:-9.4092, lng:-36.6289 },
+  'BELÉM':               { lat:-9.5722, lng:-36.6169 },
+  'CACIMBINHAS':         { lat:-9.3872, lng:-37.0064 },
+  'ESTRELA DE ALAGOAS':  { lat:-9.5433, lng:-36.5167 },
+  'IGACI':               { lat:-9.5361, lng:-36.6467 },
+  'MAR VERMELHO':        { lat:-9.4200, lng:-36.5283 },
+  'MARIBONDO':           { lat:-9.5600, lng:-36.3278 },
+  'MINADOR DO NEGRÃO':   { lat:-9.3453, lng:-36.8628 },
+  'PAULO JACINTO':       { lat:-9.5267, lng:-36.4100 },
+  'QUEBRANGULO':         { lat:-9.3167, lng:-36.4736 },
+  "TANQUE D'ARCA":       { lat:-9.6522, lng:-36.6181 },
+};
+const GEO_BPM = { lat:-9.45, lng:-36.62 };
+
+// ── Definição dos turnos (serviço 08h→08h cruzando meia-noite) ───
+// A lógica: comparamos apenas a HORA do dia, sem data
+// Turno 0: 08-14h | Turno 1: 14-20h | Turno 2: 20-02h | Turno 3: 02-08h
+const TURNOS = [
+  { id:0, label:'Manhã',     ini:8,  fim:14, cor:'#ffd700', icon:'🌅' },
+  { id:1, label:'Tarde',     ini:14, fim:20, cor:'#ff6b00', icon:'☀️' },
+  { id:2, label:'Noite',     ini:20, fim:26, cor:'#00aaff', icon:'🌙' }, // fim=26 → 02h do dia seguinte
+  { id:3, label:'Madrugada', ini:26, fim:32, cor:'#9b59b6', icon:'🌃' }, // 02-08h
+];
+
+// Converte hora real em "hora do turno" (08h = 8, 02h = 26, 04h = 28...)
+// O serviço começa às 08h — horas antes das 08h são "depois da meia-noite"
+function horaParaTurno(h) {
+  // h: 0-23
+  if (h >= 8)  return h;       // 08h-23h → normal
+  return h + 24;               // 00h-07h → +24 (26, 27, 28...)
+}
+
+function pertenceAoTurno(hora, turno) {
+  const ht = horaParaTurno(hora);
+  return ht >= turno.ini && ht < turno.fim;
+}
+
+// ── Estado ───────────────────────────────────────────────────────
+let _todas       = [];   // todas as ocorrências (24h do serviço)
+let _turnoAtivo  = -1;   // -1 = todos
+let _mapa        = null;
+let _heatLayer   = null;
+let _markers     = [];
+let _chartHoras  = null;
+
+// ── Relógio e data ────────────────────────────────────────────────
+function tickRelogio() {
+  const n = new Date();
+  document.getElementById('war-clock').textContent =
+    n.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  document.getElementById('war-date').textContent =
+    n.toLocaleDateString('pt-BR', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  // Destaca turno atual automaticamente
+  const h = n.getHours();
+  const tAtual = TURNOS.findIndex(t => pertenceAoTurno(h, t));
+  if (tAtual >= 0) {
+    document.getElementById('service-badge').textContent =
+      `${TURNOS[tAtual].icon} TURNO ATUAL: ${TURNOS[tAtual].label.toUpperCase()}`;
+  }
+}
+setInterval(tickRelogio, 1000);
+tickRelogio();
+
+// ── Login ─────────────────────────────────────────────────────────
+(function() {
+  const grad = localStorage.getItem('userGraduacao');
+  const nome = localStorage.getItem('userNomeGuerra');
+  if (grad && nome) {
+    document.getElementById('user-tag').textContent = `${grad} ${nome}`;
+  }
+})();
+
+// ── Inicializar mapa Leaflet ──────────────────────────────────────
+function initMapa() {
+  _mapa = L.map('mapa', {
+    center: [GEO_BPM.lat, GEO_BPM.lng],
+    zoom: 10,
+    zoomControl: true,
+    attributionControl: false,
+  });
+
+  // Tile escuro para "war room"
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19, attribution: '© CartoDB',
+  }).addTo(_mapa);
+
+  // Crosshair no centro (referência)
+  _mapa.on('mousemove', e => {});
+}
+
+// ── Parsing de data do Firebase ───────────────────────────────────
+function parsearData(str) {
+  if (!str) return null;
+  str = str.toString().trim();
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+    const [d, m, a] = str.split('/');
+    return new Date(`${a}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T00:00:00`);
+  }
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return new Date(str);
+  return null;
+}
+
+// ── Classificar crime ─────────────────────────────────────────────
+function classificar(oc) {
+  const t = ((oc.TIPIFICACAO_GERAL || '') + ' ' + (oc.TIPIFICACAO || ''))
+    .toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const cvli = ['HOMICIDIO','LATROCINIO','FEMINICIDIO','LESAO CORPORAL SEGUIDA','TENTATIVA DE HOMICIDIO','CVLI'];
+  const cvp  = ['ROUBO','FURTO','EXTORSAO','CVP','SUBTRACAO','PATRIMONIO'];
+  for (const p of cvli) if (t.includes(p)) return 'CVLI';
+  for (const p of cvp)  if (t.includes(p)) return 'CVP';
+  return null;
+}
+
+// ── Parsear hora ──────────────────────────────────────────────────
+function parsearHora(oc) {
+  const h = (oc.HORA || oc.hora || '').toString().trim();
+  const m = h.match(/^(\d{1,2})/);
+  if (m) { const v = parseInt(m[1]); if (v >= 0 && v <= 23) return v; }
+  return null;
+}
+
+// ── Parsear coordenadas ───────────────────────────────────────────
+function parsearCoords(oc) {
+  const parseDec = v => parseFloat(String(v||'').replace(',','.'));
+  const lat = parseDec(oc.LATITUDE || oc.lat);
+  const lng = parseDec(oc.LONGITUDE || oc.lng);
+  const cidade = (oc.CIDADE || oc.cidade || '').toString().trim().toUpperCase();
+  const geo = CIDADES_GEO[cidade];
+  if (!isNaN(lat) && !isNaN(lng) && lat >= -11 && lat <= -7 && lng >= -38.5 && lng <= -34.5) {
+    return { lat, lng, gps: true };
+  }
+  if (geo) {
+    const d = 0.004;
+    return { lat: geo.lat + (Math.random()-.5)*d, lng: geo.lng + (Math.random()-.5)*d, gps: false };
+  }
+  return null;
+}
+
+// ── Carregar dados Firebase ───────────────────────────────────────
+async function carregarDados() {
+  document.getElementById('loader').style.display = 'flex';
+  try {
+    // Janela: últimas 24h do serviço atual
+    // O serviço é de 08h a 08h — pegamos os últimos 7 dias para análise de tendência também
+    const snap = await db.ref(NODE).once('value');
+    const raw  = snap.val() || {};
+    const agora = new Date();
+
+    // Data de início do serviço atual (08h de hoje ou de ontem)
+    const servicoIni = new Date(agora);
+    if (agora.getHours() < 8) {
+      servicoIni.setDate(servicoIni.getDate() - 1);
+    }
+    servicoIni.setHours(8, 0, 0, 0);
+
+    const servicoFim = new Date(servicoIni);
+    servicoFim.setDate(servicoFim.getDate() + 1); // +24h
+
+    // Janela para tendência: 21 dias atrás
+    const tendIni = new Date(servicoIni);
+    tendIni.setDate(tendIni.getDate() - 21);
+
+    _todas = [];
+    const ocTendencia = []; // todas as ocs das 3 semanas anteriores
+
+    Object.values(raw).forEach(oc => {
+      const dt   = parsearData(oc.DATA || oc.data || '');
+      if (!dt) return;
+      const tipo = classificar(oc);
+      if (!tipo) return;
+      const hora = parsearHora(oc);
+      const coords = parsearCoords(oc);
+
+      const ocObj = {
+        tipo, hora, coords,
+        local:    montarLocal(oc),
+        cidade:   (oc.CIDADE || oc.cidade || '').toString().trim().toUpperCase(),
+        boletim:  oc.BOLETIM || '—',
+        natureza: (oc.TIPIFICACAO_GERAL || oc.TIPIFICACAO || tipo).toString().trim(),
+        dt,
+      };
+
+      // Ocorrências do serviço atual (24h)
+      if (dt >= servicoIni && dt < servicoFim) {
+        _todas.push(ocObj);
+      }
+
+      // Ocorrências das 3 semanas anteriores (para tendência)
+      if (dt >= tendIni && dt < servicoIni) {
+        ocTendencia.push(ocObj);
+      }
+    });
+
+    calcularTendencia(ocTendencia, servicoIni);
+    atualizarTurnosBadges();
+
+    // Seleciona automaticamente o turno atual
+    const hAtual = agora.getHours();
+    const tAtual = TURNOS.findIndex(t => pertenceAoTurno(hAtual, t));
+    selecionarTurno(tAtual >= 0 ? tAtual : 0);
+
+    document.getElementById('loader').style.display = 'none';
+  } catch(err) {
+    console.error('[Preleção]', err);
+    document.getElementById('loader').innerHTML = `
+      <div style="text-align:center;color:#ff4466;">
+        <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:10px;display:block;"></i>
+        <strong>Erro ao carregar dados</strong><br>
+        <small style="opacity:.6">${err.message}</small>
+      </div>`;
+  }
+}
+
+function montarLocal(oc) {
+  const logr   = (oc.LOGRADOURO || oc.logradouro || '').trim();
+  const bairro = (oc.BAIRRO     || oc.bairro     || '').trim();
+  const cidade = (oc.CIDADE     || oc.cidade     || '').trim();
+  if (logr && bairro) return `${logr}, ${bairro}`;
+  if (logr)   return logr;
+  if (bairro) return bairro;
+  return cidade || 'Local não informado';
+}
+
+// ── Atualizar contadores dos turnos ──────────────────────────────
+function atualizarTurnosBadges() {
+  TURNOS.forEach(t => {
+    const ocs = _todas.filter(o => o.hora !== null && pertenceAoTurno(o.hora, t));
+    document.getElementById(`cnt-t${t.id}`).textContent = ocs.length;
+  });
+}
+
+// ── Selecionar turno e atualizar tudo ────────────────────────────
+function selecionarTurno(idx) {
+  _turnoAtivo = idx;
+
+  // Atualizar estado dos botões
+  TURNOS.forEach(t => {
+    const btn = document.getElementById(`btn-t${t.id}`);
+    btn.classList.toggle('ativo', t.id === idx);
+  });
+
+  const turno = TURNOS[idx];
+  const ocTurno = idx >= 0
+    ? _todas.filter(o => o.hora !== null && pertenceAoTurno(o.hora, turno))
+    : _todas;
+
+  // Atualizar KPIs
+  const cvp  = ocTurno.filter(o => o.tipo === 'CVP').length;
+  const cvli = ocTurno.filter(o => o.tipo === 'CVLI').length;
+  document.getElementById('kpi-total').textContent = ocTurno.length;
+  document.getElementById('kpi-cvp').textContent   = cvp;
+  document.getElementById('kpi-cvli').textContent  = cvli;
+
+  // Calcular hotspots
+  const hotspots = calcularHotspots(ocTurno);
+  document.getElementById('kpi-hot').textContent = hotspots.length;
+
+  // Atualizar painel e mapa
+  renderHotspots(hotspots);
+  atualizarMapa(ocTurno, hotspots, turno);
+  atualizarGrafico(ocTurno, turno);
+  gerarDiretrizes(ocTurno, hotspots, turno);
+
+  // Atualizar label do mapa
+  document.getElementById('mapa-label').textContent =
+    `MANCHA CRIMINAL — ${turno.label.toUpperCase()} (${turno.ini % 24}h às ${turno.fim % 24 || '00'}h)  ·  ${ocTurno.length} ocorrências`;
+}
+
+// ── Calcular hotspots por proximidade geográfica ──────────────────
+function calcularHotspots(ocs) {
+  const comGPS = ocs.filter(o => o.coords);
+  if (!comGPS.length) return [];
+
+  const grupos = [];
+  const raio = 0.008; // ~900m
+
+  comGPS.forEach(oc => {
+    let melhor = null, menor = Infinity;
+    grupos.forEach(g => {
+      const d = Math.hypot(oc.coords.lat - g.lat, oc.coords.lng - g.lng);
+      if (d < menor && d < raio) { menor = d; melhor = g; }
+    });
+    if (melhor) {
+      melhor.ocs.push(oc);
+      melhor.lat = melhor.ocs.reduce((s,o) => s + o.coords.lat, 0) / melhor.ocs.length;
+      melhor.lng = melhor.ocs.reduce((s,o) => s + o.coords.lng, 0) / melhor.ocs.length;
+      melhor.cvp  += oc.tipo === 'CVP'  ? 1 : 0;
+      melhor.cvli += oc.tipo === 'CVLI' ? 1 : 0;
+    } else {
+      grupos.push({
+        lat: oc.coords.lat, lng: oc.coords.lng,
+        ocs: [oc],
+        cvp:  oc.tipo === 'CVP'  ? 1 : 0,
+        cvli: oc.tipo === 'CVLI' ? 1 : 0,
+        local: oc.local,
+      });
+    }
+  });
+
+  return grupos
+    .map(g => ({
+      ...g,
+      total: g.ocs.length,
+      score: g.cvli * 2 + g.cvp,
+      nivel: g.cvli >= 2 ? 'CRÍTICO' : g.cvli >= 1 ? 'ALTO' : g.cvp >= 3 ? 'MÉDIO' : 'BAIXO',
+    }))
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 8);
+}
+
+// ── Renderizar lista de hotspots ──────────────────────────────────
+function renderHotspots(hotspots) {
+  const el = document.getElementById('hotspot-list');
+  if (!hotspots.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:.75rem;text-align:center;padding:20px;">Sem pontos de concentração no turno</div>';
+    return;
+  }
+  const classeNivel = { 'CRÍTICO':'nivel-critico', 'ALTO':'nivel-alto', 'MÉDIO':'nivel-medio', 'BAIXO':'' };
+  const badgeClass  = { 'CRÍTICO':'badge-c', 'ALTO':'badge-a', 'MÉDIO':'badge-m', 'BAIXO':'badge-b' };
+
+  el.innerHTML = hotspots.map((h, i) => `
+    <div class="hs-item ${classeNivel[h.nivel]||''}" onclick="volarParaHotspot(${h.lat},${h.lng})">
+      <span class="hs-num">${i+1}</span>
+      <div class="hs-info">
+        <div class="hs-local">${h.local.substring(0,35)}</div>
+        <div class="hs-sub">CVP:${h.cvp} · CVLI:${h.cvli} · Total:${h.total}</div>
+      </div>
+      <span class="hs-badge ${badgeClass[h.nivel]||''}">${h.nivel}</span>
+    </div>`).join('');
+}
+
+function volarParaHotspot(lat, lng) {
+  if (_mapa) _mapa.flyTo([lat, lng], 15, { duration: 1 });
+}
+
+// ── Atualizar mapa com heatmap + marcadores ───────────────────────
+function atualizarMapa(ocs, hotspots, turno) {
+  if (!_mapa) return;
+
+  // Remove layers anteriores
+  if (_heatLayer) { _mapa.removeLayer(_heatLayer); _heatLayer = null; }
+  _markers.forEach(m => _mapa.removeLayer(m));
+  _markers = [];
+
+  const pontos = ocs.filter(o => o.coords);
+
+  // Heatmap
+  if (pontos.length > 0) {
+    const heatData = pontos.map(o => [
+      o.coords.lat, o.coords.lng,
+      o.tipo === 'CVLI' ? 1.0 : 0.5
+    ]);
+
+    _heatLayer = L.heatLayer(heatData, {
+      radius:  25,
+      blur:    18,
+      maxZoom: 16,
+      gradient: { 0.0:'#001f3f', 0.3:'#0074d9', 0.6:'#ff6b00', 0.8:'#ff2244', 1.0:'#ff0066' },
+    }).addTo(_mapa);
+  }
+
+  // Marcadores de CVLI (crimes mais graves — sempre visíveis)
+  ocs.filter(o => o.tipo === 'CVLI' && o.coords).forEach(o => {
+    const icon = L.divIcon({
+      html: `<div style="width:10px;height:10px;background:#ff2244;border-radius:50%;
+                         border:2px solid #fff;box-shadow:0 0 8px #ff2244;"></div>`,
+      className: '', iconSize:[10,10], iconAnchor:[5,5],
+    });
+    const m = L.marker([o.coords.lat, o.coords.lng], { icon })
+      .bindPopup(`
+        <div style="font-family:monospace;font-size:11px;">
+          <b style="color:#ff4466">⚠ ${o.tipo}</b><br>
+          <b>Local:</b> ${o.local}<br>
+          <b>Natureza:</b> ${o.natureza}<br>
+          <b>Hora:</b> ${o.hora !== null ? o.hora + 'h' : '—'}<br>
+          <b>Boletim:</b> ${o.boletim}
+        </div>`)
+      .addTo(_mapa);
+    _markers.push(m);
+  });
+
+  // Círculos de hotspot
+  hotspots.forEach((h, i) => {
+    const cor = h.nivel === 'CRÍTICO' ? '#ff2244' : h.nivel === 'ALTO' ? '#ff6b00' : '#ffd700';
+    const c = L.circle([h.lat, h.lng], {
+      radius:      400 + h.score * 50,
+      color:       cor, fillColor: cor,
+      fillOpacity: 0.1, weight: 1.5, dashArray: '6 4',
+    }).addTo(_mapa);
+
+    const label = L.marker([h.lat, h.lng], {
+      icon: L.divIcon({
+        html: `<div style="background:${cor};color:#000;border-radius:3px;padding:1px 5px;
+                           font-size:9px;font-weight:bold;white-space:nowrap;
+                           box-shadow:0 0 6px ${cor};font-family:monospace;">H${i+1}</div>`,
+        className:'', iconAnchor:[0,0],
+      })
+    }).addTo(_mapa);
+
+    _markers.push(c, label);
+  });
+
+  // Ajustar zoom se houver dados
+  if (pontos.length > 0) {
+    try {
+      const bounds = L.latLngBounds(pontos.map(o => [o.coords.lat, o.coords.lng]));
+      _mapa.fitBounds(bounds, { padding: [30,30], maxZoom: 14 });
+    } catch(e) {}
+  }
+}
+
+// ── Gráfico de distribuição horária ──────────────────────────────
+function atualizarGrafico(ocs, turno) {
+  const labels = [];
+  const cvpData  = [];
+  const cvliData = [];
+
+  // Montar horas do turno selecionado
+  for (let h = turno.ini; h < turno.fim; h++) {
+    const hora = h % 24;
+    labels.push(`${String(hora).padStart(2,'0')}h`);
+    const emHora = ocs.filter(o => o.hora === hora);
+    cvpData.push(emHora.filter(o => o.tipo === 'CVP').length);
+    cvliData.push(emHora.filter(o => o.tipo === 'CVLI').length);
+  }
+
+  if (_chartHoras) _chartHoras.destroy();
+  const ctx = document.getElementById('chart-horas').getContext('2d');
+  _chartHoras = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'CVP',  data:cvpData,  backgroundColor:'rgba(255,107,0,.7)',  borderColor:'#ff6b00', borderWidth:1 },
+        { label:'CVLI', data:cvliData, backgroundColor:'rgba(255,34,68,.7)',  borderColor:'#ff2244', borderWidth:1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{ labels:{ color:'#c8d8e8', font:{ family:'Barlow Condensed', size:11 } } } },
+      scales: {
+        x: { ticks:{ color:'#3a5068', font:{size:10} }, grid:{ color:'rgba(255,255,255,.04)' } },
+        y: { ticks:{ color:'#3a5068', font:{size:10} }, grid:{ color:'rgba(255,255,255,.06)' }, beginAtZero:true, stepSize:1 },
+      }
+    }
+  });
+}
+
+// ── Calcular tendência (delta vs 3 semanas) ───────────────────────
+function calcularTendencia(ocHistorico, servicoIni) {
+  // Para cada turno, calcular média das 3 semanas anteriores (mesmo dia da semana)
+  const diaSemana = servicoIni.getDay(); // 0=dom, 1=seg...
+
+  const mediasPorTurno = TURNOS.map(t => {
+    const semanas = [1,2,3];
+    const contagensSemanas = semanas.map(s => {
+      const diaRef = new Date(servicoIni);
+      diaRef.setDate(diaRef.getDate() - s * 7);
+      const diaRefFim = new Date(diaRef); diaRefFim.setDate(diaRef.getDate()+1);
+
+      return ocHistorico.filter(o =>
+        o.dt >= diaRef && o.dt < diaRefFim &&
+        o.hora !== null && pertenceAoTurno(o.hora, t)
+      ).length;
+    });
+    const media = contagensSemanas.reduce((a,b) => a+b, 0) / semanas.length;
+    return { turno: t, media: Math.round(media * 10) / 10 };
+  });
+
+  // Renderizar tendência
+  const el = document.getElementById('tendencia-lista');
+  const atual = TURNOS.map(t => ({
+    turno: t,
+    cnt: _todas.filter(o => o.hora !== null && pertenceAoTurno(o.hora, t)).length,
+  }));
+
+  el.innerHTML = mediasPorTurno.map((mp, i) => {
+    const cnt     = atual[i].cnt;
+    const media   = mp.media;
+    const diff    = cnt - media;
+    const pct     = media > 0 ? Math.round((diff / media) * 100) : 0;
+    const classe  = diff > 0 ? 'tend-up' : diff < 0 ? 'tend-down' : 'tend-eq';
+    const sinal   = diff > 0 ? '▲' : diff < 0 ? '▼' : '=';
+    return `
+    <div class="tendencia-row">
+      <span class="tend-label">${mp.turno.icon} ${mp.turno.label}</span>
+      <span class="tend-val">${cnt}</span>
+      <span class="tend-delta ${classe}">${sinal}${Math.abs(pct)}% vs média</span>
+    </div>`;
+  }).join('');
+}
+
+function atualizarDeltasTurnos() {
+  // Atualizar delta badges nos botões de turno (chamado após tendência)
+}
+
+// ── Gerar diretrizes para a tropa ─────────────────────────────────
+function gerarDiretrizes(ocs, hotspots, turno) {
+  const el = document.getElementById('missao-cards');
+  const cvli = ocs.filter(o => o.tipo === 'CVLI').length;
+  const cvp  = ocs.filter(o => o.tipo === 'CVP').length;
+
+  const cards = [];
+
+  // Card de nível geral
+  const nivel = cvli >= 2 ? 'urgente' : cvp >= 4 ? 'atencao' : 'normal';
+  const nivelTxt = cvli >= 2 ? '🔴 ALERTA MÁXIMO' : cvp >= 4 ? '🟠 ATENÇÃO ELEVADA' : '🟢 PADRÃO NORMAL';
+  cards.push({
+    classe: nivel,
+    icon: '📋',
+    titulo: 'Situação do Turno',
+    texto: `Nível de risco: <strong>${nivelTxt}</strong>. ${cvli} CVLI e ${cvp} CVP registrados no período de ${turno.label.toLowerCase()}. ${cvli > 0 ? 'Prioridade máxima para prevenção de crimes violentos letais.' : 'Manter patrulhamento preventivo.'}`,
+  });
+
+  // Card de hotspots
+  if (hotspots.length > 0) {
+    const top = hotspots.slice(0,3);
+    cards.push({
+      classe: top[0].nivel === 'CRÍTICO' ? 'urgente' : 'atencao',
+      icon: '📍',
+      titulo: 'Pontos Quentes',
+      texto: `Guarnições deverão realizar paradas de <strong>10 a 20 minutos</strong> em: ${top.map((h,i) => `<strong>${i+1}. ${h.local.substring(0,30)}</strong>`).join('; ')}. Priorizar presença visual nesses locais.`,
+    });
+  }
+
+  // Card de horário crítico
+  const horasPico = Array.from({length: turno.fim - turno.ini}, (_, i) => {
+    const h = (turno.ini + i) % 24;
+    return { h, cnt: ocs.filter(o => o.hora === h).length };
+  }).filter(x => x.cnt > 0).sort((a,b) => b.cnt - a.cnt).slice(0,2);
+
+  if (horasPico.length > 0) {
+    cards.push({
+      classe: 'atencao',
+      icon: '⏱',
+      titulo: 'Horários Críticos',
+      texto: `Pico de ocorrências identificado às <strong>${horasPico.map(x => x.h + 'h (' + x.cnt + ' oc.)').join('</strong> e <strong>')}</strong>. Intensificar policiamento nestes horários.`,
+    });
+  }
+
+  // Card de tipos predominantes
+  const tipoCidade = {};
+  ocs.forEach(o => {
+    tipoCidade[o.cidade] = (tipoCidade[o.cidade] || 0) + 1;
+  });
+  const cidadeTopo = Object.entries(tipoCidade).sort((a,b)=>b[1]-a[1]).slice(0,2);
+  if (cidadeTopo.length) {
+    cards.push({
+      classe: 'normal',
+      icon: '🏙',
+      titulo: 'Municípios em Destaque',
+      texto: `${cidadeTopo.map(([c,n]) => `<strong>${c}</strong> (${n} oc.)`).join(', ')}. Distribuição do efetivo deve priorizar esses municípios durante o turno de ${turno.label.toLowerCase()}.`,
+    });
+  }
+
+  el.innerHTML = cards.map(c => `
+    <div class="missao-card ${c.classe}">
+      <div class="missao-header">
+        <span class="missao-icon">${c.icon}</span>
+        <span class="missao-titulo">${c.titulo}</span>
+      </div>
+      <div class="missao-texto">${c.texto}</div>
+    </div>`).join('');
+}
+
+// ── Inicialização ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  initMapa();
+  carregarDados();
+});
+</script>
+</body>
+</html>
