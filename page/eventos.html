@@ -124,7 +124,7 @@
                     <select name="CIDADE" id="cidade-evento">
                         <option value="BELÉM">BELÉM</option>
                         <option value="CACIMBINHAS">CACIMBINHAS</option>
-                        <option value="ESTELA DE ALAGOAS">ESTELA DE ALAGOAS</option>
+                        <option value="ESTRELA DE ALAGOAS">ESTRELA DE ALAGOAS</option>
                         <option value="IGACI">IGACI</option>
                         <option value="MAR VERMELHO">MAR VERMELHO</option>
                         <option value="MARIBONDO">MARIBONDO</option>
@@ -408,9 +408,25 @@
                 document.getElementById('protocolo').value          = data.PROTOCOLO || '';
                 document.getElementById('nome-evento').value        = data['NOME DO EVENTO'] || '';
                 document.getElementById('local-evento').value       = data['LOCAL DO EVENTO'] || '';
-                document.getElementById('horario-inicio').value     = data['HORÁRIO DE INÍCIO'] || '';
-                document.getElementById('horario-termino').value    = data['HORÁRIO DE TÉRMINO'] || '';
-                document.getElementById('estimativa-publico').value = data['ESTIMATIVA DE PÚBLICO'] || '';
+                // Converte horário do Sheets (pode vir como "21:00" ou decimal "0.875") para HH:MM
+                const parseHoraSheets = v => {
+                    if (!v) return '';
+                    const s = String(v).trim();
+                    // Formato HH:MM ou HH:MM:SS → pega só HH:MM
+                    if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
+                    // Decimal 0.875 → converte para HH:MM
+                    const n = parseFloat(s);
+                    if (!isNaN(n) && n >= 0 && n < 1) {
+                        const totalMin = Math.round(n * 24 * 60);
+                        const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
+                        const mm = String(totalMin % 60).padStart(2, '0');
+                        return `${hh}:${mm}`;
+                    }
+                    return s.substring(0, 5);
+                };
+                document.getElementById('horario-inicio').value     = parseHoraSheets(data['HORÁRIO DE INÍCIO']);
+                document.getElementById('horario-termino').value    = parseHoraSheets(data['HORÁRIO DE TÉRMINO']);
+                document.getElementById('estimativa-publico').value = data['ESTIMATIVA DE PÚBLICO'] || data['ESTIMATIVA DE PUBLICO'] || data['ESTIMATIVA'] || '';
                 document.getElementById('organizacao-evento').value = data['ORGANIZAÇÃO'] || '';
                 document.getElementById('nome-responsavel').value   = data['NOME DO RESPONSÁVEL'] || '';
                 document.getElementById('cpf-responsavel').value    = data.CPF || '';
@@ -619,8 +635,9 @@
         if (n > 1000) guarnicoesSugeridas.push('PELOPES');
 
         // Preenche campo de viaturas automaticamente
+        // Só preenche se o campo estiver vazio — nunca sobrescreve o que o usuário digitou
         const inputViaturas = document.getElementById('viaturas-evento');
-        if (!inputViaturas.dataset.manualEdit) {
+        if (!inputViaturas.dataset.manualEdit && !inputViaturas.value.trim()) {
             inputViaturas.value = viaturasSugeridas;
         }
 
@@ -643,12 +660,39 @@
 
     // ── 6. Comunicação com a Planilha ──────────────────────────
     // CORREÇÃO: fetchData definida apenas UMA vez (havia duplicata no código original)
+    // Normaliza horários de todos os eventos vindos do banco
+    // Remove segundos (:SS) e converte decimais do Sheets (0.875 → "21:00")
+    function normalizarHorarios(eventos) {
+        const camposHora = ['HORÁRIO DE INÍCIO', 'HORÁRIO DE TÉRMINO'];
+        const limpar = v => {
+            if (!v) return '';
+            const s = String(v).trim();
+            // Decimal do Sheets: 0 < n < 1
+            const n = parseFloat(s);
+            if (!isNaN(n) && n > 0 && n < 1) {
+                const totalMin = Math.round(n * 24 * 60);
+                const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
+                const mm = String(totalMin % 60).padStart(2, '0');
+                return `${hh}:${mm}`;
+            }
+            // HH:MM:SS → HH:MM  /  HH:MM → HH:MM
+            const m = s.match(/^(\d{1,2}):(\d{2})/);
+            return m ? `${m[1].padStart(2,'0')}:${m[2]}` : s;
+        };
+        return eventos.map(ev => {
+            const copia = { ...ev };
+            camposHora.forEach(c => { if (c in copia) copia[c] = limpar(copia[c]); });
+            return copia;
+        });
+    }
+
     async function fetchData() {
         const mensagem = document.getElementById('mensagem-carregamento');
         try {
             if (mensagem) mensagem.style.display = 'block';
             const response = await fetch(`${WEBAPP_URL}?action=read`);
-            allEventos = await response.json();
+            const raw = await response.json();
+            allEventos = normalizarHorarios(raw);   // ← normaliza antes de exibir
             renderTable(allEventos);
         } catch (error) {
             console.error('Erro ao buscar dados:', error);
@@ -784,6 +828,17 @@
                 const [yyyy, mm, dd] = payload.DATA.split('-');
                 payload.DATA = `${dd}/${mm}/${yyyy}`;
             }
+
+            // ── FIX HORÁRIO: garante que HH:MM chega como string pura ──
+            // O input[type=time] retorna "HH:MM" — forçamos apenas HH:MM
+            // para evitar que o Sheets interprete como DateTime e adicione segundos.
+            const sanitizarHora = h => {
+                if (!h) return '';
+                const m = h.toString().trim().match(/^(\d{1,2}):(\d{2})/);
+                return m ? `${m[1].padStart(2,'0')}:${m[2]}` : h;
+            };
+            payload['HORÁRIO DE INÍCIO'] = sanitizarHora(payload['HORÁRIO DE INÍCIO']);
+            payload['HORÁRIO DE TÉRMINO'] = sanitizarHora(payload['HORÁRIO DE TÉRMINO']);
 
             // Define a action com base na presença de ID
             const idValue = (payload.ID || '').trim();

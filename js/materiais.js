@@ -1,11 +1,11 @@
 // ====================================================================
-// CONFIGURAÇÃO FIREBASE
+// CONFIGURAÇÃO GOOGLE APPS SCRIPT
 // ====================================================================
-const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
-const NODE_MATERIAIS = 'materiais';
+// URL do Apps Script exclusiva para BANCO DE DADOS (Buscar, criar e atualizar)
+const DATABASE_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby1FlbgHFzFZRDJbnzvCzsik-jlQDsnNCF3QafZemA6C4oSz8qODvOwrLaCGo0Z4VOJHg/exec';
 
-// URL do Apps Script — usado APENAS para sincronização e-SAJ (POST/ação server-side)
-const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
+// URL do Apps Script usada APENAS para a gestão de movimentações / sincronização e-SAJ
+const MOVIMENTACAO_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
 
 let allMateriais = [];
 let filtradosAtivos = null;
@@ -41,29 +41,29 @@ function atualizarRelogio() {
 }
 
 // ====================================================================
-// CARREGAR DADOS DO FIREBASE
+// CARREGAR DADOS DO GOOGLE SHEETS
 // ====================================================================
 async function fetchData() {
     const msgCarregamento = document.getElementById('mensagem-carregamento');
     try {
         if (msgCarregamento) msgCarregamento.style.display = 'block';
 
-        const response = await fetch(`${DATABASE_URL}/${NODE_MATERIAIS}.json`);
-        if (!response.ok) throw new Error('Erro ao acessar Firebase');
+        // Utiliza a URL correta de BANCO DE DADOS para ler a planilha
+        const response = await fetch(`${DATABASE_WEBAPP_URL}?action=read`);
+        if (!response.ok) throw new Error('Erro ao acessar Google Sheets via Apps Script');
 
         const data = await response.json();
 
-        if (!data) {
+        if (data && data.status === 'error') {
+            throw new Error(data.message);
+        }
+
+        if (!data || !Array.isArray(data)) {
             allMateriais = [];
         } else {
-            // Converte objeto Firebase em array, guardando o id_realtime
-            allMateriais = Object.keys(data)
-                .map(id => ({ ...data[id], id_realtime: id }))
-                .filter(item => item !== null)
-                .sort((a, b) => {
-                    // Ordena por data decrescente
-                    return new Date(b.DATA || 0) - new Date(a.DATA || 0);
-                });
+            allMateriais = data.sort((a, b) => {
+                return new Date(b.DATA || 0) - new Date(a.DATA || 0);
+            });
         }
 
         renderTable(allMateriais);
@@ -140,7 +140,7 @@ function renderTable(dataToRender) {
 }
 
 // ====================================================================
-// SALVAR NO FIREBASE (POST = novo, PATCH = editar)
+// SALVAR NO GOOGLE SHEETS (POST com action=create ou action=update)
 // ====================================================================
 async function salvarDados(e) {
     e.preventDefault();
@@ -148,39 +148,39 @@ async function salvarDados(e) {
     btn.disabled = true;
     btn.textContent = "Processando...";
 
-    const id = document.getElementById('form-id').value; // id_realtime se edição
+    const id = document.getElementById('form-id').value; 
+    const acao = id ? 'update' : 'create';
 
-    const payload = {
-        'IDMaterial':      id || Date.now().toString(),
-        'N° DO BOU':       document.getElementById('bou').value,
-        'DATA':            document.getElementById('data').value,
-        'CATEGORIA':       document.getElementById('categoria').value,
-        'DESCRIÇÃO':       document.getElementById('descricao').value,
-        'LOCAL':           document.getElementById('localdeposito').value,
-        'DATA DE DEPOSITO': document.getElementById('data-deposito').value,
-        'ESAJ':            document.getElementById('esaj').value,
-        'STATUS':          document.getElementById('status').value
-    };
+    const urlParams = new URLSearchParams();
+    urlParams.append('IDMaterial', id || Date.now().toString());
+    urlParams.append('N° DO BOU', document.getElementById('bou').value);
+    urlParams.append('DATA', document.getElementById('data').value);
+    urlParams.append('CATEGORIA', document.getElementById('categoria').value);
+    urlParams.append('DESCRIÇÃO', document.getElementById('descricao').value);
+    urlParams.append('LOCAL', document.getElementById('localdeposito').value);
+    urlParams.append('DATA DE DEPOSITO', document.getElementById('data-deposito').value);
+    urlParams.append('ESAJ', document.getElementById('esaj').value);
+    urlParams.append('STATUS', document.getElementById('status').value);
 
-    // Remove campos vazios
-    Object.keys(payload).forEach(k => { if (payload[k] === '') delete payload[k]; });
-
-    const url = id
-        ? `${DATABASE_URL}/${NODE_MATERIAIS}/${id}.json`
-        : `${DATABASE_URL}/${NODE_MATERIAIS}.json`;
+    // Aponta para a URL correta de BANCO DE DADOS
+    const urlFinal = `${DATABASE_WEBAPP_URL}?action=${acao}`;
 
     try {
-        const res = await fetch(url, {
-            method: id ? 'PATCH' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        const res = await fetch(urlFinal, {
+            method: 'POST',
+            mode: 'cors',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: urlParams.toString()
         });
 
-        if (!res.ok) throw new Error('Erro ao salvar: ' + res.status);
+        if (!res.ok) throw new Error('Erro ao salvar na planilha: ' + res.status);
+
+        const resultadoJson = await res.json();
+        if (resultadoJson.status === 'error') throw new Error(resultadoJson.message);
 
         alert("Operação realizada com sucesso!");
         toggleSidebar(false);
-        setTimeout(fetchData, 500);
+        setTimeout(fetchData, 800); 
     } catch (error) {
         console.error("Erro ao salvar:", error);
         alert("Erro ao salvar: " + error.message);
@@ -253,30 +253,33 @@ function imprimirTabela() {
 }
 
 // ====================================================================
-// SINCRONIZAÇÃO E-SAJ (ainda via Apps Script — roda no servidor)
+// SINCRONIZAÇÃO E-SAJ (Utiliza a URL de MOVIMENTAÇÃO)
 // ====================================================================
-document.getElementById('btn-sincronizar-esaj').onclick = async function () {
-    const btn = this;
-    if (!confirm("Deseja atualizar os status via API DataJud? Isso pode levar alguns minutos.")) return;
+const btnSinc = document.getElementById('btn-sincronizar-esaj');
+if (btnSinc) {
+    btnSinc.onclick = async function () {
+        const btn = this;
+        if (!confirm("Deseja atualizar os status via API DataJud? Isso pode levar alguns minutos.")) return;
 
-    btn.disabled = true;
-    btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...`;
+        btn.disabled = true;
+        btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...`;
 
-    try {
-        // A sincronização roda no Apps Script (server-side) e grava o resultado no Firebase
-        const url = WEBAPP_URL + "?action=sincronizar";
-        const response = await fetch(url, { method: 'GET', redirect: 'follow' });
-        const texto = await response.text();
-        alert("✅ " + texto);
-        await fetchData(); // Recarrega do Firebase após sincronização
-    } catch (e) {
-        console.error("Erro na sincronização:", e);
-        alert("Erro ao sincronizar: " + e.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizar e-SAJ`;
-    }
-};
+        try {
+            // Aqui mantemos a chamada apontando para a URL de MOVIMENTAÇÃO
+            const url = MOVIMENTACAO_WEBAPP_URL + "?action=sincronizar";
+            const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+            const texto = await response.text();
+            alert("✅ " + texto);
+            await fetchData(); // Após atualizar no servidor, puxamos a lista atualizada
+        } catch (e) {
+            console.error("Erro na sincronização:", e);
+            alert("Erro ao sincronizar: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizar e-SAJ`;
+        }
+    };
+}
 
 // ====================================================================
 // SIDEBAR
@@ -287,7 +290,7 @@ function toggleSidebar(show, data) {
         sidebar.reset();
         document.getElementById('form-id').value = '';
         if (data) {
-            document.getElementById('form-id').value = data.id_realtime || '';
+            document.getElementById('form-id').value = data.IDMaterial || '';
             document.getElementById('bou').value = data['N° DO BOU'] || '';
             document.getElementById('data').value = formatarDataParaInput(data.DATA);
             document.getElementById('categoria').value = data.CATEGORIA || '';

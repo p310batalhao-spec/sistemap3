@@ -438,6 +438,55 @@
       line-height: 1.4;
     }
 
+    /* ── Botão Fecha Quartel ── */
+    .btn-fecha-quartel {
+      width: 100%;
+      background: linear-gradient(135deg, rgba(198,40,40,.25) 0%, rgba(183,28,28,.15) 100%);
+      border: 1.5px solid rgba(229,57,53,.6);
+      border-radius: 6px;
+      color: #ef9a9a;
+      font-family: var(--fonte-tit);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: .1em;
+      padding: 12px;
+      cursor: pointer;
+      transition: all .25s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .btn-fecha-quartel:hover {
+      background: linear-gradient(135deg, rgba(229,57,53,.35) 0%, rgba(198,40,40,.25) 100%);
+      border-color: #ef5350;
+      color: #fff;
+      box-shadow: 0 0 12px rgba(229,57,53,.3);
+    }
+
+    /* Separador de seção no painel gerar */
+    .gerar-separator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 10px 0 8px;
+      font-size: 9px;
+      font-family: var(--fonte-tit);
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.25);
+    }
+    .gerar-separator::before,
+    .gerar-separator::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: rgba(255,255,255,.08);
+    }
+
     /* ── Botão gerar OPO ── */
     .btn-gerar-opo {
       width: 100%;
@@ -1217,7 +1266,7 @@
     </div>
     
     <div class="header-info-right">
-      <a href="../page/dashboard-mapa.html" class="btn-imprimir">Voltar</a>
+      <a href="../index.html" class="btn-imprimir">Voltar</a>
       <button class="btn-imprimir" id="btn-docx" onclick="baixarDocx()">
         📥 BAIXAR COMO WORD (.docx)
       </button>
@@ -1386,6 +1435,62 @@
         <button class="btn-docx" id="btn-docx" onclick="baixarDocx()">
           📥 BAIXAR COMO WORD (.docx)
         </button>
+
+        <!-- ── OPERAÇÃO FECHA QUARTEL ── -->
+        <div class="gerar-separator">Operações Pré-configuradas</div>
+
+        <div id="bloco-fecha-quartel" style="background:rgba(198,40,40,.08);
+             border:1px solid rgba(229,57,53,.25);border-radius:6px;
+             padding:10px 12px;margin-bottom:6px;">
+
+          <div style="font-family:var(--fonte-tit);font-size:11px;font-weight:700;
+                      letter-spacing:.08em;text-transform:uppercase;
+                      color:#ef9a9a;margin-bottom:8px;display:flex;
+                      align-items:center;gap:6px;">
+            🔒 Operação Fecha Quartel
+          </div>
+
+          <label class="campo-label">Data da Operação</label>
+          <input type="text" id="inp-fq-data"
+            placeholder="Ex: 20/05/2026 ou 20 a 21/05/2026"
+            style="width:100%;background:rgba(255,255,255,.06);
+                   border:1px solid rgba(229,57,53,.3);color:#fff;
+                   border-radius:5px;padding:7px 10px;font-size:12px;
+                   font-family:var(--fonte-tit);box-sizing:border-box;
+                   margin-bottom:8px;outline:none;">
+
+          <label class="campo-label">Nº de Guarnições ADM</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <input type="number" id="inp-fq-qtd" value="1" min="1" max="10"
+              style="width:70px;background:rgba(255,255,255,.06);
+                     border:1px solid rgba(229,57,53,.3);color:#fff;
+                     border-radius:5px;padding:7px 8px;font-size:14px;
+                     font-family:var(--fonte-tit);text-align:center;outline:none;">
+            <span style="font-size:10px;color:rgba(255,255,255,.4);line-height:1.5;">
+              guarnição(ões) ADM<br>
+              <small style="color:rgba(255,255,255,.25);">3 homens cada</small>
+            </span>
+          </div>
+
+          <div style="font-size:9px;color:rgba(255,255,255,.3);line-height:1.6;
+                      margin-bottom:8px;padding:6px 8px;
+                      background:rgba(0,0,0,.2);border-radius:4px;">
+            ⚠️ Todas as RPs, Táticos e FTs são retiradas.<br>
+            Somente guarnições ADM permanecem em serviço.
+          </div>
+
+          <button class="btn-fecha-quartel" onclick="gerarOPOFechaQuartel()">
+            🔒 GERAR FECHA QUARTEL
+          </button>
+          <button onclick="baixarDocxFechaQuartel()"
+            style="width:100%;background:rgba(198,40,40,.1);
+                   border:1.5px solid rgba(229,57,53,.4);color:#ef9a9a;
+                   border-radius:6px;padding:9px;font-family:var(--fonte-tit);
+                   font-size:12px;font-weight:700;letter-spacing:.08em;
+                   cursor:pointer;text-transform:uppercase;margin-top:4px;">
+            📥 BAIXAR (.docx)
+          </button>
+        </div>
       </div>
 
     </aside>
@@ -1573,6 +1678,9 @@
         cidades: null
       },
       // FTs geradas dinamicamente via criarFT(n) — não ficam no array fixo
+      // ── Guarnições ADM — Fecha Quartel ────────────────────────
+      // Cada ADM tem 3 homens (número de guarnições variável)
+      // Geradas dinamicamente por criarADM(n) — igual às FTs
       // ── Oficial de Serviço ─────────────────────────────────
       {
         id: 'oficial', label: 'OFICIAL DE SERVIÇO',
@@ -1580,6 +1688,15 @@
         cidades: null
       },
     ];
+
+    // ── Criar guarnição ADM dinamicamente ──────────────────────
+    function criarADM(numero) {
+      return {
+        id:     `adm_${String(numero).padStart(2,'0')}`,
+        label:  `ADM ${String(numero).padStart(2,'0')} — ADMINISTRAÇÃO`,
+        vtr:    1, homens: 3, tipo: 'adm', cidades: null
+      };
+    }
 
     // ── Totais calculados automaticamente ──────────────────────
     const EFETIVO_TOTAL_VTR = EFETIVO_OPO.reduce((s, e) => s + e.vtr, 0);
@@ -1655,6 +1772,10 @@
     // ── Estado: escopo e turno ──────────────────────────────────────
     let escopoAtual = 'cidade'; // 'cidade' | 'bpm'
     let turnoAtual = '';       // '' | 'manha' | 'tarde' | 'noite'
+
+    // ── Fecha Quartel: flags ─────────────────────────────────
+    let _modoFechaQuartel = false;
+    let _admFechaQuartel  = [];
 
     // 11 cidades do 10ºBPM
     const CIDADES_10BPM = [
@@ -2660,6 +2781,9 @@
       const corNvl = { 'CRÍTICO':'#ffebee','ALTO':'#fff3e0','MÉDIO':'#fffde7','BAIXO':'#f1f8e9','NORMAL':'#fafafa' };
       const cidadesHotSet = new Set(cidadesComHot.map(c => normalizarStr(c)));
 
+      // Mapa de ADMs por cidade (só populado no modo Fecha Quartel)
+      let reforcosFQporCidade = new Map();
+
       // Coleta OPMs que serão empenhadas (para Parte A — resumo)
       const opmsEmpenhadas = [];
       let efetivResumoHTML = '';
@@ -2691,6 +2815,68 @@
             }
           });
         });
+        // ── Fecha Quartel: distribui ADMs como pool ────────────────
+        // IMPORTANTE: trabalhamos com reforcosFQ — cópia isolada por cidade,
+        // jamais mutando a.reforcos (que pertence a dadosAnalise e persiste
+        // entre cliques). Assim cada clique em "Gerar" parte do zero.
+        //
+        // Regra de distribuição (por ordem de prioridade da cidade):
+        //   CRÍTICO → até 2 ADMs  |  ALTO/MÉDIO → até 1 ADM
+        //   BAIXO   → sobras do pool (se houver)
+        const reforcosFQporCidade = new Map(); // cidade → [...labels de ADM]
+
+        if (_modoFechaQuartel && _admFechaQuartel.length) {
+          const poolADM = _admFechaQuartel.map(a => ({ ...a, alocado: false }));
+
+          // 1ª passagem: CRÍTICO e ALTO/MÉDIO por prioridade
+          rowsFiltradas.forEach(a => {
+            const nivel  = a.nivel || 'BAIXO';
+            const qtdADM = nivel === 'CRÍTICO' ? 2
+                         : nivel === 'ALTO'    ? 1
+                         : nivel === 'MÉDIO'   ? 1
+                         : 0;
+            const admDaCidade = [];
+            let cnt = 0;
+            for (const adm of poolADM) {
+              if (!adm.alocado && cnt < qtdADM) {
+                adm.alocado = true;
+                admDaCidade.push(adm.label);
+                cnt++;
+              }
+            }
+            reforcosFQporCidade.set(a.cidade, admDaCidade);
+          });
+
+          // 2ª passagem: sobras → distribui 1 por vez para cidades ainda sem ADM
+          let cidadeIdx = 0;
+          for (const adm of poolADM) {
+            if (adm.alocado) continue;
+            // Avança para a próxima cidade que ainda não tem ADM
+            while (cidadeIdx < rowsFiltradas.length) {
+              const cid = rowsFiltradas[cidadeIdx];
+              const atual = reforcosFQporCidade.get(cid.cidade) || [];
+              if (atual.length === 0) {
+                atual.push(adm.label);
+                reforcosFQporCidade.set(cid.cidade, atual);
+                adm.alocado = true;
+                cidadeIdx++;
+                break;
+              }
+              cidadeIdx++;
+            }
+          }
+
+          // Adiciona as ADMs no resumo de efetivo (Parte A)
+          // e nas linhas de alocação (Parte B) — sem mutar a.reforcos original
+          const admsNoResumo = new Set();
+          rowsFiltradas.forEach(a => {
+            const admsCidade = reforcosFQporCidade.get(a.cidade) || [];
+            admsCidade.forEach(label => admsNoResumo.add(label));
+          });
+          admsNoResumo.forEach(label => {
+            opmsEmpenhadas.push({ label, tipo: 'ADM (Fecha Quartel)', vtr: 1, homens: 3 });
+          });
+        }
         opmsEmpenhadas.push({ label: 'OFICIAL DE SERVIÇO', tipo: 'Oficial', vtr: 0, homens: 1 });
 
         const totalVtr    = opmsEmpenhadas.reduce((s,o) => s + o.vtr,    0);
@@ -2706,10 +2892,11 @@
           <th style="width:20%;text-align:center;">Homens</th>
         </tr></thead>
         <tbody>${opmsEmpenhadas.map(o => {
-          const bg = o.tipo==='Força Tarefa'  ? 'background:#e8f5e9;'
-                   : o.tipo==='Tático Urbano' ? 'background:#e3f2fd;'
-                   : o.tipo==='Tático Rural'  ? 'background:#f3e5f5;'
-                   : o.tipo==='Oficial'       ? 'background:#fff8e1;'
+          const bg = o.tipo==='Força Tarefa'       ? 'background:#e8f5e9;'
+                   : o.tipo==='Tático Urbano'      ? 'background:#e3f2fd;'
+                   : o.tipo==='Tático Rural'       ? 'background:#f3e5f5;'
+                   : o.tipo==='Oficial'            ? 'background:#fff8e1;'
+                   : o.tipo==='ADM (Fecha Quartel)'? 'background:#fce4ec;font-weight:bold;'
                    : '';
           return `<tr style="${bg}">
             <td><strong>${o.label}</strong></td>
@@ -2727,6 +2914,8 @@
       </table>`;
 
         // Parte B — Alocação por cidade
+        // Combina reforços táticos (a.reforcos) + ADMs do Fecha Quartel
+        // sem jamais modificar a.reforcos (que pertence a dadosAnalise)
         alocacaoDetalheHTML = `
       <table class="tab-efetivo">
         <thead><tr>
@@ -2738,18 +2927,27 @@
           <th style="width:7%;">CVP</th>
           <th style="width:6%;">CVLI</th>
         </tr></thead>
-        <tbody>${rowsFiltradas.map(a => `
+        <tbody>${rowsFiltradas.map(a => {
+          // Mescla reforços táticos + ADMs sem mutar o original
+          const admsExtra = (_modoFechaQuartel && reforcosFQporCidade)
+            ? (reforcosFQporCidade.get(a.cidade) || [])
+            : [];
+          const todosReforcos = [...a.reforcos, ...admsExtra];
+          return `
           <tr style="background:${corNvl[a.nivel]||'#fff'};">
             <td style="text-align:center;font-weight:bold;">${a.prioridade}°</td>
             <td><strong>${a.cidade}</strong></td>
             <td style="font-size:8.5pt;">${a.guarnicao}</td>
-            <td style="color:#1565c0;font-weight:bold;font-size:8.5pt;">
-              ${a.reforcos.length ? a.reforcos.join('<br>') : '<span style="color:#888;font-weight:normal;">—</span>'}
+            <td style="font-size:8.5pt;">
+              ${todosReforcos.length
+                ? todosReforcos.map(r => `<span style="color:${r.includes('ADM') ? '#c62828' : '#1565c0'};font-weight:bold;">${r}</span>`).join('<br>')
+                : '<span style="color:#888;">—</span>'}
             </td>
             <td style="text-align:center;"><strong>${a.nivel}</strong></td>
             <td style="text-align:center;">${a.cvp}</td>
             <td style="text-align:center;">${a.cvli}</td>
-          </tr>`).join('')}
+          </tr>`;
+        }).join('')}
         </tbody>
       </table>`;
 
@@ -2763,6 +2961,25 @@
           const tipo     = isFT ? 'Força Tarefa' : isUrbano ? 'Tático Urbano' : 'Tático Rural';
           opmsEmpenhadas.push({ label, tipo, vtr: 1, homens: 3 });
         });
+        // Fecha Quartel: distribui ADMs conforme nível da cidade
+        if (_modoFechaQuartel && _admFechaQuartel.length) {
+          const nivelCid  = ef.nivelGeral || 'BAIXO';
+          const qtdADMCid = nivelCid === 'CRÍTICO' ? Math.min(2, _admFechaQuartel.length)
+                          : nivelCid === 'ALTO'    ? Math.min(1, _admFechaQuartel.length)
+                          : nivelCid === 'MÉDIO'   ? Math.min(1, _admFechaQuartel.length)
+                          : Math.min(1, _admFechaQuartel.length); // BAIXO: ao menos 1
+          _admFechaQuartel.slice(0, qtdADMCid).forEach(adm => {
+            opmsEmpenhadas.push({
+              label: adm.label, tipo: 'ADM (Fecha Quartel)',
+              vtr: adm.vtr, homens: adm.homens
+            });
+            // Adiciona na tabela de alocação da cidade
+            if (!alocacaoDetalheHTML._reforcos) {
+              ef.reforcos = ef.reforcos || [];
+              ef.reforcos.push(adm.label);
+            }
+          });
+        }
         opmsEmpenhadas.push({ label: 'OFICIAL DE SERVIÇO', tipo: 'Oficial', vtr: 0, homens: 1 });
         const totalVtr    = opmsEmpenhadas.reduce((s,o) => s + o.vtr,    0);
         const totalHomens = opmsEmpenhadas.reduce((s,o) => s + o.homens, 0);
@@ -2776,10 +2993,11 @@
           <th style="width:20%;text-align:center;">Homens</th>
         </tr></thead>
         <tbody>${opmsEmpenhadas.map(o => {
-          const bg = o.tipo==='Força Tarefa'  ? 'background:#e8f5e9;'
-                   : o.tipo==='Tático Urbano' ? 'background:#e3f2fd;'
-                   : o.tipo==='Tático Rural'  ? 'background:#f3e5f5;'
-                   : o.tipo==='Oficial'       ? 'background:#fff8e1;'
+          const bg = o.tipo==='Força Tarefa'       ? 'background:#e8f5e9;'
+                   : o.tipo==='Tático Urbano'      ? 'background:#e3f2fd;'
+                   : o.tipo==='Tático Rural'       ? 'background:#f3e5f5;'
+                   : o.tipo==='Oficial'            ? 'background:#fff8e1;'
+                   : o.tipo==='ADM (Fecha Quartel)'? 'background:#fce4ec;font-weight:bold;'
                    : '';
           return `<tr style="${bg}">
             <td><strong>${o.label}</strong></td>
@@ -2845,6 +3063,7 @@
       <div class="titulo-opo" contenteditable="true"
         style="outline:none;border-bottom:2px dashed rgba(0,0,0,.2);cursor:text;display:block;"
         title="Clique para editar o nome da OPO">${nomeOPO}</div>
+      ${_modoFechaQuartel ? '<div style="background:#c62828;color:#fff;font-family:var(--fonte-tit);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:4px 12px;border-radius:3px;display:inline-block;margin-bottom:8px;">🔒 FECHA QUARTEL — Guarnição ADM em Serviço</div>' : ''}
       <div class="subtitulo">ORDEM DE POLICIAMENTO OSTENSIVO — ANÁLISE CRIMINAL CVP/CVLI</div>
     </div>
 
@@ -3478,6 +3697,97 @@
     }
 
     // ══════════════════════════════════════════════════════════
+
+    // ══════════════════════════════════════════════════════════
+    //  OPERAÇÃO FECHA QUARTEL
+    //  OPO pré-configurada: somente guarnições ADM em serviço
+    // ══════════════════════════════════════════════════════════
+
+
+    // ══════════════════════════════════════════════════════════
+    //  OPERAÇÃO FECHA QUARTEL
+    //
+    //  Idêntica à OPO normal da análise corrente.
+    //  Diferença EXCLUSIVA no efetivo:
+    //    • Mantém as guarnições titulares da(s) cidade(s)
+    //      analisada(s) e os reforços táticos sugeridos
+    //    • ADICIONA as guarnições ADM como reforço extra
+    //      (substituem o pessoal que normalmente ficaria
+    //       de fora em operações regulares)
+    //
+    //  Exemplo — Palmeira dos Índios nível ALTO:
+    //    RP 01, RP 02, Tático Urbano 01 + ADM 01, ADM 02
+    // ══════════════════════════════════════════════════════════
+
+    function gerarOPOFechaQuartel() {
+      if (!dadosAnalise) {
+        alert('Faça uma análise antes de gerar a Operação Fecha Quartel.');
+        return;
+      }
+
+      // Lê a data e a quantidade de ADMs configuradas
+      const dataFQ = document.getElementById('inp-fq-data')?.value.trim() || '';
+      const qtdADM = Math.max(1, Math.min(10,
+        parseInt(document.getElementById('inp-fq-qtd')?.value || '1', 10)
+      ));
+
+      // Sobrescreve o campo de vigência da OPO normal com a data da FQ
+      // (para que gerarOPO() leia o valor correto)
+      if (dataFQ) {
+        const vigEl = document.getElementById('inp-vig-ini');
+        if (vigEl) vigEl.value = dataFQ;
+      }
+
+      // Sobrescreve o nome da OPO
+      const nomeEl = document.getElementById('inp-nome-opo');
+      if (nomeEl && !nomeEl.value.trim()) {
+        nomeEl.value = 'OPERAÇÃO FECHA QUARTEL';
+      } else if (nomeEl) {
+        nomeEl.value = 'OPERAÇÃO FECHA QUARTEL — ' + nomeEl.value.trim();
+      }
+
+      // ── Injeta ADMs temporariamente na alocação ──────────────
+      // Criamos uma cópia da alocação com as ADMs adicionadas como
+      // "reforço ADM" em cada cidade prioritária
+      _admFechaQuartel = Array.from({ length: qtdADM }, (_, i) => criarADM(i + 1));
+      _modoFechaQuartel = true;
+
+      // Gera a OPO normal (ela vai ler _modoFechaQuartel e _admFechaQuartel)
+      gerarOPO();
+
+      // Limpa flags após geração
+      _modoFechaQuartel = false;
+      _admFechaQuartel  = [];
+    }
+
+    async function baixarDocxFechaQuartel() {
+      if (!dadosAnalise) {
+        alert('Faça uma análise antes de baixar a Fecha Quartel.');
+        return;
+      }
+
+      const dataFQ = document.getElementById('inp-fq-data')?.value.trim() || '';
+      const qtdADM = Math.max(1, Math.min(10,
+        parseInt(document.getElementById('inp-fq-qtd')?.value || '1', 10)
+      ));
+
+      if (dataFQ) {
+        const vigEl = document.getElementById('inp-vig-ini');
+        if (vigEl) vigEl.value = dataFQ;
+      }
+      const nomeEl = document.getElementById('inp-nome-opo');
+      if (nomeEl) nomeEl.value = 'OPERAÇÃO FECHA QUARTEL';
+
+      _admFechaQuartel = Array.from({ length: qtdADM }, (_, i) => criarADM(i + 1));
+      _modoFechaQuartel = true;
+
+      await baixarDocx();
+
+      _modoFechaQuartel = false;
+      _admFechaQuartel  = [];
+    }
+
+
     //  INICIALIZAÇÃO — carrega banco ao abrir a página
     // ══════════════════════════════════════════════════════════
     document.addEventListener('DOMContentLoaded', () => {

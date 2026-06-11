@@ -372,8 +372,22 @@
         return `${f(ini)} a ${f(fim)}`;
     };
 
+    const parseHoraSheets = v => {
+        if (!v) return '';
+        const s = String(v).trim();
+        if (/^\d{1,2}:\d{2}/.test(s)) return s.substring(0, 5);
+        const n = parseFloat(s);
+        if (!isNaN(n) && n > 0 && n < 1) {
+            const totalMin = Math.round(n * 24 * 60);
+            const hh = String(Math.floor(totalMin / 60)).padStart(2, '0');
+            const mm = String(totalMin % 60).padStart(2, '0');
+            return `${hh}:${mm}`;
+        }
+        return s.substring(0, 5) || s;
+    };
+
     const formatarHorario = (ini, fim) => {
-        const h = (ini||'').trim(), f = (fim||'').trim();
+        const h = parseHoraSheets(ini), f = parseHoraSheets(fim);
         return h && f ? `${h} ÀS ${f}` : h;
     };
 
@@ -495,7 +509,7 @@
                         <td>${(ev['NOME DO EVENTO']||'').toUpperCase()}</td>
                         <td>${formatarHorario(ev['HORÁRIO DE INÍCIO'], ev['HORÁRIO DE TÉRMINO'])}</td>
                         <td>${(ev['LOCAL DO EVENTO']||'').toUpperCase()}</td>
-                        <td>${ev['ESTIMATIVA DE PÚBLICO']||''}</td>
+                        <td>${ev['ESTIMATIVA DE PÚBLICO'] || ev['ESTIMATIVA DE PUBLICO'] || ev['ESTIMATIVA'] || ''}</td>
                     </tr>`).join('')}
                 </tbody>
             </table>`;

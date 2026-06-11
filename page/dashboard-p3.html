@@ -221,7 +221,59 @@
             .charts-grid { grid-template-columns: 1fr; }
             .kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
-    </style>
+    
+        /* ── Cross-filter chips ────────────────────────────── */
+        .cross-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: #fff;
+            border: 1.5px solid var(--chip-cor, #1565c0);
+            border-radius: 20px;
+            padding: 3px 10px 3px 8px;
+            font-size: .72rem;
+            font-weight: 500;
+            color: var(--chip-cor, #1565c0);
+            white-space: nowrap;
+            animation: chipIn .15s ease;
+        }
+        .cross-chip i { font-size: .65rem; opacity: .8; }
+        .cross-chip strong { font-weight: 700; }
+        .chip-x {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--chip-cor, #1565c0);
+            font-size: .7rem;
+            padding: 0 0 0 3px;
+            opacity: .7;
+            line-height: 1;
+        }
+        .chip-x:hover { opacity: 1; }
+        .cross-clear-all {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f2f8;
+            border: 1.5px solid #c5cae9;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: .72rem;
+            font-weight: 600;
+            color: #374263;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .cross-clear-all:hover { background: #e0e3f0; }
+        @keyframes chipIn {
+            from { opacity:0; transform: scale(.85); }
+            to   { opacity:1; transform: scale(1); }
+        }
+
+        /* Cursor pointer em todos os canvas (indicativo de clicabilidade) */
+        canvas { cursor: pointer; }
+        .hora-cel { cursor: pointer !important; }
+        </style>
 </head>
 <body>
     <header>
