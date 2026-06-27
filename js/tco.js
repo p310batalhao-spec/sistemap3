@@ -1,7 +1,7 @@
 // ====================================================================
 // CONFIGURAÇÃO — URL do Web App do Apps Script (planilha TCO GERAL)
 // ====================================================================
-const APPS_SCRIPT_TCO_URL = 'https://script.google.com/macros/s/AKfycbxXQhiX_EOskIWziWh2vG5UvuaOKBmv-7JIhBcghLlEiBpBEUtUV8Wn9M2Wk6kLtbgf/exec';
+const APPS_SCRIPT_TCO_URL = 'https://script.google.com/macros/s/AKfycbzgewj7KjnTtWrnmnE7dcrz99CCpW1G3xw4Zft59dyIPL91avy1fqdVvgL1mRcIYhLP/exec';
 
 var dadosTCO = [];  // var garante acesso via window.dadosTCO de outros scripts
 
@@ -258,6 +258,31 @@ function renderTable(dados) {
             const dataFato    = formatarData(d['DATA']);
             const mov         = d['Movimentação']     || '—';
 
+            // Campo E-SAJ: número do processo judicial
+            const numEsaj  = (d['E-SAJ'] || d['ESAJ'] || d['LocalE-SAJ'] || '').toString().trim();
+            const urlEsaj  = numEsaj
+                ? `https://www2.tjal.jus.br/cpopg/search.do?cbPesquisa=NUMPROC` +
+                  `&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(numEsaj)}` +
+                  `&dadosConsulta.tipoNuProcesso=UNIFICADO`
+                : '';
+            const esajHtml = numEsaj
+                ? `<div class="meta-sisdoc">
+                       <a href="${urlEsaj}" target="_blank" rel="noopener"
+                          onclick="event.stopPropagation();"
+                          style="color:#1a6bbf;font-size:.72rem;font-weight:600;
+                                 text-decoration:underline;display:inline-flex;
+                                 align-items:center;gap:3px;">
+                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2.5">
+                               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                               <polyline points="15 3 21 3 21 9"/>
+                               <line x1="10" y1="14" x2="21" y2="3"/>
+                           </svg>
+                           ESAJ: ${numEsaj}
+                       </a>
+                   </div>`
+                : '';
+
             const card = document.createElement('div');
             card.className = 'item-tco';
 
@@ -270,6 +295,7 @@ function renderTable(dados) {
                         <span class="meta-sep"></span>
                         <span class="meta-data">${dataFato}</span>
                     </div>
+                    ${esajHtml}
                 </div>
                 <span class="badge-movimentacao ${classeBadge(mov)}">${mov}</span>
                 <button class="btn-editar-item" title="Editar">
@@ -391,30 +417,75 @@ async function sincronizarEsajTCO() {
     const btn = document.getElementById('btn-sincronizar-esaj-tco');
     if (!confirm("Deseja atualizar as Movimentações via API DataJud?\nApenas TCOs com 'PROTOCOLADO ESAJ' serão verificados.\n\nCom muitos registros pode levar alguns minutos — não feche a aba.")) return;
 
+    // Injeta estilos da barra de progresso (uma vez)
+    if (!document.getElementById('esaj-sync-style')) {
+        const s = document.createElement('style');
+        s.id = 'esaj-sync-style';
+        s.textContent = `
+            @keyframes spin { to { transform: rotate(360deg); } }
+            #painel-progresso-esaj {
+                display:none; flex-direction:column; gap:8px;
+                background:#0f2744; color:#fff; border-radius:10px;
+                padding:14px 18px; margin-top:10px; width:100%; max-width:560px;
+                box-shadow:0 4px 16px rgba(0,0,0,.25); font-size:13px;
+            }
+            #esaj-sync-titulo { display:flex; align-items:center; gap:8px; font-weight:bold; }
+            #esaj-sync-spinner {
+                display:inline-block; width:14px; height:14px;
+                border:2px solid rgba(255,255,255,.3); border-top-color:#fff;
+                border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0;
+            }
+            .esaj-progress-wrap { background:rgba(255,255,255,.12); border-radius:6px; height:10px; overflow:hidden; }
+            #esaj-progress-bar { height:100%; width:0%; background:linear-gradient(90deg,#42a5f5,#00e5ff); border-radius:6px; transition:width .4s ease; }
+            .esaj-counters { display:flex; gap:16px; font-size:12px; opacity:.9; }
+            .esaj-counter { display:flex; flex-direction:column; align-items:center; gap:1px; }
+            .esaj-counter b { font-size:18px; line-height:1; }
+            .esaj-counter span { font-size:10px; opacity:.65; text-transform:uppercase; letter-spacing:.05em; }
+            #esaj-sync-log { max-height:80px; overflow-y:auto; font-size:11px; opacity:.65; line-height:1.6; }`;
+        document.head.appendChild(s);
+    }
+
     let painel = document.getElementById('painel-progresso-esaj');
     if (!painel) {
         painel = document.createElement('div');
         painel.id = 'painel-progresso-esaj';
-        painel.style.cssText = `
-            display:inline-flex; align-items:center; gap:10px;
-            background:#1a3d5d; color:#fff; border-radius:6px;
-            padding:7px 14px; font-size:13px; margin-left:8px;
-            vertical-align:middle; max-width:520px; flex-wrap:wrap;`;
-        btn.insertAdjacentElement('afterend', painel);
+        btn.parentNode.insertBefore(painel, btn.nextSibling);
     }
+    painel.style.display = 'flex';
+    painel.innerHTML = `
+        <div id="esaj-sync-titulo">
+            <span id="esaj-sync-spinner"></span>
+            Sincronizando processos com o DataJud...
+        </div>
+        <div class="esaj-progress-wrap"><div id="esaj-progress-bar"></div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <div class="esaj-counters">
+                <div class="esaj-counter"><b id="ec-atualiz">0</b><span>Atualizados</span></div>
+                <div class="esaj-counter" style="color:#ffd54f;"><b id="ec-naoenco">0</b><span>Não encontrados</span></div>
+                <div class="esaj-counter" style="color:#ef9a9a;"><b id="ec-erros">0</b><span>Erros</span></div>
+                <div class="esaj-counter" style="color:#b3e5fc;"><b id="ec-total">—</b><span>Total elegível</span></div>
+            </div>
+            <span id="esaj-pct-txt" style="font-size:22px;font-weight:bold;opacity:.9;">0%</span>
+        </div>
+        <div id="esaj-sync-log"></div>`;
 
-    if (!document.getElementById('spin-style')) {
-        const s = document.createElement('style');
-        s.id = 'spin-style';
-        s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-        document.head.appendChild(s);
-    }
-
-    const spinner = `<span style="display:inline-block;width:12px;height:12px;border:2px solid #fff;
-        border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;"></span>`;
+    const atualizarProgresso = (atualiz, naoEnco, erros, total, processados, logMsg) => {
+        const pct = total > 0 ? Math.min(100, Math.round(processados / total * 100)) : 0;
+        document.getElementById('esaj-progress-bar').style.width = pct + '%';
+        document.getElementById('esaj-pct-txt').textContent = pct + '%';
+        document.getElementById('ec-atualiz').textContent = atualiz;
+        document.getElementById('ec-naoenco').textContent = naoEnco;
+        document.getElementById('ec-erros').textContent   = erros;
+        document.getElementById('ec-total').textContent   = total || '—';
+        if (logMsg) {
+            const log = document.getElementById('esaj-sync-log');
+            log.innerHTML += `<div>${logMsg}</div>`;
+            log.scrollTop  = log.scrollHeight;
+        }
+    };
 
     btn.disabled = true;
-    btn.innerHTML = '<img width="20" height="20" src="https://img.icons8.com/material-outlined/24/ffffff/refresh.png"/> Sincronizando...';
+    btn.innerHTML = '⏳ Sincronizando...';
 
     let totalAtualizados = 0, totalNaoEncontrados = 0, totalErros = 0;
     let offset = 0, totalElegivel = null;
@@ -422,25 +493,23 @@ async function sincronizarEsajTCO() {
     try {
         while (true) {
             const url = `${APPS_SCRIPT_TCO_URL}?action=sincronizarTCOFirebase&offset=${offset}`;
-
-            painel.style.display = 'inline-flex';
-            if (totalElegivel) {
-                const pct = Math.round((Math.min(offset, totalElegivel) / totalElegivel) * 100);
-                painel.innerHTML = `${spinner} <span>Lote ${Math.min(offset, totalElegivel)}/${totalElegivel} (${pct}%) — atualizados: <b>${totalAtualizados}</b></span>`;
-            } else {
-                painel.innerHTML = `${spinner} <span>Iniciando sincronização em lotes...</span>`;
-            }
+            atualizarProgresso(totalAtualizados, totalNaoEncontrados, totalErros, totalElegivel, offset, null);
 
             const res = await fetch(url, { method: 'GET', redirect: 'follow' });
             if (!res.ok) throw new Error('Servidor retornou status ' + res.status);
 
             const dados = await res.json();
-            if (dados.status === 'error') throw new Error(dados.mensagem || 'Erro no servidor');
+            if (dados.status === 'error') throw new Error(dados.message || dados.mensagem || 'Erro no servidor');
 
             totalAtualizados    += dados.atualizados    || 0;
             totalNaoEncontrados += dados.naoEncontrados || 0;
             totalErros          += dados.erros          || 0;
             if (dados.totalElegivel) totalElegivel = dados.totalElegivel;
+
+            const logTxt = `Lote ${offset}→${dados.processadosAte || offset}: ` +
+                `✅ ${dados.atualizados || 0} · 🔍 ${dados.naoEncontrados || 0} · ❌ ${dados.erros || 0}`;
+            atualizarProgresso(totalAtualizados, totalNaoEncontrados, totalErros,
+                totalElegivel, dados.processadosAte || offset, logTxt);
 
             if (dados.status === 'concluido' || dados.proximoOffset === null || dados.proximoOffset === undefined) break;
 
@@ -452,14 +521,17 @@ async function sincronizarEsajTCO() {
 
         registrarSincronizacao(totalAtualizados, totalNaoEncontrados, 'manual');
 
-        painel.style.background = '#155724';
-        painel.innerHTML = `
-            ✅ <b>Concluído!</b> &nbsp;
-            ${totalElegivel ?? '?'} verificados &nbsp;|&nbsp;
-            ${totalAtualizados} atualizados &nbsp;|&nbsp;
-            ${totalNaoEncontrados} não encontrados
-            ${totalErros > 0 ? ` | <span style="color:#f9c74f">${totalErros} com erro</span>` : ''}`;
-        setTimeout(() => { painel.style.display = 'none'; painel.style.background = '#1a3d5d'; }, 15000);
+        document.getElementById('esaj-progress-bar').style.width = '100%';
+        document.getElementById('esaj-pct-txt').textContent = '100%';
+        document.getElementById('ec-atualiz').textContent = totalAtualizados;
+        document.getElementById('ec-naoenco').textContent = totalNaoEncontrados;
+        document.getElementById('ec-erros').textContent   = totalErros;
+        document.getElementById('ec-total').textContent   = totalElegivel ?? '?';
+        const logEl = document.getElementById('esaj-sync-log');
+        if (logEl) logEl.innerHTML += `<div style="color:#a5d6a7;font-weight:bold;margin-top:4px;">✅ Concluído!</div>`;
+        const spinEl = document.getElementById('esaj-sync-spinner');
+        if (spinEl) { spinEl.style.animation='none'; spinEl.textContent='✅'; }
+        setTimeout(() => { painel.style.display = 'none'; }, 20000);
 
         exibirUltimaSincronizacao();
         await loadTCO();
@@ -467,7 +539,10 @@ async function sincronizarEsajTCO() {
     } catch (err) {
         console.error('Erro na sincronização:', err);
         painel.style.background = '#7b1c1c';
-        painel.innerHTML = `❌ <b>Erro:</b> ${err.message}`;
+        const logErr = document.getElementById('esaj-sync-log');
+        if (logErr) logErr.innerHTML += `<div style="color:#ef9a9a;font-weight:bold;">❌ ${err.message}</div>`;
+        const titErr = document.getElementById('esaj-sync-titulo');
+        if (titErr) titErr.innerHTML = `<span style="color:#ef9a9a;">❌ Erro na sincronização</span>`;
         setTimeout(() => { painel.style.display = 'none'; painel.style.background = '#1a3d5d'; }, 10000);
     }
 
