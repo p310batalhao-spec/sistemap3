@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema ÍRIS — P3 / 10º BPM</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --azul:     #1a3a5c;
+  --azul2:    #2b5a8c;
+  --azul3:    #4a7fb5;
+  --bg:       #f0f3f7;
+  --brd:      #d4dce6;
+  --txt:      #1e2d3d;
+  --txt2:     #526070;
+  --verde:    #166534;
+  --verd-bg:  #dcfce7;
+  --verm:     #991b1b;
+  --verm-bg:  #fee2e2;
+  --amar:     #92400e;
+  --amar-bg:  #fef3c7;
+  --roxo:     #5b21b6;
+  --roxo-bg:  #ede9fe;
+  --radius:   8px;
+  --shadow:   0 1px 4px rgba(0,0,0,.10);
+}
+
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--txt); }
+
+/* Header */
+header {
+  background: var(--azul);
+  color: #fff;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.2);
+}
+.logo { font-size: 24px; }
+header h1 { font-size: 16px; font-weight: 600; }
+header p  { font-size: 11px; opacity: .65; margin-top: 2px; }
+.badge-versao {
+  margin-left: auto;
+  font-size: 11px;
+  background: rgba(255,255,255,.12);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+
+
+/* Nav */
+nav {
+  background: #fff;
+  border-bottom: 1px solid var(--brd);
+  padding: 0 28px;
+  display: flex;
+}
+nav button {
+  background: none; border: none;
+  border-bottom: 3px solid transparent;
+  padding: 12px 16px;
+  font-size: 13px; font-weight: 500;
+  color: var(--txt2); cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+nav button.ativo  { color: var(--azul); border-bottom-color: var(--azul); }
+nav button:hover  { color: var(--azul); }
+
+/* Layout */
+main { max-width: 1100px; margin: 0 auto; padding: 24px 28px; }
+.aba { display: none; }
+.aba.ativa { display: block; }
+
+/* Cards */
+.card {
+  background: #fff;
+  border: 1px solid var(--brd);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-bottom: 18px;
+  box-shadow: var(--shadow);
+}
+.card-titulo {
+  font-size: 14px; font-weight: 600;
+  color: var(--azul); margin-bottom: 12px;
+}
+.card-sub { font-size: 12px; color: var(--txt2); margin-bottom: 16px; line-height: 1.5; }
+
+/* Passo a passo */
+.steps {
+  display: flex;
+  gap: 0;
+  margin-bottom: 20px;
+  border: 1px solid var(--brd);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.step {
+  flex: 1;
+  padding: 14px 16px;
+  border-right: 1px solid var(--brd);
+  background: #f8fafc;
+}
+.step:last-child { border-right: none; }
+.step.ativo { background: #eff6ff; border-bottom: 3px solid var(--azul); }
+.step-num {
+  font-size: 11px; font-weight: 700;
+  color: var(--azul3); text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 4px;
+}
+.step-txt { font-size: 12px; color: var(--txt2); line-height: 1.4; }
+
+/* Textarea JSON */
+#json-input {
+  width: 100%;
+  height: 220px;
+  padding: 12px;
+  border: 1.5px solid var(--brd);
+  border-radius: var(--radius);
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--txt);
+  resize: vertical;
+  transition: border-color .15s;
+}
+#json-input:focus { outline: none; border-color: var(--azul3); }
+#json-input::placeholder { color: #aab; }
+
+/* Preview de itens */
+#preview-area { margin-top: 12px; }
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.preview-card {
+  border: 1px solid var(--brd);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: #f8fafc;
+  font-size: 12px;
+}
+.preview-card .proc { font-weight: 600; color: var(--azul); margin-bottom: 4px; }
+.preview-card .info { color: var(--txt2); line-height: 1.6; }
+
+/* Badges */
+.badge {
+  display: inline-block; padding: 2px 8px;
+  border-radius: 12px; font-size: 11px; font-weight: 600;
+}
+.b-arq  { background: var(--verm-bg); color: var(--verm); }
+.b-cond { background: var(--verd-bg); color: var(--verde); }
+.b-ext  { background: var(--roxo-bg); color: var(--roxo); }
+.b-tp   { background: #dbeafe; color: #1d4ed8; }
+.b-mp   { background: #fef9c3; color: #78350f; }
+.b-out  { background: #f3f4f6; color: #374151; }
+
+/* Botões */
+.btn {
+  padding: 9px 20px; border-radius: var(--radius); border: none;
+  font-size: 13px; font-weight: 600; cursor: pointer;
+  transition: opacity .15s;
+}
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-prim { background: var(--azul); color: #fff; }
+.btn-prim:hover:not(:disabled) { background: var(--azul2); }
+.btn-sec  { background: #fff; color: var(--azul); border: 1.5px solid var(--azul); }
+.btn-verd { background: #166534; color: #fff; }
+.btn-row  { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+/* Progresso */
+.prog-wrap { margin-top: 14px; display: none; }
+.prog-header { display: flex; justify-content: space-between; font-size: 12px; color: var(--txt2); margin-bottom: 5px; }
+.prog-track  { background: var(--brd); border-radius: 6px; height: 8px; overflow: hidden; }
+.prog-fill   { height: 100%; background: linear-gradient(90deg, var(--azul), var(--azul3)); border-radius: 6px; transition: width .4s; width: 0%; }
+
+/* Log de resultados */
+#log-resultados { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+.log-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  background: var(--bg);
+  border: 1px solid var(--brd);
+}
+.log-item.ok   { background: var(--verd-bg); border-color: #86efac; }
+.log-item.erro { background: var(--verm-bg); border-color: #fca5a5; }
+.log-item.dup  { background: #fef9c3; border-color: #fde68a; }
+.log-icone { font-size: 14px; flex-shrink: 0; }
+.log-nome  { font-weight: 500; flex: 1; }
+.log-msg   { color: var(--txt2); font-size: 11px; }
+
+/* Alerta */
+.alerta {
+  padding: 12px 16px; border-radius: var(--radius);
+  font-size: 13px; margin-top: 8px; line-height: 1.5;
+}
+.alerta-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+.alerta-ok   { background: var(--verd-bg); border: 1px solid #86efac; color: var(--verde); }
+.alerta-err  { background: var(--verm-bg); border: 1px solid #fca5a5; color: var(--verm); }
+
+/* KPIs */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 18px; }
+.kpi-card {
+  background: #fff; border: 1px solid var(--brd);
+  border-radius: var(--radius); padding: 14px;
+  border-top: 3px solid var(--azul); box-shadow: var(--shadow);
+}
+.kpi-num   { font-size: 26px; font-weight: 700; color: var(--azul); }
+.kpi-label { font-size: 11px; color: var(--txt2); margin-top: 2px; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Gráficos barras */
+.graficos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+@media (max-width: 680px) { .graficos-grid { grid-template-columns: 1fr; } }
+.graf-card { background: #fff; border: 1px solid var(--brd); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+.graf-titulo { font-size: 12px; font-weight: 600; color: var(--txt2); margin-bottom: 10px; }
+.barras { display: flex; flex-direction: column; gap: 6px; }
+.barra-row { display: flex; align-items: center; gap: 7px; font-size: 12px; }
+.barra-label { width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--txt2); flex-shrink: 0; font-size: 11px; }
+.barra-track { flex: 1; background: #e5e9f0; border-radius: 3px; height: 12px; overflow: hidden; }
+.barra-fill  { height: 100%; border-radius: 3px; background: var(--azul2); transition: width .6s; }
+.barra-qtd   { width: 24px; text-align: right; font-weight: 600; color: var(--azul); font-size: 11px; }
+
+/* Erros qualitativos */
+.erro-lista { display: flex; flex-direction: column; gap: 6px; }
+.erro-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px;
+  background: var(--bg); border-radius: var(--radius);
+  font-size: 12px;
+}
+.erro-badge {
+  background: var(--azul); color: #fff;
+  border-radius: 10px; padding: 1px 8px;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.erro-texto { line-height: 1.4; }
+
+/* Tabela registros */
+.tabela-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { background: var(--azul); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; white-space: nowrap; }
+td { padding: 7px 10px; border-bottom: 1px solid #edf0f4; vertical-align: top; }
+tr:hover td { background: #f5f8fc; }
+
+.vazio { text-align: center; padding: 40px; color: var(--txt2); }
+
+/* Filtro comarca */
+.filtro-comarca-bar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: #fff; border: 1px solid var(--brd);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.filtro-comarca-bar label { font-size: 13px; font-weight: 600; color: var(--azul); }
+.filtro-comarca-bar select {
+  padding: 7px 12px; border: 1.5px solid var(--brd);
+  border-radius: var(--radius); font-size: 13px; color: var(--txt);
+  cursor: pointer; min-width: 180px;
+}
+.filtro-comarca-bar select:focus { outline: none; border-color: var(--azul3); }
+.filtro-comarca-bar .badge-filtro {
+  font-size: 11px; padding: 3px 10px;
+  background: #dbeafe; color: #1d4ed8;
+  border-radius: 20px; font-weight: 600;
+}
+
+/* Lista de erros com scroll */
+.erro-lista-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 6px;
+  padding-right: 4px;
+}
+.erro-lista-scroll::-webkit-scrollbar { width: 5px; }
+.erro-lista-scroll::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+.erro-lista-scroll::-webkit-scrollbar-thumb { background: var(--azul3); border-radius: 3px; }
+
+/* Erro row clicável */
+.erro-row-click {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg); border-radius: var(--radius);
+  border: 1px solid var(--brd);
+  cursor: pointer; transition: background .15s, border-color .15s;
+  user-select: none;
+}
+.erro-row-click:hover { background: #eff6ff; border-color: var(--azul3); }
+.erro-row-click.aberto { background: #eff6ff; border-color: var(--azul); }
+.erro-badge { background: var(--azul); color: #fff; border-radius: 10px; padding: 2px 9px; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.erro-corpo { flex: 1; }
+.erro-texto { font-size: 12px; line-height: 1.4; color: var(--txt); }
+.erro-tip   { font-size: 11px; color: var(--azul3); margin-top: 3px; font-style: italic; }
+.erro-seta  { font-size: 12px; color: var(--azul3); flex-shrink: 0; transition: transform .2s; }
+.erro-row-click.aberto .erro-seta { transform: rotate(90deg); }
+
+/* Painel de detalhes (processos) */
+.erro-detalhes {
+  display: none;
+  margin-top: 2px;
+  border: 1px solid var(--brd);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fff;
+}
+.erro-detalhes.visivel { display: block; }
+.erro-detalhes table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.erro-detalhes th { background: var(--azul); color: #fff; padding: 6px 10px; text-align: left; font-weight: 600; }
+.erro-detalhes td { padding: 6px 10px; border-bottom: 1px solid #edf0f4; }
+.erro-detalhes tr:last-child td { border-bottom: none; }
+.erro-detalhes tr:hover td { background: #f5f8fc; }
+
+/* Modal */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.45); z-index: 1000;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.visivel { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  max-width: 760px; width: 95%; max-height: 80vh;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.modal-header {
+  padding: 16px 20px; background: var(--azul); color: #fff;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.modal-titulo { font-size: 14px; font-weight: 600; }
+.modal-fechar { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; line-height: 1; }
+.modal-body { padding: 16px 20px; overflow-y: auto; flex: 1; font-size: 12px; }
+.modal-erro-txt { background: #eff6ff; border-left: 4px solid var(--azul); padding: 10px 14px; border-radius: 4px; margin-bottom: 14px; line-height: 1.5; }
+.spinner {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin .7s linear infinite;
+  vertical-align: middle; margin-right: 5px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">⚖️</span>
+  <div>
+    <h1>Sistema ÍRIS</h1>
+    <p>Análise Qualitativa de Sentenças — 10º BPM / Seção P3</p>
+  </div>
+  <span class="badge-versao">v3.0 — Gem Integration</span>
+</header>
+
+
+
+<nav>
+  <button class="ativo" onclick="trocarAba('importar', this)">📥 Importar do Gem</button>
+  <button onclick="trocarAba('relatorio', this)">📊 Relatório</button>
+  <button onclick="trocarAba('registros', this)">📋 Registros</button>
+</nav>
+
+<main>
+
+  <!-- ══════════════ ABA: IMPORTAR ══════════════ -->
+  <section id="aba-importar" class="aba ativa">
+
+    <a href="https://gemini.google.com/gem/1bgkHDj4HqqAO3cY6I5RgoX6-cv7m0z1b?usp=sharing"
+       target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:9px;
+              background:#1a73e8;color:#fff;font-weight:600;font-size:13px;
+              padding:10px 20px;border-radius:8px;text-decoration:none;
+              margin-bottom:16px;box-shadow:0 2px 6px rgba(0,0,0,.18);
+              transition:background .15s;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      Abrir Gem IRIS no Gemini
+    </a>
+
+    <div class="steps">
+      <div class="step ativo">
+        <div class="step-num">Passo 1 — Gem</div>
+        <div class="step-txt">Abra o Gem IRIS, envie os PDFs e copie o JSON retornado.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">Passo 2 — Cole aqui</div>
+        <div class="step-txt">Cole o JSON no campo abaixo e clique em Validar.</div>
+      </div>
+      <div class="step">
+        <div class="step-num">Passo 3 — Salvar</div>
+        <div class="step-txt">Confirme os dados e clique em Salvar no Sheets.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-titulo">📋 JSON retornado pelo Gem IRIS</div>
+      <div class="card-sub">
+        Cole abaixo o JSON gerado pelo seu Gem personalizado. Ele deve ser um array com um objeto por sentença.
+      </div>
+      <textarea id="json-input"
+        placeholder='[&#10;  {&#10;    "nomeArquivo": "0700947-69.2025.8.02.0013.pdf",&#10;    "numeroProcesso": "0700947-69.2025.8.02.0013",&#10;    "ano": 2025,&#10;    "dataSentenca": "05/12/2025",&#10;    "comarca": "Igaci",&#10;    "juiz": "Evaldo da Cunha Machado",&#10;    "indiciado": "Rafael da Silva Dias",&#10;    "tipificacao": "Termo Circunstanciado",&#10;    "resultado": "Arquivado",&#10;    "motivoArquivamento": "Atipicidade Material",&#10;    "erroAtipicidadeMaterial": "Ausencia de suporte probatorio",&#10;    "erroAtipicidadeFormal": "",&#10;    "fundamentacaoLegal": "Art. 386, III CPP"&#10;  }&#10;]'
+        oninput="onJsonChange()"></textarea>
+
+      <div id="preview-area"></div>
+
+      <div class="prog-wrap" id="prog-wrap">
+        <div class="prog-header">
+          <span id="prog-label">Salvando...</span>
+          <span id="prog-pct">0%</span>
+        </div>
+        <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-prim" id="btn-validar" onclick="validarJSON()" disabled>
+          Validar JSON
+        </button>
+        <button class="btn btn-verd" id="btn-salvar" onclick="salvarTodos()" style="display:none;">
+          Salvar no Google Sheets
+        </button>
+        <button class="btn btn-sec" onclick="limpar()">Limpar</button>
+        <span id="contador" style="font-size:12px;color:var(--txt2);"></span>
+      </div>
+
+      <div id="log-resultados"></div>
+    </div>
+
+    <div class="alerta alerta-info">
+      <strong>Dica:</strong> No Gem IRIS, envie quantos PDFs quiser de uma vez.
+      O Gem lê todos, extrai os dados e retorna um JSON único.
+      Cole esse JSON aqui e clique em <strong>Validar</strong>.
+    </div>
+
+  </section>
+
+  <!-- ══════════════ ABA: RELATÓRIO ══════════════ -->
+  <section id="aba-relatorio" class="aba">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="font-size:16px;font-weight:600;color:var(--azul);">Relatório Consolidado</h2>
+      <button class="btn btn-sec" onclick="carregarRelatorio()">🔄 Atualizar</button>
+    </div>
+    <div id="conteudo-relatorio">
+      <div class="vazio">Clique em "Atualizar" para carregar os dados do Google Sheets.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════ ABA: REGISTROS ══════════════ -->
+  <section id="aba-registros" class="aba">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 style="font-size:16px;font-weight:600;color:var(--azul);">Sentenças Registradas</h2>
+      <button class="btn btn-sec" onclick="carregarRegistros()">🔄 Atualizar</button>
+    </div>
+    <div class="card">
+      <div id="conteudo-registros"><div class="vazio">Clique em "Atualizar" para carregar.</div></div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Modal de detalhes de erros -->
+<div class="modal-overlay" id="modal-erros" onclick="fecharModal(event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-titulo" id="modal-titulo">Processos</span>
+      <button class="modal-fechar" onclick="document.getElementById('modal-erros').classList.remove('visivel')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-erro-txt" id="modal-erro-txt"></div>
+      <div id="modal-processos"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONFIG — URL do GAS embutida no código
+// Para alterar, edite apenas esta constante
+// ═══════════════════════════════════════════════
+var GAS_URL = 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec';
+// Ex: 'https://script.google.com/macros/s/AKfy.../exec'
+
+function salvarConfig() { /* não utilizado */ }
+
+// ═══════════════════════════════════════════════
+// ABAS
+// ═══════════════════════════════════════════════
+function trocarAba(nome, btn) {
+  document.querySelectorAll('.aba').forEach(function(el) { el.classList.remove('ativa'); });
+  document.querySelectorAll('nav button').forEach(function(b) { b.classList.remove('ativo'); });
+  document.getElementById('aba-' + nome).classList.add('ativa');
+  btn.classList.add('ativo');
+}
+
+// ═══════════════════════════════════════════════
+// JSON: VALIDAÇÃO E PREVIEW
+// ═══════════════════════════════════════════════
+var dadosValidados = null;
+
+function onJsonChange() {
+  var txt = document.getElementById('json-input').value.trim();
+  document.getElementById('btn-validar').disabled = txt.length < 5;
+  document.getElementById('btn-salvar').style.display = 'none';
+  dadosValidados = null;
+  document.getElementById('preview-area').innerHTML = '';
+  document.getElementById('log-resultados').innerHTML = '';
+  document.getElementById('contador').innerText = '';
+}
+
+function validarJSON() {
+  var txt = document.getElementById('json-input').value.trim();
+
+  // Tenta limpar markdown se o Gem colocou ```json ... ```
+  txt = txt.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();
+
+  var dados;
+  try {
+    dados = JSON.parse(txt);
+  } catch(e) {
+    mostrarAlerta('JSON invalido: ' + e.message + '\n\nVerifique se o Gem retornou o JSON puro sem texto adicional.', 'erro');
+    return;
+  }
+
+  if (!Array.isArray(dados)) {
+    mostrarAlerta('O JSON deve ser um array (comecar com [ e terminar com ]).\nVerifique a saida do Gem.', 'erro');
+    return;
+  }
+  if (dados.length === 0) {
+    mostrarAlerta('O array esta vazio.', 'erro');
+    return;
+  }
+
+  // Validar campos obrigatorios em cada item
+  var errosValidacao = [];
+  dados.forEach(function(item, idx) {
+    if (!item.numeroProcesso && !item.nomeArquivo) {
+      errosValidacao.push('Item ' + (idx+1) + ': sem numeroProcesso nem nomeArquivo');
+    }
+  });
+  if (errosValidacao.length > 0) {
+    mostrarAlerta('Aviso: ' + errosValidacao.join('; '), 'aviso');
+  }
+
+  dadosValidados = dados;
+
+  // Mostrar preview
+  var previewHtml = '<div style="font-size:12px;color:var(--verde);font-weight:600;margin-bottom:8px;">' +
+    '✓ ' + dados.length + ' sentenca(s) validada(s). Confira abaixo e clique em "Salvar no Google Sheets".' +
+    '</div><div class="preview-grid">';
+
+  dados.forEach(function(item) {
+    var badgeCls = badgeClasse(item.resultado || '');
+    previewHtml +=
+      '<div class="preview-card">' +
+      '<div class="proc">' + (item.numeroProcesso || item.nomeArquivo || 'Sem número') + '</div>' +
+      '<div class="info">' +
+        '<div>' + (item.comarca || '—') + ' · ' + (item.dataSentenca || item.ano || '—') + '</div>' +
+        '<div>' + (item.indiciado || '—') + '</div>' +
+        '<div>' + (item.tipificacao || '—') + '</div>' +
+        '<div style="margin-top:4px;">' +
+          '<span class="badge ' + badgeCls + '">' + (item.resultado || '—') + '</span>' +
+          (item.motivoArquivamento ? ' <span class="badge b-out">' + item.motivoArquivamento + '</span>' : '') +
+        '</div>' +
+      '</div></div>';
+  });
+  previewHtml += '</div>';
+
+  document.getElementById('preview-area').innerHTML = previewHtml;
+  document.getElementById('btn-salvar').style.display = 'inline-block';
+  document.getElementById('contador').innerText = dados.length + ' registro(s) prontos para salvar';
+  document.getElementById('log-resultados').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════
+// SALVAR NO SHEETS via GAS
+// ═══════════════════════════════════════════════
+async function salvarTodos() {
+  if (!dadosValidados || dadosValidados.length === 0) return;
+  if (!GAS_URL || GAS_URL === 'COLE_AQUI_A_URL_DO_GAS') {
+    mostrarAlerta('Edite o arquivo iris.html e substitua COLE_AQUI_A_URL_DO_GAS pela URL real do GAS.', 'aviso');
+    return;
+  }
+
+  var btnSalvar = document.getElementById('btn-salvar');
+  var btnValid  = document.getElementById('btn-validar');
+  btnSalvar.disabled = true;
+  btnValid.disabled  = true;
+  btnSalvar.innerHTML = '<span class="spinner"></span> Salvando...';
+
+  var prog = document.getElementById('prog-wrap');
+  prog.style.display = 'block';
+  document.getElementById('log-resultados').innerHTML = '';
+
+  var total = dadosValidados.length;
+  var ok = 0, erros = 0;
+
+  for (var i = 0; i < total; i++) {
+    var item = dadosValidados[i];
+    var nome = item.nomeArquivo || item.numeroProcesso || ('Item ' + (i+1));
+
+    // Atualiza barra
+    var pct = Math.round((i / total) * 100);
+    document.getElementById('prog-fill').style.width = pct + '%';
+    document.getElementById('prog-pct').innerText = pct + '%';
+    document.getElementById('prog-label').innerText = 'Salvando ' + (i+1) + ' de ' + total + ': ' + nome;
+
+    try {
+      // Envia via GET com dados encodados na URL (evita CORS do browser)
+      var url = GAS_URL + '?action=salvarSentenca&dados=' + encodeURIComponent(JSON.stringify(item));
+      var resp = await fetch(url, { redirect: 'follow' });
+
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      var json = await resp.json();
+      if (json.erro) throw new Error(json.erro);
+
+      if (json.duplicata) {
+        adicionarLog(nome, 'dup', 'Duplicata ignorada — processo ja existe na planilha');
+      } else {
+        ok++;
+        adicionarLog(nome, 'ok', item.resultado || '');
+      }
+    } catch(e) {
+      erros++;
+      adicionarLog(nome, 'erro', e.message);
+    }
+
+    // Pequena pausa entre requests para não sobrecarregar o GAS
+    if (i < total - 1) await sleep(300);
+  }
+
+  // Barra 100%
+  document.getElementById('prog-fill').style.width = '100%';
+  document.getElementById('prog-pct').innerText = '100%';
+  document.getElementById('prog-label').innerText = 'Concluido!';
+  setTimeout(function() { prog.style.display = 'none'; }, 3000);
+
+  btnSalvar.disabled = false;
+  btnValid.disabled  = false;
+  btnSalvar.innerHTML = 'Salvar no Google Sheets';
+  var dups = dadosValidados.length - ok - erros;
+  document.getElementById('contador').innerText =
+    ok + ' salvo(s)' +
+    (dups  > 0 ? ' / ' + dups  + ' duplicata(s) ignorada(s)' : '') +
+    (erros > 0 ? ' / ' + erros + ' com erro' : '');
+}
+
+function adicionarLog(nome, tipo, msg) {
+  var log = document.getElementById('log-resultados');
+  var icone = tipo === 'ok' ? '✅' : tipo === 'dup' ? '⚠️' : '❌';
+  var div = document.createElement('div');
+  div.className = 'log-item ' + tipo;
+  div.innerHTML =
+    '<span class="log-icone">' + icone + '</span>' +
+    '<span class="log-nome">' + nome + '</span>' +
+    '<span class="log-msg">' + msg + '</span>';
+  log.appendChild(div);
+}
+
+function limpar() {
+  document.getElementById('json-input').value = '';
+  document.getElementById('preview-area').innerHTML = '';
+  document.getElementById('log-resultados').innerHTML = '';
+  document.getElementById('contador').innerText = '';
+  document.getElementById('btn-validar').disabled = true;
+  document.getElementById('btn-salvar').style.display = 'none';
+  document.getElementById('prog-wrap').style.display = 'none';
+  document.getElementById('prog-fill').style.width = '0%';
+  dadosValidados = null;
+}
+
+// ═══════════════════════════════════════════════
+// RELATÓRIO
+// ═══════════════════════════════════════════════
+async function carregarRelatorio(comarca) {
+  comarca = comarca || '';
+  var el = document.getElementById('conteudo-relatorio');
+  el.innerHTML = '<div class="vazio">Carregando...</div>';
+  try {
+    var url = GAS_URL + '?action=obterDashboard';
+    if (comarca) url += '&comarca=' + encodeURIComponent(comarca);
+    var resp = await fetch(url, { redirect: 'follow' });
+    var d = await resp.json();
+
+    if (d.vazio || d.erro) {
+      el.innerHTML = '<div class="vazio">Nenhuma sentenca registrada ainda. Importe dados primeiro.</div>';
+      return;
+    }
+    el.innerHTML = renderRelatorio(d);
+  } catch(e) {
+    el.innerHTML = '<div class="alerta alerta-err">Erro: ' + e.message + '</div>';
+  }
+}
+
+function renderRelatorio(d) {
+  // ── Filtro de comarca ──────────────────────────────────────────
+  var comarcas = d.comarcas || [];
+  var filtroAtivo = d.filtroComarca || '';
+  var filtroHtml = '<div class="filtro-comarca-bar">';
+  filtroHtml += '<label>🏛️ Filtrar por Comarca:</label>';
+  filtroHtml += '<select onchange="carregarRelatorio(this.value)">';
+  filtroHtml += '<option value="">Todas as Comarcas</option>';
+  comarcas.forEach(function(c) {
+    var sel = (filtroAtivo && filtroAtivo.toLowerCase() === c.toLowerCase()) ? ' selected' : '';
+    filtroHtml += '<option value="' + c + '"' + sel + '>' + c + '</option>';
+  });
+  filtroHtml += '</select>';
+  if (filtroAtivo) {
+    filtroHtml += '<span class="badge-filtro">Exibindo: ' + filtroAtivo + '</span>';
+    filtroHtml += '<button class="btn btn-sec" style="padding:5px 12px;font-size:12px;" onclick="carregarRelatorio()">✕ Limpar</button>';
+  }
+  filtroHtml += '</div>';
+
+  // ── KPIs ─────────────────────────────────────────────────────
+  var html = filtroHtml;
+  html += '<div class="kpi-grid">';
+  html += kpi(d.total,                                       'Total Sentencas');
+  html += kpi(somaObj(d.porMotivo),                         'Arquivamentos');
+  html += kpi(d.porMotivo['Atipicidade Material'] || 0,     'Atip. Material');
+  html += kpi(d.porMotivo['Atipicidade Formal']   || 0,     'Atip. Formal');
+  html += kpi(d.porMotivo['Transacao Penal Cumprida'] || 0, 'Transacao Penal');
+  html += kpi(d.porMotivo['ANPP Cumprido'] || 0,            'ANPP');
+  html += '</div>';
+
+  html += '<div class="graficos-grid">';
+  html += grafBarras('Resultado das Sentencas', d.porResultado, corRes);
+  html += grafBarras('Motivo do Arquivamento',  d.porMotivo,    '#2b5a8c');
+  html += grafBarras('Por Ano',                 d.porAno,       '#166534');
+  if (d.porTipificacao && d.porTipificacao.length > 0) {
+    var max = d.porTipificacao[0].qtd;
+    var barras = d.porTipificacao.slice(0,8).map(function(e) {
+      return bRow(e.texto, e.qtd, Math.round(e.qtd/max*100), '#1a3a5c');
+    }).join('');
+    html += '<div class="graf-card"><div class="graf-titulo">Tipificacoes mais frequentes</div><div class="barras">' + barras + '</div></div>';
+  }
+  html += '</div>';
+
+  // ── Falhas Atipicidade Material (todas, com scroll e detalhes) ─
+  if (d.errosMaterial && d.errosMaterial.length > 0) {
+    html += '<div class="card" style="margin-top:4px;">';
+    html += '<div class="card-titulo" style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span>Falhas — Atipicidade Material</span>';
+    html += '<span style="font-size:11px;color:var(--txt2);font-weight:400;">' + d.errosMaterial.length + ' tipo(s) · clique para ver processos</span>';
+    html += '</div>';
+    html += '<div class="erro-lista-scroll" id="lista-mat">';
+    window._errosMat = d.errosMaterial;
+    d.errosMaterial.forEach(function(e, idx) {
+      var artigos = (e.texto.match(/Art\.?\s*\d+[^\,\.\;]*/gi) || []).join(', ');
+      var artigosHtml = artigos ? '<div class="erro-tip">&#128204; ' + artigos + '</div>' : '';
+      var tips = {};
+      (e.processos || []).forEach(function(p) { if (p.tipificacao) tips[p.tipificacao] = true; });
+      var tipsArr = Object.keys(tips);
+      var tipsHtml = tipsArr.length > 0
+        ? '<div class="erro-tip">&#9878; ' + tipsArr.slice(0,3).join(' · ') + (tipsArr.length > 3 ? ' e outros' : '') + '</div>'
+        : '';
+      html +=
+        '<div class="erro-row-click" id="row-mat-' + idx + '" onclick="toggleDetalhe(' + idx + ',\'mat\')">' +
+          '<span class="erro-badge">' + e.qtd + '</span>' +
+          '<div class="erro-corpo">' +
+            '<div class="erro-texto">' + e.texto + '</div>' +
+            artigosHtml + tipsHtml +
+          '</div>' +
+          '<span class="erro-seta">&#9658;</span>' +
+        '</div>' +
+        '<div class="erro-detalhes" id="det-mat-' + idx + '"></div>';
+    });
+    html += '</div></div>';
+  }
+
+  // ── Falhas Atipicidade Formal (todas, com scroll e detalhes) ──
+  if (d.errosFormais && d.errosFormais.length > 0) {
+    html += '<div class="card" style="margin-top:4px;">';
+    html += '<div class="card-titulo" style="display:flex;align-items:center;justify-content:space-between;">';
+    html += '<span>Falhas — Atipicidade Formal</span>';
+    html += '<span style="font-size:11px;color:var(--txt2);font-weight:400;">' + d.errosFormais.length + ' tipo(s) · clique para ver processos</span>';
+    html += '</div>';
+    html += '<div class="erro-lista-scroll" id="lista-form">';
+    window._errosForm = d.errosFormais;
+    d.errosFormais.forEach(function(e, idx) {
+      var artigos = (e.texto.match(/Art\.?\s*\d+[^\,\.\;]*/gi) || []).join(', ');
+      var artigosHtml = artigos ? '<div class="erro-tip">\uD83D\uDCCC ' + artigos + '</div>' : '';
+      html +=
+        '<div class="erro-row-click" id="row-form-' + idx + '" onclick="toggleDetalhe(' + idx + ',\'form\')" data-idx="' + idx + '">' +
+          '<span class="erro-badge">' + e.qtd + '</span>' +
+          '<div class="erro-corpo">' +
+            '<div class="erro-texto">' + e.texto + '</div>' +
+            artigosHtml +
+          '</div>' +
+          '<span class="erro-seta">\u25BA</span>' +
+        '</div>' +
+        '<div class="erro-detalhes" id="det-form-' + idx + '"></div>';
+    });
+    html += '</div></div>';
+  }
+
+  return html;
+}
+
+// ── Toggle inline de processos ─────────────────────────────────
+function toggleDetalhe(idx, tipo) {
+  var rowId = 'row-' + tipo + '-' + idx;
+  var detId = 'det-' + tipo + '-' + idx;
+  var row   = document.getElementById(rowId);
+  var det   = document.getElementById(detId);
+  if (!det) return;
+
+  if (det.classList.contains('visivel')) {
+    det.classList.remove('visivel');
+    row.classList.remove('aberto');
+    return;
+  }
+
+  row.classList.add('aberto');
+  det.classList.add('visivel');
+
+  if (det.innerHTML) return;  // já renderizado
+
+  // Busca os dados do array salvo no window
+  var lista = tipo === 'mat' ? (window._errosMat || []) : (window._errosForm || []);
+  var e     = lista[idx] || {};
+  var procs = e.processos || [];
+  if (procs.length === 0) {
+    det.innerHTML = '<div style="padding:10px 14px;font-size:12px;color:var(--txt2);">Nenhum processo detalhado disponível.</div>';
+    return;
+  }
+
+  var tabela = '<table>' +
+    '<tr><th>Nº Processo</th><th>Indiciado</th><th>Data</th><th>Tipificação</th><th>Comarca</th></tr>';
+  procs.forEach(function(p) {
+    tabela +=
+      '<tr>' +
+      '<td style="white-space:nowrap;">' + (p.numero   || '—') + '</td>' +
+      '<td>' + (p.indiciado  || '—') + '</td>' +
+      '<td style="white-space:nowrap;">' + (p.data      || '—') + '</td>' +
+      '<td>' + (p.tipificacao|| '—') + '</td>' +
+      '<td>' + (p.comarca    || '—') + '</td>' +
+      '</tr>';
+  });
+  tabela += '</table>';
+  det.innerHTML = tabela;
+}
+
+// ── Modal (mantido para uso futuro) ───────────────────────────
+function fecharModal(event) {
+  if (event.target === document.getElementById('modal-erros')) {
+    document.getElementById('modal-erros').classList.remove('visivel');
+  }
+}
+
+function kpi(num, label) {
+  return '<div class="kpi-card"><div class="kpi-num">' + (num||0) + '</div><div class="kpi-label">' + label + '</div></div>';
+}
+function grafBarras(titulo, obj, cor) {
+  if (!obj || Object.keys(obj).length === 0) return '';
+  var entries = Object.entries(obj).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  var max = entries[0][1];
+  return '<div class="graf-card"><div class="graf-titulo">' + titulo + '</div><div class="barras">' +
+    entries.map(function(e) {
+      return bRow(e[0], e[1], Math.round(e[1]/max*100), typeof cor==='function'?cor(e[0]):cor);
+    }).join('') + '</div></div>';
+}
+function bRow(label, qtd, pct, cor) {
+  return '<div class="barra-row">' +
+    '<span class="barra-label" title="' + label + '">' + label + '</span>' +
+    '<div class="barra-track"><div class="barra-fill" style="width:' + pct + '%;background:' + cor + ';"></div></div>' +
+    '<span class="barra-qtd">' + qtd + '</span></div>';
+}
+function corRes(r) {
+  if (r.includes('Arquiv'))  return '#b91c1c';
+  if (r.includes('Condena')) return '#166534';
+  if (r.includes('Extinca')) return '#5b21b6';
+  return '#2b5a8c';
+}
+function somaObj(obj) {
+  return Object.values(obj||{}).reduce(function(a,b){return a+b;},0);
+}
+
+// ═══════════════════════════════════════════════
+// REGISTROS
+// ═══════════════════════════════════════════════
+async function carregarRegistros() {
+  var el = document.getElementById('conteudo-registros');
+  el.innerHTML = '<div class="vazio">Carregando...</div>';
+  try {
+    var resp = await fetch(GAS_URL + '?action=listarSentencas', { redirect: 'follow' });
+    var lista = await resp.json();
+    if (!Array.isArray(lista) || lista.length === 0) {
+      el.innerHTML = '<div class="vazio">Nenhum registro encontrado.</div>';
+      return;
+    }
+    var html = '<div class="tabela-wrap"><table>' +
+      '<tr><th>Processo</th><th>Data</th><th>Comarca</th><th>Indiciado</th><th>Tipificacao</th><th>Resultado</th><th>Motivo</th></tr>';
+    lista.slice().reverse().forEach(function(r) {
+      var res = String(r['Resultado']||'');
+      html += '<tr>' +
+        '<td>' + (r['Numero Processo']||r['Nº Processo']||'-') + '</td>' +
+        '<td style="white-space:nowrap;">' + (r['Data da Sentença']||'-') + '</td>' +
+        '<td>' + (r['Comarca']||'-') + '</td>' +
+        '<td>' + (r['Indiciado']||'-') + '</td>' +
+        '<td>' + (r['Tipificação']||r['Tipificacao']||'-') + '</td>' +
+        '<td><span class="badge ' + badgeClasse(res) + '">' + (res||'-') + '</span></td>' +
+        '<td>' + (r['Motivo do Arquivamento']||'-') + '</td>' +
+        '</tr>';
+    });
+    html += '</table></div>';
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '<div class="alerta alerta-err">Erro: ' + e.message + '</div>';
+  }
+}
+
+// ═══════════════════════════════════════════════
+// UTILITÁRIOS
+// ═══════════════════════════════════════════════
+function badgeClasse(res) {
+  if (!res) return 'b-out';
+  var r = res.toLowerCase();
+  if (r.includes('arquiv'))  return 'b-arq';
+  if (r.includes('condena')) return 'b-cond';
+  if (r.includes('extinca') || r.includes('punib')) return 'b-ext';
+  if (r.includes('transa') || r.includes('anpp'))   return 'b-tp';
+  if (r.includes('medida'))  return 'b-mp';
+  return 'b-out';
+}
+
+function mostrarAlerta(msg, tipo) {
+  var cls = { 'erro': 'alerta-err', 'aviso': 'alerta alerta-info', 'ok': 'alerta-ok' };
+  document.getElementById('preview-area').innerHTML =
+    '<div class="alerta ' + (cls[tipo]||'alerta-info') + '">' + msg + '</div>';
+}
+
+function sleep(ms) { return new Promise(function(r){ setTimeout(r,ms); }); }
+</script>
+</body>
+</html>
