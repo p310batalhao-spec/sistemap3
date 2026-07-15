@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema P3 - Análise Qualitativa de TCOs</title>
+<title>ÍRIS — Análise Qualitativa de TCOs</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -140,7 +140,7 @@ tr:hover td{background:var(--az-bg)}
 <header>
   <div class="hi">&#9878;</div>
   <div>
-    <div class="ht">Sistema P3</div>
+    <div class="ht">Sistema ÍRIS</div>
     <div class="hs">Análise Qualitativa de Sentenças e Decisões — 10º BPM · Seção P3</div>
   </div>
   <span class="hv">v3.1</span>
@@ -159,15 +159,10 @@ tr:hover td{background:var(--az-bg)}
     <div><div class="at">Importar Sentenças / Decisões</div>
     <div class="as">Cole o JSON gerado pelo Gem IRIS e salve no Google Sheets</div></div>
   </div>
-  <div class="br">
   <a class="gl" href="https://gemini.google.com/gem/1bgkHDj4HqqAO3cY6I5RgoX6-cv7m0z1b?usp=sharing" target="_blank" rel="noopener">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
     Abrir Gem IRIS no Gemini
   </a>
-    <a class="gl" href="../page/tco.html" target="_blank" rel="noopener">
-    Voltar à Página de TCO
-  </a>
-  </div>
   <div class="steps">
     <div class="step"><div class="sn">Passo 1 — Gem</div><div class="st">Abra o Gem IRIS, envie os PDFs de sentenças ou decisões e copie o JSON retornado.</div></div>
     <div class="step"><div class="sn">Passo 2 — Cole aqui</div><div class="st">Cole o JSON no campo abaixo e clique em Validar.</div></div>
@@ -323,6 +318,16 @@ async function carregarRelatorio(comarca){
     }
     d.errosMaterial=agrupar(d.errosMaterial||[]);
     d.errosFormais =agrupar(d.errosFormais ||[]);
+    // Pré-agrupa tipificações no frontend (une variantes que o GAS não capturou)
+    if(Array.isArray(d.porTipificacao)){
+      var tipMap={};
+      d.porTipificacao.forEach(function(e){
+        var k=normTip(e.texto);
+        if(!tipMap[k]){tipMap[k]={texto:e.texto,qtd:0};}
+        tipMap[k].qtd+=e.qtd;
+      });
+      d.porTipificacao=Object.values(tipMap).sort(function(a,b){return b.qtd-a.qtd;});
+    }
     window._EM=d.errosMaterial;
     window._EF=d.errosFormais;
     el.innerHTML=renderRel(d);
@@ -332,33 +337,91 @@ async function carregarRelatorio(comarca){
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// AGRUPAMENTO SEMÂNTICO — mesmo algoritmo do GAS
+// ════════════════════════════════════════════════════════════════
+var _SIN = {
+  'perturbacao':'perturbacao','sossego':'perturbacao','barulho':'perturbacao','alheio':'perturbacao',
+  'pluralidade':'pluralidade','coletividade':'pluralidade','coletividad':'pluralidade','indeterminada':'pluralidade',
+  'inexistencia':'ausencia','inexiste':'ausencia','ausencia':'ausencia',
+  'insuficiencia':'ausencia','ausente':'ausencia','inexistente':'ausencia','falta':'ausencia',
+  'perigo':'perigo','dano':'dano','lesiva':'dano','potencialidade':'dano',
+  'concreto':'perigo','iminente':'perigo','direto':'perigo','real':'perigo',
+  'atipica':'atipicidade','atipicidade':'atipicidade','atipificidade':'atipicidade',
+  'atipico':'atipicidade','descriminalizacao':'atipicidade',
+  'dolo':'dolo','intento':'dolo','criminosa':'dolo','subjetivo':'dolo','criminoso':'dolo','intencao':'dolo',
+  'conduta':'conduta','porte':'conduta',
+  'comprovacao':'comprovacao','demonstracao':'comprovacao','probatorio':'comprovacao',
+  'elementos':'comprovacao','suporte':'comprovacao','prova':'comprovacao',
+  'materialidade':'comprovacao','constatacao':'comprovacao',
+  'consumo':'consumo','pessoal':'consumo','proprio':'consumo','propria':'consumo','uso':'consumo',
+  'droga':'droga','entorpecente':'droga','maconha':'droga','cannabis':'droga','substancia':'droga',
+  'penal':'tipo_penal','tipicidade':'tipo_penal','subsumir':'tipo_penal','delituoso':'tipo_penal','crime':'tipo_penal',
+  'administrativa':'administrativo','administrativo':'administrativo',
+  'arma':'arma','branca':'arma','faca':'arma','objeto':'arma',
+  'habilitacao':'habilitacao','habilitado':'habilitacao','inabilitado':'habilitacao','habilitada':'habilitacao',
+  'veiculo':'veiculo','automotor':'veiculo','trafego':'veiculo','velocidade':'veiculo','direcao':'veiculo',
+  'insignificancia':'insignificancia','minima':'insignificancia','proporcionalidade':'insignificancia','intervencao':'insignificancia',
+  'litispendencia':'litispendencia','continuado':'litispendencia','litispendente':'litispendencia',
+  'violencia':'violencia','ameaca':'violencia','agressao':'violencia',
+  'corporal':'lesao_corporal',
+  'seguranca':'seguranca_publica','publica':'seguranca_publica',
+};
+var _ESP = {
+  'perturbacao':10,'pluralidade':10,'arma':10,'droga':9,'habilitacao':9,
+  'litispendencia':9,'consumo':8,'dolo':8,'veiculo':8,'dano':7,'perigo':7,
+  'violencia':7,'lesao_corporal':7,'insignificancia':7,'seguranca_publica':6,
+  'administrativo':7,'tipo_penal':5,'atipicidade':4,
+  'conduta':3,'comprovacao':2,'ausencia':2,
+};
+var _TH = 12;
+
+function _semAcento(s){
+  return s.replace(/[áàãâä]/g,'a').replace(/[éèêë]/g,'e')
+          .replace(/[íìîï]/g,'i').replace(/[óòõôö]/g,'o')
+          .replace(/[úùûü]/g,'u').replace(/ç/g,'c').replace(/ñ/g,'n');
+}
+function _fp(texto){
+  var s=_semAcento(texto.toLowerCase()).replace(/\([^)]*\)/g,'').replace(/[^\w\s]/g,' ');
+  var c={};
+  s.split(' ').forEach(function(t){if(_SIN[t])c[_SIN[t]]=true;});
+  return c;
+}
+function _score(fp1,fp2){
+  return Object.keys(fp1).reduce(function(acc,c){return acc+(fp2[c]?(_ESP[c]||1):0);},0);
+}
 function normChave(t){
-  if(!t)return'';
-  var s=t.toLowerCase()
-    .replace(/[áàãâä]/g,'a').replace(/[éèêë]/g,'e')
-    .replace(/[íìîï]/g,'i').replace(/[óòõôö]/g,'o')
-    .replace(/[úùûü]/g,'u').replace(/ç/g,'c');
-  s=s.replace(/art\.?\s*\d+[^\s,;]*/gi,'')
-     .replace(/lei\s*n[ºo°.]?\s*[\d.]+/gi,'')
-     .replace(/decreto[- ]lei[^\s,;]*/gi,'')
-     .replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
-  var stop=['de','da','do','e','ou','a','o','para','em','com','por','que','se','na','no','ao','as','os','um','uma','sua','seu','nao','foi','ser','ter','tem','este','essa','pela','pelo','nos','nas','dos','das','mais'];
-  return s.split(' ').filter(function(p){return p.length>2&&stop.indexOf(p)===-1;}).sort().slice(0,6).join('|');
+  var fp=_fp(t);
+  var cs=Object.keys(fp).sort(function(a,b){return(_ESP[b]||1)-(_ESP[a]||1);});
+  if(!cs.length){
+    var s=_semAcento(t.toLowerCase()).replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();
+    return s.split(' ').filter(function(p){return p.length>3;}).sort().slice(0,5).join('|');
+  }
+  return cs.slice(0,4).join('|');
 }
 
 function agrupar(lista){
   if(!lista||!lista.length)return[];
-  var g={};
+  var grupos=[];
   lista.forEach(function(item){
-    var k=normChave(item.texto)||item.texto.trim().toLowerCase().substring(0,40);
-    if(!g[k])g[k]={texto:item.texto,qtd:0,processos:[]};
-    g[k].qtd+=(item.qtd||1);
-    (item.processos||[]).forEach(function(p){
-      if(!g[k].processos.some(function(x){return x.numero&&x.numero===p.numero;}))
-        g[k].processos.push(p);
+    var fp=_fp(item.texto);
+    var melhor=-1,melhorSc=0;
+    grupos.forEach(function(g,i){
+      var sc=_score(fp,g.fp);
+      if(sc>=_TH&&sc>melhorSc){melhor=i;melhorSc=sc;}
     });
+    if(melhor>=0){
+      grupos[melhor].item.qtd+=(item.qtd||1);
+      (item.processos||[]).forEach(function(p){
+        if(!grupos[melhor].item.processos.some(function(x){return x.numero&&x.numero===p.numero;}))
+          grupos[melhor].item.processos.push(p);
+      });
+      Object.keys(fp).forEach(function(c){grupos[melhor].fp[c]=true;});
+    }else{
+      grupos.push({fp:fp,item:{texto:item.texto,qtd:item.qtd||1,processos:item.processos||[]}});
+    }
   });
-  return Object.values(g).sort(function(a,b){return b.qtd-a.qtd;});
+  return grupos.map(function(g){return g.item;}).sort(function(a,b){return b.qtd-a.qtd;});
 }
 
 function renderRel(d){
@@ -371,11 +434,11 @@ function renderRel(d){
   h+='</div>';
   h+='<div class="kg">';
   h+=mkK('&#128203;',d.total,'Total');
-  h+=mkK('&#128193;',somaObj(d.porMotivo),'Arquivamentos');
-  h+=mkK('&#9888;',d.porMotivo['Atipicidade Material']||0,'Atip. Material');
-  h+=mkK('&#128221;',d.porMotivo['Atipicidade Formal']||0,'Atip. Formal');
-  h+=mkK('&#129309;',d.porMotivo['Transacao Penal Cumprida']||0,'Trans. Penal');
-  h+=mkK('&#128220;',d.porMotivo['ANPP Cumprido']||0,'ANPP');
+  h+=mkK('&#128193;',(d.totalArquivamentos||somaObj(d.porMotivo)),'Arquivamentos');
+  h+=mkK('&#9888;',buscarMotivo(d.porMotivo,'atipicidade material'),'Atip. Material');
+  h+=mkK('&#128221;',buscarMotivo(d.porMotivo,'atipicidade formal'),'Atip. Formal');
+  h+=mkK('&#129309;',buscarMotivo(d.porMotivo,'transac'),'Trans. Penal');
+  h+=mkK('&#128220;',buscarMotivo(d.porMotivo,'anpp'),'ANPP');
   var ptd=d.porTipoDocumento||{};
   if(ptd['Decisão']||ptd['Decisao'])h+=mkK('&#9878;',ptd['Decisão']||ptd['Decisao']||0,'Decisões');
   h+='</div>';
@@ -485,16 +548,62 @@ async function carregarRegistros(){
   }catch(e){el.innerHTML='<div class="al ae">Erro: '+esc(e.message)+'</div>';}
 }
 
+// Normaliza tipificação: extrai número do artigo como chave
+// "Art. 42 da LCP" = "Artigo 42 da LCP" = "art 42 lcp"
+// "Art. 309 do CTB" = "Art. 309 do Código de Trânsito Brasileiro"
+function normTip(t){
+  if(!t)return t;
+  var s=_semAcento(t.toLowerCase());
+  s=s.replace(/\bartigo\b/g,'art');
+  s=s.replace(/codigo de transito brasileiro/g,'ctb');
+  s=s.replace(/codigo penal/g,'cp');
+  s=s.replace(/lei das contravencoes penais/g,'lcp');
+  s=s.replace(/decreto-?lei/g,'dl');
+  s=s.replace(/11[\s.]?343[\/-]?(?:06|2006)/g,'11343');
+  s=s.replace(/9[\s.]?503[\/-]?(?:97|1997)/g,'9503');
+  s=s.replace(/3[\s.]?688[\/-]?(?:41|1941)/g,'3688');
+  var m=s.match(/art\.?\s*(\d+)/);
+  var numArt=m?m[1]:'';
+  s=s.replace(/n[oo°.]/gi,'').replace(/[.,;:]/g,' ').replace(/\s+/g,' ').trim();
+  var stop=['da','do','de','e','a','o','n','no','na','ao','lei','art','para','inciso'];
+  var palavras=s.split(' ').filter(function(p){return p.length>1&&stop.indexOf(p)===-1;});
+  if(numArt&&palavras.indexOf(numArt)===-1)palavras.unshift(numArt);
+  return palavras.sort().join('_');
+}
+
+
+// Busca valor em porMotivo normalizando acentos
+function buscarMotivo(obj,termo){
+  if(!obj)return 0;
+  var t=_semAcento(termo.toLowerCase());
+  return Object.entries(obj).reduce(function(acc,e){
+    var k=_semAcento(e[0].toLowerCase());
+    return acc+(k.includes(t)?e[1]:0);
+  },0);
+}
+
 function mkK(ic,n,l){return'<div class="kc"><div class="ki">'+ic+'</div><div class="kn">'+(n||0)+'</div><div class="kl">'+l+'</div></div>';}
 function mkG(titulo,obj,cFn){
-  if(!obj||!Object.keys(obj).length)return'';
-  var en=Object.entries(obj).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  if(!obj)return'';
+  // Suporta tanto array [{texto,qtd}] quanto objeto {texto:qtd}
+  var en;
+  if(Array.isArray(obj)){
+    en=obj.slice(0,8).map(function(e){return[e.texto,e.qtd];});
+  } else {
+    if(!Object.keys(obj).length)return'';
+    en=Object.entries(obj).sort(function(a,b){return b[1]-a[1];}).slice(0,8);
+  }
+  if(!en.length)return'';
   var mx=en[0][1];
   return'<div class="gc"><div class="gt">'+titulo+'</div><div class="brs">'+en.map(function(e){return mkB(e[0],e[1],Math.round(e[1]/mx*100),cFn(e[0]));}).join('')+'</div></div>';
 }
 function mkB(l,q,p,c){return'<div class="br2"><span class="bl" title="'+esc(l)+'">'+esc(l)+'</span><div class="btr"><div class="bfi" style="width:'+p+'%;background:'+c+';"></div></div><span class="bq">'+q+'</span></div>';}
 function cRes(r){if(!r)return'#6b7280';var rl=r.toLowerCase();if(rl.includes('arquiv'))return'#b91c1c';if(rl.includes('condena'))return'#166534';if(rl.includes('extinca')||rl.includes('punib'))return'#4c1d95';return'#2b5a8c';}
-function somaObj(o){return Object.values(o||{}).reduce(function(a,b){return a+b;},0);}
+function somaObj(o){
+  if(!o)return 0;
+  if(Array.isArray(o))return o.reduce(function(a,e){return a+(e.qtd||e||0);},0);
+  return Object.values(o).reduce(function(a,b){return a+(b||0);},0);
+}
 function bc(res){if(!res)return'bo';var r=res.toLowerCase();if(r.includes('arquiv'))return'ba';if(r.includes('condena'))return'bc';if(r.includes('extinca')||r.includes('punib'))return'be';if(r.includes('transa')||r.includes('anpp'))return'bt';if(r.includes('decisao')||r.includes('decisão')||r.includes('medida'))return'bd';return'bo';}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
