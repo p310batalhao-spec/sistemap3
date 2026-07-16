@@ -380,10 +380,21 @@
         apensadas, encontradas em posse do autor abaixo qualificado, conforme tabela:
     </div>
 
+    <!-- Banner de bloqueio de edição (visível apenas quando assinado) -->
+    <div id="banner-bloqueio-edicao"
+         style="display:none; align-items:center; gap:10px; background:#fff3e0;
+                border:1.5px solid #ffb74d; border-radius:6px; padding:10px 16px;
+                margin-bottom:10px; font-family:Arial,sans-serif; font-size:12px; color:#e65100;">
+        <span style="font-size:16px;">🔒</span>
+        <span><strong>Documento assinado.</strong> Os campos estão bloqueados para edição.
+        Para corrigir, clique em <strong>"🗑️ Corrigir / Remover Assinatura"</strong> acima.</span>
+    </div>
+
     <table>
         <thead>
             <tr>
                 <th>Nº do Lacre</th>
+                <th>E-SAJ</th>
                 <th>Nº do TCO</th>
                 <th>NOME DO AUTOR</th>
                 <th>DATA</th>
@@ -392,12 +403,12 @@
         </thead>
         <tbody>
             <tr>
-                <td id="res-lacre" contenteditable="true" title="Clique para editar o Nº do Lacre"
-                    style="outline:none;cursor:text;min-width:60px;"></td>
-                <td id="res-tco"></td>
-                <td id="res-autor"></td>
-                <td id="res-data"></td>
-                <td id="res-substancia"></td>
+                <td id="res-lacre"      contenteditable="true" title="Clique para editar" style="outline:none;cursor:text;min-width:60px;"></td>
+                <td id="res-esaj"       contenteditable="true" title="Clique para editar o E-SAJ" style="outline:none;cursor:text;min-width:80px;"></td>
+                <td id="res-tco"        contenteditable="true" title="Clique para editar o Nº TCO" style="outline:none;cursor:text;min-width:80px;"></td>
+                <td id="res-autor"      contenteditable="true" title="Clique para editar o nome do autor" style="outline:none;cursor:text;min-width:120px;"></td>
+                <td id="res-data"       contenteditable="true" title="Clique para editar a data" style="outline:none;cursor:text;min-width:70px;"></td>
+                <td id="res-substancia" contenteditable="true" title="Clique para editar a substância" style="outline:none;cursor:text;min-width:120px;"></td>
             </tr>
         </tbody>
     </table>
@@ -441,8 +452,30 @@
             <a id="ja-sign-link" href="#" target="_blank">🔗 Verificar autenticidade</a>
             <div class="aviso-bloqueio">
                 ⛔ Este documento já possui assinatura eletrônica registrada.<br>
-                Uma nova assinatura não pode ser aplicada. Para contestar, entre em contato com a P3/10ºBPM.
+                Uma nova assinatura não pode ser aplicada.
             </div>
+            <button id="btn-corrigir-assinatura"
+                onclick="corrigirAssinatura()"
+                style="margin-top:12px;padding:7px 16px;background:#b71c1c;color:#fff;border:none;
+                       border-radius:6px;font-size:12px;font-weight:bold;cursor:pointer;
+                       display:flex;align-items:center;gap:5px;">
+                🗑️ Corrigir / Remover Assinatura
+            </button>
+            <div id="msg-corrigir" style="display:none;margin-top:8px;font-size:11px;color:#b71c1c;font-weight:bold;"></div>
+            <div id="form-senha-corrigir" style="display:none;margin-top:10px;">
+                <p style="font-size:12px;margin-bottom:6px;color:#333;">Digite sua senha para confirmar a remoção:</p>
+                <input type="password" id="senha-corrigir" placeholder="Sua senha"
+                    style="width:100%;padding:7px;border:1px solid #ccc;border-radius:5px;font-size:13px;margin-bottom:8px;">
+                <button onclick="confirmarCorrecaoAssinatura()"
+                    style="width:100%;padding:8px;background:#b71c1c;color:#fff;border:none;border-radius:5px;font-weight:bold;cursor:pointer;">
+                    ✓ Confirmar Remoção
+                </button>
+                <button onclick="cancelarCorrecao()"
+                    style="width:100%;margin-top:6px;padding:7px;background:#eee;border:none;border-radius:5px;cursor:pointer;">
+                    Cancelar
+                </button>
+            </div>
+            <!-- aviso original substituído -->
         </div>
 
         <!-- Estado: aguardando assinatura -->
@@ -536,14 +569,19 @@
         window.onload = async function () {
             const item = JSON.parse(localStorage.getItem('dadosRequerimento'));
             if (item) {
-                document.getElementById('res-lacre').textContent = item.NUMERO_LACRE || '';
-                document.getElementById('res-tco').textContent = item.NUMERO_TCO || '';
-                document.getElementById('res-autor').textContent = item.NOME_AUTOR || '';
-                document.getElementById('res-data').textContent = item.DATA || '';
+                document.getElementById('res-lacre').textContent      = item.NUMERO_LACRE || '';
+                document.getElementById('res-esaj').textContent       = item.ESAJ || '';
+                document.getElementById('res-tco').textContent        = item.NUMERO_TCO || '';
+                document.getElementById('res-autor').textContent      = item.NOME_AUTOR || '';
+                document.getElementById('res-data').textContent       = item.DATA || '';
                 const substancia = item.TIPO_DROGA || '';
-                const peso = item.PESO || '0';
+                const pesoRaw = parseFloat(String(item.PESO || '0').replace(',', '.'));
+                const pesoFmt = isNaN(pesoRaw) ? '0 g'
+                    : pesoRaw < 10
+                        ? (pesoRaw * 1000).toFixed(1) + ' g'
+                        : pesoRaw.toFixed(1) + ' g';
                 document.getElementById('res-substancia').textContent =
-                    `${substancia}, pesando aprox. ${peso} Kg`;
+                    `${substancia}, pesando aprox. ${pesoFmt}`;
 
                 // ── Verifica se já existe assinatura para este boletim ────────
                 const numTco = String(item.NUMERO_TCO || '').trim();
@@ -601,6 +639,9 @@
 
                 // Exibe bloco-assinado (visível na impressão)
                 document.getElementById('bloco-assinado').style.display = 'block';
+
+                // Bloqueia edição dos campos da tabela
+                bloquearEdicao();
 
             } catch(err) {
                 console.warn('[verificarAssinaturaExistente]', err);
@@ -779,10 +820,125 @@
             }
         }
 
+        // ── Controle de edição dos campos da tabela ─────────────────────
+        const CAMPOS_EDITAVEIS = ['res-lacre','res-esaj','res-tco','res-autor','res-data','res-substancia'];
+
+        function bloquearEdicao() {
+            CAMPOS_EDITAVEIS.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.contentEditable = 'false';
+                el.style.cursor    = 'not-allowed';
+                el.style.opacity   = '0.85';
+                el.title           = '⛔ Documento assinado. Corrija a assinatura para editar.';
+            });
+            // Banner de aviso acima da tabela
+            const banner = document.getElementById('banner-bloqueio-edicao');
+            if (banner) banner.style.display = 'flex';
+        }
+
+        function desbloquearEdicao() {
+            CAMPOS_EDITAVEIS.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.contentEditable = 'true';
+                el.style.cursor    = 'text';
+                el.style.opacity   = '1';
+                el.title           = 'Clique para editar';
+            });
+            const banner = document.getElementById('banner-bloqueio-edicao');
+            if (banner) banner.style.display = 'none';
+        }
+        // ─────────────────────────────────────────────────────────────
+
         function mostrarErro(msg) {
             const el = document.getElementById('msg-erro-assinatura');
             el.textContent = msg;
             el.style.display = 'block';
+        }
+
+        // ── Corrigir / Remover assinatura ────────────────────────────────────
+        function corrigirAssinatura() {
+            const form = document.getElementById('form-senha-corrigir');
+            const msg  = document.getElementById('msg-corrigir');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+            msg.style.display  = 'none';
+        }
+
+        function cancelarCorrecao() {
+            document.getElementById('form-senha-corrigir').style.display = 'none';
+            document.getElementById('msg-corrigir').style.display        = 'none';
+        }
+
+        async function confirmarCorrecaoAssinatura() {
+            const senha = document.getElementById('senha-corrigir').value.trim();
+            if (!senha) {
+                document.getElementById('msg-corrigir').textContent    = 'Digite a senha para confirmar.';
+                document.getElementById('msg-corrigir').style.display  = 'block';
+                return;
+            }
+
+            const numTco = document.getElementById('res-tco').textContent.trim();
+            const msg    = document.getElementById('msg-corrigir');
+
+            try {
+                // Busca a assinatura pelo num_tco no Firebase
+                const snap = await db.ref('assinaturas').once('value');
+                const todas = snap.val() || {};
+
+                let chaveParaRemover = null;
+                let assinanteData    = null;
+
+                Object.entries(todas).forEach(([key, val]) => {
+                    if (val && val.documento && String(val.documento.num_tco || '').trim() === numTco) {
+                        chaveParaRemover = key;
+                        assinanteData    = val;
+                    }
+                });
+
+                if (!chaveParaRemover) {
+                    msg.textContent   = 'Nenhuma assinatura encontrada para este TCO.';
+                    msg.style.display = 'block';
+                    return;
+                }
+
+                // Valida a senha verificando no nó de usuários
+                const userSnap = await db.ref('usuarios').once('value');
+                const usuarios = userSnap.val() || {};
+                const usuarioValido = Object.values(usuarios).find(u => u && u.senha === senha);
+
+                if (!usuarioValido) {
+                    msg.textContent   = '❌ Senha incorreta. Apenas usuários cadastrados podem remover assinaturas.';
+                    msg.style.display = 'block';
+                    return;
+                }
+
+                // Remove a assinatura e registra log de remoção
+                await db.ref('assinaturas/' + chaveParaRemover).remove();
+                await db.ref('log_remocao_assinaturas').push({
+                    tco:             numTco,
+                    codigo_removido: assinanteData.codigo || '',
+                    removido_por:    usuarioValido.nome   || usuarioValido.cpf || 'Usuário',
+                    removido_em:     new Date().toLocaleString('pt-BR'),
+                });
+
+                // Restaura a tela para o estado "não assinado"
+                document.getElementById('bloco-ja-assinado').style.display = 'none';
+                document.getElementById('bloco-pendente').style.display    = 'block';
+                document.getElementById('bloco-assinado').style.display    = 'none';
+                document.getElementById('form-senha-corrigir').style.display = 'none';
+                document.getElementById('senha-corrigir').value = '';
+
+                // Desbloqueia edição dos campos
+                desbloquearEdicao();
+
+                alert('✅ Assinatura removida com sucesso. O documento pode ser assinado novamente.');
+
+            } catch(err) {
+                console.error('[corrigirAssinatura]', err);
+                msg.textContent   = '❌ Erro ao remover assinatura. Verifique a conexão.';
+                msg.style.display = 'block';
+            }
         }
 
         ['input-cpf', 'input-senha'].forEach(id => {

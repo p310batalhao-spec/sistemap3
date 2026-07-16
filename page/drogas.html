@@ -164,23 +164,33 @@
                         </button>
 
                         <div id="modal-busca-requerimento"
-                            style="display:none; position:fixed; z-index:1005; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8);">
-                            <div
-                                style="background:white; margin:15% auto; padding:25px; width:350px; border-radius:10px; color: black; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
-                                <h4 style="margin-top:0;">Gerar Requerimento de Perícia</h4>
-                                <p>Informe o número do Boletim/Ocorrência:</p>
-                                <input type="text" id="input-busca-boletim" placeholder="Ex: 1433350"
-                                    style="width:100%; padding:10px; margin-bottom:20px; border: 1px solid #ccc; border-radius: 5px;">
+                            style="display:none; position:fixed; z-index:1005; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.8); overflow-y:auto;">
+                            <div style="background:white; margin:5% auto; padding:25px; width:520px; max-width:95%; border-radius:10px; color:black; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                                    <h4 style="margin:0;">🔬 Requerimento de Perícia</h4>
+                                    <button onclick="document.getElementById('modal-busca-requerimento').style.display='none'"
+                                        style="background:none;border:none;font-size:20px;cursor:pointer;color:#666;">✕</button>
+                                </div>
+                                <p style="margin-bottom:8px;font-size:13px;">Informe o número do Boletim/Ocorrência:</p>
+                                <div style="display:flex;gap:8px;margin-bottom:16px;">
+                                    <input type="text" id="input-busca-boletim" placeholder="Ex: 1433350"
+                                        onkeydown="if(event.key==='Enter')buscarRegistrosPorBoletim()"
+                                        oninput="limparResultadoBusca()"
+                                        style="flex:1;padding:10px;border:1.5px solid #ccc;border-radius:5px;font-size:14px;">
+                                    <button type="button" onclick="buscarRegistrosPorBoletim()"
+                                        style="padding:10px 18px;background:#1a3d5d;color:white;border:none;border-radius:5px;cursor:pointer;font-weight:bold;white-space:nowrap;">
+                                        🔍 BUSCAR
+                                    </button>
+                                </div>
 
-                                <button type="button" onclick="buscarEGerarRequerimento()"
-                                    style="width:100%; padding:12px; background:#1a3d5d; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
-                                    BUSCAR E GERAR
-                                </button>
-                                <button type="button"
-                                    onclick="document.getElementById('modal-busca-requerimento').style.display='none'"
-                                    style="width:100%; margin-top:10px; padding:8px; background:#ddd; border:none; border-radius:5px; cursor:pointer;">
-                                    CANCELAR
-                                </button>
+                                <!-- Resultados da busca -->
+                                <div id="resultado-busca-boletim" style="display:none;">
+                                    <hr style="margin-bottom:14px;">
+                                    <p id="label-resultado-boletim" style="font-size:13px;color:#444;margin-bottom:10px;"></p>
+                                    <div id="lista-resultados-requerimento" style="display:flex;flex-direction:column;gap:8px;max-height:340px;overflow-y:auto;"></div>
+                                </div>
+
+                                <p id="msg-busca-boletim" style="display:none;color:#b71c1c;font-size:13px;margin-top:10px;font-weight:bold;"></p>
                             </div>
                         </div>
                     </div>
@@ -207,11 +217,10 @@
                                 <th>ESTABELECIMENTO</th>
                                 <th>SOLUÇÃO</th>
                                 <th>TIPO</th>
-                                <th>PESO</th>
+                                <th>PESO (g)</th>
                                 <th>E-SAJ</th>
-                                <th>NUMERO_LACRE</th>
+                                <th>LACRE</th>
                                 <th>MOVIMENTAÇÃO</th>
-                                <th>NOME DO AUTOR</th>
                                 <th>REQUERIMENTO</th>
                                 <th>AÇÕES</th>
                             </tr>
@@ -415,7 +424,7 @@
             tbody.innerHTML = "";
 
             if (!dataDrogas) {
-                tbody.innerHTML = `<tr><td colspan="22" style="text-align:center;">Nenhum registro encontrado.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="21" style="text-align:center;">Nenhum registro encontrado.</td></tr>`;
                 if (msgCarregamento) msgCarregamento.style.display = 'none';
                 return;
             }
@@ -464,11 +473,25 @@
                 listaFinal.push(registro);
             });
 
-            atualizarCardsContagemRapida(totais);
-            listaFinal.sort((a, b) => new Date(b.DATA) - new Date(a.DATA));
-            allDrogas = listaFinal;
+            // ── Deduplicação: remove registros com mesma combinação BOLETIM+TIPO+LACRE
+            // Mantém registros com mesmo BOLETIM mas TIPO diferente (drogas distintas)
+            const vistos = new Set();
+            const listaDedup = listaFinal.filter(r => {
+                const chave = [
+                    String(r.BOLETIM    || '').trim(),
+                    String(r.TIPO_DROGA || r.TIPO || '').trim().toUpperCase(),
+                    String(r.NUMERO_LACRE || '').trim()
+                ].join('|');
+                if (vistos.has(chave)) return false;
+                vistos.add(chave);
+                return true;
+            });
 
-            renderizarTabela(listaFinal);
+            atualizarCardsContagemRapida(totais);
+            listaDedup.sort((a, b) => new Date(b.DATA) - new Date(a.DATA));
+            allDrogas = listaDedup;
+
+            renderizarTabela(listaDedup);
             if (msgCarregamento) msgCarregamento.style.display = 'none';
 
         } catch (err) {
@@ -495,6 +518,10 @@
                 ? `<a href="${urlBusca}" target="_blank" title="Consultar no TJAL" style="color:#1a3d5d;font-weight:bold;text-decoration:underline;">${valorEsaj}</a>`
                 : "";
 
+            // Converte peso para gramas se vier em kg (valores < 10 assumidos em kg)
+            const pesoRaw = parseFloat(String(doc.QUANTIDADE || doc.PESO || '0').replace(',', '.'));
+            const pesoGramas = isNaN(pesoRaw) ? '—' : (pesoRaw < 10 ? (pesoRaw * 1000).toFixed(1) + ' g' : pesoRaw.toFixed(1) + ' g');
+
             tr.innerHTML = `
                 <td>${doc.BOLETIM || ""}</td>
                 <td>${doc.DATA || ""}</td>
@@ -507,16 +534,15 @@
                 <td>${doc['PONTO de REF.'] || doc.PONTO_REF || ""}</td>
                 <td>${doc.LATITUDE || ""}</td>
                 <td>${doc.LONGITUDE || ""}</td>
-                <td>${doc.AUTOR || doc['NOME DO AUTOR'] || ""}</td>
+                <td>${doc['NOME DO AUTOR'] || doc.AUTOR || ""}</td>
                 <td>${doc.TIPIFICACAO || ""}</td>
                 <td>${doc.ESTABELECIMENTO || ""}</td>
                 <td>${doc.SOLUÇÃO || doc.SOLUCAO || ""}</td>
                 <td style="font-weight:bold;color:#1a3d5d;">${doc.TIPO_DROGA || doc.TIPO || ""}</td>
-                <td>${doc.QUANTIDADE || doc.PESO || "0"}</td>
+                <td>${pesoGramas}</td>
                 <td>${linkEsaj}</td>
                 <td>${doc['NUMERO_LACRE'] || ""}</td>
                 <td>${doc['Movimentação'] || doc.MOVIMENTAÇÃO || ""}</td>
-                <td>${doc['NOME DO AUTOR'] || doc.AUTOR || ""}</td>
                 <td id="req-status-${doc.BOLETIM || doc.id_realtime}">
                     <span class="badge-loading"></span>
                 </td>
@@ -717,76 +743,133 @@
     }
 
     // --- 7. REQUERIMENTO ---
-    async function buscarEGerarRequerimento() {
-        const numBoletim = document.getElementById('input-busca-boletim').value.trim();
-        if (!numBoletim) {
-            alert("Por favor, digite o número do boletim.");
-            return;
+    async function limparResultadoBusca() {
+            document.getElementById('resultado-busca-boletim').style.display = 'none';
+            document.getElementById('msg-busca-boletim').style.display       = 'none';
+            document.getElementById('lista-resultados-requerimento').innerHTML = '';
         }
 
-        try {
-            const [resDrogas, resGeral, resAutores] = await Promise.all([
-                fetch(`${DATABASE_URL}/droga.json`),
-                fetch(`${DATABASE_URL}/geral.json`),
-                fetch(`${DATABASE_URL}/autor.json`)
-            ]);
+        async function buscarRegistrosPorBoletim() {
+            const numBoletim = document.getElementById('input-busca-boletim').value.trim();
+            const msg        = document.getElementById('msg-busca-boletim');
+            const resultado  = document.getElementById('resultado-busca-boletim');
+            const lista      = document.getElementById('lista-resultados-requerimento');
+            const label      = document.getElementById('label-resultado-boletim');
 
-            const dataDrogas = await resDrogas.json();
-            const dataGeral = await resGeral.json();
-            const dataAutores = await resAutores.json();
+            msg.style.display      = 'none';
+            resultado.style.display = 'none';
 
-            const idDroga = Object.keys(dataDrogas || {}).find(id =>
-                String(dataDrogas[id].BOLETIM || "").trim() === numBoletim
-            );
-
-            if (!idDroga) {
-                alert("Boletim não encontrado no registro de drogas.");
+            if (!numBoletim) {
+                msg.textContent    = 'Por favor, digite o número do boletim.';
+                msg.style.display  = 'block';
                 return;
             }
 
-            const registroDroga = dataDrogas[idDroga];
+            const btnBuscar = document.querySelector('#modal-busca-requerimento button');
+            if (btnBuscar) { btnBuscar.disabled = true; btnBuscar.textContent = '⏳ Buscando...'; }
 
-            const idGeral = Object.keys(dataGeral || {}).find(id =>
-                String(dataGeral[id].BOLETIM || "").trim() === numBoletim
-            );
-            const registroGeral = idGeral ? dataGeral[idGeral] : {};
+            try {
+                const [resDrogas, resGeral, resAutores] = await Promise.all([
+                    fetch(`${DATABASE_URL}/droga.json`),
+                    fetch(`${DATABASE_URL}/geral.json`),
+                    fetch(`${DATABASE_URL}/autor.json`)
+                ]);
 
-            const idAutor = Object.keys(dataAutores || {}).find(id =>
-                String(dataAutores[id].BOLETIM || "").trim() === numBoletim
-            );
-            const registroAutor = idAutor ? dataAutores[idAutor] : {};
+                const dataDrogas  = await resDrogas.json()  || {};
+                const dataGeral   = await resGeral.json()   || {};
+                const dataAutores = await resAutores.json() || {};
 
-            const nomeFinalAutor = registroAutor.NOME ||
-                registroDroga.NOME_AUTOR ||
-                registroDroga.AUTOR ||
-                registroGeral.AUTOR ||
-                "Não qualificado";
+                const arrayGeral   = Object.values(dataGeral);
+                const arrayAutores = Object.values(dataAutores);
 
-            const dadosParaRequerimento = {
-                NUMERO_LACRE: registroDroga.NUMERO_LACRE || registroDroga.lacre || "",
-                NUMERO_TCO:   numBoletim,
-                NOME_AUTOR:   nomeFinalAutor,
-                DATA:         registroDroga.DATA || registroGeral.DATA || "",
-                TIPO_DROGA:   registroDroga.TIPO || registroDroga.TIPO_DROGA || "",
-                PESO:         registroDroga.QUANTIDADE || registroDroga.PESO || "0"
-            };
+                // Encontrar TODOS os registros de droga com esse boletim
+                const registrosEncontrados = Object.entries(dataDrogas)
+                    .filter(([id, doc]) => String(doc.BOLETIM || '').trim() === numBoletim)
+                    .map(([id, doc]) => {
+                        // Complementa dados do geral e autores
+                        const infoGeral  = arrayGeral.find(g => g && String(g.BOLETIM || '').trim() === numBoletim) || {};
+                        const infoAutor  = arrayAutores.find(a => a && String(a.BOLETIM || '').trim() === numBoletim) || {};
 
-            localStorage.setItem('dadosRequerimento', JSON.stringify(dadosParaRequerimento));
-            document.getElementById('modal-busca-requerimento').style.display = 'none';
-            invalidarCacheAssinaturas(); // força reload do status ao voltar
+                        return {
+                            NUMERO_LACRE: doc.NUMERO_LACRE || doc.lacre || '',
+                            ESAJ:         doc['E-SAJ'] || doc['ESAJ'] || infoGeral['E-SAJ'] || '',
+                            NUMERO_TCO:   numBoletim,
+                            NOME_AUTOR:   infoAutor.NOME || doc['NOME DO AUTOR'] || doc.AUTOR || infoGeral.AUTOR || 'Não qualificado',
+                            DATA:         doc.DATA || infoGeral.DATA || '',
+                            TIPO_DROGA:   doc.TIPO || doc.TIPO_DROGA || '',
+                            PESO:         doc.QUANTIDADE || doc.PESO || '0',
+                        };
+                    });
+
+                if (!btnBuscar) { /* já removido */ }
+                else { btnBuscar.disabled = false; btnBuscar.textContent = '🔍 BUSCAR'; }
+
+                if (!registrosEncontrados.length) {
+                    msg.textContent   = `❌ Nenhum registro de droga encontrado para o boletim "${numBoletim}".`;
+                    msg.style.display = 'block';
+                    return;
+                }
+
+                // Monta a lista de resultados
+                label.textContent = `${registrosEncontrados.length} registro(s) encontrado(s) — clique em "Gerar" para abrir o requerimento:`;
+                lista.innerHTML   = '';
+
+                registrosEncontrados.forEach((dados, i) => {
+                    const card = document.createElement('div');
+                    card.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f8f9fa;border:1px solid #dee2e6;border-radius:8px;';
+
+                    const info = document.createElement('div');
+                    info.style.cssText = 'flex:1;font-size:12px;line-height:1.6;';
+                    info.innerHTML = `
+                        <strong style="font-size:13px;color:#1a3d5d;">${dados.TIPO_DROGA || 'Droga não especificada'}</strong><br>
+                        <span style="color:#555;">Lacre: <b>${dados.NUMERO_LACRE || '—'}</b></span>
+                        &nbsp;|&nbsp; <span style="color:#555;">Peso: <b>${formatarPesoGramas(dados.PESO)}</b></span>
+                        &nbsp;|&nbsp; <span style="color:#555;">E-SAJ: <b>${dados.ESAJ || '—'}</b></span><br>
+                        <span style="color:#555;">Autor: ${dados.NOME_AUTOR}</span>
+                    `;
+
+                    const btn = document.createElement('button');
+                    btn.textContent = '📄 Gerar';
+                    btn.style.cssText = 'padding:8px 16px;background:#1a6b45;color:white;border:none;border-radius:6px;cursor:pointer;font-weight:bold;white-space:nowrap;font-size:13px;';
+                    btn.onclick = () => abrirRequerimentoPorItem(dados);
+
+                    card.appendChild(info);
+                    card.appendChild(btn);
+                    lista.appendChild(card);
+                });
+
+                resultado.style.display = 'block';
+
+            } catch(err) {
+                console.error('Erro buscarRegistrosPorBoletim:', err);
+                if (btnBuscar) { btnBuscar.disabled = false; btnBuscar.textContent = '🔍 BUSCAR'; }
+                msg.textContent   = '❌ Erro técnico ao buscar dados. Verifique a conexão.';
+                msg.style.display = 'block';
+            }
+        }
+
+        function formatarPesoGramas(val) {
+            const n = parseFloat(String(val || '0').replace(',', '.'));
+            if (isNaN(n)) return '—';
+            return n < 10 ? (n * 1000).toFixed(1) + ' g' : n.toFixed(1) + ' g';
+        }
+
+        function abrirRequerimentoPorItem(dados) {
+            // Salva os dados no localStorage e abre o requerimento em nova aba
+            localStorage.setItem('dadosRequerimento', JSON.stringify(dados));
+            invalidarCacheAssinaturas();
             window.open('../termos/requerimento_pericia.html', '_blank');
-
-            // Recarrega status após 8s para capturar assinatura feita na nova aba
+            // Recarrega status após alguns segundos para capturar assinatura feita
             setTimeout(() => {
                 invalidarCacheAssinaturas();
-                carregarStatusAssinaturas(filtradosAtivos || allDrogas);
+                if (typeof allDrogas !== 'undefined') carregarStatusAssinaturas(filtradosAtivos || allDrogas);
             }, 8000);
-
-        } catch (err) {
-            console.error("Erro ao gerar requerimento:", err);
-            alert("Erro técnico ao cruzar dados dos autores.");
         }
-    }
+
+        // Mantido por compatibilidade — redireciona para nova função
+        async function buscarEGerarRequerimento() {
+            await buscarRegistrosPorBoletim();
+        }
 
     // ── Firebase (assinaturas) ───────────────────────────────────────
     const FB_CONFIG = {
