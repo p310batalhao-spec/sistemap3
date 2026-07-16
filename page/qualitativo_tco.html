@@ -95,7 +95,12 @@
           <div class="at">Relatório Consolidado</div>
           <div class="as">Análise qualitativa das sentenças e decisões de TCO</div>
         </div>
-        <button class="btn bs" onclick="carregarRelatorio()">&#8635; Atualizar</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn bs" onclick="carregarRelatorio()">&#8635; Atualizar</button>
+          <button class="btn bp" id="btn-sugestoes" onclick="abrirSugestoes()" style="display:none;">
+            &#128161; Sugest&#245;es de Corre&#231;&#227;o
+          </button>
+        </div>
       </div>
       <div id="conteudo-relatorio">
         <div class="vz">
@@ -246,6 +251,7 @@
         }
         window._EM = d.errosMaterial;
         window._EF = d.errosFormais;
+        mostrarBtnSugestoes(d);
         el.innerHTML = renderRel(d);
         setTimeout(ativarToggle, 0);
       } catch (e) {
@@ -522,6 +528,230 @@
     }
     function bc(res) { if (!res) return 'bo'; var r = res.toLowerCase(); if (r.includes('arquiv')) return 'ba'; if (r.includes('condena')) return 'bc'; if (r.includes('extinca') || r.includes('punib')) return 'be'; if (r.includes('transa') || r.includes('anpp')) return 'bt'; if (r.includes('decisao') || r.includes('decisão') || r.includes('medida')) return 'bd'; return 'bo'; }
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    // ══════════════════════════════════════════════════════════════
+    // SUGESTÕES DE CORREÇÃO
+    // ══════════════════════════════════════════════════════════════
+    window._DADOS_RELATORIO = null;
+
+    function mostrarBtnSugestoes(dados) {
+      window._DADOS_RELATORIO = dados;
+      var btn = document.getElementById('btn-sugestoes');
+      if (btn) btn.style.display = 'inline-flex';
+    }
+
+    function abrirSugestoes() {
+      var d = window._DADOS_RELATORIO;
+      if (!d) { alert('Carregue o relatório primeiro.'); return; }
+      var html = gerarHTMLSugestoes(d);
+      var win = window.open('', '_blank');
+      win.document.write(html);
+      win.document.close();
+    }
+
+function gerarHTMLSugestoes(d) {
+      var em  = d.errosMaterial || [];
+      var ef  = d.errosFormais  || [];
+      var mot = d.porMotivo     || {};
+      var total = d.total || 0;
+      var sugestoes = [];
+
+      var mapMat = {
+        'perturbacao|pluralidade':
+          'Nos TCOs de perturbação do sossego (Art. 42 LCP), garantir o registro de pelo menos dois ' +
+          'moradores atingidos com qualificação completa (nome, endereço e assinatura no BO), ' +
+          'demonstrando que a perturbação afetou uma pluralidade de pessoas ou coletividade.',
+        'arma|perigo':
+          'Para infrações de porte de arma branca (Art. 19 LCP), o auto deve documentar ' +
+          'o contexto com potencial lesivo concreto: registrar a situação de conflito, a forma ' +
+          'como a arma estava sendo portada e, se possível, colher declarações de testemunhas ' +
+          'que atestem o perigo gerado.',
+        'droga|consumo':
+          'Em casos de porte de droga para consumo pessoal (Art. 28 Lei 11.343/06), ' +
+          'em razão do Tema 506/STF, a lavratura de TCO raramente resulta em condenação. ' +
+          'Avaliar encaminhamento diferenciado (CAPS/tratamento). Verificar se há indícios ' +
+          'de tráfico (Art. 33) pela quantidade/circunstâncias antes de lavrar TCO.',
+        'veiculo|habilitacao':
+          'Nos TCOs de dirigir sem habilitação (Art. 309 CTB), documentar o perigo concreto: ' +
+          'registrar local (via pública movimentada), testemunhas presentes, comportamento ' +
+          'do condutor e velocidade. Sem comprovação do perigo real, a conduta é atípica.',
+        'veiculo|perigo':
+          'Para crimes de trânsito (Arts. 309/310/311 CTB), documentar objetivamente o perigo: ' +
+          'fotografar o local, registrar condições da via, velocidade observada e qualquer ' +
+          'manobra perigosa. O risco abstrato não é suficiente para tipificação.',
+        'administrativo':
+          'Antes de lavrar TCO por infração de trânsito, verificar se há elemento penal. ' +
+          'Priorizar Auto de Infração de Trânsito (AIT) e só lavrar TCO se houver ' +
+          'efetivo perigo à incolumidade pública devidamente documentado.',
+        'comprovacao|tipo_penal':
+          'Reforçar a coleta probatória: (1) depoimentos detalhados de testemunhas ' +
+          'presenciais, (2) registro fotográfico do local e da situação, ' +
+          '(3) laudo pericial quando cabível. A insuficiência probatória é a ' +
+          'principal causa de arquivamento por atipicidade material.',
+      };
+
+      var mapForm = {
+        'litispendencia':
+          'Antes de lavrar o TCO, consultar o ESAJ/DataJud para verificar se já existe ' +
+          'processo em curso pelos mesmos fatos. Informar o número do processo anterior ' +
+          'no campo de observações do TCO para evitar litispendência.',
+        'veiculo|perigo':
+          'Para o Art. 309 CTB, documentar objetivamente o "perigo de dano": ' +
+          'comportamento de risco na direção, velocidade, condições do tráfego. ' +
+          'Registrar tudo na ocorrência para configurar o elemento normativo do tipo.',
+        'perturbacao|pluralidade':
+          'Em perturbação do sossego, registrar na ocorrência a identificação de ' +
+          'pelo menos dois vizinhos afetados com dados completos, pois o tipo ' +
+          'penal exige afetação a coletividade indeterminada de pessoas.',
+        'dolo':
+          'Verificar e registrar o elemento subjetivo (dolo): o agente sabia que ' +
+          'sua conduta poderia causar dano? Documentar declarações que indiquem ' +
+          'a consciência e vontade criminosa do autor de forma expressa no TCO.',
+      };
+
+      function melhorSugestao(texto, mapa) {
+        var fp = _fp(texto);
+        var melhorChave = null, melhorSc = 0;
+        Object.keys(mapa).forEach(function(chave) {
+          var fpC = {}; chave.split('|').forEach(function(c){ fpC[c]=true; });
+          var sc = _score(fp, fpC);
+          if (sc > melhorSc) { melhorSc = sc; melhorChave = chave; }
+        });
+        return (melhorChave && melhorSc >= 4) ? mapa[melhorChave]
+          : 'Reforçar a documentação probatória, garantindo registros objetivos ' +
+            'e testemunhas qualificadas que comprovem materialidade e autoria.';
+      }
+
+      em.forEach(function(e) {
+        var tips = {}; (e.processos||[]).forEach(function(p){ if(p.tipificacao) tips[p.tipificacao]=true; });
+        sugestoes.push({
+          cat:'Atipicidade Material', cor:'#b45309', corBg:'#fef3c7',
+          falha:e.texto, qtd:e.qtd, tip:Object.keys(tips).slice(0,3).join(', '),
+          sug: melhorSugestao(e.texto, mapMat)
+        });
+      });
+
+      ef.forEach(function(e) {
+        var tips = {}; (e.processos||[]).forEach(function(p){ if(p.tipificacao) tips[p.tipificacao]=true; });
+        sugestoes.push({
+          cat:'Atipicidade Formal', cor:'#5b21b6', corBg:'#ede9fe',
+          falha:e.texto, qtd:e.qtd, tip:Object.keys(tips).slice(0,3).join(', '),
+          sug: melhorSugestao(e.texto, mapForm)
+        });
+      });
+
+      var fjtc = mot['Falta de Justa Causa'] || 0;
+      if (fjtc >= 3) {
+        sugestoes.push({
+          cat:'Falta de Justa Causa', cor:'#1d4ed8', corBg:'#dbeafe',
+          falha:'Arquivamento por falta de justa causa (' + fjtc + ' casos)',
+          qtd:fjtc, tip:'',
+          sug:'A falta de justa causa indica ausência de indícios mínimos de autoria ou ' +
+              'materialidade. Reforçar a coleta de provas na lavratura: qualificar ' +
+              'adequadamente autor e vítima, colher depoimento de testemunha presencial ' +
+              'e registrar fotograficamente a cena quando possível.'
+        });
+      }
+
+      sugestoes.sort(function(a,b){ return b.qtd - a.qtd; });
+
+      var SEP = '\n\n------------------------------------------------------------\n\n';
+      
+      var txtTudo = '';
+      sugestoes.forEach(function(s, i) {
+        var bloco = '[' + (i+1) + '] ' + s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s))\n' +
+                    'FALHA: ' + s.falha + '\n';
+        if (s.tip) {
+          bloco += 'TIPIFICACAO: ' + s.tip + '\n';
+        }
+        bloco += 'SUGESTAO: ' + s.sug;
+        txtTudo += (i > 0 ? SEP : '') + bloco;
+      });
+
+      var cardsHTML = '';
+      sugestoes.forEach(function(s, i) {
+        var txCop = s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s))\n' +
+                    'FALHA: ' + s.falha + '\n' +
+                    (s.tip ? 'TIPIFICACAO: ' + s.tip + '\n' : '') +
+                    'SUGESTAO: ' + s.sug;
+        
+        // Codificamos o texto em Base64 para evitar QUALQUER caractere especial, aspas ou quebras de linha no HTML do atributo
+        var txE = btoa(unescape(encodeURIComponent(txCop)));
+        
+        cardsHTML += '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);">' +
+          '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
+            '<div>' +
+              '<span style="display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700;background:' + s.corBg + ';color:' + s.cor + ';">' + s.cat + '</span>' +
+              '<span style="margin-left:8px;font-size:11px;color:#94a3b8;">' + s.qtd + ' ocorrência(s)</span>' +
+              (s.tip ? '<div style="font-size:11px;color:#64748b;margin-top:2px;">&#9878; ' + s.tip + '</div>' : '') +
+            '</div>' +
+            '<button onclick="copiar(this,\'' + txE + '\')" style="flex-shrink:0;padding:6px 14px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:#475569;">&#128203; Copiar</button>' +
+          '</div>' +
+          '<div style="background:#f8fafc;border-left:3px solid ' + s.cor + ';padding:10px 14px;border-radius:4px;margin-bottom:12px;">' +
+            '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:3px;">FALHA IDENTIFICADA</div>' +
+            '<div style="font-size:13px;color:#334155;line-height:1.5;">' + s.falha + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:10px;font-weight:700;color:#94a3b8;margin-bottom:5px;">&#128161; SUGEST&#195;O DE CORRE&#199;&#195;O</div>' +
+            '<div style="font-size:13px;color:#1e293b;line-height:1.65;">' + s.sug + '</div>' +
+          '</div>' +
+        '</div>';
+      });
+
+      var txTudoE = JSON.stringify(txtTudo);
+
+      // O script decodifica o Base64 de forma limpa e direta na cópia
+      var scriptDinamico = '\x3cscript\x3e' +
+        'function copiar(btn,txtB64){' +
+          'var texto = decodeURIComponent(escape(atob(txtB64)));' +
+          'navigator.clipboard.writeText(texto).then(function(){' +
+            'var o=btn.innerHTML;btn.innerHTML="&#10003; Copiado!";btn.style.background="#dcfce7";btn.style.color="#166534";' +
+            'setTimeout(function(){btn.innerHTML=o;btn.style.background="";btn.style.color="";},2000);' +
+          '});' +
+        '}' +
+        'function copiarTudo(){' +
+          'navigator.clipboard.writeText(' + txTudoE.replace(/</g, '\\u003c') + ').then(function(){' +
+            'var b=document.querySelector(".bct");var o=b.innerHTML;b.innerHTML="&#10003; Copiado!";b.style.background="#dcfce7";' +
+            'setTimeout(function(){b.innerHTML=o;b.style.background="";},2500);' +
+          '});' +
+        '}' +
+        '\x3c/script\x3e';
+
+      return '\x3c!DOCTYPE html\x3e\x3chtml lang="pt-BR"\x3e\x3chead\x3e' +
+        '\x3cmeta charset="UTF-8"\x3e\x3cmeta name="viewport" content="width=device-width,initial-scale=1"\x3e' +
+        '\x3ctitle\x3eSugest&#245;es de Corre&#231;&#227;o &#8212; IRIS P3\x3c/title\x3e' +
+        '\x3cstyle\x3e*{box-sizing:border-box;margin:0;padding:0}' +
+        'body{font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;min-height:100vh}' +
+        'header{background:linear-gradient(135deg,#1a3d5d,#1e5799);color:#fff;padding:16px 28px;' +
+        'display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 3px 10px rgba(0,0,0,.2);}' +
+        'h1{font-size:17px;font-weight:700}h1+p{font-size:11px;opacity:.65;margin-top:2px}' +
+        '.bct{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;background:#fff;' +
+        'color:#1a3d5d;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;' +
+        'box-shadow:0 2px 6px rgba(0,0,0,.15);transition:background .15s;}' +
+        '.bct:hover{background:#e8f0f9}' +
+        'main{max-width:860px;margin:0 auto;padding:24px}' +
+        '.kg{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}' +
+        '.kc{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:13px 16px;flex:1;min-width:120px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
+        '.kn{font-size:26px;font-weight:800;color:#1a3d5d}.kl{font-size:10px;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}' +
+        '.av{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;font-size:13px;color:#1e40af;margin-bottom:18px;line-height:1.5}' +
+        '\x3c/style\x3e\x3c/head\x3e\x3cbody\x3e' +
+        '\x3cheader\x3e\x3cdiv\x3e\x3ch1\x3e&#128161; Sugest&#245;es de Corre&#231;&#227;o de TCOs\x3c/h1\x3e' +
+        '\x3cp\x3eSistema IRIS &#8212; 10&#186; BPM / Se&#231;&#227;o P3 &#8212; ' + total + ' senten&#231;a(s) analisada(s)\x3c/p\x3e\x3c/div\x3e' +
+        '\x3cbutton class="bct" onclick="copiarTudo()"\x3e&#128203; Copiar Todas as Sugest&#245;es\x3c/button\x3e\x3c/header\x3e' +
+        '\x3cmain\x3e' +
+        '\x3cdiv class="kg"\x3e' +
+          '\x3cdiv class="kc"\x3e\x3cdiv class="kn"\x3e' + sugestoes.length + '\x3c/div\x3e\x3cdiv class="kl"\x3eSugest&#245;es\x3c/div\x3e\x3c/div\x3e' +
+          '\x3cdiv class="kc"\x3e\x3cdiv class="kn"\x3e' + em.length + '\x3c/div\x3e\x3cdiv class="kl"\x3eFalhas Materiais\x3c/div\x3e\x3c/div\x3e' +
+          '\x3cdiv class="kc"\x3e\x3cdiv class="kn"\x3e' + ef.length + '\x3c/div\x3e\x3cdiv class="kl"\x3eFalhas Formais\x3c/div\x3e\x3c/div\x3e' +
+          '\x3cdiv class="kc"\x3e\x3cdiv class="kn"\x3e' + total + '\x3c/div\x3e\x3cdiv class="kl"\x3eTotal Senten&#231;as\x3c/div\x3e\x3c/div\x3e' +
+        '\x3c/div\x3e' +
+        '\x3cdiv class="av"\x3e&#8505;&#65039; Sugest&#245;es baseadas nos padr&#245;es de arquivamento identificados nas senten&#231;as analisadas. ' +
+        'Cada sugest&#227;o indica a&#231;&#245;es pr&#225;ticas para melhorar a qualidade dos TCOs lavrados.\x3c/div\x3e' +
+        cardsHTML +
+        '\x3c/main\x3e' +
+        scriptDinamico +
+        '\x3c/body\x3e\x3c/html\x3e';
+    }
+
     function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
   </script>
 </body>
