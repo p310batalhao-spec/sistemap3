@@ -1,137 +1,216 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema P3 - Análise Qualitativa de TCOs</title>
+  <title>Sistema P3 — Análise Qualitativa de TCOs</title>
+  <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/qualitativo_tco.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
-
 <body>
 
-  <header>
-    <div class="hi">&#9878;</div>
-    <div>
-      <div class="ht">Sistema P3</div>
-      <div class="hs">Análise Qualitativa de Sentenças e Decisões de TCO — 10º BPM · Seção P3</div>
+<!-- ══ HEADER — idêntico ao index.html ══════════════════════ -->
+<header>
+  <div class="header-info-left">
+    <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+    <div class="cabecalhotexto">
+      <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+      <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
     </div>
-    <span class="hv">v3.1</span>
-  </header>
-
-  <nav>
-    <button class="ativo" onclick="trocarAba('importar',this)">&#128229; Importar do Gem</button>
-    <button onclick="trocarAba('relatorio',this)">&#128202; Relatório</button>
-    <button onclick="trocarAba('registros',this)">&#128203; Registros</button>
-  </nav>
-
-  <main>
-
-    <section id="aba-importar" class="aba ativa">
-      <div class="ah">
-        <div>
-          <div class="at">Importar Sentenças / Decisões de TCO</div>
-          <div class="as">Cole o JSON gerado pelo Gem IRIS e salve no Google Sheets</div>
+  </div>
+  <div class="header-info-right">
+    <div class="relogio" id="relogio"></div>
+    <div class="user-notification">
+      <div class="exibirusuario" id="user-info"></div>
+      <div class="notification-container">
+        <span class="material-icons" id="bell-icon">notifications</span>
+        <span class="badge" id="notif-count" style="display:none;">0</span>
+        <div class="notif-dropdown" id="notif-dropdown">
+          <div class="notif-header">Notificações</div>
+          <div id="notif-items"><p class="empty-msg">Nenhuma notificação nova</p></div>
         </div>
       </div>
-      <div class="br">
-        <a class="gl" href="https://gemini.google.com/gem/1bgkHDj4HqqAO3cY6I5RgoX6-cv7m0z1b?usp=sharing" target="_blank"
-          rel="noopener">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10" />
-            <line x1="2" y1="12" x2="22" y2="12" />
-            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-          </svg>
-          Abrir Gem IRIS no Gemini
-        </a>
-        <a class="gl" href="../page/tco.html" target="_blank" rel="noopener">
-          Voltar à Página de TCO
-        </a>
+    </div>
+  </div>
+</header>
+
+<!-- ══ LAYOUT PRINCIPAL ══════════════════════════════════════ -->
+<div class="pagecomplete">
+
+  <!-- NAV lateral — idêntica ao index.html -->
+  <nav class="navegacao">
+    <a href="../index.html">
+      <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home">
+      <p>Home</p>
+    </a>
+    <a href="dashboard-p3.html">
+      <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard">
+      <p>Dashboard</p>
+    </a>
+    <a href="cadastroocorrencias.html">
+      <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências">
+      <p>Cadastro de Ocorrências</p>
+    </a>
+    <a href="materiais.html">
+      <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais">
+      <p>Materiais Apreendidos</p>
+    </a>
+    <a href="eventos.html">
+      <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos">
+      <p>Eventos</p>
+    </a>
+    <a href="instrucoes.html">
+      <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução">
+      <p>Instrução</p>
+    </a>
+    <a href="solucoesia.html">
+      <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA">
+      <p>Soluções IA</p>
+    </a>
+    <a href="qualitativo_tco.html" class="active">
+      <img width="48" height="48" src="https://img.icons8.com/ios/50/document--v1.png" alt="ÍRIS">
+      <p>ÍRIS — TCO</p>
+    </a>
+    <button id="btn-logout" class="btn-logout">
+      <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair">
+      <p>Sair</p>
+    </button>
+  </nav>
+
+  <!-- Conteúdo principal -->
+  <div class="conteudo-principal">
+
+    <!-- ══ NAV DE ABAS ════════════════════════════════════════ -->
+    <div class="nav-abas">
+      <button class="ativo" onclick="trocarAba('importar',this)">&#128229; Importar do Gem</button>
+      <button onclick="trocarAba('relatorio',this)">&#128202; Relatório</button>
+      <button onclick="trocarAba('registros',this)">&#128203; Registros</button>
+    </div>
+
+    <!-- ══ ABA: IMPORTAR ══════════════════════════════════════ -->
+    <section id="aba-importar" class="aba ativa">
+
+      <div class="secao-topo">
+        <div>
+          <h2>Importar Sentenças / Decisões</h2>
+          <p>Cole o JSON gerado pelo Gem IRIS e salve no Google Sheets</p>
+        </div>
       </div>
+
+      <a class="gem-link"
+         href="https://gemini.google.com/gem/1bgkHDj4HqqAO3cY6I5RgoX6-cv7m0z1b?usp=sharing"
+         target="_blank" rel="noopener">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </svg>
+        Abrir Gem IRIS no Gemini
+      </a>
 
       <div class="steps">
         <div class="step">
-          <div class="sn">Passo 1 — Gem</div>
-          <div class="st">Abra o Gem IRIS, envie os PDFs de sentenças ou decisões e copie o JSON retornado.</div>
+          <div class="step-num">Passo 1 — Gem</div>
+          <div class="step-txt">Abra o Gem IRIS, envie os PDFs de sentenças ou decisões e copie o JSON retornado.</div>
         </div>
         <div class="step">
-          <div class="sn">Passo 2 — Cole aqui</div>
-          <div class="st">Cole o JSON no campo abaixo e clique em Validar.</div>
+          <div class="step-num">Passo 2 — Cole aqui</div>
+          <div class="step-txt">Cole o JSON no campo abaixo e clique em Validar.</div>
         </div>
         <div class="step">
-          <div class="sn">Passo 3 — Salvar</div>
-          <div class="st">Confirme os dados e clique em Salvar no Google Sheets.</div>
+          <div class="step-num">Passo 3 — Salvar</div>
+          <div class="step-txt">Confirme os dados e clique em Salvar no Google Sheets.</div>
         </div>
       </div>
+
       <div class="card">
-        <div class="ct">&#128203; JSON retornado pelo Gem IRIS</div>
-        <p style="font-size:13px;color:var(--txt2);margin-bottom:12px;">Cole o JSON abaixo. Aceita sentenças <em>e</em>
-          decisões interlocutórias de arquivamento.</p>
+        <div class="card-titulo">&#128203; JSON retornado pelo Gem IRIS</div>
+        <p style="font-size:13px;color:#667;margin-bottom:12px;">
+          Cole o JSON abaixo. Aceita sentenças <em>e</em> decisões interlocutórias de arquivamento.
+        </p>
         <textarea id="json-input" oninput="onJsonChange()"
           placeholder='[ { "nomeArquivo": "proc.pdf", "tipoDocumento": "Sentença", "resultado": "Arquivado", ... } ]'></textarea>
+
         <div id="preview-area" style="margin-top:14px;"></div>
-        <div class="pw" id="pw">
-          <div class="ph"><span id="pl">Salvando...</span><span id="pp">0%</span></div>
-          <div class="pt">
-            <div class="pf" id="pf"></div>
+
+        <div class="prog-wrap" id="pw">
+          <div class="prog-head">
+            <span id="pl">Salvando...</span>
+            <span id="pp">0%</span>
           </div>
+          <div class="prog-track"><div class="prog-fill" id="pf"></div></div>
         </div>
-        <div class="br">
-          <button class="btn bp" id="btn-validar" onclick="validarJSON()" disabled>&#10003; Validar JSON</button>
-          <button class="btn bv" id="btn-salvar" onclick="salvarTodos()" style="display:none;">&#128190; Salvar no
-            Google Sheets</button>
-          <button class="btn bs" onclick="limpar()">&#10005; Limpar</button>
-          <span id="contador" style="font-size:12px;color:var(--txt2);"></span>
+
+        <div class="btn-row">
+          <button class="btn-acao btn-primario" id="btn-validar" onclick="validarJSON()" disabled>&#10003; Validar JSON</button>
+          <button class="btn-acao btn-verde" id="btn-salvar" onclick="salvarTodos()" style="display:none;">&#128190; Salvar no Google Sheets</button>
+          <button class="btn-acao btn-secundario" onclick="limpar()">&#10005; Limpar</button>
+          <span id="contador" style="font-size:12px;color:#667;"></span>
         </div>
+
         <div id="log-resultados"></div>
       </div>
-      <div class="al ai" style="margin-top:4px;"><strong>Dica:</strong> O Gem IRIS aceita sentenças e decisões de
-        arquivamento. Cole o JSON, valide e salve — os dados vão para o Google Sheets.</div>
+
+      <div class="alerta alerta-info" style="margin-top:4px;">
+        <strong>Dica:</strong> O Gem IRIS aceita sentenças e decisões de arquivamento.
+        Cole o JSON, valide e salve — os dados vão para o Google Sheets via GAS.
+      </div>
+
     </section>
 
+    <!-- ══ ABA: RELATÓRIO ═════════════════════════════════════ -->
     <section id="aba-relatorio" class="aba">
-      <div class="ah">
+      <div class="secao-topo">
         <div>
-          <div class="at">Relatório Consolidado</div>
-          <div class="as">Análise qualitativa das sentenças e decisões de TCO</div>
+          <h2>Relatório Consolidado</h2>
+          <p>Análise qualitativa das sentenças e decisões de TCO</p>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn bs" onclick="carregarRelatorio()">&#8635; Atualizar</button>
-          <button class="btn bp" id="btn-sugestoes" onclick="abrirSugestoes()" style="display:none;">
-            &#128161; Sugest&#245;es de Corre&#231;&#227;o
+          <button class="btn-acao btn-secundario" onclick="carregarRelatorio()">&#8635; Atualizar</button>
+          <button class="btn-acao btn-primario" id="btn-sugestoes" onclick="abrirSugestoes()" style="display:none;">
+            &#128161; Sugestões de Correção
           </button>
         </div>
       </div>
       <div id="conteudo-relatorio">
-        <div class="vz">
-          <div class="vi">&#128202;</div>
-          <div class="vt">Clique em "Atualizar" para carregar os dados</div>
-          <div class="vs">Os dados serão carregados do Google Sheets via GAS</div>
-        </div>
+        <div class="vz"><div class="vi">&#128202;</div><div class="vt">Clique em "Atualizar" para carregar os dados</div><div class="vs">Os dados serão carregados do Google Sheets via GAS</div></div>
       </div>
+
+      <!-- ── Aceitabilidade & Guarnição (carregado junto com relatório) ── -->
+      <div id="conteudo-aceitabilidade" style="margin-top:0;"></div>
     </section>
 
+    <!-- ══ ABA: REGISTROS ═════════════════════════════════════ -->
     <section id="aba-registros" class="aba">
-      <div class="ah">
+      <div class="secao-topo">
         <div>
-          <div class="at">Registros</div>
-          <div class="as">Listagem completa das sentenças e decisões</div>
+          <h2>Registros</h2>
+          <p>Listagem completa das sentenças e decisões</p>
         </div>
-        <button class="btn bs" onclick="carregarRegistros()">&#8635; Atualizar</button>
+        <button class="btn-acao btn-secundario" onclick="carregarRegistros()">&#8635; Atualizar</button>
       </div>
       <div class="card">
         <div id="conteudo-registros">
-          <div class="vz">
-            <div class="vi">&#128203;</div>
-            <div class="vt">Clique em "Atualizar" para carregar</div>
-          </div>
+          <div class="vz"><div class="vi">&#128203;</div><div class="vt">Clique em "Atualizar" para carregar</div></div>
         </div>
       </div>
     </section>
 
-  </main>
-  <script>
+  </div><!-- /conteudo-principal -->
+</div><!-- /pagecomplete -->
+
+<!-- ══ FOOTER — idêntico ao index.html ═════════════════════════ -->
+<footer>
+  <div>
+    <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+  </div>
+</footer>
+
+<script>
+
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec';
+    var TCO_URL = 'https://script.google.com/macros/s/AKfycbzgewj7KjnTtWrnmnE7dcrz99CCpW1G3xw4Zft59dyIPL91avy1fqdVvgL1mRcIYhLP/exec';
+    var FB_GUARNICAO = 'https://sistema-p3-default-rtdb.firebaseio.com/guarnicao.json';
     var _dadosVal = null;
 
     function trocarAba(n, b) {
@@ -163,11 +242,14 @@
       _dadosVal = d;
       var h = '<div style="font-size:12px;color:var(--verde);font-weight:700;margin-bottom:10px;">&#10003; ' + d.length + ' documento(s) validado(s). Confira e salve.</div><div class="pg">';
       d.forEach(function (item) {
-        var tp = item.tipoDocumento || 'Sentença';
+        var tp  = item.tipoDocumento || 'Sentença';
+        var cat = item.categoriaAceitabilidade || '';
         h += '<div class="pc"><div class="pp">' + esc(item.numeroProcesso || item.nomeArquivo || 'Sem número') + '</div>' +
           '<div class="pi">' + esc(item.comarca || '—') + ' · ' + esc(item.dataSentenca || String(item.ano || '—')) + '<br>' + esc(item.indiciado || '—') + '<br>' +
           '<span style="font-size:10px;background:#e0e7f0;color:#1a3d5d;padding:1px 7px;border-radius:10px;font-weight:700;">' + esc(tp) + '</span> ' +
-          '<span class="badge ' + bc(item.resultado || '') + '">' + esc(item.resultado || '—') + '</span></div></div>';
+          '<span class="badge ' + bc(cat || item.resultado || '') + '">' + esc(cat || item.resultado || '—') + '</span>' +
+          (item.tipoDecisao ? '<br><span style="font-size:10px;color:#667;font-style:italic;">' + esc(item.tipoDecisao) + '</span>' : '') +
+          '</div></div>';
       });
       h += '</div>';
       document.getElementById('preview-area').innerHTML = h;
@@ -254,6 +336,9 @@
         mostrarBtnSugestoes(d);
         el.innerHTML = renderRel(d);
         setTimeout(ativarToggle, 0);
+        // Renderiza aceitabilidade com os dados já carregados do GAS qualitativo
+        window._DADOS_RELATORIO_ACEIT = d;
+        carregarAceitabilidade();
       } catch (e) {
         el.innerHTML = '<div class="al ae">Erro ao carregar: ' + esc(e.message) + '</div>';
       }
@@ -440,6 +525,7 @@
             '<td>' + esc(p.comarca || '—') + '</td></tr>';
         });
         t += '</table>'; det.innerHTML = t;
+        enriquecerTabelaGuarnicao(det, procs);
       };
       container.addEventListener('click', container._th);
     }
@@ -526,7 +612,22 @@
       if (Array.isArray(o)) return o.reduce(function (a, e) { return a + (e.qtd || e || 0); }, 0);
       return Object.values(o).reduce(function (a, b) { return a + (b || 0); }, 0);
     }
-    function bc(res) { if (!res) return 'bo'; var r = res.toLowerCase(); if (r.includes('arquiv')) return 'ba'; if (r.includes('condena')) return 'bc'; if (r.includes('extinca') || r.includes('punib')) return 'be'; if (r.includes('transa') || r.includes('anpp')) return 'bt'; if (r.includes('decisao') || r.includes('decisão') || r.includes('medida')) return 'bd'; return 'bo'; }
+    function bc(res) {
+      if (!res) return 'bo';
+      var r = _semAcento(res.toLowerCase());
+      if (r.includes('plena') || r.includes('transac') || r.includes('anpp') ||
+          r.includes('composicao') || r.includes('suspensao'))     return 'bt';
+      if (r.includes('processual') || r.includes('condena') ||
+          r.includes('absolutor'))                                  return 'bc';
+      if (r.includes('nao aceitac') || r.includes('rejeicao') ||
+          r.includes('arquivamento') || r.includes('arquiv') ||
+          r.includes('atipicidade') || r.includes('justa causa'))   return 'ba';
+      if (r.includes('extincao') || r.includes('decadencia') ||
+          r.includes('prescricao') || r.includes('externo'))        return 'be';
+      if (r.includes('neutro') || r.includes('declina') ||
+          r.includes('competencia'))                                 return 'bd';
+      return 'bo';
+    }
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     // ══════════════════════════════════════════════════════════════
     // SUGESTÕES DE CORREÇÃO
@@ -668,15 +769,19 @@ function gerarHTMLSugestoes(d) {
       });
 
       var cardsHTML = '';
-      sugestoes.forEach(function(s, i) {
-        var txCop = s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s))\n' +
-                    'FALHA: ' + s.falha + '\n' +
-                    (s.tip ? 'TIPIFICACAO: ' + s.tip + '\n' : '') +
-                    'SUGESTAO: ' + s.sug;
-        
-        // Codificamos o texto em Base64 para evitar QUALQUER caractere especial, aspas ou quebras de linha no HTML do atributo
+      sugestoes.forEach(function(s, idx) {
+        var txCop = '====================================================================\n' +
+                    '*P3-DICAS: Sistema de Análise Qualitativa de Sentenças de TCO*\n\n' +
+                    'TIPO DE ARQUIVAMENTO: ' + s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s) encontrado(s) para essa tipificação)\n\n' +
+                    '❌ FALHA: ' + s.falha + '\n\n' +
+                    (s.tip ? '⚖️ TIPIFICAÇÃO: ' + s.tip + '\n\n' : '') +
+                    '✔️ SUGESTÃO: ' + s.sug + '\n\n' +
+                    'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
+                    '====================================================================\n';
+
+        // Codifica em Base64 para evitar caracteres especiais no atributo HTML
         var txE = btoa(unescape(encodeURIComponent(txCop)));
-        
+
         cardsHTML += '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:20px 24px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08);">' +
           '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;">' +
             '<div>' +
@@ -718,7 +823,7 @@ function gerarHTMLSugestoes(d) {
 
       return '\x3c!DOCTYPE html\x3e\x3chtml lang="pt-BR"\x3e\x3chead\x3e' +
         '\x3cmeta charset="UTF-8"\x3e\x3cmeta name="viewport" content="width=device-width,initial-scale=1"\x3e' +
-        '\x3ctitle\x3eSugest&#245;es de Corre&#231;&#227;o &#8212; IRIS P3\x3c/title\x3e' +
+        '\x3ctitle\x3eSugest&#245;es de Corre&#231;&#227;o &#8212; Sistema P3\x3c/title\x3e' +
         '\x3cstyle\x3e*{box-sizing:border-box;margin:0;padding:0}' +
         'body{font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;min-height:100vh}' +
         'header{background:linear-gradient(135deg,#1a3d5d,#1e5799);color:#fff;padding:16px 28px;' +
@@ -735,7 +840,7 @@ function gerarHTMLSugestoes(d) {
         '.av{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;font-size:13px;color:#1e40af;margin-bottom:18px;line-height:1.5}' +
         '\x3c/style\x3e\x3c/head\x3e\x3cbody\x3e' +
         '\x3cheader\x3e\x3cdiv\x3e\x3ch1\x3e&#128161; Sugest&#245;es de Corre&#231;&#227;o de TCOs\x3c/h1\x3e' +
-        '\x3cp\x3eSistema IRIS &#8212; 10&#186; BPM / Se&#231;&#227;o P3 &#8212; ' + total + ' senten&#231;a(s) analisada(s)\x3c/p\x3e\x3c/div\x3e' +
+        '\x3cp\x3eSistema P3 &#8212; 10&#186; BPM / Se&#231;&#227;o P3 &#8212; ' + total + ' senten&#231;a(s) analisada(s)\x3c/p\x3e\x3c/div\x3e' +
         '\x3cbutton class="bct" onclick="copiarTudo()"\x3e&#128203; Copiar Todas as Sugest&#245;es\x3c/button\x3e\x3c/header\x3e' +
         '\x3cmain\x3e' +
         '\x3cdiv class="kg"\x3e' +
@@ -752,8 +857,553 @@ function gerarHTMLSugestoes(d) {
         '\x3c/body\x3e\x3c/html\x3e';
     }
 
-    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  </script>
-</body>
 
+    // ════════════════════════════════════════════════════════════════
+    // ACEITABILIDADE & GUARNIÇÃO
+    // ════════════════════════════════════════════════════════════════
+
+    // Cache global
+    window._TCO_DADOS     = null;  // array de TCOs do GAS
+    window._GUAR_DADOS    = null;  // objeto {boletim: [integrantes]} do Firebase
+
+    async function carregarAceitabilidade() {
+      var el = document.getElementById('conteudo-aceitabilidade');
+      if (!el) return;
+
+      var d = window._DADOS_RELATORIO_ACEIT;
+      if (!d || !d.porMotivo) {
+        el.innerHTML = '<div class="alerta alerta-info">Carregue o relatório primeiro.</div>';
+        return;
+      }
+
+      el.innerHTML = '<div class="vz"><div class="vi">&#9203;</div><div class="vt">Calculando aceitabilidade...</div></div>';
+
+      var guarPorBoletim = {};
+      var tcos = [];
+
+      // Guarnição (Firebase) e TCOs em paralelo — erros são silenciosos
+      try {
+        var [resFB, resTCO] = await Promise.all([
+          fetch(FB_GUARNICAO, { redirect:'follow' }),
+          fetch(TCO_URL + '?action=getTCO', { redirect:'follow' })
+        ]);
+        var fbGuar  = await resFB.json();
+        var tcoJson = await resTCO.json();
+
+        if (fbGuar && typeof fbGuar === 'object') {
+          Object.entries(fbGuar).forEach(function(e) {
+            var arr = Array.isArray(e[1]) ? e[1] : Object.values(e[1] || {});
+            guarPorBoletim[e[0]] = arr.filter(Boolean);
+          });
+        }
+        if (Array.isArray(tcoJson)) tcos = tcoJson;
+        window._GUAR_DADOS = guarPorBoletim;
+        window._TCO_DADOS  = tcos;
+      } catch(e) { console.warn('Guarnição/TCO:', e.message); }
+
+      el.innerHTML = renderAceitabilidade(d, guarPorBoletim, tcos);
+    }
+
+    // ── Renderiza toda a aba de Aceitabilidade ─────────────────────
+    function renderAceitabilidade(d, guarPorBoletim, tcos) {
+      var mot   = d.porMotivo || {};
+      var anoObj= d.porAno    || {};
+
+      // ── REGRAS DE NEGÓCIO ────────────────────────────────────────
+      // Aceitável   = Transação Penal Cumprida OU ANPP Cumprido
+      // Com Falha   = qualquer outro arquivamento (atipicidade, falta de justa causa, etc.)
+      // Taxa        = Aceitáveis / Total de sentenças analisadas × 100
+
+      var totalSent  = d.total || 0;
+      var totalAceit = buscarMotivo(mot, 'transac') + buscarMotivo(mot, 'anpp');
+      var totalFalha = somaObj(mot) - totalAceit;
+      var taxa       = totalSent > 0 ? Math.round(totalAceit / totalSent * 100) : 0;
+
+      var corTaxa = taxa >= 70 ? '#166534' : taxa >= 50 ? '#b45309' : '#991b1b';
+      var h = '';
+
+      // ══ KPIs ═════════════════════════════════════════════════════
+      h += '<div class="kg" style="margin-bottom:1.5rem;">';
+      h += mkK('&#128203;', totalSent,        'Total de Sentenças');
+      h += mkK('&#10003;',  totalAceit,       'Aceitáveis');
+      h += mkK('&#10005;',  totalFalha,       'Com Falha');
+      h += mkK('&#128200;', taxa + '%',       'Taxa de Aceitabilidade');
+      h += '</div>';
+
+      // ══ BARRA GERAL DE ACEITABILIDADE ═══════════════════════════
+      h += '<div class="card" style="margin-bottom:1.25rem;">';
+      h += '<div class="card-titulo">&#128200; Visão Geral da Aceitabilidade</div>';
+
+      // Barra bicolor: verde (aceitáveis) + vermelho (falhas)
+      var pAceit = totalSent > 0 ? Math.round(totalAceit/totalSent*100) : 0;
+      var pFalha = totalSent > 0 ? Math.round(totalFalha/totalSent*100) : 0;
+
+      h += '<div style="margin-bottom:14px;">';
+      h += '<div style="display:flex;justify-content:space-between;font-size:12px;color:#667;margin-bottom:5px;">';
+      h += '<span><b style="color:#166534;">✓ Aceitáveis</b>: ' + totalAceit + ' (' + pAceit + '%)</span>';
+      h += '<span><b style="color:#991b1b;">✗ Com Falha</b>: ' + totalFalha + ' (' + pFalha + '%)</span>';
+      h += '</div>';
+      h += '<div style="height:22px;border-radius:6px;overflow:hidden;display:flex;box-shadow:inset 0 1px 3px rgba(0,0,0,.1);">';
+      h += '<div style="width:' + pAceit + '%;background:linear-gradient(90deg,#166534,#1a8a46);' +
+           'display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;' +
+           'transition:width .8s;min-width:' + (pAceit>0?'32px':'0') + ';">' + (pAceit>5?pAceit+'%':'') + '</div>';
+      h += '<div style="width:' + pFalha + '%;background:linear-gradient(90deg,#991b1b,#c0392b);' +
+           'display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;' +
+           'transition:width .8s;min-width:' + (pFalha>0?'32px':'0') + ';">' + (pFalha>5?pFalha+'%':'') + '</div>';
+      h += '</div></div>';
+
+      // Legenda de critério
+      h += '<div style="background:#f7f9fc;border-radius:6px;padding:10px 14px;font-size:12px;' +
+           'color:#506070;line-height:1.7;border-left:3px solid #0a448f;">' +
+           '<strong style="color:#0a448f;">Critério de Aceitabilidade:</strong><br>' +
+           '<span style="color:#166534;">&#10003; <b>Aceitável</b></span> — arquivado por ' +
+           '<em>Transação Penal Cumprida</em> ou <em>ANPP Cumprido</em>: ' +
+           'TCO cumpriu seu papel de justiça consensual.<br>' +
+           '<span style="color:#991b1b;">&#10005; <b>Com Falha</b></span> — arquivado por qualquer outro motivo: ' +
+           'indica erro de instrução, tipificação equivocada ou falta de provas na lavratura.' +
+           '</div></div>';
+
+      // ══ ACEITABILIDADE POR ANO ══════════════════════════════════
+      var porMotivoAno = d.porMotivoAno || {};
+      var anosDisp = Object.keys(porMotivoAno)
+        .filter(function(a){ return /^\d{4}$/.test(a); })
+        .map(Number).sort();
+
+      if (anosDisp.length) {
+        h += '<div class="card" style="margin-bottom:1.25rem;">';
+        h += '<div class="card-titulo">&#128200; Aceitabilidade por Ano</div>';
+
+        anosDisp.forEach(function(ano) {
+          var motAno  = porMotivoAno[ano] || {};
+          var textos  = (porMotivoAno[ano] && porMotivoAno[ano]['_textos']) || {};
+
+          // Soma aceitáveis e falhas do ano
+          var acAno = 0, faAno = 0;
+          Object.entries(motAno).forEach(function(e) {
+            if (e[0] === '_textos') return;
+            var norm = _semAcento(String(textos[e[0]] || e[0]).toLowerCase());
+            var isAc = norm.includes('transac') || norm.includes('anpp');
+            if (isAc) acAno += e[1];
+            else      faAno += e[1];
+          });
+
+          var totalAno  = acAno + faAno;
+          var taxaAno   = totalAno > 0 ? Math.round(acAno / totalAno * 100) : 0;
+          var pAcAno    = totalAno > 0 ? Math.round(acAno / totalAno * 100) : 0;
+          var pFaAno    = 100 - pAcAno;
+          var corTaxaAno= taxaAno >= 70 ? '#166534' : taxaAno >= 50 ? '#b45309' : '#991b1b';
+
+          h += '<div style="margin-bottom:18px;">';
+          // Cabeçalho do ano
+          h += '<div style="display:flex;align-items:center;justify-content:space-between;' +
+               'margin-bottom:6px;">';
+          h += '<span style="font-size:14px;font-weight:700;color:#0a448f;">' + ano + '</span>';
+          h += '<div style="display:flex;gap:16px;font-size:12px;">';
+          h += '<span style="color:#166534;font-weight:600;">&#10003; Aceitáveis: ' + acAno + '</span>';
+          h += '<span style="color:#991b1b;font-weight:600;">&#10005; Com Falha: ' + faAno + '</span>';
+          h += '<span style="font-weight:800;color:' + corTaxaAno + ';">' + taxaAno + '%</span>';
+          h += '</div></div>';
+          // Barra bicolor
+          h += '<div style="height:20px;border-radius:6px;overflow:hidden;display:flex;' +
+               'box-shadow:inset 0 1px 3px rgba(0,0,0,.1);">';
+          if (pAcAno > 0) {
+            h += '<div style="width:' + pAcAno + '%;background:linear-gradient(90deg,#166534,#1a8a46);' +
+                 'display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">' +
+                 (pAcAno > 8 ? pAcAno + '%' : '') + '</div>';
+          }
+          if (pFaAno > 0) {
+            h += '<div style="width:' + pFaAno + '%;background:linear-gradient(90deg,#991b1b,#c0392b);' +
+                 'display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:700;">' +
+                 (pFaAno > 8 ? pFaAno + '%' : '') + '</div>';
+          }
+          h += '</div>';
+
+          // Motivos detalhados do ano (lista compacta)
+          var motDetalhes = Object.entries(motAno)
+            .filter(function(e){ return e[0] !== '_textos'; })
+            .sort(function(a,b){ return b[1]-a[1]; });
+
+          if (motDetalhes.length) {
+            h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">';
+            motDetalhes.forEach(function(e) {
+              var txtExib = textos[e[0]] || e[0];
+              var norm    = _semAcento(String(txtExib).toLowerCase());
+              var isAc    = norm.includes('transac') || norm.includes('anpp');
+              var cor     = isAc ? '#166534' : '#991b1b';
+              var bgTag   = isAc ? '#d4edda' : '#fde8e8';
+              h += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;' +
+                   'background:' + bgTag + ';color:' + cor + ';border-radius:20px;font-size:11px;' +
+                   'font-weight:600;">' +
+                   (isAc ? '&#10003; ' : '&#10005; ') + esc(txtExib) +
+                   ' <b>(' + e[1] + ')</b></span>';
+            });
+            h += '</div>';
+          }
+          h += '</div>';
+
+          // Linha separadora entre anos (exceto o último)
+          if (ano !== anosDisp[anosDisp.length-1]) {
+            h += '<hr style="border:none;border-top:1px solid #e0e7f0;margin:4px 0 18px;">';
+          }
+        });
+
+        h += '</div>';
+      }
+
+      // ══ PAINEL DE CATEGORIAS DE ACEITABILIDADE ═══════════════
+      var catDados = d.porCategoria || {};
+      var catEntries = Object.values(catDados).sort(function(a,b){ return b.qtd - a.qtd; });
+
+      if (catEntries.length) {
+        // Mapa de grupo → visual
+        var GRUPO_VISUAL = {
+          'aceitavel':  { cor:'#166534', bg:'#d4edda', icon:'&#10003;', label:'Aceitação Plena / Resolutiva',    desc:'TCO cumpriu seu papel. Conflito resolvido consensualmente.' },
+          'processual': { cor:'#1d4ed8', bg:'#dbeafe', icon:'&#9654;',  label:'Aceitação Processual',            desc:'TCO aceito como peça válida, gerou processo com instrução completa.' },
+          'falha':      { cor:'#991b1b', bg:'#fde8e8', icon:'&#10005;', label:'Não Aceitação (Rejeição)',         desc:'TCO com falhas de origem: tipificação errada ou prova insuficiente.' },
+          'externo':    { cor:'#5b21b6', bg:'#ede9fe', icon:'&#9203;',  label:'Extinção por Fatores Alheios',    desc:'TCO viável, mas perdeu validade por decurso de tempo ou desinteresse da vítima.' },
+          'neutro':     { cor:'#92400e', bg:'#fef3c7', icon:'&#8594;',  label:'Neutro / Declinação',             desc:'Fato real, mas TCO enviado ao juízo errado ou crime mais grave revelado.' },
+          'outros':     { cor:'#374151', bg:'#f3f4f6', icon:'&#9679;',  label:'Outros',                          desc:'Categoria não mapeada.' },
+        };
+
+        h += '<div class="card" style="margin-bottom:1.25rem;">';
+        h += '<div class="card-titulo">&#127937; Categorias de Aceitabilidade</div>';
+
+        // Cards por grupo
+        var grupos = {};
+        catEntries.forEach(function(c) { grupos[c.grupo] = (grupos[c.grupo]||0) + c.qtd; });
+        var totalCat = Object.values(grupos).reduce(function(a,b){return a+b;},0);
+
+        h += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:16px;">';
+        Object.entries(grupos).forEach(function(e) {
+          var grp = e[0], qtd = e[1];
+          var vis = GRUPO_VISUAL[grp] || GRUPO_VISUAL['outros'];
+          var pct = totalCat > 0 ? Math.round(qtd/totalCat*100) : 0;
+          h += '<div style="background:' + vis.bg + ';border:1px solid ' + vis.cor + '33;border-radius:10px;padding:14px 16px;">';
+          h += '<div style="font-size:18px;margin-bottom:4px;">' + vis.icon + '</div>';
+          h += '<div style="font-size:22px;font-weight:800;color:' + vis.cor + ';">' + qtd + '</div>';
+          h += '<div style="font-size:10px;font-weight:700;color:' + vis.cor + ';text-transform:uppercase;letter-spacing:.06em;margin:3px 0;">' + vis.label + '</div>';
+          h += '<div style="font-size:11px;color:#667;">' + pct + '% do total</div>';
+          h += '</div>';
+        });
+        h += '</div>';
+
+        // Tabela detalhada com cada tipo de decisão
+        h += '<div style="overflow-x:auto;">';
+        h += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
+        h += '<thead><tr>';
+        ['Categoria / Tipo de Decisão', 'Qtd', 'Grupo', 'O que indica'].forEach(function(c) {
+          h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+               'padding:8px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">' + c + '</th>';
+        });
+        h += '</tr></thead><tbody>';
+
+        catEntries.forEach(function(c, i) {
+          var vis = GRUPO_VISUAL[c.grupo] || GRUPO_VISUAL['outros'];
+          var bg  = i%2===0 ? '#fff' : '#f7f9fc';
+          h += '<tr style="background:' + bg + ';">';
+          h += '<td style="padding:8px 14px;font-weight:600;color:#1c2b3a;">' + esc(c.texto) + '</td>';
+          h += '<td style="padding:8px 14px;text-align:center;font-weight:700;font-size:15px;color:' + vis.cor + ';">' + c.qtd + '</td>';
+          h += '<td style="padding:8px 14px;">' +
+               '<span style="display:inline-block;padding:2px 10px;background:' + vis.bg + ';color:' + vis.cor + ';' +
+               'border-radius:20px;font-size:11px;font-weight:700;">' + vis.icon + ' ' + vis.label + '</span></td>';
+          h += '<td style="padding:8px 14px;font-size:11px;color:#506070;font-style:italic;">' + vis.desc + '</td>';
+          h += '</tr>';
+        });
+        h += '</tbody></table></div></div>';
+      }
+
+      // ══ TABELA DE MOTIVOS COM CLASSIFICAÇÃO ═════════════════════
+      h += '<div class="card" style="margin-bottom:1.25rem;">';
+      h += '<div class="card-titulo">&#128203; Detalhamento por Motivo de Arquivamento</div>';
+
+      var motEntries = Object.entries(mot).sort(function(a,b){ return b[1]-a[1]; });
+      var totalArq   = somaObj(mot);
+      var maxQt      = motEntries.length ? motEntries[0][1] : 1;
+
+      if (!motEntries.length) {
+        h += '<div class="vz" style="padding:20px;"><div class="vt">Nenhum motivo registrado.</div></div>';
+      } else {
+        h += '<div style="overflow-x:auto;">';
+        h += '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
+        h += '<thead><tr>';
+        var ths = ['Motivo de Arquivamento','Qtd','% do Total','Classificação','Volume'];
+        ths.forEach(function(c){
+          h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+               'padding:9px 14px;text-align:left;font-size:11px;font-weight:700;' +
+               'text-transform:uppercase;letter-spacing:.06em;">' + c + '</th>';
+        });
+        h += '</tr></thead><tbody>';
+
+        motEntries.forEach(function(entry, i) {
+          var motivo  = entry[0];
+          var qtd     = entry[1];
+          var norm    = _semAcento(motivo.toLowerCase());
+          var isAceit = norm.includes('transac') || norm.includes('anpp');
+          var pctArq  = totalArq > 0 ? (qtd/totalArq*100).toFixed(1) : '0';
+          var barPct  = Math.round(qtd/maxQt*100);
+          var cor     = isAceit ? '#166534' : '#991b1b';
+          var bgBadge = isAceit ? '#d4edda' : '#fde8e8';
+          var label   = isAceit ? '&#10003; Aceitável' : '&#10005; Com Falha';
+          var bg      = i % 2 === 0 ? '#fff' : '#f7f9fc';
+
+          h += '<tr style="background:' + bg + ';">';
+          h += '<td style="padding:9px 14px;font-weight:600;color:#1c2b3a;">' + esc(motivo) + '</td>';
+          h += '<td style="padding:9px 14px;text-align:center;font-weight:700;font-size:16px;color:' + cor + ';">' + qtd + '</td>';
+          h += '<td style="padding:9px 14px;text-align:center;color:#667;">' + pctArq + '%</td>';
+          h += '<td style="padding:9px 14px;">' +
+               '<span style="display:inline-block;padding:3px 12px;background:' + bgBadge + ';color:' + cor + ';' +
+               'border-radius:20px;font-size:11px;font-weight:700;">' + label + '</span></td>';
+          h += '<td style="padding:9px 14px;min-width:160px;">';
+          h += '<div style="background:#e8edf5;border-radius:4px;height:12px;overflow:hidden;">';
+          h += '<div style="height:100%;width:' + barPct + '%;background:' + cor + ';' +
+               'border-radius:4px;transition:width .7s;"></div>';
+          h += '</div></td>';
+          h += '</tr>';
+        });
+        h += '</tbody></table></div>';
+      }
+      h += '</div>';
+
+      // ══ POR ANO ══════════════════════════════════════════════════
+      var anoArr = Object.entries(anoObj)
+        .filter(function(e){ return /^\d{4}$/.test(String(e[0])); })
+        .sort(function(a,b){ return parseInt(a[0])-parseInt(b[0]); });
+
+      if (anoArr.length) {
+        var maxAno = Math.max.apply(null, anoArr.map(function(e){ return e[1]; }));
+        h += '<div class="card" style="margin-bottom:1.25rem;">';
+        h += '<div class="card-titulo">&#128200; Distribuição de Sentenças por Ano</div>';
+        h += '<div class="brs">';
+        anoArr.forEach(function(e){
+          h += mkB(String(e[0]), e[1], Math.round(e[1]/maxAno*100), '#0a448f');
+        });
+        h += '</div></div>';
+      }
+
+      // ══ RANKING MILITARES ════════════════════════════════════════
+      h += mkRankingMilitares(tcos, guarPorBoletim);
+
+      return h;
+    }
+
+    // ── Monta ranking de militares por arquivamentos com falha ──────
+    function mkRankingMilitares(tcos, guarPorBoletim) {
+      if (!tcos.length || !Object.keys(guarPorBoletim).length) {
+        return '<div class="card"><div class="card-titulo">&#127942; Militares — Arquivamentos com Falha</div>' +
+          '<div class="vz" style="padding:20px;"><div class="vt">Aguardando dados</div>' +
+          '<div class="vs">Carregue TCOs e registre guarnições no Firebase para ver o ranking</div></div></div>';
+      }
+
+      var ACEIT = ['transac', 'anpp'];
+
+      // Mapa ESAJ → boletim
+      var esajMap = {};
+      tcos.forEach(function(t) {
+        var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
+        var bol  = String(t['Nº Ocorrência'] || '').trim();
+        if (esaj && bol) esajMap[esaj] = bol;
+      });
+
+      // Função auxiliar: busca guarnição por boletim com fallback numérico
+      function getIgs(bol) {
+        var igs = guarPorBoletim[bol] || [];
+        if (!igs.length) {
+          var bolNum = bol.replace(/\D/g,'').replace(/^0+/,'');
+          igs = guarPorBoletim[bolNum] || [];
+        }
+        return igs;
+      }
+
+      // Contagem por militar — falhas E aceitáveis em loop único
+      var cont = {};
+
+      tcos.forEach(function(t) {
+        var mov    = String(t['Movimentação'] || t['Movimentacao'] || '').toLowerCase().trim();
+        var isArq  = mov.includes('arquiv');
+        if (!isArq) return;
+        var isAceit = ACEIT.some(function(k){ return mov.includes(k); });
+
+        var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
+        var bol  = esajMap[esaj] || String(t['Nº Ocorrência'] || '').trim();
+        if (!bol) return;
+
+        var igs = getIgs(bol);
+        if (!igs.length) return;
+
+        var tip = String(t['Tipicidade Geral'] || '—');
+
+        igs.forEach(function(ig) {
+          if (!ig) return;
+          var posto = String(ig.POSTO_GRADUACAO || ig['Posto / Graduação'] || '').trim();
+          var nome  = String(ig.NOME_GUERRA || ig['Nome de guerra'] || ig.NOME_COMPLETO || '').trim();
+          if (!nome) return;
+          var chave = posto + '|' + nome;
+          if (!cont[chave]) cont[chave] = { nome:nome, posto:posto, falhas:0, aceitaveis:0, tips:{} };
+          if (isAceit) {
+            cont[chave].aceitaveis++;
+          } else {
+            cont[chave].falhas++;
+            cont[chave].tips[tip] = (cont[chave].tips[tip] || 0) + 1;
+          }
+        });
+      });
+
+      // Ordena por falhas decrescente (militares com mais falhas no topo)
+      var ranking = Object.values(cont)
+        .filter(function(m){ return m.falhas > 0; })
+        .sort(function(a,b){ return b.falhas - a.falhas; })
+        .slice(0, 20);
+
+      if (!ranking.length) {
+        return '<div class="card"><div class="card-titulo">&#127942; Militares — Arquivamentos com Falha</div>' +
+          '<div class="vz" style="padding:20px;"><div class="vt">Nenhum cruzamento encontrado</div>' +
+          '<div class="vs">Verifique se os boletins dos TCOs arquivados com falha possuem ' +
+          'guarnição registrada no Firebase em <code>/guarnicao/&lt;Nº Ocorrência&gt;</code></div></div></div>';
+      }
+
+      var h = '<div class="card">';
+      h += '<div class="card-titulo">&#127942; Militares com Mais Arquivamentos com Falha</div>';
+      h += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+      h += '<thead><tr>';
+      ['#', 'Militar', 'Arquiv. c/ Falha', '&#10003; Aceitáveis', 'Principais Tipificações'].forEach(function(c){
+        h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+             'padding:9px 12px;text-align:left;font-size:11px;font-weight:700;' +
+             'text-transform:uppercase;letter-spacing:.05em;">' + c + '</th>';
+      });
+      h += '</tr></thead><tbody>';
+
+      ranking.forEach(function(mil, i) {
+        var bg  = i%2===0 ? '#fff' : '#f7f9fc';
+        var med = i===0 ? '&#127945;' : i===1 ? '&#129352;' : i===2 ? '&#129353;' : String(i+1)+'.';
+        var tops = Object.entries(mil.tips)
+          .sort(function(a,b){ return b[1]-a[1]; }).slice(0,3)
+          .map(function(e){
+            return '<span style="display:inline-block;padding:1px 8px;background:#dbeafe;color:#1d4ed8;' +
+              'border-radius:10px;font-size:10px;margin:1px;font-weight:600;">' +
+              esc(e[0]) + ' <b>(' + e[1] + ')</b></span>';
+          }).join('');
+
+        h += '<tr style="background:'+bg+';">';
+        h += '<td style="padding:9px 12px;text-align:center;font-size:15px;">' + med + '</td>';
+        h += '<td style="padding:9px 12px;font-weight:700;color:#0a448f;">' + esc(mil.nome) + '</td>';
+        h += '<td style="padding:9px 12px;text-align:center;font-size:22px;font-weight:800;color:#991b1b;">' + mil.falhas + '</td>';
+        h += '<td style="padding:9px 12px;text-align:center;font-size:18px;font-weight:700;color:#166534;">' + mil.aceitaveis + '</td>';
+        h += '<td style="padding:9px 12px;">' + (tops||'<span style="color:#999;font-size:11px;">—</span>') + '</td>';
+        h += '</tr>';
+      });
+
+      h += '</tbody></table></div></div>';
+      return h;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CRUZAMENTO COM GUARNIÇÃO NOS DETALHES DE FALHA
+    // Chamado por ativarToggle ao abrir o painel de processos
+    // ════════════════════════════════════════════════════════════════
+    async function buscarGuarnicaoPorBoletim(bol) {
+      // Usa cache se já carregado
+      if (window._GUAR_DADOS) {
+        return window._GUAR_DADOS[bol] || [];
+      }
+      try {
+        var resp = await fetch(FB_GUARNICAO, { redirect: 'follow' });
+        var fb   = await resp.json();
+        if (!fb) return [];
+        window._GUAR_DADOS = {};
+        Object.entries(fb).forEach(function(e) {
+          var arr = Array.isArray(e[1]) ? e[1] : Object.values(e[1] || {});
+          window._GUAR_DADOS[e[0]] = arr.filter(Boolean);
+        });
+        return window._GUAR_DADOS[bol] || [];
+      } catch(e) {
+        return [];
+      }
+    }
+
+    // Enriquece a tabela de processos com os militares da guarnição
+    async function enriquecerTabelaGuarnicao(det, procs) {
+      // Mapear ESAJ → boletim via TCOs carregados
+      var tcos = window._TCO_DADOS || [];
+      var esajParaBol = {};
+      tcos.forEach(function(t) {
+        var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
+        var bol  = String(t['Nº Ocorrência'] || '').trim();
+        if (esaj && bol) esajParaBol[esaj] = bol;
+      });
+
+      for (var i = 0; i < procs.length; i++) {
+        var p   = procs[i];
+        var esaj = String(p.numero || '').trim();
+        var bol  = esajParaBol[esaj] || '';
+        if (!bol) continue;
+
+        var igs = await buscarGuarnicaoPorBoletim(bol);
+        if (!igs.length) continue;
+
+        // Encontra a linha da tabela pelo número do processo
+        var linhas = det.querySelectorAll('tr');
+        for (var j = 0; j < linhas.length; j++) {
+          if (linhas[j].querySelector('.pn') &&
+              linhas[j].querySelector('.pn').textContent.trim() === esaj) {
+            // Adiciona célula extra com os militares
+            var td = document.createElement('td');
+            td.style.cssText = 'padding:6px 14px;font-size:11px;';
+            var nomes = igs
+              .filter(function(ig){ return ig && ig.NOME_GUERRA; })
+              .map(function(ig){ return '<span style="display:inline-block;background:#eef3fb;color:#0a448f;padding:1px 7px;border-radius:10px;margin:1px;font-size:10px;">' + esc(String(ig.POSTO_GRADUACAO || '')) + ' ' + esc(String(ig.NOME_GUERRA || '')) + '</span>'; })
+              .join('');
+            td.innerHTML = nomes || '<span style="color:#999;">—</span>';
+            linhas[j].appendChild(td);
+            break;
+          }
+        }
+      }
+
+      // Adiciona cabeçalho "Guarnição" se ainda não existe
+      var thead = det.querySelector('th:last-child');
+      if (thead && thead.textContent !== 'Guarnição') {
+        var thGuar = document.createElement('th');
+        thGuar.textContent = 'Guarnição';
+        thGuar.style.cssText = 'background:#f7f9fc;color:#667;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:left;border-bottom:1px solid #e0e7f0;';
+        det.querySelector('tr').appendChild(thGuar);
+      }
+    }
+
+    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  
+  // ── Relogio e user (mesmo padrão do index.html) ──────────────
+  function atualizarRelogio() {
+    const agora = new Date();
+    const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+    const el = document.getElementById('relogio');
+    if (el) el.innerHTML =
+      agora.toLocaleDateString('pt-BR', opcoesData) + '<br>' +
+      agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function checkLogin() {
+    const graduacao  = localStorage.getItem('userGraduacao');
+    const nomeGuerra = localStorage.getItem('userNomeGuerra');
+    const userInfoEl = document.getElementById('user-info');
+    if (!userInfoEl) return;
+    if (graduacao && nomeGuerra) {
+      userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('userGraduacao');
+    localStorage.removeItem('userNomeGuerra');
+    window.location.href = '../page/login.html';
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    atualizarRelogio();
+    setInterval(atualizarRelogio, 1000);
+    checkLogin();
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', logout);
+  });
+</script>
+</body>
 </html>

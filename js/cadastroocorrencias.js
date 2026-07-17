@@ -91,7 +91,84 @@ const MAPA_PESSOA = {
     "SEXO":      ["Sexo"],
     "IDADE":     ["Idade"],
     "TIPIFICACAO": ["Tipificação no Despacho", "Tipificacao"]
-};
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAPA DE GUARNIÇÃO
+// Planilha: Google Sheets ID '124q8ish_L1TyS2i_go6mfDwYOp0DTJ8z0-k1cbTKPx4'
+// Cada linha representa um integrante de uma guarnição despachada
+// O BOLETIM é a chave de cruzamento com o nó /geral/
+// ─────────────────────────────────────────────────────────────────
+const MAPA_GUARNICAO = {
+    "BOLETIM":                  ["Nº Ocorrência", "Nº OCORRÊNCIA", "Nº Ocorrencia"],
+    "POSTO_GRADUACAO":          ["Posto / Graduação", "Posto/Graduação", "Graduação"],
+    "UNIDADE_DESPACHO":         ["Unidade de Despacho", "UNID DESPC"],
+    "FUNCAO_EQUIPE":            ["Função na Equipe", "Funcao na Equipe"],
+    "NOME_GUERRA":              ["Nome de guerra", "Nome de Guerra", "Nome de Guerra na Apresentaçao", "Nome de Guerra na Apresentacao"],
+    "IC_STAT_RECR":             ["IC STAT RECR"],
+    "DESC_DESPACHANTE":         ["Descrição do Despachante", "Descricao do Despachante"],
+    "OCORRENCIAS_PAGAS":        ["Ocorrências Pagas", "Ocorrencias Pagas"],
+    "SITUACAO_ORGAO":           ["Situação no Orgão", "Situacao no Orgao"],
+    "OBSERVACAO":               ["Observação", "Observacao"],
+    "AMBIENTE":                 ["Ambiente"],
+    "OCORRENCIA_ATUAL":         ["Ocorrência Atual", "Ocorrencia Atual"],
+    "CONDICAO_ORGAO":           ["Condição no Orgão", "Condicao no Orgao"],
+    "ESTABELECIMENTO":          ["Estabelecimento"],
+    "TEXTO_DIVULGACAO":         ["Texto de Divulgação Coordenador", "Texto de Divulgacao Coordenador"],
+    "DESC_SOLICITACAO":         ["Descriçao da Solicitação", "Descricao da Solicitacao"],
+    "COMUNIDADE":               ["Comunidade"],
+    "LOGRADOURO":               ["Lougradouro", "Logradouro"],
+    "UNID_ORIGEM_REFORCO":      ["Unidade Origem do Reforco"],
+    "TIPO_DESLOCAMENTO":        ["Tipo de Deslocamento"],
+    "KM_CHEGADA":               ["KM de Chegada"],
+    "RADIO_RECURSO":            ["Radio do Recurso", "Rádio do Recurso"],
+    "DESC_QUIMERA":             ["Descrição ocorrência Quimera", "Descricao ocorrencia Quimera"],
+    "ANO_OCORRENCIA":           ["Ano da Ocorrência", "Ano da Ocorrencia"],
+    "MES_ANO_OCORRENCIA":       ["Mês e Ano da Ocorrência", "Mes e Ano da Ocorrencia"],
+    "KM_SAIDA":                 ["KM de Saída", "KM de Saida"],
+    "DT_HR_SAIDA":              ["Data/Hora Saída", "Data/Hora Saida"],
+    "LONGITUDE":                ["NR COOR LONG"],
+    "LATITUDE":                 ["NR COOR LATD"],
+    "DT_HR_CHEGADA":            ["Data/Hora Cheg.", "Data/Hora Chegada"],
+    "ULT_DESTINO":              ["Últ. Destino", "Ult. Destino"],
+    "SITUACAO_ATUAL":           ["Situação Atual", "Situacao Atual"],
+    "ORGAO_EFETIVO":            ["Orgão do Efetivo"],
+    "ID_ORGA_UNID_RECR":        ["ID ORGA UNID RECR"],
+    "NOME_MAE":                 ["Nome da Mãe", "Nome da Mae"],
+    "SEXO":                     ["Sexo"],
+    "CPF":                      ["CPF do Integrante", "CPF"],
+    "POSTO_APRESENTACAO":       ["Posto na Apresentação", "Posto na Apresentacao"],
+    "NOME_COMPLETO":            ["Nome Completo"],
+    "RADIO_HT":                 ["Radio HT", "Rádio HT"],
+    "TITULAR_APOIO":            ["Titular ou Apoio"],
+    "ESAJ":                     ["Nº ESAJ", "ESAJ"],
+    "TIPO_DESPACHO":            ["Tipo do Despacho"],
+    "DT_HR_REGISTRO":           ["DT/Hora Registro Ocorrência", "DT/Hora Registro Ocorrencia"],
+    "BAIRRO":                   ["Bairro"],
+    "CIDADE":                   ["Cidade"],
+    "DT_HR_INCLUIU_RECURSO":    ["DT/Hora Incluiu o Recurso"],
+    "DATA_SERVICO":             ["Data de Serviço", "Data de Servico"],
+    "PREFIXO":                  ["Prefixo"],
+    "PLACA":                    ["Placa"],
+    "NOME_EQUIPE":              ["Nome da Equipe / Recurso"],
+    "AREA_ATUACAO":             ["Area de Atuação", "Area de Atuacao"],
+    "EQUIPE":                   ["Equipe"],
+    "HR_ESCALA_INICIO":         ["Horario escala Inicio"],
+    "HR_ESCALA_FIM":            ["Horario escala Fim"],
+    "TURNO_HORAS":              ["Turno de Horas"],
+    "TIPO":                     ["Tipo"],
+    "MODALIDADE":               ["Modalidade"],
+    "KM_INICIAL":               ["Km Inicial"],
+    "KM_FINAL":                 ["Km Final"],
+    "NATUREZA_GERAL":           ["Natureza Geral"],
+    "TIPICIDADE_GERAL":         ["Tipicidade Geral"],
+    "NATUREZA_ABERTURA":        ["Natureza na Abertura da Ocorrência", "Natureza na Abertura da Ocorrencia"],
+    "TIPICIDADE_ABERTURA":      ["Tipicidade na Abertura da Ocorrência", "Tipicidade na Abertura da Ocorrencia"],
+    "SOLUCAO_OCORRENCIA":       ["Solução da Ocorrência", "Solucao da Ocorrencia"],
+    "COMPLEMENTADA_QUIMERA":    ["Complementada via QUIMERA?"],
+    "USUARIO_INCLUIU":          ["Usuário incluiu", "Usuario incluiu"],
+    "MOVIMENTACAO":             ["Movimentação", "Movimentacao"]
+};;
 
 // ─────────────────────────────────────────────
 // FUNÇÃO UTILITÁRIA: busca valor flexível
@@ -121,13 +198,14 @@ document.getElementById('input-xls').onchange = function(e) {
         const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
         const mapas = {
-            'geral':   MAPA_GERAL,
-            'arma':    MAPA_ARMA,
-            'droga':   MAPA_DROGA,
-            'veiculo': MAPA_VEICULO,
-            'objeto':  MAPA_OBJETO,
-            'autor':   MAPA_AUTOR,
-            'pessoa':  MAPA_PESSOA   // NOVO
+            'geral':      MAPA_GERAL,
+            'arma':       MAPA_ARMA,
+            'droga':      MAPA_DROGA,
+            'veiculo':    MAPA_VEICULO,
+            'objeto':     MAPA_OBJETO,
+            'autor':      MAPA_AUTOR,
+            'pessoa':     MAPA_PESSOA,
+            'guarnicao':  MAPA_GUARNICAO
         };
         const mapa = mapas[tipo];
 
@@ -260,6 +338,42 @@ document.getElementById('btn-save-cloud').onclick = async function() {
 
                 // Também salva os dados da pessoa no nó /pessoa/ para histórico
                 updates[`/pessoa/${safeId}`] = { ...d, import_at: agora };
+            });
+
+        // ── FLUXO ESPECIAL: GUARNIÇÃO ─────────────────────────────────────────
+        // Cada linha é um integrante da equipe despachada para o boletim.
+        // Salva em /guarnicao/<BOLETIM>/<index>/ para manter todos os integrantes.
+        // Também complementa /geral/<BOLETIM>/ com dados de coordenada se faltar.
+        } else if (tipo === 'guarnicao') {
+            // Agrupa por boletim para reescrever todos de uma vez
+            const porBoletim = {};
+            bufferDados.forEach(d => {
+                const bol = d.BOLETIM;
+                if (!bol || bol === '---') return;
+                if (!porBoletim[bol]) porBoletim[bol] = [];
+                porBoletim[bol].push(d);
+            });
+
+            Object.entries(porBoletim).forEach(([bol, integrantes]) => {
+                // Salva lista de integrantes indexada
+                integrantes.forEach((d, idx) => {
+                    updates[`/guarnicao/${bol}/${idx}`] = { ...d, import_at: agora };
+                });
+
+                // Complementa /geral/ com latitude/longitude se estiver faltando
+                const geralExistente = dadosGerais[bol] || {};
+                const primeiroComCoord = integrantes.find(d =>
+                    d.LATITUDE && d.LATITUDE !== '---' &&
+                    d.LONGITUDE && d.LONGITUDE !== '---'
+                );
+                if (primeiroComCoord) {
+                    if (!geralExistente.LATITUDE || geralExistente.LATITUDE === '---') {
+                        updates[`/geral/${bol}/LATITUDE`]  = primeiroComCoord.LATITUDE;
+                    }
+                    if (!geralExistente.LONGITUDE || geralExistente.LONGITUDE === '---') {
+                        updates[`/geral/${bol}/LONGITUDE`] = primeiroComCoord.LONGITUDE;
+                    }
+                }
             });
 
         // ── FLUXO PADRÃO: demais tipos ─────────────────────────────────────────
