@@ -1,4 +1,4 @@
-const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const DATABASE_URL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
 const NODE_TCO = 'tco_geral';
 
 // Função baseada no Art. 109 do CP

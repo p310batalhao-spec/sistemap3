@@ -1,11 +1,11 @@
 const firebaseConfig = {
-    apiKey: "AIzaSyAFflO2pvI7nFDNwFdK86-TK18o6_cpXr4",
-    authDomain: "sistema-p3.firebaseapp.com",
-    projectId: "sistema-p3",
-    storageBucket: "sistema-p3.firebasestorage.app",
-    messagingSenderId: "186813662716",
-    appId: "1:186813662716:web:e2a85cc956ed561c541e79",
-    databaseURL: "https://sistema-p3-default-rtdb.firebaseio.com"
+    apiKey: "AIzaSyBRZn_EOfV6ozsx6NNzOlq1sjIV_xVm7xE",
+    authDomain: "sistema-p3-v2.firebaseapp.com",
+    projectId: "sistema-p3-v2",
+    storageBucket: "sistema-p3-v2.firebasestorage.app",
+    messagingSenderId: "1019080251258",
+    appId: "1:1019080251258:web:93f9e299cf19b16189e8c3",
+    databaseURL: "https://sistema-p3-v2-default-rtdb.firebaseio.com"
 };
 
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);

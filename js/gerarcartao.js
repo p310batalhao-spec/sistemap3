@@ -3,7 +3,7 @@
 // GERADOR DE CARTÃO PROGRAMA — P3/10º BPM
 // ================================================================
 
-const FIREBASE_URL = "https://sistema-p3-default-rtdb.firebaseio.com";
+const FIREBASE_URL = "https://sistema-p3-v2-default-rtdb.firebaseio.com";
 
 // Pesos de gravidade por categoria
 // cvli=5, droga=4, cvp=3, geral=1

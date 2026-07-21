@@ -147,11 +147,23 @@ body {
 }
 #json-input:focus { outline: none; border-color: #3b6fb8; }
 
-/* ── Preview grid ─────────────────────────────────────────────── */
-.preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px,1fr)); gap: 10px; margin-top: 14px; }
-.preview-card { border: 1px solid #e0e7f0; border-radius: 8px; padding: 12px 14px; background: #f7f9fc; }
-.preview-card .proc { font-weight: 700; color: #0a448f; font-size: 13px; margin-bottom: 5px; }
-.preview-card .info { color: #667; font-size: 12px; line-height: 1.7; }
+/* ── Preview grid (validarJSON) ───────────────────────────────── */
+.pg {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+.pc {
+  border: 1px solid #e0e7f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #f7f9fc;
+  transition: transform .15s, box-shadow .15s;
+}
+.pc:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(10,68,143,.12); }
+.pp { font-weight: 700; color: #0a448f; font-size: 13px; margin-bottom: 5px; }
+.pi { color: #667; font-size: 12px; line-height: 1.7; }
 
 /* ── Progresso ────────────────────────────────────────────────── */
 .prog-wrap { margin-top: 14px; display: none; }

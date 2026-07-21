@@ -220,8 +220,17 @@ function renderTable(dados) {
     const ordemMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                         'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
+    const mesPorDataMs = ms => {
+        if (!ms) return '—';
+        const dt = new Date(ms);
+        return isNaN(dt) ? '—' : ordemMeses[dt.getUTCMonth()];
+    };
+
     dados.forEach(d => {
-        const mes = d['Mês'] || '—';
+        // Registros do formulário de TCO trazem 'Mês' pronto; registros
+        // restaurados via CAD não têm esse campo — nesse caso, calcula
+        // o mês a partir da própria DATA.
+        const mes = d['Mês'] || mesPorDataMs(parseDateMs(d['DATA']));
         if (!grupos[mes]) {
             grupos[mes] = [];
             gruposOrdem.push(mes);
@@ -253,10 +262,13 @@ function renderTable(dados) {
         lista.appendChild(sep);
 
         items.forEach(d => {
-            const tipificacao = d['Tipicidade Geral'] || '—';
-            const numCop      = d['Nº Ocorrência']    || '—';
+            // Campos possuem dois formatos possíveis no Firebase:
+            //  - vindos do formulário "Cadastro de TCO" (ex: "Nº Ocorrência")
+            //  - vindos da restauração/importação em massa via CAD (ex: "BOLETIM")
+            const tipificacao = d['Tipicidade Geral'] || d['TIPIFICACAO_GERAL'] || '—';
+            const numCop      = d['Nº Ocorrência']    || d['BOLETIM']          || '—';
             const dataFato    = formatarData(d['DATA']);
-            const mov         = d['Movimentação']     || '—';
+            const mov         = d['Movimentação']     || d['SOLUÇÃO']         || '—';
 
             // Campo E-SAJ: número do processo judicial
             const numEsaj  = (d['E-SAJ'] || d['ESAJ'] || d['LocalE-SAJ'] || '').toString().trim();
@@ -606,12 +618,12 @@ function filtroAvancado() {
         }
 
         if (tipic) {
-            const v = _normAv(_getAv(doc, 'Tipicidade Geral', 'TIPIFICACAO'));
+            const v = _normAv(_getAv(doc, 'Tipicidade Geral', 'TIPIFICACAO', 'TIPIFICACAO_GERAL'));
             if (!v.includes(tipic)) return false;
         }
 
         if (movi) {
-            const v = _normAv(_getAv(doc, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO'));
+            const v = _normAv(_getAv(doc, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO', 'SOLUÇÃO', 'SOLUCAO'));
             if (!v.includes(movi)) return false;
         }
 

@@ -5,7 +5,7 @@
 //              Dias da Semana, Tipificações, Cidades, Horários
 // ═══════════════════════════════════════════════════════════════════
 
-const FB_COPOM = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const FB_COPOM = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
 
 // ── Normalização ──────────────────────────────────────────────────
 const normC = str => (str || '').toString().trim()

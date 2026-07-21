@@ -4,7 +4,7 @@
 //           /violencia_domestica  /sossego  /mandados
 // ═══════════════════════════════════════════════════════════════════
 
-const FB_BASE = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const FB_BASE = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
 
 // ── Normalização de texto ────────────────────────────────────────
 const norm = str => (str || '').toString().trim()

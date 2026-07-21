@@ -210,7 +210,7 @@
 
     var GAS_URL = 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec';
     var TCO_URL = 'https://script.google.com/macros/s/AKfycbzgewj7KjnTtWrnmnE7dcrz99CCpW1G3xw4Zft59dyIPL91avy1fqdVvgL1mRcIYhLP/exec';
-    var FB_GUARNICAO = 'https://sistema-p3-default-rtdb.firebaseio.com/guarnicao.json';
+    var FB_GUARNICAO = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/guarnicao.json';
     var _dadosVal = null;
 
     function trocarAba(n, b) {
@@ -308,20 +308,50 @@
       _dadosVal = null;
     }
 
-    async function carregarRelatorio(comarca) {
+    // Estado atual dos filtros do relatório
+    var _filtroPeriodoIni = '', _filtroPeriodoFim = '';
+    window._SENTENCAS_RAW = null; // cache da lista bruta (listarSentencas)
+
+    // Lê os controles da tela e recarrega o relatório
+    function aplicarFiltrosRelatorio() {
+      var comarca = (document.getElementById('sel-comarca') || {}).value || '';
+      var ini = (document.getElementById('periodo-ini') || {}).value || '';
+      var fim = (document.getElementById('periodo-fim') || {}).value || '';
+      carregarRelatorio(comarca, ini, fim);
+    }
+
+    async function carregarRelatorio(comarca, dataIni, dataFim) {
       comarca = comarca || '';
+      dataIni = (dataIni !== undefined) ? dataIni : _filtroPeriodoIni;
+      dataFim = (dataFim !== undefined) ? dataFim : _filtroPeriodoFim;
+      _filtroPeriodoIni = dataIni || '';
+      _filtroPeriodoFim = dataFim || '';
+
       var el = document.getElementById('conteudo-relatorio');
       el.innerHTML = '<div class="vz"><div class="vi">&#9203;</div><div class="vt">Carregando...</div></div>';
       try {
-        var url = GAS_URL + '?action=obterDashboard' + (comarca ? '&comarca=' + encodeURIComponent(comarca) : '');
-        var resp = await fetch(url, { redirect: 'follow' });
-        var d = await resp.json();
-        if (d.vazio || d.erro) {
+        // Busca a lista BRUTA de sentenças uma única vez (mesma fonte da aba
+        // Registros) e reaproveita em memória — os filtros de comarca/período
+        // e a classificação são todos recalculados aqui no navegador.
+        if (!window._SENTENCAS_RAW) {
+          var resp = await fetch(GAS_URL + '?action=listarSentencas', { redirect: 'follow' });
+          var lista = await resp.json();
+          window._SENTENCAS_RAW = Array.isArray(lista) ? lista : [];
+        }
+        if (!window._SENTENCAS_RAW.length) {
           el.innerHTML = '<div class="vz"><div class="vi">&#128229;</div><div class="vt">Nenhuma sentença registrada ainda</div><div class="vs">Importe dados na aba "Importar do Gem"</div></div>'; return;
         }
+
+        var d = buildDashboardFromRaw(window._SENTENCAS_RAW, comarca, dataIni, dataFim);
+
+        if (!d.total) {
+          el.innerHTML = '<div class="vz"><div class="vi">&#128269;</div><div class="vt">Nenhuma sentença no filtro atual</div><div class="vs">Tente ampliar o período ou trocar a comarca</div></div>';
+          return;
+        }
+
         d.errosMaterial = agrupar(d.errosMaterial || []);
         d.errosFormais = agrupar(d.errosFormais || []);
-        // Pré-agrupa tipificações no frontend (une variantes que o GAS não capturou)
+        // Pré-agrupa tipificações no frontend (une variantes de escrita)
         if (Array.isArray(d.porTipificacao)) {
           var tipMap = {};
           d.porTipificacao.forEach(function (e) {
@@ -336,12 +366,226 @@
         mostrarBtnSugestoes(d);
         el.innerHTML = renderRel(d);
         setTimeout(ativarToggle, 0);
-        // Renderiza aceitabilidade com os dados já carregados do GAS qualitativo
         window._DADOS_RELATORIO_ACEIT = d;
         carregarAceitabilidade();
       } catch (e) {
         el.innerHTML = '<div class="al ae">Erro ao carregar: ' + esc(e.message) + '</div>';
       }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CANONICALIZAÇÃO DE MOTIVOS — recalibrado a partir da planilha real
+    // de sentenças. Muitas linhas trazem a fundamentação jurídica inteira
+    // no campo "Motivo do Arquivamento" em vez do rótulo padrão (ex: uma
+    // frase longa em vez de "Atipicidade Material"). Essas regras juntam
+    // tudo na categoria correta, então o relatório soma certo em vez de
+    // mostrar uma linha nova pra cada jeito diferente de escrever o mesmo
+    // motivo.
+    // ════════════════════════════════════════════════════════════════
+    var MOTIVO_REGRAS = [
+      { chave: 'Composição Civil das Partes',
+        testes: [/composi[cç][aã]o civil/] },
+      { chave: 'Litispendência / Duplicidade',
+        testes: [/litispendenc/, /a[cç][aã]o id[eê]ntica.{0,20}(tramite|trâmite)/, /identidade entre os procedimentos/, /mesmos fatos.{0,20}outro processo/, /crime continuado com outro feito/] },
+      { chave: 'Ausência de Representação',
+        testes: [/representa[cç][aã]o/, /decadenc/, /ren[uú]ncia ao direito/, /interesse d[ae] v[ií]tima/] },
+      { chave: 'Falta de Justa Causa',
+        testes: [/justa causa/, /n[aã]o (h[aá]|restou comprovad).{0,30}(ind[ií]cio|elemento).{0,20}crime/, /n[aã]o houve.{0,20}(fato criminoso|ocorr[eê]ncia de (fato )?crime)/, /n[aã]o h[aá] ind[ií]cios de cometimento de crime/] },
+      { chave: 'Atipicidade Formal',
+        testes: [/atipicidade formal/] },
+      { chave: 'Atipicidade Material',
+        testes: [/atipicidade material/, /\batipic[ao]\b/, /natureza administrativa/, /n[aã]o se amolda ao tipo penal/, /inexiste.{0,40}suporte probat[oó]rio/, /aus[eê]ncia de perigo concreto/, /sem potencial ofensivo/, /conduta at[ií]pica/] },
+      { chave: 'Transação Penal Cumprida',
+        testes: [/transac/, /extinta a punibilidade/, /extinto o (processo|feito)/, /composi[cç][aã]o civil/, /homolog/, /cumprimento (d[ae]s?|integral)/] },
+    ];
+
+    // Rótulos já padronizados — quando o campo Motivo já vem limpo assim,
+    // ele manda mais que qualquer heurística (evita, por ex., que uma
+    // "Falta de Justa Causa" por litispendência vire "Atipicidade Formal"
+    // só porque a coluna de erro auxiliar também foi preenchida).
+    var MOTIVO_LABELS_CONHECIDOS = {
+      'atipicidade material':      'Atipicidade Material',
+      'atipicidade formal':        'Atipicidade Formal',
+      'falta de justa causa':      'Falta de Justa Causa',
+      'ausencia de representacao': 'Ausência de Representação',
+      'transacao penal cumprida':  'Transação Penal Cumprida',
+    };
+
+    // Ordem de prioridade: 1) rótulo padrão exato  2) heurística por texto
+    // (frases longas coladas no lugar do rótulo)  3) qual coluna de erro
+    // auxiliar foi preenchida (só quando nada acima bateu)
+    function canonMotivo(motivoTxt, resultadoTxt, erroMat, erroForm) {
+      var m = _semAcento(String(motivoTxt || '').toLowerCase()).trim();
+      var r = _semAcento(String(resultadoTxt || '').toLowerCase());
+
+      if (MOTIVO_LABELS_CONHECIDOS[m]) return MOTIVO_LABELS_CONHECIDOS[m];
+
+      for (var i = 0; i < MOTIVO_REGRAS.length; i++) {
+        var grp = MOTIVO_REGRAS[i];
+        for (var j = 0; j < grp.testes.length; j++) {
+          if (grp.testes[j].test(m) || grp.testes[j].test(r)) return grp.chave;
+        }
+      }
+
+      if (erroForm && String(erroForm).trim()) return 'Atipicidade Formal';
+      if (erroMat && String(erroMat).trim())  return 'Atipicidade Material';
+
+      if (!m && !r) return null;
+      return m ? 'Outros Motivos' : null;
+    }
+
+    var MOTIVO_GRUPO = {
+      'Transação Penal Cumprida':      'aceitavel',
+      'Composição Civil das Partes':   'aceitavel',
+      'Atipicidade Material':          'falha',
+      'Atipicidade Formal':            'falha',
+      'Falta de Justa Causa':          'falha',
+      'Ausência de Representação':     'externo',
+      'Litispendência / Duplicidade':  'externo',
+      'Outros Motivos':                'outros',
+    };
+
+    // Classificação FINAL da disposição do processo — usada no gráfico
+    // "Resultado". Diferente do gráfico "Motivo do Arquivamento" (que só
+    // faz sentido para quem foi arquivado), este mostra o desfecho real:
+    // arquivamento puro, transação penal cumprida, composição civil,
+    // extinção por ausência de representação, ou litispendência.
+    function resultadoFinal(motivoCanon, resultadoRaw) {
+      if (motivoCanon === 'Transação Penal Cumprida' || motivoCanon === 'Composição Civil das Partes' ||
+          motivoCanon === 'Ausência de Representação' || motivoCanon === 'Litispendência / Duplicidade') {
+        return motivoCanon;
+      }
+      var r = _semAcento(String(resultadoRaw || '').toLowerCase());
+      if (r.indexOf('arquiv') !== -1 ||
+          motivoCanon === 'Atipicidade Material' || motivoCanon === 'Atipicidade Formal' ||
+          motivoCanon === 'Falta de Justa Causa' || motivoCanon === 'Outros Motivos') {
+        return 'Arquivado';
+      }
+      return 'Não Especificado';
+    }
+
+    function grupoDoRegistro(motivoCanon, resultadoTxt) {
+      if (motivoCanon && MOTIVO_GRUPO[motivoCanon]) return MOTIVO_GRUPO[motivoCanon];
+      var r = _semAcento(String(resultadoTxt || '').toLowerCase());
+      if (r.includes('condena') || r.includes('procedente')) return 'processual';
+      if (r.includes('arquiv')) return 'falha';
+      return 'outros';
+    }
+
+    // Converte datas em vários formatos (BR, ISO, "Thu Oct 30 2025...") pra AAAA-MM-DD
+    function parseDataParaISO(v) {
+      if (!v) return null;
+      var s = String(v).trim();
+      var mIso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (mIso) return mIso[1] + '-' + mIso[2] + '-' + mIso[3];
+      var mBr = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (mBr) return mBr[3] + '-' + mBr[2].padStart(2, '0') + '-' + mBr[1].padStart(2, '0');
+      var mLong = s.match(/(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
+      if (mLong) {
+        var meses = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+        var mm = meses[mLong[2]] || '01';
+        return mLong[4] + '-' + mm + '-' + String(mLong[3]).padStart(2, '0');
+      }
+      var dt = new Date(s);
+      if (!isNaN(dt.getTime())) {
+        return dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+      }
+      return null;
+    }
+
+    // Monta o objeto "d" (mesmo formato que o obterDashboard do GAS
+    // devolvia) a partir da lista bruta, já filtrada por comarca/período
+    // e com os motivos canonicalizados.
+    function buildDashboardFromRaw(lista, comarcaFiltro, dataIni, dataFim) {
+      var todasComarcas = {};
+      lista.forEach(function (r) { var c = String(r['Comarca'] || '').trim(); if (c) todasComarcas[c] = true; });
+
+      var filtrada = lista.filter(function (r) {
+        if (comarcaFiltro && _semAcento(String(r['Comarca'] || '').toLowerCase()) !== _semAcento(comarcaFiltro.toLowerCase())) return false;
+        if (dataIni || dataFim) {
+          var iso = parseDataParaISO(r['Data da Sentença']);
+          if (!iso) return false;
+          if (dataIni && iso < dataIni) return false;
+          if (dataFim && iso > dataFim) return false;
+        }
+        return true;
+      });
+
+      var porMotivo = {}, porResultado = {}, porAno = {}, tipificacaoObj = {};
+      var porMotivoAno = {};
+      var errosMatMap = {}, errosFormMap = {}, catObj = {};
+      var esajsAceitaveis = [], esajsFalha = [];
+      var totalArquivamentos = 0;
+
+      filtrada.forEach(function (r) {
+        var numero    = String(r['Nº Processo'] || '').trim();
+        var resultado = String(r['Resultado'] || '').trim();
+        var motivoRaw = String(r['Motivo do Arquivamento'] || '').trim();
+        var erroMat   = r['Erro – Atipicidade Material'] || r['Erro - Atipicidade Material'] || '';
+        var erroForm  = r['Erro – Atipicidade Formal']   || r['Erro - Atipicidade Formal']   || '';
+        var tip       = String(r['Tipificação'] || '').trim();
+        var comarca   = String(r['Comarca'] || '').trim();
+        var indiciado = String(r['Indiciado'] || '').trim();
+        var dataStr   = String(r['Data da Sentença'] || '').trim();
+        var ano       = String(r['Ano da Sentença'] || '').trim() || (parseDataParaISO(dataStr) || '').slice(0, 4);
+
+        var motivoCanon = canonMotivo(motivoRaw, resultado, erroMat, erroForm);
+        var grupo = grupoDoRegistro(motivoCanon, resultado);
+
+        var resultadoBucket = resultadoFinal(motivoCanon, resultado);
+        porResultado[resultadoBucket] = (porResultado[resultadoBucket] || 0) + 1;
+
+        if (motivoCanon) {
+          porMotivo[motivoCanon] = (porMotivo[motivoCanon] || 0) + 1;
+          totalArquivamentos++;
+          if (!catObj[motivoCanon]) catObj[motivoCanon] = { texto: motivoCanon, qtd: 0, grupo: MOTIVO_GRUPO[motivoCanon] || 'outros' };
+          catObj[motivoCanon].qtd++;
+        }
+
+        if (ano) porAno[ano] = (porAno[ano] || 0) + 1;
+        if (tip) tipificacaoObj[tip] = (tipificacaoObj[tip] || 0) + 1;
+
+        if (ano && motivoCanon) {
+          if (!porMotivoAno[ano]) porMotivoAno[ano] = {};
+          porMotivoAno[ano][motivoCanon] = (porMotivoAno[ano][motivoCanon] || 0) + 1;
+        }
+
+        var processoObj = { numero: numero, data: dataStr, indiciado: indiciado, tipificacao: tip, comarca: comarca };
+
+        if (erroMat && String(erroMat).trim()) {
+          var txtM = String(erroMat).trim();
+          if (!errosMatMap[txtM]) errosMatMap[txtM] = { texto: txtM, qtd: 0, processos: [] };
+          errosMatMap[txtM].qtd++;
+          errosMatMap[txtM].processos.push(processoObj);
+        }
+        if (erroForm && String(erroForm).trim()) {
+          var txtF = String(erroForm).trim();
+          if (!errosFormMap[txtF]) errosFormMap[txtF] = { texto: txtF, qtd: 0, processos: [] };
+          errosFormMap[txtF].qtd++;
+          errosFormMap[txtF].processos.push(processoObj);
+        }
+
+        if (grupo === 'aceitavel' || grupo === 'processual') { if (numero) esajsAceitaveis.push(numero); }
+        else if (grupo === 'falha') { if (numero) esajsFalha.push(numero); }
+      });
+
+      return {
+        total: filtrada.length,
+        totalArquivamentos: totalArquivamentos,
+        comarcas: Object.keys(todasComarcas).sort(),
+        filtroComarca: comarcaFiltro || '',
+        porMotivo: porMotivo,
+        porMotivoAno: porMotivoAno,
+        porResultado: porResultado,
+        porAno: porAno,
+        porTipoDocumento: {},
+        porTipificacao: Object.entries(tipificacaoObj).map(function (e) { return { texto: e[0], qtd: e[1] }; }),
+        errosMaterial: Object.values(errosMatMap),
+        errosFormais: Object.values(errosFormMap),
+        porCategoria: catObj,
+        esajsAceitaveis: esajsAceitaveis,
+        esajsFalha: esajsFalha,
+      };
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -433,11 +677,20 @@
 
     function renderRel(d) {
       var cs = d.comarcas || [], fa = (d.filtroComarca || '').trim(), h = '';
+      var pIni = _filtroPeriodoIni || '', pFim = _filtroPeriodoFim || '';
       h += '<div class="fb"><label>&#127963; Comarca</label>';
-      h += '<select onchange="carregarRelatorio(this.value)"><option value="">Todas as Comarcas</option>';
+      h += '<select id="sel-comarca" onchange="aplicarFiltrosRelatorio()"><option value="">Todas as Comarcas</option>';
       cs.forEach(function (c) { var sel = (fa && fa.toLowerCase() === c.toLowerCase()) ? ' selected' : ''; h += '<option value="' + esc(c) + '"' + sel + '>' + esc(c) + '</option>'; });
       h += '</select>';
-      if (fa) { h += '<span class="fa">&#128205; ' + esc(fa) + '</span><button class="fl" onclick="carregarRelatorio()">&#10005; Limpar</button>'; }
+      h += '<label style="margin-left:14px;">&#128197; Período</label>';
+      h += '<input type="date" id="periodo-ini" value="' + esc(pIni) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid #d5dce6;border-radius:6px;font-size:12px;">';
+      h += '<span style="margin:0 4px;color:#999;font-size:12px;">até</span>';
+      h += '<input type="date" id="periodo-fim" value="' + esc(pFim) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid #d5dce6;border-radius:6px;font-size:12px;">';
+      if (fa || pIni || pFim) {
+        h += '<span class="fa">&#128205; ' + esc(fa || 'Todas') +
+             (pIni || pFim ? ' &middot; ' + esc(pIni || '\u2026') + ' a ' + esc(pFim || '\u2026') : '') + '</span>';
+        h += '<button class="fl" onclick="carregarRelatorio(\'\',\'\',\'\')">&#10005; Limpar Filtros</button>';
+      }
       h += '</div>';
       h += '<div class="kg">';
       h += mkK('&#128203;', d.total, 'Total');
@@ -513,16 +766,56 @@
         var lista = tipo === 'mat' ? (window._EM || []) : (window._EF || []);
         var item = lista[idx] || {}, procs = item.processos || [];
         if (!procs.length) { det.innerHTML = '<div style="padding:12px 18px;font-size:12px;color:var(--txt2);font-style:italic;">Nenhum processo detalhado disponível.</div>'; return; }
-        var t = '<table><tr><th>N&ordm; Processo</th><th>Indiciado</th><th>Data</th><th>Tipo</th><th>Tipificação</th><th>Comarca</th></tr>';
+        // Monta mapa ESAJ → boletim a partir dos TCOs carregados
+        var esajBolMap = {};
+        (window._TCO_DADOS || []).forEach(function(tc) {
+          var esaj = String(tc['E-SAJ'] || tc['ESAJ'] || tc['LocalE-SAJ'] || '').trim();
+          var bol  = String(tc['Nº Ocorrência'] || '').trim();
+          if (esaj && bol) esajBolMap[esaj] = bol;
+        });
+
+        var thStyle = 'background:#f7f9fc;color:#667;font-size:10px;font-weight:700;' +
+                      'text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;' +
+                      'text-align:left;border-bottom:1px solid #e0e7f0;';
+
+        var t = '<table>' +
+          '<tr>' +
+            '<th style="' + thStyle + '">N&ordm; Processo (ESAJ)</th>' +
+            '<th style="' + thStyle + '">Boletim (TCO)</th>' +
+            '<th style="' + thStyle + '">Data</th>' +
+            '<th style="' + thStyle + '">Indiciado</th>' +
+            '<th style="' + thStyle + '">Tipificação</th>' +
+            '<th style="' + thStyle + '">Comarca</th>' +
+          '</tr>';
+
         procs.forEach(function (p, pi) {
-          var bg = pi % 2 === 0 ? '#fff' : '#f6f9fc';
+          var bg  = pi % 2 === 0 ? '#fff' : '#f6f9fc';
+          var bol = esajBolMap[String(p.numero||'').trim()] || '—';
+
+          // Formata a data para DD/MM/AAAA se vier em outro formato
+          var dataFmt = String(p.data || '—');
+          // Se vier como string longa de Date (ex: "Thu Oct 30 2025...")
+          var mLong = dataFmt.match(/(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
+          if (mLong) {
+            var meses = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
+                         Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
+            var m = meses[mLong[2]] || '??';
+            var d = String(mLong[3]).padStart(2,'0');
+            dataFmt = d + '/' + m + '/' + mLong[4];
+          }
+          // Se vier no formato ISO AAAA-MM-DD
+          var mISO = dataFmt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+          if (mISO) dataFmt = mISO[3] + '/' + mISO[2] + '/' + mISO[1];
+
           t += '<tr style="background:' + bg + '">' +
-            '<td><span class="pn">' + esc(p.numero || '—') + '</span></td>' +
-            '<td>' + esc(p.indiciado || '—') + '</td>' +
-            '<td style="white-space:nowrap">' + esc(p.data || '—') + '</td>' +
-            '<td>' + esc(p.tipoDocumento || 'Sentença') + '</td>' +
-            '<td>' + esc(p.tipificacao || '—') + '</td>' +
-            '<td>' + esc(p.comarca || '—') + '</td></tr>';
+            '<td style="padding:8px 12px;"><span class="pn">' + esc(p.numero || '—') + '</span></td>' +
+            '<td style="padding:8px 12px;font-family:Consolas,monospace;font-size:11px;' +
+            'color:#1a6b45;font-weight:700;">' + esc(bol) + '</td>' +
+            '<td style="padding:8px 12px;white-space:nowrap;font-size:12px;">' + esc(dataFmt) + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.indiciado || '—') + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.tipificacao || '—') + '</td>' +
+            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.comarca || '—') + '</td>' +
+          '</tr>';
         });
         t += '</table>'; det.innerHTML = t;
         enriquecerTabelaGuarnicao(det, procs);
@@ -755,6 +1048,22 @@ function gerarHTMLSugestoes(d) {
 
       sugestoes.sort(function(a,b){ return b.qtd - a.qtd; });
 
+      // ── TOP 10 — Atipicidade Formal/Material mais recorrentes ──
+      var top10 = sugestoes.filter(function(s) {
+        return s.cat === 'Atipicidade Material' || s.cat === 'Atipicidade Formal';
+      }).slice(0, 10);
+
+      // ── CALENDÁRIO DO MÊS — distribui as sugestões por dia (cíclico) ──
+      var hoje = new Date();
+      var anoCal = hoje.getFullYear();
+      var mesCal = hoje.getMonth();
+      var nomesMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho',
+                         'Agosto','Setembro','Outubro','Novembro','Dezembro'];
+      var diasSemana = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+      var diasNoMes = new Date(anoCal, mesCal + 1, 0).getDate();
+      var primeiroDiaSemana = new Date(anoCal, mesCal, 1).getDay();
+      var fonteCalendario = top10.length ? top10 : sugestoes;
+
       var SEP = '\n\n------------------------------------------------------------\n\n';
       
       var txtTudo = '';
@@ -802,7 +1111,102 @@ function gerarHTMLSugestoes(d) {
         '</div>';
       });
 
+      // ── TOP 10 HTML — Atipicidade Formal/Material mais recorrente ──
+      var topoHTML = '';
+      if (top10.length) {
+        topoHTML += '<div class="topo-list">';
+        top10.forEach(function(s, idx) {
+          var rankCls = idx === 0 ? ' ouro' : idx === 1 ? ' prata' : idx === 2 ? ' bronze' : '';
+          var arts = (s.falha.match(/Art\.?\s*\d+[^,\.;]*/gi) || []);
+          if (!arts.length && s.tip) arts = (s.tip.match(/Art\.?\s*\d+[^,\.;]*/gi) || []);
+          var artTagsHTML = arts.slice(0, 3).map(function(a) {
+            return '<span class="ta">&#128204; ' + esc(a.trim()) + '</span>';
+          }).join('');
+          var txCopTop = '====================================================================\n' +
+                      '*P3-DICAS: TOP ' + (idx + 1) + ' — Atipicidade mais recorrente*\n\n' +
+                      'TIPO: ' + s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s)) identificados\n\n' +
+                      (arts.length ? 'ARTIGO(S): ' + arts.join(', ') + '\n\n' : '') +
+                      '❌ FALHA: ' + s.falha + '\n\n' +
+                      (s.tip ? '⚖️ TIPIFICAÇÃO: ' + s.tip + '\n\n' : '') +
+                      '✅ ORIENTAÇÃO: ' + s.sug + '\n\n' +
+                      'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
+                      '====================================================================\n';
+          var txCopTopE = btoa(unescape(encodeURIComponent(txCopTop)));
+          topoHTML += '<div class="topo-item">' +
+            '<div class="topo-rank' + rankCls + '">' + (idx + 1) + '</div>' +
+            '<div class="topo-body">' +
+              '<span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:10px;font-weight:700;background:' + s.corBg + ';color:' + s.cor + ';margin-bottom:3px;">' + s.cat + '</span>' +
+              '<div class="topo-falha" title="' + esc(s.falha) + '">' + esc(s.falha) + '</div>' +
+              (artTagsHTML ? '<div class="topo-tags">' + artTagsHTML + '</div>' : '') +
+            '</div>' +
+            '<span class="topo-qtd">' + s.qtd + ' caso(s)</span>' +
+            '<button onclick="copiar(this,\'' + txCopTopE + '\')" style="flex-shrink:0;padding:6px 12px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:#475569;">&#128203; Copiar</button>' +
+          '</div>';
+        });
+        topoHTML += '</div>';
+      }
+
+      // ── CALENDÁRIO DO MÊS HTML — sugestão do dia, cíclica sobre a fonte ──
+      var calendarioHTML = '';
+      if (fonteCalendario.length) {
+        var gridHTML = '<div class="cal-grid">';
+        diasSemana.forEach(function(dw) { gridHTML += '<div class="cal-dow">' + dw + '</div>'; });
+        for (var vz = 0; vz < primeiroDiaSemana; vz++) gridHTML += '<div class="cal-cell vazio"></div>';
+
+        var txCalTudo = '';
+        for (var dia = 1; dia <= diasNoMes; dia++) {
+          var sDia = fonteCalendario[(dia - 1) % fonteCalendario.length];
+          var dataLbl = String(dia).padStart(2, '0') + '/' + String(mesCal + 1).padStart(2, '0') + '/' + anoCal;
+          var txDia = '====================================================================\n' +
+                      '*P3-DICAS: Sistema de Análise Qualitativa de Sentenças de TCO*\n\n' +
+                      'Orientação do dia ' + dataLbl + '*\n\n' +
+                      'TIPO: ' + sDia.cat.toUpperCase() + ' (' + sDia.qtd + ' caso(s)) identificados\n\n' +
+                      '❌ FALHA : ' + sDia.falha + '\n\n' +
+                      (sDia.tip ? '⚖️ TIPIFICAÇÃO: ' + sDia.tip + '\n\n' : '') +
+                      '✅ Orientação: '+ sDia.sug + '\n\n' +
+                      'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
+                      '====================================================================\n';
+          txCalTudo += (dia > 1 ? SEP : '') + '[' + dataLbl + '] ' + sDia.cat.toUpperCase() + ' — ' + sDia.falha + '\nSUGESTÃO: ' + sDia.sug;
+          var txDiaE = btoa(unescape(encodeURIComponent(txDia)));
+          var clsHoje = (dia === hoje.getDate()) ? ' hoje' : '';
+          gridHTML += '<div class="cal-cell' + clsHoje + '">' +
+            '<span class="cal-daynum">' + dia + '</span>' +
+            '<span class="cal-tag" style="background:' + sDia.corBg + ';color:' + sDia.cor + ';">' + sDia.cat.replace('Atipicidade ', 'Atip. ') + '</span>' +
+            '<div class="cal-falha" title="' + esc(sDia.falha) + '">' + esc(sDia.falha) + '</div>' +
+            '<button class="cal-copy" onclick="copiar(this,\'' + txDiaE + '\')">Copiar</button>' +
+          '</div>';
+        }
+        gridHTML += '</div>';
+
+        var txCalTudoE = btoa(unescape(encodeURIComponent(txCalTudo)));
+        calendarioHTML += '<div class="cal-wrap"><div class="cal-head"><h3>' + nomesMeses[mesCal] + ' de ' + anoCal + '</h3>' +
+          '<button style="padding:8px 16px;background:#1a3d5d;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;" onclick="copiar(this,\'' + txCalTudoE + '\')">&#128203; Copiar Calend&aacute;rio Inteiro</button></div>';
+        calendarioHTML += gridHTML;
+        calendarioHTML += '</div>';
+      }
+
       var txTudoE = JSON.stringify(txtTudo);
+
+      // ── ABAS — Top 10 / Calendário do Mês / Lista Completa ──
+      var tabAtiva = top10.length ? 'topo' : (fonteCalendario.length ? 'cal' : 'lista');
+      var tabsBtnsHTML = '<div class="tabs-sug">';
+      if (top10.length) {
+        tabsBtnsHTML += '<button class="tab-btn' + (tabAtiva === 'topo' ? ' ativo' : '') + '" data-tab="topo" onclick="trocarTabSug(this,\'topo\')">&#127942; Top 10</button>';
+      }
+      if (fonteCalendario.length) {
+        tabsBtnsHTML += '<button class="tab-btn' + (tabAtiva === 'cal' ? ' ativo' : '') + '" data-tab="cal" onclick="trocarTabSug(this,\'cal\')">&#128197; Calend&aacute;rio do M&ecirc;s</button>';
+      }
+      tabsBtnsHTML += '<button class="tab-btn' + (tabAtiva === 'lista' ? ' ativo' : '') + '" data-tab="lista" onclick="trocarTabSug(this,\'lista\')">&#128203; Lista Completa (' + sugestoes.length + ')</button>';
+      tabsBtnsHTML += '</div>';
+
+      var panesHTML = '';
+      if (top10.length) {
+        panesHTML += '<div id="tab-topo" class="tab-pane' + (tabAtiva === 'topo' ? ' ativo' : '') + '">' + topoHTML + '</div>';
+      }
+      if (fonteCalendario.length) {
+        panesHTML += '<div id="tab-cal" class="tab-pane' + (tabAtiva === 'cal' ? ' ativo' : '') + '">' + calendarioHTML + '</div>';
+      }
+      panesHTML += '<div id="tab-lista" class="tab-pane' + (tabAtiva === 'lista' ? ' ativo' : '') + '">' + cardsHTML + '</div>';
 
       // O script decodifica o Base64 de forma limpa e direta na cópia
       var scriptDinamico = '\x3cscript\x3e' +
@@ -818,6 +1222,12 @@ function gerarHTMLSugestoes(d) {
             'var b=document.querySelector(".bct");var o=b.innerHTML;b.innerHTML="&#10003; Copiado!";b.style.background="#dcfce7";' +
             'setTimeout(function(){b.innerHTML=o;b.style.background="";},2500);' +
           '});' +
+        '}' +
+        'function trocarTabSug(btn,tab){' +
+          'document.querySelectorAll(".tab-pane").forEach(function(p){p.classList.remove("ativo");});' +
+          'document.querySelectorAll(".tab-btn").forEach(function(b){b.classList.remove("ativo");});' +
+          'var pane=document.getElementById("tab-"+tab);if(pane)pane.classList.add("ativo");' +
+          'btn.classList.add("ativo");' +
         '}' +
         '\x3c/script\x3e';
 
@@ -838,6 +1248,35 @@ function gerarHTMLSugestoes(d) {
         '.kc{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:13px 16px;flex:1;min-width:120px;box-shadow:0 1px 4px rgba(0,0,0,.06)}' +
         '.kn{font-size:26px;font-weight:800;color:#1a3d5d}.kl{font-size:10px;color:#64748b;margin-top:2px;text-transform:uppercase;letter-spacing:.05em}' +
         '.av{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;font-size:13px;color:#1e40af;margin-bottom:18px;line-height:1.5}' +
+        '.sec-tit{font-size:15px;font-weight:800;color:#1a3d5d;margin:26px 0 12px;}' +
+        '.tabs-sug{display:flex;gap:4px;margin-bottom:20px;border-bottom:2px solid #e2e8f0;flex-wrap:wrap;}' +
+        '.tab-btn{padding:10px 18px;border:none;background:transparent;font-size:13px;font-weight:700;color:#64748b;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:color .15s;}' +
+        '.tab-btn:hover{color:#1a3d5d;}' +
+        '.tab-btn.ativo{color:#1a3d5d;border-bottom-color:#1a3d5d;}' +
+        '.tab-pane{display:none;}' +
+        '.tab-pane.ativo{display:block;}' +
+        '.ta{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#dbeafe;color:#1d4ed8;}' +
+        '.topo-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px;}' +
+        '.topo-list{display:flex;flex-direction:column;gap:9px;margin-bottom:8px;}' +
+        '.topo-item{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:11px 16px;box-shadow:0 1px 4px rgba(0,0,0,.06);}' +
+        '.topo-rank{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#1a3d5d;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;}' +
+        '.topo-rank.ouro{background:#b45309}.topo-rank.prata{background:#64748b}.topo-rank.bronze{background:#92400e}' +
+        '.topo-body{flex:1;min-width:0;}' +
+        '.topo-falha{font-size:13px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}' +
+        '.topo-qtd{flex-shrink:0;font-size:12px;font-weight:700;color:#1a3d5d;background:#eef2f7;padding:4px 10px;border-radius:20px;white-space:nowrap;}' +
+        '.cal-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:8px;}' +
+        '.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}' +
+        '.cal-head h3{font-size:14px;font-weight:800;color:#1a3d5d;text-transform:capitalize;}' +
+        '.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;}' +
+        '.cal-dow{font-size:10px;font-weight:700;color:#94a3b8;text-align:center;text-transform:uppercase;padding-bottom:4px;}' +
+        '.cal-cell{min-height:96px;border:1px solid #e2e8f0;border-radius:8px;padding:6px 7px;display:flex;flex-direction:column;gap:4px;background:#f8fafc;}' +
+        '.cal-cell.vazio{background:transparent;border:none;}' +
+        '.cal-cell.hoje{background:#eff6ff;border:2px solid #1a3d5d;}' +
+        '.cal-daynum{font-size:12px;font-weight:800;color:#334155;}' +
+        '.cal-tag{align-self:flex-start;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;}' +
+        '.cal-falha{font-size:10px;color:#475569;line-height:1.3;flex:1;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;}' +
+        '.cal-copy{align-self:flex-end;border:none;background:#e2e8f0;color:#475569;font-size:9px;font-weight:700;padding:2px 7px;border-radius:6px;cursor:pointer;}' +
+        '@media (max-width:640px){.cal-grid{grid-template-columns:repeat(7,minmax(0,1fr));}.cal-cell{min-height:70px;font-size:10px;}.cal-falha{-webkit-line-clamp:2;}}' +
         '\x3c/style\x3e\x3c/head\x3e\x3cbody\x3e' +
         '\x3cheader\x3e\x3cdiv\x3e\x3ch1\x3e&#128161; Sugest&#245;es de Corre&#231;&#227;o de TCOs\x3c/h1\x3e' +
         '\x3cp\x3eSistema P3 &#8212; 10&#186; BPM / Se&#231;&#227;o P3 &#8212; ' + total + ' senten&#231;a(s) analisada(s)\x3c/p\x3e\x3c/div\x3e' +
@@ -851,7 +1290,8 @@ function gerarHTMLSugestoes(d) {
         '\x3c/div\x3e' +
         '\x3cdiv class="av"\x3e&#8505;&#65039; Sugest&#245;es baseadas nos padr&#245;es de arquivamento identificados nas senten&#231;as analisadas. ' +
         'Cada sugest&#227;o indica a&#231;&#245;es pr&#225;ticas para melhorar a qualidade dos TCOs lavrados.\x3c/div\x3e' +
-        cardsHTML +
+        tabsBtnsHTML +
+        panesHTML +
         '\x3c/main\x3e' +
         scriptDinamico +
         '\x3c/body\x3e\x3c/html\x3e';
@@ -1181,50 +1621,137 @@ function gerarHTMLSugestoes(d) {
       }
 
       // ══ RANKING MILITARES ════════════════════════════════════════
-      h += mkRankingMilitares(tcos, guarPorBoletim);
+      h += mkRankingMilitares(d, tcos, guarPorBoletim);
 
       return h;
     }
 
     // ── Monta ranking de militares por arquivamentos com falha ──────
-    function mkRankingMilitares(tcos, guarPorBoletim) {
-      if (!tcos.length || !Object.keys(guarPorBoletim).length) {
-        return '<div class="card"><div class="card-titulo">&#127942; Militares — Arquivamentos com Falha</div>' +
+ function mkRankingMilitares(d, tcos, guarPorBoletim) {
+      if (!tcos || !tcos.length || !Object.keys(guarPorBoletim).length) {
+        return '<div class="card"><div class="card-titulo">&#127942; Militares — Resultados por TCO</div>' +
           '<div class="vz" style="padding:20px;"><div class="vt">Aguardando dados</div>' +
-          '<div class="vs">Carregue TCOs e registre guarnições no Firebase para ver o ranking</div></div></div>';
+          '<div class="vs">Carregue TCOs e registre guarnições no Firebase para ver o ranking.</div></div></div>';
       }
 
-      var ACEIT = ['transac', 'anpp'];
+      // ── CRITÉRIOS DE CLASSIFICAÇÃO ────────────────────────────────
+      // ACEITÁVEL (pleno ou processual):
+      //   - Movimentação contém: 'transac', 'anpp', 'condena', 'homolog',
+      //     'composicao', 'suspensao', 'perda', 'destruicao', 'extincao da pena'
+      //   - OU categoriaAceitabilidade contém: 'aceitac' (Aceitação Plena ou Processual)
+      // COM FALHA:
+      //   - Movimentação contém 'arquiv' E não é aceitável
+      //   - OU categoriaAceitabilidade contém 'nao aceitac' ou 'rejeicao'
+      // EXTINÇÃO POR FATORES ALHEIOS (não conta como falha nem aceitável):
+      //   - categoriaAceitabilidade contém 'extincao' ou 'decadencia' ou 'prescricao'
+      // NEUTRO (declinação de competência — não conta):
+      //   - categoriaAceitabilidade contém 'neutro' ou 'declina'
+
+      function _norm(s) {
+        return String(s||'').toLowerCase()
+          .replace(/[áàãâä]/g,'a').replace(/[éèêë]/g,'e')
+          .replace(/[íìîï]/g,'i').replace(/[óòõôö]/g,'o')
+          .replace(/[úùûü]/g,'u').replace(/ç/g,'c');
+      }
+
+      var ACEIT_MOV = ['transac','anpp','condena','homolog','composicao','suspensao',
+                       'perda de bem','destruicao','extincao da pena','absolvicao'];
+      var ACEIT_CAT = ['aceitac'];           // Aceitação Plena e Aceitação Processual
+      var FALHA_CAT = ['nao aceitac','rejeicao'];
+      var NEUTRO    = ['neutro','declina','extincao por','decadencia','prescricao'];
+
+      function classificar(t) {
+        var mov = _norm(t['Movimentação'] || t['Movimentacao'] || '');
+        var cat = _norm(t['categoriaAceitabilidade'] || '');
+
+        // ── Status "JULGADO" → sempre aceitável ────────────────────
+        if (mov.includes('julgado') || mov.includes('julgad')) return 'aceitavel';
+
+        // ── Status "ARQUIVADO" → aplica critérios ──────────────────
+        if (mov.includes('arquiv')) {
+          // Categoria explícita tem prioridade (vem do Gem)
+          if (cat && ACEIT_CAT.some(function(k){ return cat.includes(k); })) return 'aceitavel';
+          if (cat && FALHA_CAT.some(function(k){ return cat.includes(k); })) return 'falha';
+          // Fallback: termos na movimentação
+          if (ACEIT_MOV.some(function(k){ return mov.includes(k); })) return 'aceitavel';
+          return 'falha'; // arquivado sem motivo aceitável = falha
+        }
+
+        return null; // pendente/em andamento — não conta
+      }
 
       // Mapa ESAJ → boletim
       var esajMap = {};
       tcos.forEach(function(t) {
-        var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
+        var esaj = _norm(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
         var bol  = String(t['Nº Ocorrência'] || '').trim();
         if (esaj && bol) esajMap[esaj] = bol;
       });
 
-      // Função auxiliar: busca guarnição por boletim com fallback numérico
+      // Busca guarnição com fallback numérico
       function getIgs(bol) {
         var igs = guarPorBoletim[bol] || [];
         if (!igs.length) {
-          var bolNum = bol.replace(/\D/g,'').replace(/^0+/,'');
-          igs = guarPorBoletim[bolNum] || [];
+          igs = guarPorBoletim[bol.replace(/\D/g,'').replace(/^0+/,'')] || [];
         }
         return igs;
       }
 
-      // Contagem por militar — falhas E aceitáveis em loop único
+      // ── MAPA ESAJ → CLASSIFICAÇÃO (do GAS qualitativo) ─────────────
+      // O GAS agora retorna listas de ESAJs por grupo:
+      //   d.esajsAceitaveis → processos com motivo aceitável (transação penal, ANPP, condenação etc.)
+      //   d.esajsFalha      → processos com falha (atipicidade, falta de justa causa etc.)
+      // Essa é a fonte mais confiável — usa os dados das sentenças importadas no IRIS
+      var setAceit = {};
+      var setFalha = {};
+      (d.esajsAceitaveis || []).forEach(function(n){ if(n) setAceit[n.trim()] = true; });
+      (d.esajsFalha      || []).forEach(function(n){ if(n) setFalha[n.trim()] = true; });
+
+      // Complementa com errosMaterial/errosFormais (garantia de retrocompatibilidade)
+      if (d.errosMaterial) {
+        d.errosMaterial.forEach(function(e) {
+          (e.processos||[]).forEach(function(p) {
+            var n = String(p.numero||'').trim();
+            if (n) setFalha[n] = true;
+          });
+        });
+      }
+      if (d.errosFormais) {
+        d.errosFormais.forEach(function(e) {
+          (e.processos||[]).forEach(function(p) {
+            var n = String(p.numero||'').trim();
+            if (n) setFalha[n] = true;
+          });
+        });
+      }
+
+      // Contagem por militar
       var cont = {};
 
       tcos.forEach(function(t) {
-        var mov    = String(t['Movimentação'] || t['Movimentacao'] || '').toLowerCase().trim();
-        var isArq  = mov.includes('arquiv');
-        if (!isArq) return;
-        var isAceit = ACEIT.some(function(k){ return mov.includes(k); });
-
         var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
-        var bol  = esajMap[esaj] || String(t['Nº Ocorrência'] || '').trim();
+        var classif = null;
+
+        if (esaj) {
+          // ── PRIORIDADE 1: ESAJ registrado no IRIS como FALHA ─────
+          if (setFalha[esaj]) {
+            classif = 'falha';
+          }
+          // ── PRIORIDADE 2: ESAJ registrado no IRIS como ACEITÁVEL ─
+          else if (setAceit[esaj]) {
+            classif = 'aceitavel';
+          }
+        }
+
+        // ── PRIORIDADE 3: Fallback pelo campo Movimentação do TCO ──
+        // Usado quando o ESAJ ainda não foi importado no IRIS
+        if (!classif) {
+          classif = classificar(t);
+        }
+
+        if (!classif || classif === 'neutro') return;
+
+        var bol = esajMap[esaj] || esajMap[_norm(esaj)] || String(t['Nº Ocorrência'] || '').trim();
         if (!bol) return;
 
         var igs = getIgs(bol);
@@ -1239,7 +1766,8 @@ function gerarHTMLSugestoes(d) {
           if (!nome) return;
           var chave = posto + '|' + nome;
           if (!cont[chave]) cont[chave] = { nome:nome, posto:posto, falhas:0, aceitaveis:0, tips:{} };
-          if (isAceit) {
+
+          if (classif === 'aceitavel') {
             cont[chave].aceitaveis++;
           } else {
             cont[chave].falhas++;
@@ -1248,24 +1776,31 @@ function gerarHTMLSugestoes(d) {
         });
       });
 
-      // Ordena por falhas decrescente (militares com mais falhas no topo)
+      // Ranking: apenas militares com pelo menos 1 falha, ordenado por falhas
       var ranking = Object.values(cont)
         .filter(function(m){ return m.falhas > 0; })
         .sort(function(a,b){ return b.falhas - a.falhas; })
         .slice(0, 20);
 
       if (!ranking.length) {
-        return '<div class="card"><div class="card-titulo">&#127942; Militares — Arquivamentos com Falha</div>' +
+        return '<div class="card"><div class="card-titulo">&#127942; Militares — Resultados por TCO</div>' +
           '<div class="vz" style="padding:20px;"><div class="vt">Nenhum cruzamento encontrado</div>' +
-          '<div class="vs">Verifique se os boletins dos TCOs arquivados com falha possuem ' +
-          'guarnição registrada no Firebase em <code>/guarnicao/&lt;Nº Ocorrência&gt;</code></div></div></div>';
+          '<div class="vs">Os boletins dos TCOs precisam ter guarnição registrada no Firebase ' +
+          'em <code>/guarnicao/&lt;Nº Ocorrência&gt;</code>.</div></div></div>';
       }
 
       var h = '<div class="card">';
-      h += '<div class="card-titulo">&#127942; Militares com Mais Arquivamentos com Falha</div>';
+      h += '<div class="card-titulo">&#127942; Militares — Falhas e Aceitáveis</div>';
+      h += '<div style="font-size:11px;color:#667;margin-bottom:12px;padding:8px 12px;' +
+           'background:#f7f9fc;border-radius:6px;border-left:3px solid #0a448f;line-height:1.8;">' +
+           '<b style="color:#0a448f;">Critérios:</b><br>' +
+           '<span style="color:#991b1b;">&#10005; Falha</span> = arquivado por atipicidade, falta de justa causa ou outros motivos de rejeição<br>' +
+           '<span style="color:#166534;">&#10003; Aceitável</span> = Transação Penal, ANPP, condenação, homologação, perda/destruição de bem, ' +
+           'absolvição com mérito ou qualquer desfecho de aceitação plena/processual' +
+           '</div>';
       h += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
       h += '<thead><tr>';
-      ['#', 'Militar', 'Arquiv. c/ Falha', '&#10003; Aceitáveis', 'Principais Tipificações'].forEach(function(c){
+      ['#','Militar','&#10005; C/ Falha','&#10003; Aceitáveis','Tipificações com Falha'].forEach(function(c){
         h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
              'padding:9px 12px;text-align:left;font-size:11px;font-weight:700;' +
              'text-transform:uppercase;letter-spacing:.05em;">' + c + '</th>';
@@ -1274,7 +1809,7 @@ function gerarHTMLSugestoes(d) {
 
       ranking.forEach(function(mil, i) {
         var bg  = i%2===0 ? '#fff' : '#f7f9fc';
-        var med = i===0 ? '&#127945;' : i===1 ? '&#129352;' : i===2 ? '&#129353;' : String(i+1)+'.';
+        var med = i===0?'&#127945;':i===1?'&#129352;':i===2?'&#129353;':String(i+1)+'.';
         var tops = Object.entries(mil.tips)
           .sort(function(a,b){ return b[1]-a[1]; }).slice(0,3)
           .map(function(e){

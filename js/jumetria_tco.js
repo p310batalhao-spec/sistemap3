@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
     const firebaseConfig = {
-        databaseURL: "https://sistema-p3-default-rtdb.firebaseio.com/"
+        databaseURL: "https://sistema-p3-v2-default-rtdb.firebaseio.com/"
     };
 
     const app = initializeApp(firebaseConfig);

@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
 // FIREBASE
 // ═══════════════════════════════════════════════════════════════
-const FB_GERAL = 'https://sistema-p3-default-rtdb.firebaseio.com/geral.json';
-const FB_CVP   = 'https://sistema-p3-default-rtdb.firebaseio.com/cvp.json';
-const FB_CVLI  = 'https://sistema-p3-default-rtdb.firebaseio.com/cvli.json';
+const FB_GERAL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/geral.json';
+const FB_CVP   = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/cvp.json';
+const FB_CVLI  = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/cvli.json';
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITÁRIOS DE INTERFACE

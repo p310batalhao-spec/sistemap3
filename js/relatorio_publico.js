@@ -1,10 +1,9 @@
-
 // ═══════════════════════════════════════════════════════════════════
 // RELATÓRIO PÚBLICO P3 — busca dados direto do Firebase
 // Sem login · Sem localStorage · Compartilhável por link
 // ═══════════════════════════════════════════════════════════════════
 
-const FB = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const FB = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
 
 // ── Utilitários ──────────────────────────────────────────────────
 const norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().trim();

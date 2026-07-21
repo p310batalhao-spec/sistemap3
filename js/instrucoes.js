@@ -1,7 +1,7 @@
 // ====================================================================
 // CONFIGURAÇÃO FIREBASE
 // ====================================================================
-const DATABASE_URL = 'https://sistema-p3-default-rtdb.firebaseio.com';
+const DATABASE_URL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
 const NODES = {
     cursos: 'instrucao_cursos',
     instrutores: 'instrucao_instrutores',
