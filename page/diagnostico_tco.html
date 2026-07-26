@@ -22,6 +22,7 @@
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 <h2>🔍 Diagnóstico — tco_geral Firebase</h2>
 <div id="status">Carregando...</div>
 <div id="resumo"></div>
@@ -30,7 +31,7 @@
 <pre id="json-bruto">...</pre>
 
 <script>
-const FB = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/tco_geral.json';
+let FB = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 function detectarFormato(data) {
     if (!data) return { label: 'VAZIO', cls: 'vaz', iso: '' };
@@ -52,6 +53,8 @@ function newDateJS(s) {
 (async () => {
     const el = document.getElementById('status');
     try {
+        const cfg = await P3.loadUnidadeConfig();
+        FB = cfg.firebase.databaseURL + '/tco_geral.json';
         el.textContent = 'Buscando dados do Firebase...';
         const res = await fetch(FB);
         const raw = await res.json();
@@ -156,5 +159,6 @@ function newDateJS(s) {
     }
 })();
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

@@ -1,11 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    const firebaseConfig = {
-        databaseURL: "https://sistema-p3-v2-default-rtdb.firebaseio.com/"
-    };
-
-    const app = initializeApp(firebaseConfig);
+    // Config definida em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+    const _cfg = await P3.loadUnidadeConfig();
+    const app = initializeApp(_cfg.firebase);
     const db = getDatabase(app);
 
     // Variável global para armazenar os dados cruzados e permitir filtragem
@@ -120,7 +118,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
     }
     function logout() {
         localStorage.removeItem('usuarioLogado');
-        window.location.href = '../index.html';
+        window.location.href = '../page/login.html';
     }
     function exibirUsuario() {
         const userInfoDiv = document.getElementById('user-info');

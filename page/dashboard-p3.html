@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard P3 — 10º BPM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -14,7 +18,7 @@
         /* ── Reset / Base ─────────────────────────────────── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body { font-family: Arial, sans-serif; background: #f0f2f8; }
+        body { font-family: var(--p3-font); background: var(--p3-bg); }
 
         main {
             flex: 1;
@@ -32,10 +36,11 @@
             justify-content: space-between;
             flex-wrap: wrap;
             gap: .75rem;
-            background: linear-gradient(90deg, #0a448f 0%, #1464b5 60%, #3b6fb8 100%);
-            border-radius: 10px;
+            background: var(--p3-gradient);
+            border-radius: var(--p3-radius-md);
             padding: 1rem 1.5rem;
             color: #fff;
+            box-shadow: var(--p3-shadow-md);
         }
         .dash-header h2 { font-size: 1.05rem; font-weight: bold; }
         .dash-header small { font-size: .75rem; opacity: .7; display: block; margin-top: .15rem; }
@@ -47,9 +52,9 @@
             align-items: center;
             gap: .75rem;
             flex-wrap: wrap;
-            background: #fff;
-            border: 1.5px solid #d0d5e8;
-            border-radius: 8px;
+            background: var(--p3-surface);
+            border: 1.5px solid var(--p3-border);
+            border-radius: var(--p3-radius-sm);
             padding: .65rem 1rem;
         }
         .periodo-bar label { font-size: .82rem; font-weight: bold; color: #374263; }
@@ -84,11 +89,11 @@
             gap: .85rem;
         }
         .kpi-card {
-            background: #fff;
-            border-radius: 10px;
+            background: var(--p3-surface);
+            border-radius: var(--p3-radius-md);
             padding: 1rem 1.1rem;
-            border-top: 4px solid #3b6fb8;
-            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+            border-top: 4px solid var(--p3-blue-300);
+            box-shadow: var(--p3-shadow-sm);
             display: flex;
             flex-direction: column;
             gap: .25rem;
@@ -101,6 +106,8 @@
         .kpi-card.arma  { border-top-color: #2e7d32; }
         .kpi-card.drug  { border-top-color: #f57f17; }
         .kpi-card.sos   { border-top-color: #00695c; }
+        .kpi-card.mand  { border-top-color: #5c6bc0; }
+        .kpi-card.guarn { border-top-color: #00838f; }
 
         .kpi-label { font-size: .72rem; font-weight: bold; color: #6b7594; text-transform: uppercase; letter-spacing: .05em; }
         .kpi-valor { font-size: 2rem; font-weight: bold; color: #1a1f36; line-height: 1.1; }
@@ -113,10 +120,10 @@
             gap: 1rem;
         }
         .chart-card {
-            background: #fff;
-            border-radius: 10px;
+            background: var(--p3-surface);
+            border-radius: var(--p3-radius-md);
             padding: 1.1rem 1.2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,.07);
+            box-shadow: var(--p3-shadow-sm);
         }
         .chart-card.full { grid-column: 1 / -1; }
         .chart-header {
@@ -276,15 +283,20 @@
         </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
     <header>
         <div class="header-info-left">
             <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+                <h3 id="cabecalho-unidade"></h3>
             </div>
         </div>
         <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info"></div>
         </div>
@@ -296,9 +308,9 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
                 <p>Home</p>
             </a>
-            <a href="../page/dashboard-p3.html" class="active">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard"/>
-                <p>Dashboard</p>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
             </a>
             <a href="../page/cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
@@ -308,10 +320,18 @@
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
                 <p>Materiais Apreendidos</p>
             </a>
-            <a href="../page/solucoesia.html">
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
                 <p>Soluções IA</p>
             </a>
+            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
+            </a>
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
                 <p>Sair</p>
@@ -328,6 +348,7 @@
 
     <footer>
         <div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
 
     <script src="../js/dashboard-p3.js"></script>

@@ -1,15 +1,12 @@
-const firebaseConfig = {
-    apiKey: "AIzaSyBRZn_EOfV6ozsx6NNzOlq1sjIV_xVm7xE",
-    authDomain: "sistema-p3-v2.firebaseapp.com",
-    projectId: "sistema-p3-v2",
-    storageBucket: "sistema-p3-v2.firebasestorage.app",
-    messagingSenderId: "1019080251258",
-    appId: "1:1019080251258:web:93f9e299cf19b16189e8c3",
-    databaseURL: "https://sistema-p3-v2-default-rtdb.firebaseio.com"
-};
-
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+// Config definida em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+let db = null;
+async function _ensureFirebase() {
+    if (db) return db;
+    const cfg = await P3.loadUnidadeConfig();
+    if (!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+    db = firebase.database();
+    return db;
+}
 
 // Variáveis de controle
 let bufferDados = [];
@@ -505,12 +502,16 @@ function exibirUsuario() {
 
 function logout() {
     localStorage.clear();
-    window.location.href = "../index.html";
+    window.location.href = "../page/login.html";
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
+    document.getElementById('btn-logout').addEventListener('click', logout);
+
+    await _ensureFirebase();
     atualizarrelogio();
     setInterval(atualizarrelogio, 1000);
     exibirUsuario();
-    document.getElementById('btn-logout').addEventListener('click', logout);
 });

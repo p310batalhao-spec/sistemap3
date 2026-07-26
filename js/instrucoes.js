@@ -1,7 +1,7 @@
 // ====================================================================
 // CONFIGURAÇÃO FIREBASE
 // ====================================================================
-const DATABASE_URL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let DATABASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 const NODES = {
     cursos: 'instrucao_cursos',
     instrutores: 'instrucao_instrutores',
@@ -1450,8 +1450,16 @@ function logout() {
 // ====================================================================
 // INICIALIZAÇÃO — tudo dentro do DOMContentLoaded
 // ====================================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkLogin();
+
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.onclick = logout;
+
+    const cfg = await P3.loadUnidadeConfig();
+    DATABASE_URL = cfg.firebase.databaseURL;
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
 
@@ -1468,10 +1476,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const frm = document.getElementById(`form-${tipo}`);
         if (frm) frm.addEventListener('submit', e => { e.preventDefault(); handleSubmit(tipo); });
     });
-
-    // Logout
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) btnLogout.onclick = logout;
 
     // Carrega dados do Firebase
     carregarTodos();

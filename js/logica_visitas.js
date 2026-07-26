@@ -2,6 +2,8 @@
 
 async function buscarOcorrenciasParaVisita(dataInicio, dataFim) {
     try {
+        const cfg = await P3.loadUnidadeConfig();
+        DATABASE_URL = cfg.firebase.databaseURL;
         const urlFinal = `${DATABASE_URL}/${NODE_GERAL}.json`;
         const response = await fetch(urlFinal);
         

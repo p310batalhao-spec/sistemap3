@@ -1,7 +1,7 @@
 // ====================================================================
 // CONFIGURAÇÃO — URL do Web App do Apps Script (planilha TCO GERAL)
 // ====================================================================
-const APPS_SCRIPT_TCO_URL = 'https://script.google.com/macros/s/AKfycbzgewj7KjnTtWrnmnE7dcrz99CCpW1G3xw4Zft59dyIPL91avy1fqdVvgL1mRcIYhLP/exec';
+let APPS_SCRIPT_TCO_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 var dadosTCO = [];  // var garante acesso via window.dadosTCO de outros scripts
 
@@ -668,8 +668,19 @@ function _badgeAv(total) {
 // ====================================================================
 // INICIALIZAÇÃO
 // ====================================================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkLogin();
+
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.onclick = () => {
+        localStorage.clear();
+        window.location.href = '../page/login.html';
+    };
+
+    const cfg = await P3.loadUnidadeConfig();
+    APPS_SCRIPT_TCO_URL = cfg.gas.TCO;
     loadTCO();
     atualizarRelogio();
     exibirUltimaSincronizacao();

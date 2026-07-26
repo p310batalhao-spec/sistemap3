@@ -5,7 +5,7 @@
 //              Dias da Semana, Tipificações, Cidades, Horários
 // ═══════════════════════════════════════════════════════════════════
 
-const FB_COPOM = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let FB_COPOM = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 // ── Normalização ──────────────────────────────────────────────────
 const normC = str => (str || '').toString().trim()
@@ -1117,11 +1117,16 @@ function checkLoginCopom() {
 window.addEventListener('DOMContentLoaded', async () => {
     checkLoginCopom();
 
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', () => {
         localStorage.clear();
         window.location.href = '../page/login.html';
     });
+
+    const cfg = await P3.loadUnidadeConfig();
+    FB_COPOM = cfg.firebase.databaseURL;
 
     const main = document.getElementById('copom-main');
     if (main) main.innerHTML = `

@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - UNIDADES</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stylesmandado.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3 id="cabecalho-unidade"></h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
+            </a>
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="eventos" />
+                <p>Eventos</p>
+            </a>
+            <a href="../page/instrucoes.html">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
+                <p>Instrução</p>
+            </a>
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <a href="admin-usuarios.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao">
+                <h2>GESTÃO DE UNIDADES</h2>
+                <p>Acesso restrito ao administrador — Firebase e Google Apps Script de cada unidade</p>
+            </div>
+
+            <div class="TabelaEventos">
+                <h3>Unidades Cadastradas</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Adicionar" />
+                        Nova Unidade
+                    </button>
+                    <a href="admin-usuarios.html" style="margin-left:auto; font-weight:bold; color:#0a448f;">
+                        ← Voltar para Usuários
+                    </a>
+                    <p id="mensagem-carregamento">Carregando unidades, aguarde...</p>
+                </div>
+
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nome</th>
+                                <th>Projeto Firebase</th>
+                                <th>Status</th>
+                                <th>AÇÕES</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-unidade">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4 id="form-titulo">Nova Unidade</h4>
+
+                <input type="hidden" id="form-id-original">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>ID da Unidade (slug, ex: 5bpm)</p>
+                        <input type="text" id="f-id" placeholder="5bpm">
+                    </div>
+                    <div class="formulario">
+                        <p>Nome</p>
+                        <input type="text" id="f-nome" placeholder="5º BPM">
+                    </div>
+                    <div class="formulario">
+                        <p>Status</p>
+                        <select id="f-ativo">
+                            <option value="true">Ativo</option>
+                            <option value="false">Inativo</option>
+                        </select>
+                    </div>
+
+                    <h4 style="margin:1rem 0 .5rem;">Firebase Realtime Database</h4>
+                    <div class="formulario"><p>apiKey</p><input type="text" id="fb-apiKey"></div>
+                    <div class="formulario"><p>authDomain</p><input type="text" id="fb-authDomain"></div>
+                    <div class="formulario"><p>projectId</p><input type="text" id="fb-projectId"></div>
+                    <div class="formulario"><p>storageBucket</p><input type="text" id="fb-storageBucket"></div>
+                    <div class="formulario"><p>messagingSenderId</p><input type="text" id="fb-messagingSenderId"></div>
+                    <div class="formulario"><p>appId</p><input type="text" id="fb-appId"></div>
+                    <div class="formulario"><p>databaseURL</p><input type="text" id="fb-databaseURL" placeholder="https://xxxx-default-rtdb.firebaseio.com"></div>
+
+                    <h4 style="margin:1rem 0 .5rem;">Links do Google Apps Script (GAS)</h4>
+                    <div class="formulario"><p>AIT</p><input type="text" id="gas-AIT"></div>
+                    <div class="formulario"><p>Drogas</p><input type="text" id="gas-DROGAS"></div>
+                    <div class="formulario"><p>TCO</p><input type="text" id="gas-TCO"></div>
+                    <div class="formulario"><p>Materiais</p><input type="text" id="gas-MATERIAIS"></div>
+                    <div class="formulario"><p>Materiais — Movimentação</p><input type="text" id="gas-MATERIAIS_MOVIMENTACAO"></div>
+                    <div class="formulario"><p>MVI</p><input type="text" id="gas-MVI"></div>
+                    <div class="formulario"><p>Perturbação do Sossego</p><input type="text" id="gas-PERTURBACAO"></div>
+                    <div class="formulario"><p>CVP</p><input type="text" id="gas-CVP"></div>
+                    <div class="formulario"><p>Violência Doméstica</p><input type="text" id="gas-VD"></div>
+                    <div class="formulario"><p>Armas Apreendidas</p><input type="text" id="gas-ARMAS"></div>
+                    <div class="formulario"><p>Mandados</p><input type="text" id="gas-MANDADOS"></div>
+                    <div class="formulario"><p>Eventos</p><input type="text" id="gas-EVENTOS"></div>
+                    <div class="formulario"><p>Sentenças (Qualitativo TCO)</p><input type="text" id="gas-SENTENCAS"></div>
+                </div>
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR UNIDADE
+                </button>
+            </form>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script>
+        // Guarda de acesso — só administrador chega até aqui.
+        const sessao = P3.requireAdmin();
+
+        const GAS_DOMINIOS = ['AIT', 'DROGAS', 'TCO', 'MATERIAIS', 'MATERIAIS_MOVIMENTACAO', 'MVI',
+            'PERTURBACAO', 'CVP', 'VD', 'ARMAS', 'MANDADOS', 'EVENTOS', 'SENTENCAS'];
+        const FB_CAMPOS = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'databaseURL'];
+
+        const sidebar = document.querySelector('.sidbarform');
+        const overlay = document.getElementById('overlay-sidebar');
+        const form = document.getElementById('form-unidade');
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            document.getElementById('relogio').innerHTML =
+                `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+        }
+
+        function exibirUsuarioLogado() {
+            if (!sessao) return;
+            document.getElementById('user-info').innerHTML =
+                `<p>Bem Vindo(a):</p><p class="user-nome">${sessao.graduacao} ${sessao.nomeGuerra}</p>`;
+        }
+
+        function abrirSidebar() {
+            sidebar.classList.add('active');
+            overlay.style.display = 'block';
+        }
+
+        function fecharSidebar() {
+            sidebar.classList.remove('active');
+            overlay.style.display = 'none';
+            form.reset();
+            document.getElementById('form-id-original').value = '';
+        }
+
+        document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+        overlay.addEventListener('click', fecharSidebar);
+
+        document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
+            form.reset();
+            document.getElementById('form-id-original').value = '';
+            document.getElementById('form-titulo').textContent = 'Nova Unidade';
+            document.getElementById('f-id').disabled = false;
+            abrirSidebar();
+        });
+
+        // ── Lista de unidades ────────────────────────────────────────────────
+        async function carregarUnidades() {
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            try {
+                const resp = await fetch(`${P3.DIRETORIO_BASE_URL}/unidades.json`);
+                const dados = (resp.ok ? await resp.json() : null) || {};
+
+                // 10º BPM sempre aparece, mesmo sem nó próprio (usa o default embutido no código).
+                if (!dados['10bpm']) {
+                    dados['10bpm'] = {
+                        nome: '10º BPM (padrão embutido no sistema)',
+                        ativo: true,
+                        firebase: P3.DEFAULT_10BPM_CONFIG.firebase,
+                        gas: P3.DEFAULT_10BPM_CONFIG.gas,
+                        _padrao: true
+                    };
+                }
+
+                tbody.innerHTML = '';
+                Object.keys(dados).forEach(id => {
+                    const u = dados[id];
+                    const ativo = u.ativo !== false;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${id}</td>
+                        <td>${u.nome || ''}</td>
+                        <td>${(u.firebase && u.firebase.projectId) || '—'}</td>
+                        <td>${ativo ? 'Ativo' : 'Inativo'}</td>
+                        <td>
+                            <button class="btn-editar" data-id="${id}">EDITAR</button>
+                            ${id !== '10bpm' ? `<button class="btn-editar" data-id="${id}" data-excluir="1" style="background:#c0392b;">EXCLUIR</button>` : ''}
+                        </td>
+                    `;
+                    tr.dataset.raw = JSON.stringify(u);
+                    tbody.appendChild(tr);
+                });
+
+                if (document.getElementById('mensagem-carregamento')) {
+                    document.getElementById('mensagem-carregamento').style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Erro ao carregar unidades:', err);
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Erro ao carregar unidades.</td></tr>`;
+            }
+        }
+
+        document.querySelector('#tabela-materiais tbody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-id]');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            const tr = btn.closest('tr');
+            const unidade = JSON.parse(tr.dataset.raw);
+
+            if (btn.dataset.excluir) {
+                if (!confirm(`Excluir a unidade "${unidade.nome}"? Os usuários vinculados a ela deixarão de ter Firebase/GAS configurados.`)) return;
+                await fetch(`${P3.DIRETORIO_BASE_URL}/unidades/${id}.json`, { method: 'DELETE' });
+                carregarUnidades();
+                return;
+            }
+
+            // Editar
+            document.getElementById('form-titulo').textContent = `Editar Unidade — ${unidade.nome}`;
+            document.getElementById('form-id-original').value = id;
+            document.getElementById('f-id').value = id;
+            document.getElementById('f-id').disabled = true;
+            document.getElementById('f-nome').value = unidade.nome || '';
+            document.getElementById('f-ativo').value = String(unidade.ativo !== false);
+
+            FB_CAMPOS.forEach(campo => {
+                document.getElementById('fb-' + campo).value = (unidade.firebase && unidade.firebase[campo]) || '';
+            });
+            GAS_DOMINIOS.forEach(dominio => {
+                document.getElementById('gas-' + dominio).value = (unidade.gas && unidade.gas[dominio]) || '';
+            });
+
+            abrirSidebar();
+        });
+
+        // ── Criar / Editar ────────────────────────────────────────────────
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const idOriginal = document.getElementById('form-id-original').value;
+            const id = (document.getElementById('f-id').value || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+
+            if (!idOriginal && !id) {
+                alert('Informe um ID para a unidade (ex: 5bpm).');
+                return;
+            }
+
+            const firebase = {};
+            FB_CAMPOS.forEach(campo => {
+                const valor = document.getElementById('fb-' + campo).value.trim();
+                if (valor) firebase[campo] = valor;
+            });
+
+            const gas = {};
+            GAS_DOMINIOS.forEach(dominio => {
+                const valor = document.getElementById('gas-' + dominio).value.trim();
+                if (valor) gas[dominio] = valor;
+            });
+
+            const dados = {
+                nome: document.getElementById('f-nome').value.trim(),
+                ativo: document.getElementById('f-ativo').value === 'true',
+                firebase,
+                gas
+            };
+
+            const idFinal = idOriginal || id;
+
+            try {
+                if (!idOriginal) {
+                    const existente = await fetch(`${P3.DIRETORIO_BASE_URL}/unidades/${idFinal}.json`).then(r => r.json());
+                    if (existente) {
+                        alert('Já existe uma unidade com esse ID.');
+                        return;
+                    }
+                }
+
+                await fetch(`${P3.DIRETORIO_BASE_URL}/unidades/${idFinal}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                fecharSidebar();
+                carregarUnidades();
+            } catch (err) {
+                console.error('Erro ao salvar unidade:', err);
+                alert('Erro ao salvar. Tente novamente.');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            exibirUsuarioLogado();
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+            carregarUnidades();
+            document.getElementById('btn-logout').addEventListener('click', P3.logout);
+        });
+    </script>
+</body>
+</html>

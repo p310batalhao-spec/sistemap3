@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════
 // FIREBASE
 // ═══════════════════════════════════════════════════════════════
-const FB_GERAL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/geral.json';
-const FB_CVP   = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/cvp.json';
-const FB_CVLI  = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/cvli.json';
+let FB_GERAL = null; // definidos em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+let FB_CVP   = null;
+let FB_CVLI  = null;
 
 // ═══════════════════════════════════════════════════════════════
 // UTILITÁRIOS DE INTERFACE
@@ -306,6 +306,11 @@ function graficoBar(id, labels, data, cor, horizontal=false) {
 // ═══════════════════════════════════════════════════════════════
 async function carregar() {
     try {
+        const cfg = await P3.loadUnidadeConfig();
+        FB_GERAL = cfg.firebase.databaseURL + '/geral.json';
+        FB_CVP   = cfg.firebase.databaseURL + '/cvp.json';
+        FB_CVLI  = cfg.firebase.databaseURL + '/cvli.json';
+
         const [resGeral, resCVP, resCVLI] = await Promise.all([
             fetch(FB_GERAL), fetch(FB_CVP), fetch(FB_CVLI)
         ]);

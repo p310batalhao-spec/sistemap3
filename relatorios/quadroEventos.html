@@ -295,6 +295,7 @@
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <!-- Toolbar -->
 <div id="toolbar">
@@ -338,7 +339,7 @@
     const LOGO_PMLA   = '../img/brasao.png';
     const LOGO_BPM    = '../img/brasao.png';    // troque por logo10bpm.png se tiver o arquivo
     const LOGO_RODAPE = '../img/brasao.png';
-    const WEBAPP_URL  = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+    let WEBAPP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
     /* ─── Estado ─── */
     let dadosAssinatura = null;
@@ -408,14 +409,17 @@
     document.getElementById('periodo-info').textContent = 'Período: ' + formatarPeriodo(dtIni, dtFim);
 
     /* ─── Buscar e renderizar ─── */
-    fetch(`${WEBAPP_URL}?action=read`)
-        .then(r => r.json())
-        .then(gerarQuadro)
-        .catch(() => {
-            const el = document.getElementById('sem-eventos');
-            el.textContent = 'Erro ao carregar os dados. Verifique sua conexão.';
-            el.style.display = 'block';
-        });
+    P3.loadUnidadeConfig().then(cfg => {
+        WEBAPP_URL = cfg.gas.EVENTOS;
+        fetch(`${WEBAPP_URL}?action=read`)
+            .then(r => r.json())
+            .then(gerarQuadro)
+            .catch(() => {
+                const el = document.getElementById('sem-eventos');
+                el.textContent = 'Erro ao carregar os dados. Verifique sua conexão.';
+                el.style.display = 'block';
+            });
+    });
 
     function gerarQuadro(dados) {
         const ini = new Date(dtIni.getFullYear(), dtIni.getMonth(), dtIni.getDate());
@@ -480,7 +484,7 @@
             <div class="cabecalho-texto">
                 <p>POLÍCIA MILITAR DE ALAGOAS</p>
                 <p>COMANDO DE POLICIAMENTO REGIONAL DO AGRESTE</p>
-                <p>10º BATALHÃO DE POLÍCIA MILITAR</p>
+                <p>${(window.P3_CONFIG && window.P3_CONFIG.nome ? window.P3_CONFIG.nome : '10º Batalhão de Polícia Militar').toUpperCase()}</p>
             </div>
             <img class="brasao-img" src="${LOGO_BPM}" alt="10ºBPM" onerror="this.style.display='none'">
         </div>
@@ -670,5 +674,6 @@
 
 })();
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

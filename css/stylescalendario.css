@@ -1,6 +1,7 @@
 /* ── Contêiner do Calendário ── */
 #calendar-container {
-    background: white;
+    background: var(--p3-surface, #fff);
+    color: var(--p3-text, #1c1c1a);
     margin-left: 10px;
     width: 90%;
     padding: 20px;
@@ -11,6 +12,34 @@
 #calendar {
     margin: 0 auto;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    /* Repassa a paleta do tema atual (claro/escuro) para as variáveis
+       que o próprio FullCalendar usa internamente, em vez de deixar
+       o fundo/bordas fixos em branco independente do modo escolhido. */
+    --fc-page-bg-color: var(--p3-surface, #fff);
+    --fc-neutral-bg-color: var(--p3-surface, #fff);
+    --fc-neutral-text-color: var(--p3-text-muted, #7a7a72);
+    --fc-border-color: var(--p3-border, #e5e3dc);
+    --fc-today-bg-color: var(--p3-blue-100, #eef2fd);
+    --fc-button-text-color: #fff;
+    --fc-button-bg-color: var(--p3-blue-700, #2f5fdd);
+    --fc-button-border-color: var(--p3-blue-700, #2f5fdd);
+    --fc-button-hover-bg-color: var(--p3-blue-500, #2450bd);
+    --fc-button-hover-border-color: var(--p3-blue-500, #2450bd);
+    --fc-button-active-bg-color: var(--p3-blue-500, #2450bd);
+    --fc-button-active-border-color: var(--p3-blue-500, #2450bd);
+}
+
+#calendar .fc-toolbar-title,
+#calendar .fc-col-header-cell-cushion,
+#calendar .fc-daygrid-day-number,
+#calendar .fc-list-day-text,
+#calendar .fc-list-day-side-text {
+    color: var(--p3-text, #1c1c1a);
+}
+
+#calendar .fc-list-event:hover td {
+    background-color: var(--p3-blue-100, #eef2fd);
 }
 
 /* ── Cores por Porte ── */
@@ -90,7 +119,7 @@
 
 .modal-box {
     position: relative;
-    background: #fff;
+    background: var(--p3-surface, #fff);
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.25);
     width: 480px;
@@ -107,8 +136,8 @@
 
 .modal-box h2 {
     font-size: 1.1rem;
-    color: #0a448f;
-    border-bottom: 2px solid #0a448f;
+    color: var(--p3-blue-700, #0a448f);
+    border-bottom: 2px solid var(--p3-blue-700, #0a448f);
     padding-bottom: 0.5rem;
     margin-bottom: 1rem;
     text-transform: uppercase;
@@ -124,12 +153,12 @@
 
 .modal-label {
     font-weight: bold;
-    color: #555;
+    color: var(--p3-text-muted, #555);
     min-width: 140px;
     flex-shrink: 0;
 }
 
-.modal-valor { color: #222; }
+.modal-valor { color: var(--p3-text, #222); }
 
 .modal-guarnicoes {
     display: flex;

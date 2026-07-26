@@ -110,9 +110,9 @@
             border-radius: 3px;
             flex-shrink: 0;
         }
-        .dot-pequeno { background: #2e7d32; }
-        .dot-medio   { background: #e69d00; }
-        .dot-grande  { background: #b71c1c; }
+        .dot-pequeno { background: #28a745; }
+        .dot-medio   { background: #ffc107; }
+        .dot-grande  { background: #dc3545; }
 
         /* ══════════════════════════════════════════════
            CONTEÚDO PRINCIPAL
@@ -180,17 +180,25 @@
             cursor: pointer;
         }
         .fc-event-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
             padding: 2px 5px;
             line-height: 1.3;
+            width: 100%;
         }
         .fc-event-hora {
             font-weight: bold;
             font-size: 10px;
-            margin-right: 3px;
             opacity: 0.9;
+            white-space: nowrap;
         }
         .fc-event-nome {
-            font-size: 10px;
+            font-size: 10.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            white-space: normal;
+            word-break: break-word;
         }
         .fc-event-guarnicoes {
             margin-top: 2px;
@@ -199,10 +207,10 @@
             flex-wrap: wrap;
         }
 
-        /* Cores por porte */
-        .event-pequeno { background-color: #2e7d32 !important; color: #fff !important; }
-        .event-medio   { background-color: #e69d00 !important; color: #fff !important; }
-        .event-grande  { background-color: #b71c1c !important; color: #fff !important; }
+        /* Cores por porte — iguais às da página Calendário de Eventos */
+        .event-pequeno { background-color: #28a745 !important; border-color: #28a745 !important; color: #fff !important; }
+        .event-medio   { background-color: #ffc107 !important; border-color: #ffc107 !important; color: #000 !important; }
+        .event-grande  { background-color: #dc3545 !important; border-color: #dc3545 !important; color: #fff !important; }
 
         /* Badges de guarnição no calendário */
         .cal-guarnicao {
@@ -214,9 +222,9 @@
             color: #fff;
             opacity: 0.95;
         }
-        .cal-ft      { background: #d3be00; }
-        .cal-rp      { background: #0056c6; }
-        .cal-pelopes { background: #000d0b; }
+        .cal-ft      { background: #ffc107; color: #000; }
+        .cal-rp      { background: #1565c0; }
+        .cal-pelopes { background: #212121; }
 
         /* Listagem */
         .fc-list-event-title a { color: inherit !important; text-decoration: none !important; }
@@ -290,9 +298,9 @@
             color: #fff;
             margin-right: 4px;
         }
-        .mgb-ft      { background: #1565c0; }
-        .mgb-rp      { background: #6a1b9a; }
-        .mgb-pelopes { background: #00695c; }
+        .mgb-ft      { background: #ffc107; color: #000; }
+        .mgb-rp      { background: #1565c0; }
+        .mgb-pelopes { background: #212121; }
 
         .modal-footer {
             margin-top: 18px;
@@ -335,6 +343,7 @@
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <!-- ── Cabeçalho Institucional ── -->
 <header>
@@ -343,7 +352,7 @@
              onerror="this.style.display='none'">
         <div class="header-texto">
             <h1>POLÍCIA MILITAR DE ALAGOAS</h1>
-            <h3>10º BATALHÃO DE POLÍCIA MILITAR — P3 | SEÇÃO DE PLANEJAMENTO</h3>
+            <h3><span class="cabecalho-unidade"></span> — P3 | SEÇÃO DE PLANEJAMENTO</h3>
         </div>
     </div>
     <div class="header-right">
@@ -416,11 +425,32 @@
 
 <!-- ── Rodapé ── -->
 <footer>
-    SEÇÃO DE PLANEJAMENTO, ESTATÍSTICA E INSTRUÇÃO — P3 / 10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS
-</footer>
+    SEÇÃO DE PLANEJAMENTO, ESTATÍSTICA E INSTRUÇÃO — P3 / <span class="cabecalho-unidade"></span> DE ALAGOAS
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
 
 <script>
-    const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+    let WEB_APP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+
+    // Converte DATA para AAAA-MM-DD de forma tolerante (ver mesma função
+    // em page/calendario.html) — evita que eventos "sumam" quando a
+    // planilha traz a data em formato diferente do esperado.
+    function paraDataISO(valor) {
+        if (!valor) return null;
+        const s = String(valor).trim();
+
+        const mIso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (mIso) return `${mIso[1]}-${mIso[2]}-${mIso[3]}`;
+
+        const mBr = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (mBr) return `${mBr[3]}-${mBr[2].padStart(2, '0')}-${mBr[1].padStart(2, '0')}`;
+
+        const dt = new Date(s);
+        if (!isNaN(dt.getTime())) {
+            return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+        }
+        return null;
+    }
 
     /* ── Relógio ── */
     function atualizarRelogio() {
@@ -476,17 +506,23 @@
 
             events: async function (info, successCallback, failureCallback) {
                 try {
+                    const cfg = await P3.loadUnidadeConfig();
+                    WEB_APP_URL = cfg.gas.EVENTOS;
                     const response = await fetch(WEB_APP_URL + '?action=read', {
                         method: 'GET', mode: 'cors', redirect: 'follow'
                     });
                     const data = await response.json();
 
+                    if (!Array.isArray(data)) {
+                        console.error('Resposta inesperada do Apps Script de Eventos (esperava uma lista):', data);
+                        successCallback([]);
+                        return;
+                    }
+
+                    let ignorados = 0;
                     const events = data.map(item => {
-                        // DD/MM/YYYY → YYYY-MM-DD
-                        const partes  = (item.DATA || '').split('/');
-                        const dataIso = partes.length === 3
-                            ? `${partes[2]}-${partes[1].padStart(2,'0')}-${partes[0].padStart(2,'0')}`
-                            : item.DATA;
+                        const dataIso = paraDataISO(item.DATA);
+                        if (!dataIso) { ignorados++; return null; }
 
                         // Cor por porte
                         const publico = parseInt(item['ESTIMATIVA DE PÚBLICO']) || 0;
@@ -503,7 +539,7 @@
 
                         return {
                             id:        item.ID,
-                            title:     `${item['HORÁRIO DE INÍCIO'] || ''} - ${item['NOME DO EVENTO'] || ''}`,
+                            title:     `${item['HORÁRIO DE INÍCIO'] || ''} - ${item['NOME DO EVENTO'] || ''} - ${item['CIDADE'] || ''}`,
                             start:     dataIso,
                             className: classe,
                             extendedProps: {
@@ -522,7 +558,10 @@
                         };
                     });
 
-                    successCallback(events);
+                    if (ignorados > 0) {
+                        console.warn(`Calendário: ${ignorados} evento(s) ignorado(s) por data inválida/irreconhecível.`);
+                    }
+                    successCallback(events.filter(Boolean));
                 } catch (err) {
                     console.error('Erro ao carregar calendário:', err);
                     failureCallback(err);

@@ -5,6 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - Eventos</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/styleseventos.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
@@ -25,31 +29,130 @@
         .grande-porte  { background:#fde8e8; color:#7b1c1c; border:1px solid #c0392b; }
         .na-porte      { background:#f0f0f0; color:#666;    border:1px solid #bbb;    }
 
-        /* ── Cabeçalho fixo da tabela ── */
-        .tabela-container {
-            overflow-y: auto;
-            max-height: calc(100vh - 280px);
+        /* ══════════════════════════════════════════════════════════
+           Lista de eventos — mesmo design de cards usado no TCO
+           ══════════════════════════════════════════════════════════ */
+        .lista-eventos-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: .5rem 0 .75rem;
+            border-bottom: 2px solid var(--p3-border);
+            margin-bottom: .4rem;
         }
-        #tabela-eventos thead th {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #003366;
-            color: #fff;
+        .lista-eventos-header h3 {
+            font-size: .95rem;
+            font-weight: 700;
+            color: var(--p3-text);
+            margin: 0;
         }
+        .badge-total-lista {
+            background: var(--p3-blue-100);
+            color: var(--p3-blue-700);
+            font-size: .75rem;
+            font-weight: 700;
+            padding: 3px 12px;
+            border-radius: 20px;
+        }
+
+        .grupo-mes {
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .75rem 0 .3rem;
+        }
+        .grupo-mes-titulo {
+            font-size: .75rem;
+            font-weight: 700;
+            color: var(--p3-text-muted);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            white-space: nowrap;
+        }
+        .grupo-mes-linha { flex: 1; height: 1px; background: var(--p3-border); }
+        .grupo-mes-count { font-size: .72rem; color: var(--p3-text-muted); font-weight: 600; white-space: nowrap; }
+
+        .item-evento {
+            display: flex;
+            align-items: center;
+            background: var(--p3-surface);
+            border-radius: var(--p3-radius-md);
+            padding: .85rem 1rem;
+            margin-bottom: .4rem;
+            box-shadow: var(--p3-shadow-sm);
+            cursor: pointer;
+            border: 1.5px solid var(--p3-border);
+            transition: border-color .15s, box-shadow .15s, transform .1s;
+            gap: .8rem;
+        }
+        .item-evento:hover {
+            border-color: var(--p3-blue-500);
+            box-shadow: var(--p3-shadow-md);
+            transform: translateX(3px);
+        }
+        .item-evento-icone {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--p3-blue-100);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: .95rem;
+        }
+        .item-evento-corpo { flex: 1; min-width: 0; }
+        .item-evento-nome {
+            font-size: .88rem;
+            font-weight: 700;
+            color: var(--p3-text);
+            text-transform: uppercase;
+            letter-spacing: .01em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-evento-meta {
+            display: flex;
+            align-items: center;
+            gap: .45rem;
+            margin-top: .2rem;
+            flex-wrap: wrap;
+        }
+        .meta-cidade { font-size: .76rem; color: var(--p3-text); font-weight: 600; }
+        .meta-sep-evento { width: 3px; height: 3px; border-radius: 50%; background: var(--p3-border); flex-shrink: 0; }
+        .meta-data-evento { font-size: .73rem; color: var(--p3-text-muted); }
+        .item-evento-acoes { display: flex; gap: 2px; flex-shrink: 0; }
+        .btn-icone-evento {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            color: var(--p3-text-muted);
+            transition: color .15s, background .15s;
+            line-height: 0;
+        }
+        .btn-icone-evento:hover { color: var(--p3-blue-700); background: var(--p3-blue-100); }
+        .btn-icone-evento.excluir:hover { color: #fff; background: var(--p3-danger); }
     </style>
 </head>
 
 <body>
+    <script src="../js/core/session.js"></script>
     <header>
         <div class="header-info-left">
             <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+                <h3 id="cabecalho-unidade"></h3>
             </div>
         </div>
         <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info"></div>
         </div>
@@ -61,9 +164,9 @@
                 <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home--v1"/>
                 <p>Home</p>
             </a>
-            <a href="../page/dashboard-p3.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="performance-macbook"/>
-                <p>Dashboard</p>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
             </a>
             <a href="../page/cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file"/>
@@ -87,9 +190,17 @@
                 <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução"/>
                 <p>Instrução</p>
             </a>
-            <a href="../page/solucoesia.html">
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot"/>
                 <p>Soluções IA</p>
+            </a>
+            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
             </a>
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
@@ -237,32 +348,11 @@
                     <button id="btn-limpar-filtro" style="display:none;">Limpar Filtro</button>
                 </div>
 
-                <div class="tabela-container">
-                    <table id="tabela-eventos">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>PORTE</th>
-                                <th>PROTOCOLO</th>
-                                <th>DATA</th>
-                                <th>CIDADE</th>
-                                <th>NOME DO EVENTO</th>
-                                <th>LOCAL DO EVENTO</th>
-                                <th>INÍCIO</th>
-                                <th>TÉRMINO</th>
-                                <th>PÚBLICO</th>
-                                <th>ORGANIZAÇÃO</th>
-                                <th>RESPONSÁVEL</th>
-                                <th>CPF</th>
-                                <th>TELEFONE</th>
-                                <th>GUARNIÇÕES</th>
-                                <th>VIATURAS</th>
-                                <th>AÇÕES</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+                <div class="lista-eventos-header">
+                    <h3>Eventos Cadastrados</h3>
+                    <span class="badge-total-lista" id="badge-total-eventos">0</span>
                 </div>
+                <div id="lista-eventos"></div>
             </div>
         </main>
     </section>
@@ -336,6 +426,7 @@
         <div>
             <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
         </div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
 
 <script>
@@ -343,7 +434,7 @@
     let allEventos = [];
     let selectedGuarnicoes = new Set();
 
-    const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec';
+    let WEBAPP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
     const sidebar         = document.getElementById('form-eventos');
     const overlay         = document.getElementById('overlay-sidebar');
@@ -524,17 +615,26 @@
         return container;
     }
 
+    /*
+     * Lista de eventos no estilo de cards do TCO (cada card mostra um
+     * resumo — nome, cidade, data/horário e porte; os demais campos
+     * continuam disponíveis ao clicar no card, que abre o mesmo
+     * formulário lateral de edição usado antes).
+     */
     function renderTable(dataToRender) {
-        const tbody   = document.querySelector('#tabela-eventos tbody');
-        const mensagem = document.getElementById('mensagem-carregamento');
-        if (!tbody) return;
-        tbody.innerHTML = '';
+        const lista     = document.getElementById('lista-eventos');
+        const mensagem  = document.getElementById('mensagem-carregamento');
+        const badgeTotal = document.getElementById('badge-total-eventos');
+        if (!lista) return;
+        lista.innerHTML = '';
 
         if (!dataToRender || !dataToRender.length) {
+            if (badgeTotal) badgeTotal.textContent = '0';
             if (mensagem) { mensagem.style.display = 'block'; mensagem.textContent = 'Nenhum evento encontrado.'; }
             return;
         }
         if (mensagem) mensagem.style.display = 'none';
+        if (badgeTotal) badgeTotal.textContent = dataToRender.length;
 
         // Ordena: mais recente primeiro
         const parseData = (str) => {
@@ -545,55 +645,82 @@
         };
         const sorted = [...dataToRender].sort((a,b) => parseData(b.DATA) - parseData(a.DATA));
 
+        // Agrupa por mês/ano, igual ao "grupo-mes" usado no TCO
+        const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+                       'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+        const grupos = {};
+        const ordemGrupos = [];
         sorted.forEach(item => {
-            const row = tbody.insertRow();
+            const d = parseData(item.DATA);
+            const chave = (!item.DATA || isNaN(d.getTime()))
+                ? 'Sem data'
+                : `${meses[d.getMonth()]} de ${d.getFullYear()}`;
+            if (!grupos[chave]) { grupos[chave] = []; ordemGrupos.push(chave); }
+            grupos[chave].push(item);
+        });
 
-            // ID
-            row.insertCell().textContent = item.ID || '';
+        ordemGrupos.forEach(chave => {
+            const itensGrupo = grupos[chave];
 
-            // Porte
-            const classif = getClassificacao(item['ESTIMATIVA DE PÚBLICO']);
-            row.insertCell().innerHTML = `<span class="porte-badge ${classif.classe}">${classif.nome}</span>`;
+            const separador = document.createElement('div');
+            separador.className = 'grupo-mes';
+            separador.innerHTML = `
+                <span class="grupo-mes-titulo">${chave}</span>
+                <span class="grupo-mes-linha"></span>
+                <span class="grupo-mes-count">${itensGrupo.length}</span>`;
+            lista.appendChild(separador);
 
-            // Colunas de dados textuais
-            ['PROTOCOLO','DATA','CIDADE','NOME DO EVENTO','LOCAL DO EVENTO',
-             'HORÁRIO DE INÍCIO','HORÁRIO DE TÉRMINO','ESTIMATIVA DE PÚBLICO',
-             'ORGANIZAÇÃO','NOME DO RESPONSÁVEL','CPF','TELEFONE'
-            ].forEach(key => { row.insertCell().textContent = item[key] || ''; });
+            itensGrupo.forEach(item => {
+                const classif = getClassificacao(item['ESTIMATIVA DE PÚBLICO']);
+                const horario = item['HORÁRIO DE INÍCIO'] ? ` às ${item['HORÁRIO DE INÍCIO']}` : '';
 
-            // Guarnições com badges (CORREÇÃO Problema 2)
-            const guarCell = row.insertCell();
-            guarCell.style.whiteSpace = 'nowrap';
-            guarCell.appendChild(renderGuarnicoesBadges(item['GUARNICOES']));
+                const card = document.createElement('div');
+                card.className = 'item-evento';
+                card.innerHTML = `
+                    <div class="item-evento-icone">📅</div>
+                    <div class="item-evento-corpo">
+                        <div class="item-evento-nome" title="${item['NOME DO EVENTO'] || ''}">${item['NOME DO EVENTO'] || 'Evento sem nome'}</div>
+                        <div class="item-evento-meta">
+                            <span class="meta-cidade">${item.CIDADE || '—'}</span>
+                            <span class="meta-sep-evento"></span>
+                            <span class="meta-data-evento">${item.DATA || '—'}${horario}</span>
+                        </div>
+                    </div>
+                    <span class="porte-badge ${classif.classe}">${classif.nome}</span>
+                    <div class="item-evento-acoes">
+                        <button class="btn-icone-evento" data-acao="editar" title="Editar">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-icone-evento" data-acao="opo" title="Gerar OPO">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <path d="M14 2v6h6"></path>
+                            </svg>
+                        </button>
+                        <button class="btn-icone-evento excluir" data-acao="excluir" title="Excluir">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 6h18"></path>
+                                <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
+                            </svg>
+                        </button>
+                    </div>`;
 
-            // Viaturas
-            row.insertCell().textContent = item['VIATURAS'] || '';
+                card.addEventListener('click', (e) => {
+                    const acaoBtn = e.target.closest('[data-acao]');
+                    if (!acaoBtn) { toggleSidebar(true, item); return; }
+                    e.stopPropagation();
+                    const acao = acaoBtn.dataset.acao;
+                    if (acao === 'editar') toggleSidebar(true, item);
+                    else if (acao === 'opo') window.open(`../relatorios/gerar_opo.html?id=${encodeURIComponent(item.ID)}`, '_blank');
+                    else if (acao === 'excluir') deletarEvento(item.ID, item['NOME DO EVENTO'] || item.ID);
+                });
 
-            // Ações
-            const acoesCell = row.insertCell();
-            acoesCell.style.whiteSpace = 'nowrap';
-
-            // Botão Editar
-            const btnEdit = document.createElement('button');
-            btnEdit.textContent = '✏ Editar';
-            btnEdit.className   = 'btn-editar-evento';
-            btnEdit.style.cssText = 'background:#2c3e50;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-right:5px;';
-            btnEdit.onclick = () => toggleSidebar(true, item);
-            acoesCell.appendChild(btnEdit);
-
-            // Botão OPO
-            const btnOPO = document.createElement('button');
-            btnOPO.innerHTML  = '📄 OPO';
-            btnOPO.style.cssText = 'background:#17a2b8;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;';
-            btnOPO.onclick = () => window.open(`../relatorios/gerar_opo.html?id=${encodeURIComponent(item.ID)}`, '_blank');
-            acoesCell.appendChild(btnOPO);
-
-            // Botão Deletar
-            const btnDel = document.createElement('button');
-            btnDel.innerHTML  = '🗑 Excluir';
-            btnDel.style.cssText = 'background:#c0392b;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;margin-left:5px;';
-            btnDel.onclick = () => deletarEvento(item.ID, item['NOME DO EVENTO'] || item.ID);
-            acoesCell.appendChild(btnDel);
+                lista.appendChild(card);
+            });
         });
     }
 
@@ -761,8 +888,16 @@
     }
 
     // ── 8. Inicialização ───────────────────────────────────────
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', async function () {
         checkLogin();
+
+        // Logout — conectado antes do await de configuração de rede abaixo,
+        // para não depender de Firebase/GAS responderem para funcionar.
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) btnLogout.onclick = logout;
+
+        const cfg = await P3.loadUnidadeConfig();
+        WEBAPP_URL = cfg.gas.EVENTOS;
         atualizarRelogio();
         setInterval(atualizarRelogio, 1000);
         fetchData();
@@ -792,10 +927,6 @@
         document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);
         btnFecharSidebar.onclick = () => toggleSidebar(false);
         overlay.onclick          = () => toggleSidebar(false);
-
-        // Logout
-        const btnLogout = document.getElementById('btn-logout');
-        if (btnLogout) btnLogout.onclick = logout;
 
         // Modal Quadro de Eventos
         document.getElementById('btn-gerar-quadro').onclick = abrirModalPeriodo;

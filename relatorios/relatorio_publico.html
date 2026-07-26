@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="../css/stylesrelatorio_publico.css">
 </head>
 <body>
+<script src="../js/core/session.js"></script>
 
 <!-- Loader -->
 <div id="loader">
@@ -26,7 +27,7 @@
              onerror="this.style.display='none'">
         <div class="cab-txt">
             <h1>RELATÓRIO OPERACIONAL — P3</h1>
-            <h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS<br>
+            <h2><span class="cabecalho-unidade"></span> DE ALAGOAS<br>
                 Seção de Planejamento, Instrução e Estatística</h2>
         </div>
         <div class="cab-meta">
@@ -150,5 +151,6 @@
     </div>
 </div>
 <script src="../js/relatorio_publico.js"></script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

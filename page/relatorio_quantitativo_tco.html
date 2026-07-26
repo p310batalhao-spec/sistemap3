@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Relatório Quantitativo de TCO</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
+    <style>
+        /* ══════════════════════════════════════════════════════════
+           RELATÓRIO QUANTITATIVO DE TCO — página própria, segue os
+           tokens de css/theme.css (var(--p3-*)) para ficar correta
+           tanto no modo claro quanto no escuro.
+           ══════════════════════════════════════════════════════════ */
+        main { padding: 1.25rem 1.75rem; }
+
+        .saudacao-q {
+            background: var(--p3-gradient);
+            border-radius: var(--p3-radius-lg);
+            padding: 1.1rem 1.5rem;
+            color: #fff;
+            margin-bottom: 1.25rem;
+        }
+        .saudacao-q h2 { font-size: 1.1rem; font-weight: 700; }
+        .saudacao-q p  { font-size: .8rem; opacity: .85; margin-top: .25rem; }
+
+        /* ── Filtros (mesma convenção visual de page/tco.html) ── */
+        .filtros-bloco {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+            margin-bottom: 1.25rem;
+            font-family: var(--p3-font);
+        }
+        .filtros-bloco input[type="text"],
+        .filtros-bloco input[type="date"],
+        .filtros-bloco select {
+            padding: 8px 10px;
+            border: 1.5px solid var(--p3-border);
+            border-radius: 6px;
+            font-size: .85rem;
+            outline: none;
+            background: var(--p3-bg);
+            color: var(--p3-text);
+        }
+        .filtros-busca-linha { display: flex; align-items: center; gap: .6rem; }
+        .filtros-busca-linha input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1.5px solid var(--p3-border);
+            border-radius: 8px;
+            font-size: .88rem;
+            background: var(--p3-bg);
+            color: var(--p3-text);
+        }
+        .btn-limpar-av {
+            padding: 9px 16px;
+            background: var(--p3-surface);
+            border: 1.5px solid var(--p3-border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: .83rem;
+            white-space: nowrap;
+            color: var(--p3-text-muted);
+        }
+        .filtros-avancados-details { border: 1.5px solid var(--p3-border); border-radius: 8px; overflow: hidden; }
+        .filtros-avancados-details summary {
+            padding: .6rem 1rem; cursor: pointer; font-size: .83rem; font-weight: bold;
+            color: var(--p3-blue-700); background: var(--p3-blue-100); user-select: none;
+            list-style: none; display: flex; align-items: center; justify-content: space-between;
+        }
+        .filtros-avancados-corpo { padding: .9rem 1rem; display: flex; flex-wrap: wrap; gap: .75rem; background: var(--p3-surface); }
+        .filtro-campo { display: flex; flex-direction: column; gap: .3rem; min-width: 140px; }
+        .filtro-campo label { font-size: .72rem; font-weight: bold; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+        .filtros-rodape { padding: .5rem 1rem; background: var(--p3-blue-100); border-top: 1px solid var(--p3-border); font-size: .78rem; color: var(--p3-blue-700); }
+
+        /* ── KPIs ── */
+        .kpi-row-q { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 1.25rem; }
+        .kpi-card-q {
+            background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md);
+            padding: 16px 18px; box-shadow: var(--p3-shadow-sm); position: relative; overflow: hidden;
+        }
+        .kpi-card-q::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--p3-gradient); }
+        .kpi-card-q .ki { font-size: 20px; margin-bottom: 6px; }
+        .kpi-card-q .kn { font-size: 26px; font-weight: 800; color: var(--p3-blue-700); line-height: 1; }
+        .kpi-card-q .kl { font-size: 10px; color: var(--p3-text-muted); margin-top: 5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+        /* ── Cards de gráfico + comentário ── */
+        .grafico-card-q {
+            background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md);
+            padding: 1.1rem 1.25rem; margin-bottom: 1.25rem; box-shadow: var(--p3-shadow-sm);
+        }
+        .grafico-titulo-q {
+            font-size: .92rem; font-weight: 700; color: var(--p3-text); margin-bottom: .9rem;
+            display: flex; align-items: center; gap: .5rem;
+        }
+        .grafico-wrap-q { position: relative; height: 280px; }
+        .grafico-wrap-q.alto { height: 340px; }
+
+        .comentario-q { margin-top: 1rem; }
+        .insight-q {
+            display: flex; gap: .7rem; padding: .8rem 1rem; border-radius: 8px; font-size: .85rem; line-height: 1.55;
+            border: 1px solid transparent;
+        }
+        .insight-q .ic { font-size: 1.1rem; flex-shrink: 0; }
+        .insight-q.info    { background: var(--p3-blue-100); border-color: var(--p3-blue-300); color: var(--p3-blue-700); }
+        .insight-q.ok      { background: rgba(47, 143, 91, .12);  border-color: var(--p3-success); color: var(--p3-success); }
+        .insight-q.alerta  { background: rgba(181, 134, 10, .12); border-color: var(--p3-warning); color: var(--p3-warning); }
+        .insight-q.perigo  { background: rgba(192, 57, 43, .12);  border-color: var(--p3-danger);  color: var(--p3-danger); }
+        .insight-q strong  { color: var(--p3-text); }
+
+        .vz-q { text-align: center; padding: 48px 20px; color: var(--p3-text-muted); }
+        .vz-q .vi { font-size: 38px; margin-bottom: 12px; }
+        .vz-q .vt { font-size: 14px; font-weight: 600; }
+
+        @media (max-width: 900px) {
+            .grafico-wrap-q { height: 240px; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3 id="cabecalho-unidade"></h3>
+            </div>
+        </div>
+        <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
+            </a>
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="../page/eventos.html">
+                <img width="32" height="32" src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png" alt="eventos" />
+                <p>Eventos</p>
+            </a>
+            <a href="../page/tco.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/document--v1.png" alt="TCO" />
+                <p>TCO</p>
+            </a>
+            <a href="../page/instrucoes.html">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
+                <p>Instrução</p>
+            </a>
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao-q">
+                <h2>📊 Relatório Quantitativo de TCO</h2>
+                <p>Volume, andamento e distribuição dos Termos Circunstanciados de Ocorrência — os comentários abaixo de cada gráfico acompanham os filtros aplicados.</p>
+            </div>
+
+            <!-- Filtros — mesmos campos e convenção de page/tco.html -->
+            <div class="filtros-bloco">
+                <div class="filtros-busca-linha">
+                    <input type="text" id="busca-geral-rq"
+                        placeholder="🔍  Buscar por tipificação, nº ocorrência, operador, movimentação..."
+                        oninput="aplicarFiltrosRQ()">
+                    <button class="btn-limpar-av" onclick="limparFiltrosRQ()">✕ Limpar filtros</button>
+                </div>
+
+                <details class="filtros-avancados-details" open>
+                    <summary>
+                        <span>⚡ Filtros avançados</span>
+                        <span id="badge-rq"
+                            style="display:none; background: var(--qtco-accent, #1a3d5d); color:#fff; font-size:.72rem;
+                                   padding:2px 8px; border-radius:10px; margin-left:.5rem;"></span>
+                        <span style="opacity:.5; font-size:.8rem;">▼</span>
+                    </summary>
+                    <div class="filtros-avancados-corpo">
+                        <div class="filtro-campo">
+                            <label>Data início</label>
+                            <input type="date" id="data-ini-rq" onchange="aplicarFiltrosRQ()">
+                        </div>
+                        <div class="filtro-campo">
+                            <label>Data fim</label>
+                            <input type="date" id="data-fim-rq" onchange="aplicarFiltrosRQ()">
+                        </div>
+                        <div class="filtro-campo" style="min-width:200px;">
+                            <label>Tipicidade Geral</label>
+                            <input type="text" id="tipicidade-rq" placeholder="Ex.: lesão, ameaça, furto..."
+                                oninput="aplicarFiltrosRQ()">
+                        </div>
+                        <div class="filtro-campo" style="min-width:200px;">
+                            <label>Movimentação</label>
+                            <select id="movimentacao-rq" onchange="aplicarFiltrosRQ()">
+                                <option value="">Todas</option>
+                                <option>ASSINADO TENENTE</option>
+                                <option>ARQUIVADO</option>
+                                <option>CAPA FEITA</option>
+                                <option>CAPA CORRIGIDA</option>
+                                <option>DIGITALIZADO</option>
+                                <option>ENCAMINHADO TENENTE</option>
+                                <option>ENCAMINHADO SECRETARIA</option>
+                                <option>JULGADO</option>
+                                <option>PRONTO PARA PROTOCOLAR</option>
+                                <option>PROTOCOLADO ESAJ</option>
+                                <option>PENDENTE</option>
+                                <option>REFAZER CAPA</option>
+                                <option>RECEBIDO</option>
+                                <option>VISTORIADO</option>
+                            </select>
+                        </div>
+                        <div class="filtro-campo" style="min-width:160px;">
+                            <label>Operador Capa</label>
+                            <input type="text" id="operador-rq" placeholder="Nome do operador..."
+                                oninput="aplicarFiltrosRQ()">
+                        </div>
+                        <div class="filtro-campo">
+                            <label>Mês</label>
+                            <select id="mes-rq" onchange="aplicarFiltrosRQ()">
+                                <option value="">Todos</option>
+                                <option>Janeiro</option><option>Fevereiro</option><option>Março</option>
+                                <option>Abril</option><option>Maio</option><option>Junho</option>
+                                <option>Julho</option><option>Agosto</option><option>Setembro</option>
+                                <option>Outubro</option><option>Novembro</option><option>Dezembro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="filtros-rodape" id="contador-rq">Carregando registros...</div>
+                </details>
+            </div>
+
+            <div id="conteudo-rq">
+                <div class="vz-q"><div class="vi">⏳</div><div class="vt">Carregando dados dos TCOs...</div></div>
+            </div>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+<script>
+    let APPS_SCRIPT_TCO_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+    window._TCO_TODOS_RQ = [];
+    window._CHARTS_RQ = {};
+
+    if (window.ChartDataLabels) Chart.register(ChartDataLabels);
+
+    // ── Helpers de normalização (mesma convenção de js/tco.js) ──────
+    function _norm(texto) {
+        if (!texto) return '';
+        return texto.toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+    }
+    function _toISO(str) {
+        if (!str) return '';
+        str = str.toString().trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.substring(0, 10);
+        if (str.includes('/')) {
+            const p = str.split('/');
+            if (p.length === 3 && p[2].length === 4) return `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+        }
+        return '';
+    }
+    function _get(doc, ...chaves) {
+        for (const k of chaves) {
+            const v = doc[k];
+            if (v !== undefined && v !== null && v !== '') return String(v);
+        }
+        return '';
+    }
+    function _mesNome(iso) {
+        const MESES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const m = iso.match(/^(\d{4})-(\d{2})/);
+        if (!m) return null;
+        const idx = parseInt(m[2],10) - 1;
+        if (idx < 0 || idx > 11) return null; // DATA com mês inválido na planilha — ignora em vez de virar "undefined/AA"
+        return { chave: iso.substring(0,7), label: MESES[idx] + '/' + m[1].substring(2) };
+    }
+
+    // O e-SAJ grava a Movimentação como "STATUS (dd/mm/aaaa)" (ex.: "ARQUIVADO
+    // (10/10/2025)", "PETIÇÃO JUNTADA (12/05/2026)") — sem isso, cada TCO vira
+    // um valor quase único no gráfico e nenhum se agrupa em "ARQUIVADO"/"JULGADO".
+    function _movBase(mov) {
+        return String(mov || '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+    }
+
+    // ── Cores do tema atual (lidas do CSS, então acompanham claro/escuro) ──
+    function coresTemaRQ() {
+        const cs = getComputedStyle(document.documentElement);
+        return {
+            text:  (cs.getPropertyValue('--p3-text')       || '#1c1c1a').trim(),
+            muted: (cs.getPropertyValue('--p3-text-muted') || '#7a7a72').trim(),
+            grid:  (cs.getPropertyValue('--p3-border')     || '#e5e3dc').trim(),
+        };
+    }
+    const PALETA_RQ = ['#2f5fdd','#12719c','#2f8f5b','#b5860a','#c0392b','#5b21b6','#0891b2','#be185d','#7592e8','#166534','#92400e','#4c1d95','#0c4a6e','#9d174d'];
+
+    function destruirChart(id) {
+        if (window._CHARTS_RQ[id]) { window._CHARTS_RQ[id].destroy(); delete window._CHARTS_RQ[id]; }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CARREGAR DADOS
+    // ════════════════════════════════════════════════════════════════
+    async function carregarDadosRQ() {
+        try {
+            const cfg = await P3.loadUnidadeConfig();
+            APPS_SCRIPT_TCO_URL = cfg.gas.TCO;
+            const res = await fetch(`${APPS_SCRIPT_TCO_URL}?action=getTCO`, { redirect: 'follow' });
+            const json = await res.json();
+            if (!Array.isArray(json)) {
+                document.getElementById('conteudo-rq').innerHTML =
+                    '<div class="vz-q"><div class="vi">⚠️</div><div class="vt">Erro ao carregar dados da planilha.</div></div>';
+                return;
+            }
+            window._TCO_TODOS_RQ = json;
+            aplicarFiltrosRQ();
+        } catch (e) {
+            document.getElementById('conteudo-rq').innerHTML =
+                '<div class="vz-q"><div class="vi">⚠️</div><div class="vt">Erro ao carregar: ' + esc(e.message) + '</div></div>';
+        }
+    }
+
+    function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    // ════════════════════════════════════════════════════════════════
+    // FILTROS — mesmos critérios de js/tco.js::filtroAvancado()
+    // ════════════════════════════════════════════════════════════════
+    function aplicarFiltrosRQ() {
+        const todos = window._TCO_TODOS_RQ || [];
+        if (!todos.length) return;
+
+        const busca = _norm(document.getElementById('busca-geral-rq')?.value);
+        const ini   = document.getElementById('data-ini-rq')?.value || '';
+        const fim   = document.getElementById('data-fim-rq')?.value || '';
+        const tipic = _norm(document.getElementById('tipicidade-rq')?.value);
+        const movi  = _norm(document.getElementById('movimentacao-rq')?.value);
+        const oper  = _norm(document.getElementById('operador-rq')?.value);
+        const mes   = _norm(document.getElementById('mes-rq')?.value);
+
+        const semFiltro = !busca && !ini && !fim && !tipic && !movi && !oper && !mes;
+
+        const filtrados = semFiltro ? todos : todos.filter(doc => {
+            if (busca && !_norm(Object.values(doc).join(' ')).includes(busca)) return false;
+            if (ini || fim) {
+                const iso = _toISO(doc['DATA']);
+                if (!iso) return false;
+                if (ini && iso < ini) return false;
+                if (fim && iso > fim) return false;
+            }
+            if (tipic && !_norm(_get(doc,'Tipicidade Geral','TIPIFICACAO','TIPIFICACAO_GERAL')).includes(tipic)) return false;
+            if (movi  && _norm(_get(doc,'Movimentação','Movimentacao','MOVIMENTACAO','SOLUÇÃO','SOLUCAO')) !== movi) return false;
+            if (oper  && !_norm(_get(doc,'OPERADOR CAPA')).includes(oper)) return false;
+            if (mes   && _norm(_get(doc,'Mês','Mes','MES')) !== mes) return false;
+            return true;
+        });
+
+        _badgeRQ(filtrados.length);
+        renderRelatorioRQ(filtrados);
+    }
+
+    function limparFiltrosRQ() {
+        ['busca-geral-rq','data-ini-rq','data-fim-rq','tipicidade-rq','operador-rq'].forEach(id => {
+            const el = document.getElementById(id); if (el) el.value = '';
+        });
+        ['movimentacao-rq','mes-rq'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+        aplicarFiltrosRQ();
+    }
+
+    function _badgeRQ(total) {
+        const badge = document.getElementById('badge-rq');
+        const contador = document.getElementById('contador-rq');
+        const totalG = (window._TCO_TODOS_RQ || []).length;
+        if (total < totalG) {
+            if (badge)    { badge.textContent = `${total} de ${totalG}`; badge.style.display = 'inline-block'; }
+            if (contador) { contador.textContent = `Mostrando ${total} de ${totalG} registros`; contador.style.color = 'var(--p3-danger)'; }
+        } else {
+            if (badge)    badge.style.display = 'none';
+            if (contador) { contador.textContent = `Mostrando todos os ${totalG} registros`; contador.style.color = 'var(--p3-blue-700)'; }
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // AGREGAÇÕES
+    // ════════════════════════════════════════════════════════════════
+    function agregarRQ(lista) {
+        const porMes = {}, porMov = {}, porTip = {}, porOper = {}, porDia = {};
+        const DIAS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+        let concluidos = 0, semMovimentacao = 0;
+
+        lista.forEach(doc => {
+            const iso = _toISO(doc['DATA']);
+            if (iso) {
+                const mi = _mesNome(iso);
+                if (mi) porMes[mi.chave] = { label: mi.label, qtd: (porMes[mi.chave]?.qtd || 0) + 1 };
+                const dt = new Date(iso + 'T00:00:00');
+                if (!isNaN(dt.getTime())) { const dia = DIAS[dt.getDay()]; porDia[dia] = (porDia[dia]||0) + 1; }
+            }
+
+            const mov = _get(doc,'Movimentação','Movimentacao','MOVIMENTACAO','SOLUÇÃO','SOLUCAO');
+            const movKey = _movBase(mov) || 'Sem Movimentação';
+            porMov[movKey] = (porMov[movKey]||0) + 1;
+            const movNorm = _norm(movKey);
+            if (movNorm === 'ARQUIVADO' || movNorm === 'JULGADO') concluidos++;
+            if (!mov) semMovimentacao++;
+
+            const tip = _get(doc,'Tipicidade Geral','TIPIFICACAO','TIPIFICACAO_GERAL');
+            if (tip) porTip[tip] = (porTip[tip]||0) + 1;
+
+            const op = _get(doc,'OPERADOR CAPA');
+            if (op) porOper[op] = (porOper[op]||0) + 1;
+        });
+
+        return {
+            total: lista.length,
+            concluidos, semMovimentacao,
+            emAndamento: lista.length - concluidos - semMovimentacao,
+            porMesOrdenado: Object.keys(porMes).sort().map(k => porMes[k]),
+            porMov: Object.entries(porMov).sort((a,b)=>b[1]-a[1]),
+            porTip: Object.entries(porTip).sort((a,b)=>b[1]-a[1]).slice(0,10),
+            porOper: Object.entries(porOper).sort((a,b)=>b[1]-a[1]).slice(0,10),
+            porDia: DIAS.map(d => [d, porDia[d]||0]),
+            operadoresDistintos: Object.keys(porOper).length,
+        };
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // RENDER — reconstrói KPIs, gráficos e comentários a cada filtro
+    // ════════════════════════════════════════════════════════════════
+    function renderRelatorioRQ(lista) {
+        const el = document.getElementById('conteudo-rq');
+        Object.keys(window._CHARTS_RQ).forEach(destruirChart);
+
+        if (!lista.length) {
+            el.innerHTML = '<div class="vz-q"><div class="vi">🔍</div><div class="vt">Nenhum TCO encontrado com esses filtros</div></div>';
+            return;
+        }
+
+        const d = agregarRQ(lista);
+        const taxa = d.total > 0 ? Math.round(d.concluidos / d.total * 100) : 0;
+        const mesesComDados = d.porMesOrdenado.length;
+        const media = mesesComDados > 0 ? Math.round(d.total / mesesComDados) : d.total;
+
+        let h = '<div class="kpi-row-q">';
+        h += mkKpiRQ('📋', d.total, 'Total de TCOs');
+        h += mkKpiRQ('✅', d.concluidos, 'Concluídos');
+        h += mkKpiRQ('⏳', d.emAndamento, 'Em Andamento');
+        h += mkKpiRQ('📈', taxa + '%', 'Taxa de Conclusão');
+        h += mkKpiRQ('📅', media, 'Média Mensal');
+        h += '</div>';
+
+        h += '<div class="grafico-card-q"><div class="grafico-titulo-q">📈 Volume de TCOs por Mês</div>' +
+             '<div class="grafico-wrap-q"><canvas id="chart-mes-rq"></canvas></div>' +
+             '<div class="comentario-q" id="comentario-mes-rq"></div></div>';
+
+        h += '<div class="grafico-card-q"><div class="grafico-titulo-q">🗂️ Distribuição por Movimentação (Status)</div>' +
+             '<div class="grafico-wrap-q alto"><canvas id="chart-mov-rq"></canvas></div>' +
+             '<div class="comentario-q" id="comentario-mov-rq"></div></div>';
+
+        h += '<div class="grafico-card-q"><div class="grafico-titulo-q">⚖️ Tipicidades Mais Frequentes</div>' +
+             '<div class="grafico-wrap-q alto"><canvas id="chart-tip-rq"></canvas></div>' +
+             '<div class="comentario-q" id="comentario-tip-rq"></div></div>';
+
+        h += '<div class="grafico-card-q"><div class="grafico-titulo-q">👮 Operadores — Volume de Lavratura</div>' +
+             '<div class="grafico-wrap-q alto"><canvas id="chart-oper-rq"></canvas></div>' +
+             '<div class="comentario-q" id="comentario-oper-rq"></div></div>';
+
+        h += '<div class="grafico-card-q"><div class="grafico-titulo-q">🗓️ Distribuição por Dia da Semana</div>' +
+             '<div class="grafico-wrap-q"><canvas id="chart-dia-rq"></canvas></div>' +
+             '<div class="comentario-q" id="comentario-dia-rq"></div></div>';
+
+        el.innerHTML = h;
+
+        desenharChartMes(d);
+        desenharChartMov(d);
+        desenharChartTip(d);
+        desenharChartOper(d);
+        desenharChartDia(d);
+    }
+
+    function mkKpiRQ(icone, valor, label) {
+        return '<div class="kpi-card-q"><div class="ki">' + icone + '</div><div class="kn">' + valor + '</div><div class="kl">' + label + '</div></div>';
+    }
+
+    // ── Gráfico 1: Volume por mês ────────────────────────────────────
+    function desenharChartMes(d) {
+        const cores = coresTemaRQ();
+        const labels = d.porMesOrdenado.map(v => v.label);
+        const dados  = d.porMesOrdenado.map(v => v.qtd);
+        const ctx = document.getElementById('chart-mes-rq');
+        window._CHARTS_RQ['chart-mes-rq'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'TCOs', data: dados, backgroundColor: '#2f5fdd', borderRadius: 5, maxBarThickness: 46 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { color: cores.text, anchor: 'end', align: 'top', font: { weight: 'bold', size: 11 } }
+                },
+                scales: {
+                    x: { ticks: { color: cores.muted }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: cores.muted, precision: 0 }, grid: { color: cores.grid } }
+                }
+            }
+        });
+
+        const el = document.getElementById('comentario-mes-rq');
+        if (labels.length < 2) {
+            el.innerHTML = mkInsightRQ('info','ℹ️', 'São ' + d.total + ' TCO(s) no período filtrado — amplie o intervalo de datas para ver a evolução mês a mês.');
+            return;
+        }
+        const maxQtd = Math.max(...dados);
+        const mesPico = labels[dados.indexOf(maxQtd)];
+        const ultimo = dados[dados.length-1], anterior = dados[dados.length-2];
+        const media = Math.round(d.total / labels.length);
+        let tendencia = 'estável', classe = 'info', setaTxt = '➡️';
+        if (anterior > 0) {
+            const variacao = Math.round((ultimo - anterior) / anterior * 100);
+            if (variacao > 5)  { tendencia = 'alta de ' + variacao + '%'; classe = 'alerta'; setaTxt = '📈'; }
+            else if (variacao < -5) { tendencia = 'queda de ' + Math.abs(variacao) + '%'; classe = 'ok'; setaTxt = '📉'; }
+        }
+        el.innerHTML = mkInsightRQ(classe, setaTxt,
+            'Foram lavrados <strong>' + d.total + ' TCOs</strong> no período, com média de <strong>' + media + ' por mês</strong>. ' +
+            'O mês de maior volume foi <strong>' + mesPico + '</strong> com <strong>' + maxQtd + ' registro(s)</strong>. ' +
+            'A tendência do último mês (' + labels[labels.length-1] + ') é de <strong>' + tendencia + '</strong> em relação ao mês anterior (' + anterior + ' → ' + ultimo + ' TCOs).');
+    }
+
+    // ── Gráfico 2: Movimentação ──────────────────────────────────────
+    function desenharChartMov(d) {
+        const cores = coresTemaRQ();
+        const labels = d.porMov.map(e => e[0]);
+        const dados  = d.porMov.map(e => e[1]);
+        const cores2 = labels.map((_,i) => PALETA_RQ[i % PALETA_RQ.length]);
+        const ctx = document.getElementById('chart-mov-rq');
+        window._CHARTS_RQ['chart-mov-rq'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'TCOs', data: dados, backgroundColor: cores2, borderRadius: 5 }] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { color: cores.text, anchor: 'end', align: 'right', font: { weight: 'bold', size: 10 } }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { color: cores.muted, precision: 0 }, grid: { color: cores.grid } },
+                    y: { ticks: { color: cores.muted, font: { size: 10.5 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        const el = document.getElementById('comentario-mov-rq');
+        const topStatus = d.porMov[0];
+        const pctTop = Math.round(topStatus[1] / d.total * 100);
+        const taxa = Math.round(d.concluidos / d.total * 100);
+        const classe = taxa >= 60 ? 'ok' : taxa >= 35 ? 'alerta' : 'perigo';
+        let extra = '';
+        if (d.semMovimentacao > 0) {
+            extra = ' <strong>' + d.semMovimentacao + ' TCO(s)</strong> ainda não têm movimentação registrada.';
+        }
+        el.innerHTML = mkInsightRQ(classe, taxa >= 60 ? '✅' : taxa >= 35 ? '⚠️' : '🚨',
+            'O status mais frequente é <strong>"' + topStatus[0] + '"</strong>, com <strong>' + topStatus[1] + ' TCO(s)</strong> (' + pctTop + '% do total). ' +
+            '<strong>' + d.concluidos + ' TCO(s)</strong> já foram arquivados/julgados (<strong>' + taxa + '%</strong> de conclusão) e <strong>' + d.emAndamento + '</strong> seguem em andamento.' + extra);
+    }
+
+    // ── Gráfico 3: Tipicidades ────────────────────────────────────────
+    function desenharChartTip(d) {
+        const cores = coresTemaRQ();
+        const labels = d.porTip.map(e => e[0]);
+        const dados  = d.porTip.map(e => e[1]);
+        const el = document.getElementById('comentario-tip-rq');
+        if (!labels.length) {
+            document.getElementById('chart-tip-rq').closest('.grafico-wrap-q').innerHTML = '<div class="vz-q"><div class="vt">Sem tipicidade registrada nos TCOs filtrados</div></div>';
+            el.innerHTML = '';
+            return;
+        }
+        const cores2 = labels.map((_,i) => PALETA_RQ[i % PALETA_RQ.length]);
+        const ctx = document.getElementById('chart-tip-rq');
+        window._CHARTS_RQ['chart-tip-rq'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'TCOs', data: dados, backgroundColor: cores2, borderRadius: 5 }] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { color: cores.text, anchor: 'end', align: 'right', font: { weight: 'bold', size: 10 } }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { color: cores.muted, precision: 0 }, grid: { color: cores.grid } },
+                    y: { ticks: { color: cores.muted, font: { size: 10.5 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        const totalTip = labels.reduce((a,_,i) => a + dados[i], 0);
+        const pctTop = Math.round(dados[0] / d.total * 100);
+        const top3 = dados.slice(0,3).reduce((a,b)=>a+b,0);
+        const pctTop3 = Math.round(top3 / d.total * 100);
+        el.innerHTML = mkInsightRQ('info', '⚖️',
+            'A tipificação mais recorrente é <strong>"' + labels[0] + '"</strong>, presente em <strong>' + dados[0] + ' TCO(s)</strong> (' + pctTop + '% do total). ' +
+            'As <strong>3 tipificações mais frequentes</strong> juntas somam <strong>' + pctTop3 + '%</strong> de todos os TCOs filtrados.');
+    }
+
+    // ── Gráfico 4: Operadores ─────────────────────────────────────────
+    function desenharChartOper(d) {
+        const cores = coresTemaRQ();
+        const labels = d.porOper.map(e => e[0]);
+        const dados  = d.porOper.map(e => e[1]);
+        const el = document.getElementById('comentario-oper-rq');
+        if (!labels.length) {
+            document.getElementById('chart-oper-rq').closest('.grafico-wrap-q').innerHTML = '<div class="vz-q"><div class="vt">Sem operador registrado nos TCOs filtrados</div></div>';
+            el.innerHTML = '';
+            return;
+        }
+        const cores2 = labels.map((_,i) => PALETA_RQ[i % PALETA_RQ.length]);
+        const ctx = document.getElementById('chart-oper-rq');
+        window._CHARTS_RQ['chart-oper-rq'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'TCOs', data: dados, backgroundColor: cores2, borderRadius: 5 }] },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { color: cores.text, anchor: 'end', align: 'right', font: { weight: 'bold', size: 10 } }
+                },
+                scales: {
+                    x: { beginAtZero: true, ticks: { color: cores.muted, precision: 0 }, grid: { color: cores.grid } },
+                    y: { ticks: { color: cores.muted, font: { size: 10.5 } }, grid: { display: false } }
+                }
+            }
+        });
+
+        const top3 = dados.slice(0,3).reduce((a,b)=>a+b,0);
+        const pctTop3 = Math.round(top3 / d.total * 100);
+        el.innerHTML = mkInsightRQ('info', '👮',
+            '<strong>' + d.operadoresDistintos + ' operador(es)</strong> distinto(s) lavraram capas no período. ' +
+            '<strong>"' + labels[0] + '"</strong> tem o maior volume, com <strong>' + dados[0] + ' TCO(s)</strong>. ' +
+            'Os <strong>3 operadores</strong> com mais capas concentram <strong>' + pctTop3 + '%</strong> de todo o volume lavrado.');
+    }
+
+    // ── Gráfico 5: Dia da semana ──────────────────────────────────────
+    function desenharChartDia(d) {
+        const cores = coresTemaRQ();
+        const labels = d.porDia.map(e => e[0]);
+        const dados  = d.porDia.map(e => e[1]);
+        const totalDia = dados.reduce((a,b)=>a+b,0);
+        const el = document.getElementById('comentario-dia-rq');
+        if (!totalDia) {
+            document.getElementById('chart-dia-rq').closest('.grafico-wrap-q').innerHTML = '<div class="vz-q"><div class="vt">Sem data válida nos TCOs filtrados</div></div>';
+            el.innerHTML = '';
+            return;
+        }
+        const ctx = document.getElementById('chart-dia-rq');
+        window._CHARTS_RQ['chart-dia-rq'] = new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets: [{ label: 'TCOs', data: dados, backgroundColor: '#12719c', borderRadius: 5, maxBarThickness: 46 }] },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    datalabels: { color: cores.text, anchor: 'end', align: 'top', font: { weight: 'bold', size: 11 } }
+                },
+                scales: {
+                    x: { ticks: { color: cores.muted }, grid: { display: false } },
+                    y: { beginAtZero: true, ticks: { color: cores.muted, precision: 0 }, grid: { color: cores.grid } }
+                }
+            }
+        });
+
+        const maxQtd = Math.max(...dados);
+        const diaPico = labels[dados.indexOf(maxQtd)];
+        const fds = dados[0] + dados[6]; // Domingo + Sábado
+        const pctFds = Math.round(fds / totalDia * 100);
+        el.innerHTML = mkInsightRQ('info', '🗓️',
+            'O dia com mais TCOs lavrados é <strong>' + diaPico + '</strong>, com <strong>' + maxQtd + ' registro(s)</strong>. ' +
+            'Os finais de semana (sáb/dom) representam <strong>' + pctFds + '%</strong> do total — útil para calibrar o efetivo de escala.');
+    }
+
+    function mkInsightRQ(classe, icone, textoHtml) {
+        return '<div class="insight-q ' + classe + '"><span class="ic">' + icone + '</span><span>' + textoHtml + '</span></div>';
+    }
+
+    // ── Relógio / login / tema (mesmo padrão das outras páginas) ─────
+    function atualizarRelogioRQ() {
+        const el = document.getElementById('relogio');
+        if (!el) return;
+        const agora = new Date();
+        el.innerHTML = agora.toLocaleDateString('pt-BR', { weekday:'short', day:'2-digit', month:'long', year:'numeric' }) +
+            '<br>' + agora.toLocaleTimeString('pt-BR');
+    }
+    function checkLoginRQ() {
+        const graduacao  = localStorage.getItem('userGraduacao');
+        const nomeGuerra = localStorage.getItem('userNomeGuerra');
+        const el = document.getElementById('user-info');
+        if (graduacao && nomeGuerra && el) {
+            el.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${graduacao} ${nomeGuerra}</p>`;
+        }
+    }
+    function logoutRQ() {
+        localStorage.removeItem('userGraduacao');
+        localStorage.removeItem('userNomeGuerra');
+        window.location.href = '../page/login.html';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        atualizarRelogioRQ();
+        setInterval(atualizarRelogioRQ, 1000);
+        checkLoginRQ();
+
+        const btnLogout = document.getElementById('btn-logout');
+        if (btnLogout) btnLogout.addEventListener('click', logoutRQ);
+
+        // Reconstrói os gráficos com as cores do novo tema ao alternar claro/escuro
+        document.querySelectorAll('#btn-tema').forEach(btn => {
+            btn.addEventListener('click', () => setTimeout(aplicarFiltrosRQ, 50));
+        });
+
+        carregarDadosRQ();
+    });
+</script>
+</body>
+</html>

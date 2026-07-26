@@ -9,10 +9,11 @@ th{background:#0d47a1;color:#fff;padding:5px 8px;text-align:left;}
 td{padding:4px 8px;border-bottom:1px solid #333;}
 </style></head>
 <body>
+    <script src="../js/core/session.js"></script>
 <h2>🔍 Diagnóstico do campo DATA — últimos 90 dias</h2>
 <div id="out">Carregando...</div>
 <script>
-const FB = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let FB = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 const NOS = ['geral','cvp','cvli','droga'];
 
 const hoje     = new Date();
@@ -35,6 +36,8 @@ function dentroJanela(dataStr) {
 
 (async () => {
     const el = document.getElementById('out');
+    const cfg = await P3.loadUnidadeConfig();
+    FB = cfg.firebase.databaseURL;
     let html  = `<p class="ok">Janela: ${limite90.toLocaleDateString('pt-BR')} até ${hoje.toLocaleDateString('pt-BR')}</p>`;
 
     for (const no of NOS) {
@@ -106,4 +109,5 @@ function dentroJanela(dataStr) {
     el.innerHTML = html;
 })();
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body></html>

@@ -4,18 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - Instruções</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <style>
         /* ===== RESET E BASE ===== */
         * { margin: 0; padding: 0; box-sizing: border-box; text-decoration: none; }
-        body { background: #f3f3f5; font-family: Arial, Helvetica, sans-serif; overflow-x: hidden; }
+
+        /* Tokens locais — o azul institucional desta página (#0a448f/#1a3a6e)
+           é uma marca própria (não usa var(--p3-blue-700) direto, pra não
+           alterar a aparência do modo claro já existente); só troca de valor
+           no escuro, igual ao mesmo padrão usado em qualitativo_tco.css. */
+        :root {
+            --instr-accent:   #0a448f;
+            --instr-accent-2: #1a3a6e;
+            --instr-hover:    #e8eef7;
+        }
+        :root[data-p3-theme="dark"] {
+            --instr-accent:   var(--p3-blue-300, #35c9ff);
+            --instr-accent-2: var(--p3-blue-700, #12719c);
+            --instr-hover:    var(--p3-blue-100, rgba(53, 201, 255, .08));
+        }
+
+        body { background: var(--p3-bg, #f3f3f5); font-family: Arial, Helvetica, sans-serif; overflow-x: hidden; }
 
         /* ===== HEADER ===== */
         header {
             display: flex; align-items: center; justify-content: space-between;
             padding: 0.5rem 1.875rem;
-            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+            background: var(--p3-gradient);
             height: 3.75rem; position: sticky; top: 0; z-index: 1001;
         }
         .header-info-left { display: flex; align-items: center; gap: 1.25rem; }
@@ -32,24 +52,24 @@
         .navegacao {
             width: 4.375rem; padding: 1.25rem 0.625rem;
             display: flex; flex-direction: column; gap: 1.25rem;
-            background-color: white; box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            background-color: var(--p3-surface, #fff); box-shadow: 2px 0 5px rgba(0,0,0,0.1);
             transition: width 0.3s ease; overflow: hidden; flex-shrink: 0;
         }
         .navegacao:hover { width: 15.625rem; }
         .navegacao a {
             display: flex; align-items: center; padding: 0.625rem;
-            border-radius: 0.625rem; color: black; white-space: nowrap; transition: 0.3s;
+            border-radius: 0.625rem; color: var(--p3-text, #000); white-space: nowrap; transition: 0.3s;
         }
         .navegacao p { margin-left: 0.625rem; opacity: 0; transition: opacity 0.2s; }
         .navegacao:hover p { opacity: 1; }
         .navegacao img { height: 1.5rem; width: 1.5rem; flex-shrink: 0; }
         .navegacao a:hover, .navegacao a.active {
-            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+            background: var(--p3-gradient);
             color: white;
         }
         .navegacao a.active img { filter: brightness(0) invert(1); }
         .btn-logout {
-            margin-top: auto; background: transparent; border: none; color: #0a448f;
+            margin-top: auto; background: transparent; border: none; color: var(--instr-accent, #0a448f);
             cursor: pointer; font-size: 0.8rem; padding: 0.625rem;
             border-radius: 0.625rem; transition: background 0.3s, color 0.3s;
             display: flex; align-items: center; gap: 0; white-space: nowrap;
@@ -66,7 +86,7 @@
         .saudacao {
             display: flex; flex-direction: column; align-items: flex-start;
             color: white; gap: 0.5rem; padding: 1.25rem; border-radius: 10px;
-            background: linear-gradient(90deg, rgba(10,68,143,1) 0%, rgba(59,111,184,1) 50%, rgba(20,100,181,1) 100%);
+            background: var(--p3-gradient);
         }
         .saudacao p { font-size: 0.9rem; font-weight: bold; margin-left: 1.25rem; }
 
@@ -75,30 +95,30 @@
             display: flex; gap: 1rem; margin-top: 1.25rem; flex-wrap: wrap;
         }
         .card-resumo {
-            background: white; border-radius: 10px; padding: 1rem 1.5rem;
+            background: var(--p3-surface, #fff); border-radius: 10px; padding: 1rem 1.5rem;
             box-shadow: 0 2px 6px rgba(0,0,0,0.1); min-width: 140px;
             display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
-            border-top: 4px solid #0a448f; cursor: pointer; transition: transform 0.2s;
+            border-top: 4px solid var(--instr-accent, #0a448f); cursor: pointer; transition: transform 0.2s;
         }
         .card-resumo:hover { transform: translateY(-3px); }
-        .card-resumo .num { font-size: 2rem; font-weight: bold; color: #0a448f; }
-        .card-resumo .leg { font-size: 0.75rem; color: #666; text-align: center; }
+        .card-resumo .num { font-size: 2rem; font-weight: bold; color: var(--instr-accent, #0a448f); }
+        .card-resumo .leg { font-size: 0.75rem; color: var(--p3-text-muted, #666); text-align: center; }
 
         /* ===== ABAS ===== */
         .abas-container { margin-top: 1.25rem; }
         .abas-nav {
             display: flex; gap: 0.25rem; flex-wrap: wrap;
-            border-bottom: 2px solid #0a448f; margin-bottom: 0;
+            border-bottom: 2px solid var(--instr-accent, #0a448f); margin-bottom: 0;
         }
         .aba-btn {
-            padding: 0.5rem 1rem; border: none; background: #e8eef7;
-            color: #0a448f; font-weight: bold; cursor: pointer; border-radius: 6px 6px 0 0;
+            padding: 0.5rem 1rem; border: none; background: var(--instr-hover, #e8eef7);
+            color: var(--instr-accent, #0a448f); font-weight: bold; cursor: pointer; border-radius: 6px 6px 0 0;
             font-size: 0.82rem; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem;
         }
-        .aba-btn:hover { background: #c8d8f0; }
-        .aba-btn.ativa { background: #0a448f; color: white; }
+        .aba-btn:hover { background: var(--instr-hover, #c8d8f0); }
+        .aba-btn.ativa { background: var(--instr-accent, #0a448f); color: white; }
         .aba-conteudo {
-            display: none; background: white; border-radius: 0 0 10px 10px;
+            display: none; background: var(--p3-surface, #fff); border-radius: 0 0 10px 10px;
             padding: 1.25rem; box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
         .aba-conteudo.ativa { display: block; }
@@ -116,25 +136,25 @@
         .btn-verde:hover { background: #1e7e34; }
         .btn-azul {
             padding: 0.5rem 1rem; border: none; border-radius: 6px;
-            background: #0a448f; color: white; font-weight: bold;
+            background: var(--instr-accent, #0a448f); color: white; font-weight: bold;
             cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.4rem;
         }
         .btn-azul:hover { background: darkblue; }
         .btn-outline {
-            padding: 0.5rem 1rem; border: 1px solid #0a448f; border-radius: 6px;
-            background: transparent; color: #0a448f; font-weight: bold;
+            padding: 0.5rem 1rem; border: 1px solid var(--instr-accent, #0a448f); border-radius: 6px;
+            background: transparent; color: var(--instr-accent, #0a448f); font-weight: bold;
             cursor: pointer; transition: all 0.2s;
         }
-        .btn-outline:hover { background: #0a448f; color: white; }
-        #msg-carregamento { font-size: 0.85rem; color: #666; }
+        .btn-outline:hover { background: var(--instr-accent, #0a448f); color: white; }
+        #msg-carregamento { font-size: 0.85rem; color: var(--p3-text-muted, #666); }
 
         /* ===== FILTROS ===== */
         .filtros-bar {
             display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center;
         }
-        .filtros-bar label { font-size: 0.85rem; color: #555; font-weight: bold; }
+        .filtros-bar label { font-size: 0.85rem; color: var(--p3-text-muted, #555); font-weight: bold; }
         .filtros-bar select, .filtros-bar input[type="text"] {
-            padding: 0.4rem 0.7rem; border: 1px solid #ccc; border-radius: 5px; font-size: 0.85rem;
+            padding: 0.4rem 0.7rem; border: 1px solid var(--p3-border, #ccc); border-radius: 5px; font-size: 0.85rem;
         }
 
         /* ===== TABELAS ===== */
@@ -146,15 +166,15 @@
             width: 100%; border-collapse: collapse; min-width: 700px;
         }
         .tabela-sistema thead th {
-            background: #0a448f; color: white; padding: 0.5rem 0.75rem;
+            background: var(--instr-accent, #0a448f); color: white; padding: 0.5rem 0.75rem;
             text-align: left; font-size: 0.8rem; text-transform: uppercase;
             position: sticky; top: 0; z-index: 2; border-left: 1px solid rgba(255,255,255,0.2);
         }
         .tabela-sistema tbody td {
-            padding: 0.4rem 0.75rem; border-bottom: 1px solid #eee;
-            font-size: 0.85rem; color: #333;
+            padding: 0.4rem 0.75rem; border-bottom: 1px solid var(--p3-border, #eee);
+            font-size: 0.85rem; color: var(--p3-text, #333);
         }
-        .tabela-sistema tbody tr:hover { background: #f0f5ff; }
+        .tabela-sistema tbody tr:hover { background: var(--instr-hover, #f0f5ff); }
         .badge {
             display: inline-block; padding: 2px 8px; border-radius: 20px;
             font-size: 0.75rem; font-weight: bold;
@@ -168,29 +188,29 @@
             font-size: 0.75rem; margin: 1px; transition: opacity 0.2s;
         }
         .btn-acao:hover { opacity: 0.8; }
-        .btn-editar { background: #0a448f; color: white; }
+        .btn-editar { background: var(--instr-accent, #0a448f); color: white; }
         .btn-excluir { background: #dc3545; color: white; }
         .btn-doc { background: #6f42c1; color: white; }
         .btn-relatorio { background: #28a745; color: white; }
 
         /* ===== PAINEL UPLOAD EFETIVO ===== */
         .painel-efetivo {
-            background: white; border-radius: 10px; padding: 1rem 1.25rem;
+            background: var(--p3-surface, #fff); border-radius: 10px; padding: 1rem 1.25rem;
             box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 1rem;
-            border-left: 4px solid #0a448f;
+            border-left: 4px solid var(--instr-accent, #0a448f);
         }
         .painel-efetivo-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; }
-        .painel-efetivo-header h4 { font-size: 0.9rem; color: #0a448f; margin: 0; }
+        .painel-efetivo-header h4 { font-size: 0.9rem; color: var(--instr-accent, #0a448f); margin: 0; }
         .painel-efetivo-body { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
         .label-upload {
             display: flex; align-items: center; gap: 0.5rem;
-            padding: 0.45rem 1rem; background: #0a448f; color: white;
+            padding: 0.45rem 1rem; background: var(--instr-accent, #0a448f); color: white;
             border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: bold;
             transition: background 0.2s;
         }
         .label-upload:hover { background: darkblue; }
         .label-upload input { display: none; }
-        .efetivo-status { font-size: 0.82rem; color: #555; display: flex; align-items: center; gap: 0.4rem; }
+        .efetivo-status { font-size: 0.82rem; color: var(--p3-text-muted, #555); display: flex; align-items: center; gap: 0.4rem; }
         .efetivo-status .badge-count {
             background: #d4edda; color: #155724; font-weight: bold;
             padding: 2px 8px; border-radius: 20px; font-size: 0.78rem;
@@ -200,28 +220,28 @@
         .busca-efetivo-wrap { position: relative; width: 100%; }
         .busca-efetivo-wrap input {
             width: 100%; padding: 0.5rem 2rem 0.5rem 0.75rem;
-            border: 2px solid #0a448f; border-radius: 4px; font-size: 0.9rem;
+            border: 2px solid var(--instr-accent, #0a448f); border-radius: 4px; font-size: 0.9rem;
         }
         .autocomplete-lista {
             position: absolute; top: 100%; left: 0; right: 0;
-            background: white; border: 1px solid #ccc; border-top: none;
+            background: var(--p3-surface, #fff); border: 1px solid var(--p3-border, #ccc); border-top: none;
             border-radius: 0 0 6px 6px; max-height: 220px; overflow-y: auto;
             z-index: 3000; box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         .autocomplete-item {
             padding: 0.5rem 0.75rem; cursor: pointer; font-size: 0.82rem;
-            border-bottom: 1px solid #f0f0f0; transition: background 0.15s;
+            border-bottom: 1px solid var(--instr-hover, #f0f0f0); transition: background 0.15s;
             display: flex; flex-direction: column; gap: 1px;
         }
-        .autocomplete-item:hover, .autocomplete-item.selecionado { background: #e8f0fb; }
+        .autocomplete-item:hover, .autocomplete-item.selecionado { background: var(--instr-hover, #e8f0fb); }
         .autocomplete-item .ac-linha1 { display: flex; gap: 0.5rem; align-items: baseline; }
-        .autocomplete-item .ac-grad { font-weight: bold; color: #0a448f; font-size: 0.75rem; }
-        .autocomplete-item .ac-nome { font-weight: bold; color: #222; }
-        .autocomplete-item .ac-meta { color: #888; font-size: 0.72rem; }
-        .autocomplete-vazio { padding: 0.5rem 0.75rem; font-size: 0.82rem; color: #999; font-style: italic; }
+        .autocomplete-item .ac-grad { font-weight: bold; color: var(--instr-accent, #0a448f); font-size: 0.75rem; }
+        .autocomplete-item .ac-nome { font-weight: bold; color: var(--p3-text, #222); }
+        .autocomplete-item .ac-meta { color: var(--p3-text-muted, #888); font-size: 0.72rem; }
+        .autocomplete-vazio { padding: 0.5rem 0.75rem; font-size: 0.82rem; color: var(--p3-text-muted, #999); font-style: italic; }
         .btn-limpar-busca {
             position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
-            background: none; border: none; cursor: pointer; color: #aaa; font-size: 1rem; display: none;
+            background: none; border: none; cursor: pointer; color: var(--p3-text-muted, #aaa); font-size: 1rem; display: none;
         }
         .aviso-sem-efetivo {
             background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px;
@@ -233,7 +253,7 @@
         /* Barra de ação em lote */
         .barra-lote {
             display: none; align-items: center; gap: 1rem;
-            background: #1a3a6e; color: #fff;
+            background: var(--instr-accent-2, #1a3a6e); color: #fff;
             padding: 0.6rem 1rem; border-radius: 8px;
             margin-bottom: 0.75rem; flex-wrap: wrap;
         }
@@ -255,7 +275,7 @@
             font-size: 0.82rem; cursor: pointer;
         }
         /* Checkbox estilizado */
-        .cb-aluno { width: 16px; height: 16px; cursor: pointer; accent-color: #1a3a6e; }
+        .cb-aluno { width: 16px; height: 16px; cursor: pointer; accent-color: var(--instr-accent-2, #1a3a6e); }
         th.th-cb, td.td-cb { width: 36px; text-align: center; padding: 4px; }
 
         .overlay-sidebar {
@@ -265,33 +285,33 @@
         .overlay-sidebar.ativo { display: block; }
         .sidbarform {
             position: fixed; top: 0; right: -35rem; width: 32rem; height: 100vh;
-            background: #fff; box-shadow: -5px 0 15px rgba(0,0,0,0.3);
+            background: var(--p3-surface, #fff); box-shadow: -5px 0 15px rgba(0,0,0,0.3);
             transition: right 0.4s ease; z-index: 2000;
             padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;
         }
         .sidbarform.ativo { right: 0; }
         .sidebar-titulo {
-            font-size: 1rem; font-weight: bold; color: #0a448f;
-            border-bottom: 2px solid #0a448f; padding-bottom: 0.5rem;
+            font-size: 1rem; font-weight: bold; color: var(--instr-accent, #0a448f);
+            border-bottom: 2px solid var(--instr-accent, #0a448f); padding-bottom: 0.5rem;
         }
         .btn-fechar {
             background: #dc3545; color: white; border: none; padding: 0.5rem 1rem;
             border-radius: 5px; cursor: pointer; font-weight: bold; align-self: flex-start;
         }
         .formulario { display: flex; flex-direction: column; gap: 0.25rem; }
-        .formulario label { font-size: 0.82rem; font-weight: bold; color: #555; }
+        .formulario label { font-size: 0.82rem; font-weight: bold; color: var(--p3-text-muted, #555); }
         .formulario input, .formulario select, .formulario textarea {
-            padding: 0.5rem 0.75rem; border: 1px solid #ccc; border-radius: 4px;
+            padding: 0.5rem 0.75rem; border: 1px solid var(--p3-border, #ccc); border-radius: 4px;
             font-size: 0.9rem; font-family: Arial, sans-serif;
         }
         .formulario textarea { resize: vertical; min-height: 70px; }
         .formulario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
         .formulario-secao {
-            font-size: 0.8rem; font-weight: bold; color: #0a448f; text-transform: uppercase;
-            margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #e0e0e0;
+            font-size: 0.8rem; font-weight: bold; color: var(--instr-accent, #0a448f); text-transform: uppercase;
+            margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--p3-border, #e0e0e0);
         }
         .btn-salvar-evento {
-            background: #0a448f; color: white; border: none; padding: 0.875rem;
+            background: var(--instr-accent, #0a448f); color: white; border: none; padding: 0.875rem;
             border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 1rem;
             margin-top: 0.5rem; transition: background 0.2s;
         }
@@ -299,9 +319,9 @@
 
         /* ===== TABELA CONTEÚDO PROGRAMÁTICO (dentro sidebar) ===== */
         .tabela-inline { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 0.5rem; }
-        .tabela-inline th { background: #0a448f; color: white; padding: 4px 6px; text-align: left; }
-        .tabela-inline td { padding: 3px 4px; border-bottom: 1px solid #eee; }
-        .tabela-inline input { width: 100%; padding: 3px; border: 1px solid #ddd; border-radius: 3px; font-size: 0.78rem; }
+        .tabela-inline th { background: var(--instr-accent, #0a448f); color: white; padding: 4px 6px; text-align: left; }
+        .tabela-inline td { padding: 3px 4px; border-bottom: 1px solid var(--p3-border, #eee); }
+        .tabela-inline input { width: 100%; padding: 3px; border: 1px solid var(--p3-border, #ddd); border-radius: 3px; font-size: 0.78rem; }
         .btn-add-linha {
             background: #28a745; color: white; border: none; padding: 4px 10px;
             border-radius: 4px; cursor: pointer; font-size: 0.78rem; margin-top: 4px;
@@ -318,16 +338,21 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <header>
     <div class="header-info-left">
         <img class="brasao" src="../img/brasao.png" alt="Brasão 10º BPM">
         <div class="cabecalhotexto">
             <h1>SISTEMA DE GERENCIAMENTO P3 | INSTRUÇÃO</h1>
-            <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+            <h3 id="cabecalho-unidade"></h3>
         </div>
     </div>
     <div class="header-info-right">
+        <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+            <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
         <div class="relogio" id="relogio"></div>
         <div class="exibirusuario" id="user-info"></div>
     </div>
@@ -357,9 +382,17 @@
             <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução"/>
             <p>Instrução</p>
         </a>
-        <a href="../page/solucoesia.html">
+        <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+            <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+            <p>Chat Xerife</p>
+        </a><!--termina chat xerife-->
+        <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
             <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
             <p>Soluções IA</p>
+        </a>
+        <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+            <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+            <p>Usuários</p>
         </a>
         <button id="btn-logout" class="btn-logout">
             <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
@@ -838,7 +871,7 @@
                     <button class="btn-verde" onclick="abrirSidebar('curso')">
                         <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/plus--v1.png"> Novo Curso / Estágio
                     </button>
-                    <span id="msg-carregamento" style="font-size:0.85rem;color:#666;">Carregando...</span>
+                    <span id="msg-carregamento" style="font-size:0.85rem;color:var(--p3-text-muted, #666);">Carregando...</span>
                 </div>
                 <div class="filtros-bar">
                     <label>Filtrar:</label>
@@ -868,7 +901,7 @@
                             </tr>
                         </thead>
                         <tbody id="corpo-cursos">
-                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum registro encontrado.</td></tr>
+                            <tr><td colspan="9" style="text-align:center;color:var(--p3-text-muted, #999);padding:2rem;">Nenhum registro encontrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -895,7 +928,7 @@
                             </tr>
                         </thead>
                         <tbody id="corpo-instrutores">
-                            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Nenhum instrutor cadastrado.</td></tr>
+                            <tr><td colspan="7" style="text-align:center;color:var(--p3-text-muted, #999);padding:2rem;">Nenhum instrutor cadastrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -984,7 +1017,7 @@
                             </tr>
                         </thead>
                         <tbody id="corpo-alunos">
-                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum aluno cadastrado.</td></tr>
+                            <tr><td colspan="9" style="text-align:center;color:var(--p3-text-muted, #999);padding:2rem;">Nenhum aluno cadastrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1011,7 +1044,7 @@
                             </tr>
                         </thead>
                         <tbody id="corpo-planos">
-                            <tr><td colspan="7" style="text-align:center;color:#999;padding:2rem;">Nenhum plano cadastrado.</td></tr>
+                            <tr><td colspan="7" style="text-align:center;color:var(--p3-text-muted, #999);padding:2rem;">Nenhum plano cadastrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1040,7 +1073,7 @@
                             </tr>
                         </thead>
                         <tbody id="corpo-tiro">
-                            <tr><td colspan="9" style="text-align:center;color:#999;padding:2rem;">Nenhum plano de tiro cadastrado.</td></tr>
+                            <tr><td colspan="9" style="text-align:center;color:var(--p3-text-muted, #999);padding:2rem;">Nenhum plano de tiro cadastrado.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1054,7 +1087,8 @@
     <div>
         <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
     </div>
-</footer>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
 
 <script src="../js/instrucoes.js"></script>
 

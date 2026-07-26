@@ -5,12 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login — Sistema P3</title>
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
+        .btn-tema-login {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.35);
+            color: #fff;
+        }
+        .btn-tema-login:hover { background: rgba(255, 255, 255, 0.22); }
+
         body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(135deg, #0a1f4d 0%, #1a3a6e 60%, #0d2a5c 100%);
+            font-family: var(--p3-font);
+            background: linear-gradient(135deg, var(--p3-blue-900) 0%, var(--p3-blue-700) 60%, var(--p3-blue-900) 100%);
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -20,11 +34,11 @@
         }
 
         .login-card {
-            background: #fff;
-            border-radius: 12px;
+            background: var(--p3-surface);
+            border-radius: var(--p3-radius-lg);
             padding: 2.5rem 2rem;
             width: min(420px, 100%);
-            box-shadow: 0 12px 48px rgba(0,0,0,.35);
+            box-shadow: var(--p3-shadow-lg);
         }
 
         .login-header {
@@ -45,8 +59,8 @@
 
         .login-header-txt h2 {
             font-size: .95rem;
-            color: #0a1f4d;
-            font-weight: bold;
+            color: var(--p3-blue-900);
+            font-weight: 700;
             line-height: 1.3;
         }
 
@@ -81,7 +95,7 @@
 
         .tab-btn.active {
             background: #fff;
-            color: #0a1f4d;
+            color: var(--p3-blue-900);
             box-shadow: 0 1px 4px rgba(0,0,0,.12);
         }
 
@@ -116,19 +130,19 @@
         .campo input:focus,
         .campo select:focus {
             outline: none;
-            border-color: #0a448f;
+            border-color: var(--p3-blue-700);
             background: #fff;
         }
 
         .btn-submit {
             width: 100%;
             padding: 13px;
-            background: linear-gradient(90deg, #0a448f, #1a6abf);
+            background: var(--p3-gradient);
             color: #fff;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--p3-radius-sm);
             font-size: .95rem;
-            font-weight: bold;
+            font-weight: 700;
             cursor: pointer;
             letter-spacing: .04em;
             margin-top: .5rem;
@@ -171,9 +185,65 @@
             color: rgba(255,255,255,.45);
             text-align: center;
         }
+
+        /* ── Animação de sucesso no login ─────────────────────────── */
+        .overlay-sucesso {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, var(--p3-blue-900) 0%, var(--p3-blue-700) 60%, var(--p3-blue-900) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease;
+        }
+        .overlay-sucesso.ativo { opacity: 1; pointer-events: all; }
+
+        .sucesso-conteudo { text-align: center; color: #fff; }
+
+        .check-svg { width: 88px; height: 88px; margin-bottom: 1.1rem; }
+        .check-circulo {
+            fill: none; stroke: #fff; stroke-width: 2.5;
+            stroke-dasharray: 151; stroke-dashoffset: 151;
+        }
+        .check-marca {
+            fill: none; stroke: #fff; stroke-width: 3.5;
+            stroke-linecap: round; stroke-linejoin: round;
+            stroke-dasharray: 36; stroke-dashoffset: 36;
+        }
+        .overlay-sucesso.ativo .check-circulo { animation: desenharCirculo .5s ease forwards; }
+        .overlay-sucesso.ativo .check-marca   { animation: desenharMarca .35s .45s ease forwards; }
+        @keyframes desenharCirculo { to { stroke-dashoffset: 0; } }
+        @keyframes desenharMarca   { to { stroke-dashoffset: 0; } }
+
+        .sucesso-texto {
+            font-size: 1.15rem; font-weight: 700;
+            opacity: 0; transform: translateY(6px);
+        }
+        .sucesso-sub {
+            font-size: .85rem; margin-top: .3rem; color: rgba(255,255,255,.75);
+            opacity: 0; transform: translateY(6px);
+        }
+        .overlay-sucesso.ativo .sucesso-texto { animation: apareceTexto .4s .55s ease forwards; }
+        .overlay-sucesso.ativo .sucesso-sub   { animation: apareceTexto .4s .7s ease forwards; }
+        @keyframes apareceTexto { to { opacity: 1; transform: translateY(0); } }
+
+        .sucesso-credito {
+            font-size: .68rem; margin-top: 1.5rem; color: rgba(255,255,255,.45);
+            opacity: 0; letter-spacing: .03em;
+        }
+        .overlay-sucesso.ativo .sucesso-credito { animation: apareceTexto .4s .9s ease forwards; }
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
+
+    <button id="btn-tema" class="btn-tema btn-tema-login" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+        <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+    </button>
 
 <div class="login-card">
     <div class="login-header">
@@ -248,11 +318,9 @@
             <input type="password" id="cad-senha" placeholder="Crie uma senha">
         </div>
         <div class="campo">
-            <label>Nível de Acesso</label>
-            <select id="cad-nivel">
-                <option value="operador">Operador</option>
-                <option value="supervisor">Supervisor</option>
-                <option value="admin">Administrador</option>
+            <label>Unidade</label>
+            <select id="cad-unidade">
+                <option value="10bpm">10º BPM</option>
             </select>
         </div>
 
@@ -261,6 +329,19 @@
 </div>
 
 <footer>P3 / 10º BPM — Sistema de Gerenciamento Interno</footer>
+
+<!-- ══ Animação de sucesso (login) ══════════════════════════════ -->
+<div class="overlay-sucesso" id="overlay-sucesso">
+    <div class="sucesso-conteudo">
+        <svg class="check-svg" viewBox="0 0 52 52">
+            <circle class="check-circulo" cx="26" cy="26" r="24"/>
+            <path class="check-marca" d="M14 27l7 7 16-16"/>
+        </svg>
+        <p class="sucesso-texto">Login realizado com sucesso!</p>
+        <p class="sucesso-sub" id="sucesso-sub"></p>
+        <p class="sucesso-credito">Criado por 1º Tenente Calheiros</p>
+    </div>
+</div>
 
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -325,6 +406,21 @@ function setBtnLoading(id, loading, textoOriginal) {
     }
 }
 
+function mostrarAnimacaoSucesso(nomeExibicao) {
+    document.getElementById('sucesso-sub').textContent = `Bem-vindo(a), ${nomeExibicao}`;
+    document.getElementById('overlay-sucesso').classList.add('ativo');
+}
+
+// Se o usuário chegou aqui deslogado por inatividade (js/core/session.js
+// redireciona pra login.html?motivo=inatividade), mostra o motivo em vez
+// de deixar o formulário mudo sobre por que ele "caiu" do sistema.
+(function avisarSeSessaoExpirou() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('motivo') === 'inatividade') {
+        mostrarMensagem('msg-login', 'Sua sessão expirou por inatividade (2h). Faça login novamente.', 'erro');
+    }
+})();
+
 // ═══════════════════════════════════════════════════════════════
 // LOGIN — consulta direto no nó /usuarios/{cpf} do Firebase
 // ═══════════════════════════════════════════════════════════════
@@ -365,10 +461,13 @@ async function fazerLogin() {
         localStorage.setItem('userNomeGuerra',usuario.nomeGuerra);
         localStorage.setItem('userNome',      usuario.nome);
         localStorage.setItem('userNivel',     usuario.nivel || 'operador');
+        localStorage.setItem('userUnidade',   usuario.unidade || '10bpm');
         localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
 
-        // Redireciona para a home
-        window.location.href = '../index.html';
+        // Animação de sucesso, depois redireciona para a home
+        mostrarAnimacaoSucesso(`${usuario.graduacao} ${usuario.nomeGuerra}`);
+        setTimeout(() => { window.location.href = '../index.html'; }, 3400);
+        return;
 
     } catch (err) {
         console.error('Erro no login:', err);
@@ -389,7 +488,8 @@ async function fazerCadastro() {
     const nomeGuerra = document.getElementById('cad-nomeguerra').value.trim() || nome.split(' ')[0];
     const cpf        = limparCPF(document.getElementById('cad-cpf').value);
     const senha      = document.getElementById('cad-senha').value.trim();
-    const nivel      = document.getElementById('cad-nivel').value;
+    const unidade    = document.getElementById('cad-unidade').value;
+    const nivel      = 'operador'; // auto-cadastro sempre entra como Operador; promoção é feita pelo admin
 
     // Validações básicas
     if (!graduacao || !nome || !cpf || !senha) {
@@ -425,6 +525,7 @@ async function fazerCadastro() {
             cpf,
             senha,
             nivel,
+            unidade,
             ativo      : true,
             cadastrado_em: new Date().toISOString()
         };
@@ -451,6 +552,28 @@ async function fazerCadastro() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Popula o <select> de unidades no cadastro (10º BPM já vem fixo)
+// ═══════════════════════════════════════════════════════════════
+async function carregarUnidadesNoCadastro() {
+    const select = document.getElementById('cad-unidade');
+    try {
+        const snap = await db.ref('unidades').once('value');
+        const dados = snap.val();
+        if (!dados) return;
+        Object.keys(dados).forEach(id => {
+            if (id === '10bpm') return; // já existe como opção padrão
+            if (dados[id].ativo === false) return;
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = dados[id].nome || id;
+            select.appendChild(opt);
+        });
+    } catch (err) {
+        console.error('Erro ao carregar unidades:', err);
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // ENTER confirma nos campos
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -459,6 +582,8 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = '../index.html';
         return;
     }
+
+    carregarUnidadesNoCadastro();
 
     document.getElementById('login-senha').addEventListener('keydown', e => {
         if (e.key === 'Enter') fazerLogin();

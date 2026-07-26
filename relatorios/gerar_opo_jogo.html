@@ -16,6 +16,7 @@
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
     <div class="no-print" style="margin-bottom: 20px;">
         <button onclick="window.print()" style="padding: 10px; cursor: pointer; font-weight: bold;">IMPRIMIR OPO JOGO</button>
     </div>
@@ -54,9 +55,11 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const ID = urlParams.get('id');
-        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec";
+        let WEB_APP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
-        window.onload = function() {
+        window.onload = async function() {
+            const cfg = await P3.loadUnidadeConfig();
+            WEB_APP_URL = cfg.gas.EVENTOS;
             fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' })
                 .then(res => res.json())
                 .then(data => {
@@ -73,5 +76,6 @@
                 });
         };
     </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

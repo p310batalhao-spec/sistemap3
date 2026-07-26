@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Xerife — Chat</title>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../css/theme.css">
+    <style>
+        * { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior: none; }
+        body {
+            font-family: var(--p3-font, Arial, sans-serif);
+            background: var(--p3-bg, #fafaf8);
+            color: var(--p3-text, #1c1c1a);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;   /* fallback pra navegadores sem dvh */
+            height: 100dvh;  /* considera a barra de endereço/teclado do celular */
+        }
+
+        header.chat-mobile-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+            padding: .7rem .9rem;
+            padding-top: max(.7rem, env(safe-area-inset-top));
+            background: var(--p3-gradient, linear-gradient(90deg, #2f5fdd, #2450bd));
+            color: #fff;
+        }
+        header.chat-mobile-header a.voltar {
+            color: #fff;
+            text-decoration: none;
+            font-size: 1.3rem;
+            line-height: 1;
+            padding: .2rem .3rem;
+        }
+        header.chat-mobile-header .titulo { flex: 1; min-width: 0; }
+        header.chat-mobile-header .titulo strong { font-size: .95rem; display: block; }
+        header.chat-mobile-header .titulo small { font-size: .68rem; opacity: .85; }
+        #xerife-status-ia { font-size: .65rem; opacity: .9; margin-top: 1px; display: flex; align-items: center; }
+
+        /* Bolhas de mensagem: cor/alinhamento/tamanho já vêm inline de
+           Xerife.adicionarMensagem() (mesma função do balão flutuante) —
+           aqui só precisa do container flex em coluna pra align-self funcionar. */
+        #xerife-mensagens {
+            flex: 1;
+            overflow-y: auto;
+            padding: .9rem;
+            display: flex;
+            flex-direction: column;
+            gap: .6rem;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .barra-inferior {
+            flex-shrink: 0;
+            display: flex;
+            gap: .5rem;
+            align-items: flex-end;
+            padding: .6rem .7rem;
+            padding-bottom: max(.6rem, env(safe-area-inset-bottom));
+            border-top: 1px solid var(--p3-border, #e5e3dc);
+            background: var(--p3-surface, #fff);
+        }
+        /* Anexo + campo de texto ficam DENTRO da mesma barra arredondada
+           (um único "pill", sem costura entre os dois) — só o botão de
+           enviar fica como círculo à parte, destacado como ação principal. */
+        .barra-texto {
+            flex: 1;
+            display: flex;
+            align-items: flex-end;
+            gap: .2rem;
+            border: 1.5px solid var(--p3-border, #e5e3dc);
+            border-radius: 20px;
+            background: var(--p3-bg, #fafaf8);
+            padding: .35rem .35rem .35rem .5rem;
+        }
+        .btn-anexo {
+            flex-shrink: 0;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            color: inherit;
+            opacity: .65;
+            font-size: 1.05rem;
+            cursor: pointer;
+        }
+        #chat-mobile-input {
+            flex: 1;
+            padding: .35rem 0;
+            border: none;
+            outline: none;
+            font-size: .9rem;
+            background: transparent;
+            color: inherit;
+            resize: none;
+            overflow-y: auto;
+            max-height: 120px;
+            line-height: 1.4;
+            font-family: inherit;
+        }
+        .btn-enviar {
+            flex-shrink: 0;
+            background: var(--p3-blue-700, #2f5fdd);
+            color: #fff;
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .btn-tema {
+            background: rgba(255,255,255,.15);
+            border: none;
+            color: #fff;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .btn-tema svg { width: 16px; height: 16px; }
+    </style>
+</head>
+<body>
+    <script src="../js/core/session.js"></script>
+
+    <header class="chat-mobile-header">
+        <a class="voltar" href="../index.html" title="Voltar ao início" aria-label="Voltar ao início">←</a>
+        <div class="titulo">
+            <strong>Xerife</strong>
+            <small>Assistente da unidade — chat mobile</small>
+            <div id="xerife-status-ia"></div>
+        </div>
+        <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+            <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
+    </header>
+
+    <div id="xerife-mensagens"></div>
+
+    <form class="barra-inferior" id="chat-mobile-form">
+        <input type="file" id="chat-mobile-arquivo" accept="image/*,application/pdf" capture="environment" hidden>
+        <div class="barra-texto">
+            <button type="button" class="btn-anexo" id="chat-mobile-btn-anexo" title="Anexar foto ou PDF" aria-label="Anexar foto ou PDF">📎</button>
+            <textarea id="chat-mobile-input" rows="1" placeholder="Pergunte algo… (Shift+Enter pra nova linha)" autocomplete="off"></textarea>
+        </div>
+        <button type="submit" class="btn-enviar" title="Enviar" aria-label="Enviar">➤</button>
+    </form>
+
+    <script src="../js/xerife.js"></script>
+    <script src="../js/xerife-documentos.js"></script>
+    <script>
+        // Página full-screen: reaproveita o MESMO motor de perguntas/respostas
+        // de js/xerife.js (window.Xerife) — só o layout muda (tela cheia
+        // mobile em vez de balão flutuante). Ver js/core/session.js
+        // (injetarXerife) pra saber por que o botão flutuante não aparece aqui.
+        P3.requireAuth();
+
+        const formEl = document.getElementById('chat-mobile-form');
+        const inputEl = document.getElementById('chat-mobile-input');
+        const arquivoEl = document.getElementById('chat-mobile-arquivo');
+        const btnAnexoEl = document.getElementById('chat-mobile-btn-anexo');
+
+        function aguardarXerifePronto() {
+            return new Promise(resolve => {
+                let tentativas = 0;
+                const t = setInterval(() => {
+                    if (window.Xerife && window.Xerife.enviarPergunta && window.Xerife.analisarDocumento) {
+                        clearInterval(t); resolve();
+                    } else if (++tentativas > 75) { clearInterval(t); resolve(); } // segue mesmo sem o módulo de documentos
+                }, 200);
+            });
+        }
+
+        aguardarXerifePronto().then(() => {
+            const historico = window.Xerife.carregarHistorico();
+            if (historico.length) {
+                historico.forEach(h => {
+                    window.Xerife.adicionarMensagem('user', window.Xerife.escHtml(h.pergunta), h.pergunta);
+                    window.Xerife.adicionarMensagem('bot', h.respostaHtml);
+                });
+            } else {
+                window.Xerife.adicionarMensagem('bot', '🤠 E aí! Sou o <strong>Xerife</strong>. Pergunte sobre os dados da sua unidade ou anexe uma foto/PDF de um ofício de evento (📎) pra eu tentar cadastrar automaticamente.');
+            }
+        });
+
+        // Auto-expansão do campo de texto (até 120px, igual ao balão flutuante).
+        inputEl.addEventListener('input', () => {
+            inputEl.style.height = 'auto';
+            inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+        });
+        inputEl.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); formEl.requestSubmit(); }
+        });
+        formEl.addEventListener('submit', e => {
+            e.preventDefault();
+            const texto = inputEl.value.trim();
+            if (!texto || !window.Xerife) return;
+            inputEl.value = '';
+            inputEl.style.height = 'auto';
+            window.Xerife.enviarPergunta(texto);
+        });
+
+        btnAnexoEl.addEventListener('click', () => arquivoEl.click());
+        arquivoEl.addEventListener('change', () => {
+            const file = arquivoEl.files && arquivoEl.files[0];
+            arquivoEl.value = ''; // permite reenviar o mesmo arquivo depois
+            if (!file) return;
+            if (!window.Xerife || !window.Xerife.analisarDocumento) {
+                alert('O módulo de análise de documentos ainda não carregou — tente novamente em instantes.');
+                return;
+            }
+            window.Xerife.analisarDocumento(file);
+        });
+    </script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 //           /violencia_domestica  /sossego  /mandados
 // ═══════════════════════════════════════════════════════════════════
 
-const FB_BASE = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let FB_BASE = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 // ── Normalização de texto ────────────────────────────────────────
 const norm = str => (str || '').toString().trim()
@@ -84,7 +84,7 @@ function mesDoRegistro(item) {
 }
 
 // ── Estado global ────────────────────────────────────────────────
-let DADOS = { geral: [], cvp: [], cvli: [], arma: [], droga: [], tco: [], vd: [], sossego: [], mandados: [], visitas: [] };
+let DADOS = { geral: [], cvp: [], cvli: [], arma: [], droga: [], tco: [], vd: [], sossego: [], mandados: [], visitas: [], guarnicao: [] };
 let FILTRO = { ini: null, fim: null };
 let ANO_ATUAL = new Date().getFullYear();
 let CHARTS = {};
@@ -200,20 +200,39 @@ async function fetchNo(no) {
     return Object.keys(d).map(id => ({ id, ...d[id] }));
 }
 
+// /guarnicao é indexado como /guarnicao/{BOLETIM}/{idx} — cada boletim tem
+// uma lista de integrantes despachados. Achata em um array de registros
+// individuais, um por integrante, mantendo o BOLETIM de origem.
+async function fetchGuarnicao() {
+    const r = await fetch(`${FB_BASE}/guarnicao.json`);
+    const d = await r.json();
+    if (!d) return [];
+    const registros = [];
+    Object.keys(d).forEach(boletim => {
+        const integrantes = d[boletim];
+        if (!integrantes || typeof integrantes !== 'object') return;
+        Object.values(integrantes).forEach(integrante => {
+            registros.push({ BOLETIM: boletim, ...integrante });
+        });
+    });
+    return registros;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // CARREGAMENTO
 // ═══════════════════════════════════════════════════════════════════
 async function carregarTudo() {
-    const [geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados] = await Promise.all([
+    const [geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, guarnicao] = await Promise.all([
         fetchNo('geral'), fetchNo('cvp'), fetchNo('cvli'),
         fetchNo('arma'), fetchNo('droga'), fetchNo('tco'),
-        fetchNo('violencia_domestica'), fetchNo('sossego'), fetchNo('mandados')
+        fetchNo('violencia_domestica'), fetchNo('sossego'), fetchNo('mandados'),
+        fetchGuarnicao()
     ]);
     // Visitas orientativas: derivadas do nó /geral com tipificação contendo "VISITA"
     const visitas = geral.filter(i =>
         norm(i.TIPIFICACAO || i.TIPIFICACAO_GERAL || '').includes('VISITA')
     );
-    DADOS = { geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, visitas };
+    DADOS = { geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, visitas, guarnicao };
 }
 
 // ── Filtro de período aplicado sobre um array ────────────────────
@@ -575,6 +594,22 @@ function renderizar() {
             <div class="chart-wrap"><canvas id="chart-droga-cidade"></canvas></div>
         </div>`;
 
+    // ── Guarnição / Efetivo ────────────────────────────────────────
+    divGeral.innerHTML += `<div class="secao-titulo" style="margin-top:.5rem;"><i class="fas fa-users" style="margin-right:.4rem;color:#00838f;"></i>Guarnição / Efetivo — Atendimentos e Tempo de Resposta</div>`;
+    divGeral.innerHTML += `<div class="kpi-grid" id="kpi-guarnicao"></div>`;
+    divGeral.innerHTML += `<div class="charts-grid" id="charts-guarnicao"></div>`;
+    const gridGuarn = document.getElementById('charts-guarnicao');
+    gridGuarn.innerHTML += `
+        <div class="chart-card full">
+            <div class="chart-header">
+                <div>
+                    <div class="chart-title"><i class="fas fa-car-side" style="color:#00838f;"></i> Atendimentos por Guarnição / Viatura</div>
+                    <div class="chart-sub">Top 10 viaturas/equipes com mais despachos registrados no período (prefixo da viatura)</div>
+                </div>
+            </div>
+            <div class="chart-wrap tall"><canvas id="chart-guarnicao-top"></canvas></div>
+        </div>`;
+
     // ── Tabela de cruzamento ──────────────────────────────────────
     divGeral.innerHTML += `<div class="secao-titulo" style="margin-top:.5rem;"><i class="fas fa-table" style="margin-right:.4rem;"></i>Cruzamento de Dados</div>`;
     divGeral.innerHTML += `
@@ -816,6 +851,7 @@ function renderizar() {
         renderDrogaCidade();
         renderVdSossVisitas();
         renderTCO();
+        renderGuarnicao();
         renderCruzamento();
         startRelogio();
     }, 80);
@@ -914,6 +950,7 @@ function renderKPIs() {
     const arma    = doAnoX(DADOS.arma);
     const soss    = doAnoX(DADOS.sossego);
     const visitas = doAnoX(DADOS.visitas);
+    const mandados = doAnoX(DADOS.mandados);
 
     const drogaArr = doAnoX(DADOS.droga);
     let somaDroga = 0;
@@ -935,6 +972,7 @@ function renderKPIs() {
     const armaAnt   = doPeriodoAnterior(DADOS.arma).length;
     const sossAnt   = doPeriodoAnterior(DADOS.sossego).length;
     const visitasAnt = doPeriodoAnterior(DADOS.visitas).length;
+    const mandadosAnt = doPeriodoAnterior(DADOS.mandados).length;
 
     const drogaAntArr = doPeriodoAnterior(DADOS.droga);
     let somaDrogaAnt = 0;
@@ -990,6 +1028,12 @@ function renderKPIs() {
             <span class="kpi-label"><i class="fas fa-volume-high"></i> Perturbação do Sossego</span>
             <span class="kpi-valor">${soss.length}</span>
             ${badgeVariacao(soss.length, sossAnt)}
+            <span class="kpi-sub" style="margin-top:.2rem;">${lbl}</span>
+        </div>
+        <div class="kpi-card mand">
+            <span class="kpi-label"><i class="fas fa-gavel"></i> Mandados Cumpridos</span>
+            <span class="kpi-valor">${mandados.length}</span>
+            ${badgeNeutro(mandados.length, mandadosAnt)}
             <span class="kpi-sub" style="margin-top:.2rem;">${lbl}</span>
         </div>`;
 }
@@ -1406,6 +1450,91 @@ function renderVdSossVisitas() {
     mkLine('chart-vd-mes',      contarM(vdArr),  '#ad1457', 'rgba(173,20,87,.65)');
     mkLine('chart-soss-mes',    contarM(sArr),   '#00695c', 'rgba(0,105,92,.65)');
     mkLine('chart-visitas-mes', contarM(visArr), '#00796b', 'rgba(0,121,107,.65)');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GUARNIÇÃO / EFETIVO — Atendimentos e Tempo de Resposta
+// (nó /guarnicao — nunca usado em nenhum dashboard antes desta seção)
+// ═══════════════════════════════════════════════════════════════════
+function parseDataHora(str) {
+    if (!str || str === '---') return null;
+    str = str.toString().trim();
+    const d = parseDateStr(str.substring(0, 10));
+    if (!d) return null;
+    const resto = str.substring(10).replace(/[^\d:]/g, '');
+    const partes = resto.split(':').map(n => parseInt(n, 10) || 0);
+    d.setHours(partes[0] || 0, partes[1] || 0, partes[2] || 0, 0);
+    return d;
+}
+
+function renderGuarnicao() {
+    // Segue o período selecionado (não participa do cross-filter de crime,
+    // que é sobre tipificação/cidade/etc — guarnição é outro domínio de dado).
+    const arr = doAno(DADOS.guarnicao);
+
+    // ── Tempo médio de resposta (saída → chegada) ──────────────────
+    let somaMin = 0, contResp = 0;
+    arr.forEach(item => {
+        const saida = parseDataHora(item.DT_HR_SAIDA);
+        const chegada = parseDataHora(item.DT_HR_CHEGADA);
+        if (!saida || !chegada) return;
+        const min = (chegada - saida) / 60000;
+        if (min > 0 && min < 24 * 60) { somaMin += min; contResp++; }
+    });
+    const tempoMedio = contResp > 0 ? Math.round(somaMin / contResp) : null;
+
+    const kpiEl = document.getElementById('kpi-guarnicao');
+    if (kpiEl) {
+        kpiEl.innerHTML = `
+            <div class="kpi-card guarn">
+                <span class="kpi-label"><i class="fas fa-clock"></i> Tempo Médio de Resposta</span>
+                <span class="kpi-valor">${tempoMedio !== null ? tempoMedio + ' min' : '—'}</span>
+                <span class="kpi-sub" style="margin-top:.2rem;">${contResp} atendimento(s) com saída e chegada registradas</span>
+            </div>
+            <div class="kpi-card guarn">
+                <span class="kpi-label"><i class="fas fa-user-shield"></i> Registros de Guarnição</span>
+                <span class="kpi-valor">${arr.length}</span>
+                <span class="kpi-sub" style="margin-top:.2rem;">Integrantes despachados no período</span>
+            </div>`;
+    }
+
+    // ── Top viaturas/equipes por atendimentos ──────────────────────
+    // Conta 1 atendimento por BOLETIM+viatura (evita somar cada integrante
+    // da mesma guarnição como um atendimento separado).
+    const contagem = {};
+    const vistos = new Set();
+    arr.forEach(item => {
+        const viatura = (item.PREFIXO || item.NOME_EQUIPE || item.EQUIPE || 'N/D').toString().trim() || 'N/D';
+        const chave = viatura + '||' + item.BOLETIM;
+        if (vistos.has(chave)) return;
+        vistos.add(chave);
+        contagem[viatura] = (contagem[viatura] || 0) + 1;
+    });
+    const topViaturas = Object.entries(contagem).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+    const ctx = document.getElementById('chart-guarnicao-top')?.getContext('2d');
+    if (!ctx) return;
+    if (CHARTS['guarnicao-top']) CHARTS['guarnicao-top'].destroy();
+    CHARTS['guarnicao-top'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: topViaturas.map(x => x[0]),
+            datasets: [{
+                data: topViaturas.map(x => x[1]),
+                backgroundColor: '#00838f',
+                borderRadius: 4, borderSkipped: false
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#f0f2f8' } },
+                y: { grid: { display: false } }
+            }
+        }
+    });
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -2360,6 +2489,7 @@ function atualizarTudo() {
     renderDrogaCidade();
     renderVdSossVisitas();
     renderTCO();
+    renderGuarnicao();
     renderCruzamento();
     renderChipsCross();
 }
@@ -2401,11 +2531,16 @@ function checkLogin() {
 window.addEventListener('DOMContentLoaded', async () => {
     checkLogin();
 
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', () => {
         localStorage.clear();
         window.location.href = '../page/login.html';
     });
+
+    const cfg = await P3.loadUnidadeConfig();
+    FB_BASE = cfg.firebase.databaseURL;
 
     try {
         await carregarTudo();

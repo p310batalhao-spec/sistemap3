@@ -1254,6 +1254,7 @@
 </head>
 
 <body>
+    <script src="../js/core/session.js"></script>
 
   <!-- ═══════ CABEÇALHO ═══════ -->
   <header>
@@ -1261,11 +1262,15 @@
       <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
       <div class="cabecalhotexto">
         <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-        <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+        <h3 id="cabecalho-unidade"></h3>
       </div>
     </div>
     
     <div class="header-info-right">
+        <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+            <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
       <a href="../index.html" class="btn-imprimir">Voltar</a>
       <button class="btn-imprimir" id="btn-docx" onclick="baixarDocx()">
         📥 BAIXAR COMO WORD (.docx)
@@ -1536,7 +1541,7 @@
     // ══════════════════════════════════════════════════════════
     //  CONFIGURAÇÃO DO BANCO DE DADOS FIREBASE
     // ══════════════════════════════════════════════════════════
-    const DATABASE_URL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+    let DATABASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
     // Nó onde ficam as ocorrências com cidade/bairro/logradouro/lat/lng
     // Ajuste o nome do nó conforme seu banco:
     const NODE_OCORRENCIAS = 'geral'; // nó principal com CIDADE, BAIRRO, LOGRADOURO, LATITUDE, LONGITUDE
@@ -1842,6 +1847,8 @@
     async function carregarBancoDados() {
       const statusEl = document.getElementById('db-status');
       const selCidade = document.getElementById('sel-cidade');
+      const cfg = await P3.loadUnidadeConfig();
+      DATABASE_URL = cfg.firebase.databaseURL;
 
       try {
         statusEl.className = 'db-info carregando';
@@ -3794,6 +3801,7 @@
       carregarBancoDados();
     });
   </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 
 </html>

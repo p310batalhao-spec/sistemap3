@@ -3,7 +3,7 @@
 // GERADOR DE CARTÃO PROGRAMA — P3/10º BPM
 // ================================================================
 
-const FIREBASE_URL = "https://sistema-p3-v2-default-rtdb.firebaseio.com";
+let FIREBASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 // Pesos de gravidade por categoria
 // cvli=5, droga=4, cvp=3, geral=1
@@ -37,6 +37,8 @@ function identificarChaveRP(rp) {
 // BOTÃO PRINCIPAL
 // ================================================================
 async function clicarBotaoGerar() {
+    const cfg = await P3.loadUnidadeConfig();
+    FIREBASE_URL = cfg.firebase.databaseURL;
     const select        = document.getElementById("select-rp");
     const rpSelecionada = select.value;
     const container     = document.getElementById("iframe-container");
@@ -744,7 +746,7 @@ function gerarTemplateHTML(data) {
             <img src="https://pm.al.gov.br/joomgallery/image?view=image&format=raw&type=orig&id=84" width="60">
             <div style="text-align:center;">
                 <h2 style="margin:0;font-size:16px;">CARTÃO PROGRAMA DE RP</h2>
-                <h4 style="margin:0;font-size:12px;">10º BATALHÃO DE POLÍCIA MILITAR</h4>
+                <h4 style="margin:0;font-size:12px;">${(window.P3_CONFIG && window.P3_CONFIG.nome ? window.P3_CONFIG.nome : '10º Batalhão de Polícia Militar').toUpperCase()}</h4>
             </div>
             <div style="text-align:right;font-size:10px;">
                 <strong>DATA:</strong> ${data.data}<br>

@@ -2,10 +2,10 @@
 // CONFIGURAÇÃO GOOGLE APPS SCRIPT
 // ====================================================================
 // URL do Apps Script exclusiva para BANCO DE DADOS (Buscar, criar e atualizar)
-const DATABASE_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycby1FlbgHFzFZRDJbnzvCzsik-jlQDsnNCF3QafZemA6C4oSz8qODvOwrLaCGo0Z4VOJHg/exec';
+let DATABASE_WEBAPP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
 // URL do Apps Script usada APENAS para a gestão de movimentações / sincronização e-SAJ
-const MOVIMENTACAO_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwzoX1jw8mAREN24oiFRDxs2xF2xmIhsDS8M--VmIeSeuubNYflf5UTORAnF4JahFtn/exec';
+let MOVIMENTACAO_WEBAPP_URL = null;
 
 let allMateriais = [];
 let filtradosAtivos = null;
@@ -327,13 +327,20 @@ function efetuarLogout() {
 // ====================================================================
 // INICIALIZAÇÃO
 // ====================================================================
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', async function () {
     checkLogin();
+
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
+    document.getElementById('btn-logout').onclick = efetuarLogout;
+
+    const cfg = await P3.loadUnidadeConfig();
+    DATABASE_WEBAPP_URL     = cfg.gas.MATERIAIS;
+    MOVIMENTACAO_WEBAPP_URL = cfg.gas.MATERIAIS_MOVIMENTACAO;
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     fetchData();
 
-    document.getElementById('btn-logout').onclick = efetuarLogout;
     document.getElementById('btn-adicionar-cadastro').onclick = () => toggleSidebar(true);
     document.getElementById('btn-fechar-sidebar').onclick = () => toggleSidebar(false);
     if (overlay) overlay.onclick = () => toggleSidebar(false);

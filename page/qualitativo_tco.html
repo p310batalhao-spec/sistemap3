@@ -4,11 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema P3 — Análise Qualitativa de TCOs</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../css/theme.css">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="../css/qualitativo_tco.css">
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <!-- ══ HEADER — idêntico ao index.html ══════════════════════ -->
 <header>
@@ -16,10 +21,14 @@
     <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
     <div class="cabecalhotexto">
       <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-      <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+      <h3 id="cabecalho-unidade"></h3>
     </div>
   </div>
   <div class="header-info-right">
+      <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+          <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
     <div class="relogio" id="relogio"></div>
     <div class="user-notification">
       <div class="exibirusuario" id="user-info"></div>
@@ -44,9 +53,9 @@
       <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home">
       <p>Home</p>
     </a>
-    <a href="dashboard-p3.html">
-      <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png" alt="dashboard">
-      <p>Dashboard</p>
+    <a href="dashboard-cruzado.html">
+      <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado">
+      <p>Dashboard Cruzado</p>
     </a>
     <a href="cadastroocorrencias.html">
       <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências">
@@ -64,13 +73,21 @@
       <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução">
       <p>Instrução</p>
     </a>
-    <a href="solucoesia.html">
+    <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+        <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+        <p>Chat Xerife</p>
+    </a><!--termina chat xerife-->
+    <a href="solucoesia.html" id="nav-solucoesia" style="display:none">
       <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA">
       <p>Soluções IA</p>
     </a>
     <a href="qualitativo_tco.html" class="active">
       <img width="48" height="48" src="https://img.icons8.com/ios/50/document--v1.png" alt="ÍRIS">
       <p>ÍRIS — TCO</p>
+    </a>
+    <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+        <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+        <p>Usuários</p>
     </a>
     <button id="btn-logout" class="btn-logout">
       <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair">
@@ -125,7 +142,7 @@
 
       <div class="card">
         <div class="card-titulo">&#128203; JSON retornado pelo Gem IRIS</div>
-        <p style="font-size:13px;color:#667;margin-bottom:12px;">
+        <p style="font-size:13px;color:var(--p3-text-muted, #667);margin-bottom:12px;">
           Cole o JSON abaixo. Aceita sentenças <em>e</em> decisões interlocutórias de arquivamento.
         </p>
         <textarea id="json-input" oninput="onJsonChange()"
@@ -145,7 +162,7 @@
           <button class="btn-acao btn-primario" id="btn-validar" onclick="validarJSON()" disabled>&#10003; Validar JSON</button>
           <button class="btn-acao btn-verde" id="btn-salvar" onclick="salvarTodos()" style="display:none;">&#128190; Salvar no Google Sheets</button>
           <button class="btn-acao btn-secundario" onclick="limpar()">&#10005; Limpar</button>
-          <span id="contador" style="font-size:12px;color:#667;"></span>
+          <span id="contador" style="font-size:12px;color:var(--p3-text-muted, #667);"></span>
         </div>
 
         <div id="log-resultados"></div>
@@ -204,13 +221,14 @@
   <div>
     <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
   </div>
-</footer>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
 
 <script>
 
-    var GAS_URL = 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec';
-    var TCO_URL = 'https://script.google.com/macros/s/AKfycbzgewj7KjnTtWrnmnE7dcrz99CCpW1G3xw4Zft59dyIPL91avy1fqdVvgL1mRcIYhLP/exec';
-    var FB_GUARNICAO = 'https://sistema-p3-v2-default-rtdb.firebaseio.com/guarnicao.json';
+    var GAS_URL = null; // Sentenças — definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+    var TCO_URL = null;
+    var FB_GUARNICAO = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
     var _dadosVal = null;
 
     function trocarAba(n, b) {
@@ -240,15 +258,15 @@
         document.getElementById('preview-area').innerHTML = '<div class="al ae">O JSON deve ser um array não vazio.</div>'; return;
       }
       _dadosVal = d;
-      var h = '<div style="font-size:12px;color:var(--verde);font-weight:700;margin-bottom:10px;">&#10003; ' + d.length + ' documento(s) validado(s). Confira e salve.</div><div class="pg">';
+      var h = '<div style="font-size:12px;color:var(--p3-success, #166534);font-weight:700;margin-bottom:10px;">&#10003; ' + d.length + ' documento(s) validado(s). Confira e salve.</div><div class="pg">';
       d.forEach(function (item) {
         var tp  = item.tipoDocumento || 'Sentença';
         var cat = item.categoriaAceitabilidade || '';
         h += '<div class="pc"><div class="pp">' + esc(item.numeroProcesso || item.nomeArquivo || 'Sem número') + '</div>' +
           '<div class="pi">' + esc(item.comarca || '—') + ' · ' + esc(item.dataSentenca || String(item.ano || '—')) + '<br>' + esc(item.indiciado || '—') + '<br>' +
-          '<span style="font-size:10px;background:#e0e7f0;color:#1a3d5d;padding:1px 7px;border-radius:10px;font-weight:700;">' + esc(tp) + '</span> ' +
+          '<span style="font-size:10px;background:var(--p3-border, #e0e7f0);color:var(--qtco-accent, #1a3d5d);padding:1px 7px;border-radius:10px;font-weight:700;">' + esc(tp) + '</span> ' +
           '<span class="badge ' + bc(cat || item.resultado || '') + '">' + esc(cat || item.resultado || '—') + '</span>' +
-          (item.tipoDecisao ? '<br><span style="font-size:10px;color:#667;font-style:italic;">' + esc(item.tipoDecisao) + '</span>' : '') +
+          (item.tipoDecisao ? '<br><span style="font-size:10px;color:var(--p3-text-muted, #667);font-style:italic;">' + esc(item.tipoDecisao) + '</span>' : '') +
           '</div></div>';
       });
       h += '</div>';
@@ -445,6 +463,17 @@
       'Outros Motivos':                'outros',
     };
 
+    // Um motivo é "aceitável" quando pertence ao grupo 'aceitavel' do
+    // MOTIVO_GRUPO (Transação Penal Cumprida, Composição Civil das Partes).
+    // Centraliza a regra usada em toda a aba Aceitabilidade — antes cada
+    // painel checava só 'transac'/'anpp' no texto e "esquecia" Composição
+    // Civil, que contava como falha por engano.
+    function motivoEhAceitavel(motivoTxt) {
+      if (MOTIVO_GRUPO[motivoTxt] === 'aceitavel') return true;
+      var norm = _semAcento(String(motivoTxt || '').toLowerCase());
+      return norm.includes('transac') || norm.includes('anpp') || norm.includes('composic');
+    }
+
     // Classificação FINAL da disposição do processo — usada no gráfico
     // "Resultado". Diferente do gráfico "Motivo do Arquivamento" (que só
     // faz sentido para quem foi arquivado), este mostra o desfecho real:
@@ -515,6 +544,7 @@
       var porMotivoAno = {};
       var errosMatMap = {}, errosFormMap = {}, catObj = {};
       var esajsAceitaveis = [], esajsFalha = [];
+      var esajAno = {}; // Nº Processo → ano da sentença (usado no ranking de militares por período)
       var totalArquivamentos = 0;
 
       filtrada.forEach(function (r) {
@@ -544,6 +574,7 @@
 
         if (ano) porAno[ano] = (porAno[ano] || 0) + 1;
         if (tip) tipificacaoObj[tip] = (tipificacaoObj[tip] || 0) + 1;
+        if (numero && ano) esajAno[numero] = ano;
 
         if (ano && motivoCanon) {
           if (!porMotivoAno[ano]) porMotivoAno[ano] = {};
@@ -585,6 +616,7 @@
         porCategoria: catObj,
         esajsAceitaveis: esajsAceitaveis,
         esajsFalha: esajsFalha,
+        esajAno: esajAno,
       };
     }
 
@@ -683,9 +715,9 @@
       cs.forEach(function (c) { var sel = (fa && fa.toLowerCase() === c.toLowerCase()) ? ' selected' : ''; h += '<option value="' + esc(c) + '"' + sel + '>' + esc(c) + '</option>'; });
       h += '</select>';
       h += '<label style="margin-left:14px;">&#128197; Período</label>';
-      h += '<input type="date" id="periodo-ini" value="' + esc(pIni) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid #d5dce6;border-radius:6px;font-size:12px;">';
-      h += '<span style="margin:0 4px;color:#999;font-size:12px;">até</span>';
-      h += '<input type="date" id="periodo-fim" value="' + esc(pFim) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid #d5dce6;border-radius:6px;font-size:12px;">';
+      h += '<input type="date" id="periodo-ini" value="' + esc(pIni) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid var(--p3-border, #d5dce6);border-radius:6px;font-size:12px;">';
+      h += '<span style="margin:0 4px;color:var(--p3-text-muted, #999);font-size:12px;">até</span>';
+      h += '<input type="date" id="periodo-fim" value="' + esc(pFim) + '" onchange="aplicarFiltrosRelatorio()" style="padding:6px 8px;border:1px solid var(--p3-border, #d5dce6);border-radius:6px;font-size:12px;">';
       if (fa || pIni || pFim) {
         h += '<span class="fa">&#128205; ' + esc(fa || 'Todas') +
              (pIni || pFim ? ' &middot; ' + esc(pIni || '\u2026') + ' a ' + esc(pFim || '\u2026') : '') + '</span>';
@@ -704,12 +736,12 @@
       h += '</div>';
       h += '<div class="gg">';
       h += mkG('Resultado', d.porResultado, cRes);
-      h += mkG('Motivo Arquivamento', d.porMotivo, function () { return '#2b5a8c'; });
+      h += mkG('Motivo Arquivamento', d.porMotivo, function () { return 'var(--qtco-accent, #2b5a8c)'; });
       h += mkG('Por Ano', d.porAno, function () { return '#1a6b45'; });
       if (d.porTipificacao && d.porTipificacao.length) {
         var mxT = d.porTipificacao[0].qtd;
         h += '<div class="gc"><div class="gt">Tipificações mais frequentes</div><div class="brs">';
-        d.porTipificacao.slice(0, 8).forEach(function (e) { h += mkB(e.texto, e.qtd, Math.round(e.qtd / mxT * 100), '#1a3d5d'); });
+        d.porTipificacao.slice(0, 8).forEach(function (e) { h += mkB(e.texto, e.qtd, Math.round(e.qtd / mxT * 100), 'var(--qtco-accent, #1a3d5d)'); });
         h += '</div></div>';
       }
       h += '</div>';
@@ -765,7 +797,7 @@
         if (det.querySelector('table')) return;
         var lista = tipo === 'mat' ? (window._EM || []) : (window._EF || []);
         var item = lista[idx] || {}, procs = item.processos || [];
-        if (!procs.length) { det.innerHTML = '<div style="padding:12px 18px;font-size:12px;color:var(--txt2);font-style:italic;">Nenhum processo detalhado disponível.</div>'; return; }
+        if (!procs.length) { det.innerHTML = '<div style="padding:12px 18px;font-size:12px;color:var(--p3-text-muted, #667);font-style:italic;">Nenhum processo detalhado disponível.</div>'; return; }
         // Monta mapa ESAJ → boletim a partir dos TCOs carregados
         var esajBolMap = {};
         (window._TCO_DADOS || []).forEach(function(tc) {
@@ -774,9 +806,9 @@
           if (esaj && bol) esajBolMap[esaj] = bol;
         });
 
-        var thStyle = 'background:#f7f9fc;color:#667;font-size:10px;font-weight:700;' +
+        var thStyle = 'background:var(--qtco-zebra, #f7f9fc);color:var(--p3-text-muted, #667);font-size:10px;font-weight:700;' +
                       'text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;' +
-                      'text-align:left;border-bottom:1px solid #e0e7f0;';
+                      'text-align:left;border-bottom:1px solid var(--p3-border, #e0e7f0);';
 
         var t = '<table>' +
           '<tr>' +
@@ -789,7 +821,7 @@
           '</tr>';
 
         procs.forEach(function (p, pi) {
-          var bg  = pi % 2 === 0 ? '#fff' : '#f6f9fc';
+          var bg  = pi % 2 === 0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f6f9fc)';
           var bol = esajBolMap[String(p.numero||'').trim()] || '—';
 
           // Formata a data para DD/MM/AAAA se vier em outro formato
@@ -837,7 +869,7 @@
           var res = String(r['Resultado'] || ''), tipo = String(r['Tipo Documento'] || r['tipoDocumento'] || 'Sentença');
           h += '<tr>' +
             '<td style="font-family:Consolas,monospace;font-size:11px;white-space:nowrap">' + esc(r['Nº Processo'] || '—') + '</td>' +
-            '<td><span style="font-size:10px;background:#e0e7f0;color:#1a3d5d;padding:1px 7px;border-radius:10px;font-weight:700">' + esc(tipo) + '</span></td>' +
+            '<td><span style="font-size:10px;background:var(--p3-border, #e0e7f0);color:var(--qtco-accent, #1a3d5d);padding:1px 7px;border-radius:10px;font-weight:700">' + esc(tipo) + '</span></td>' +
             '<td style="white-space:nowrap">' + esc(r['Data da Sentença'] || '—') + '</td>' +
             '<td>' + esc(r['Comarca'] || '—') + '</td>' +
             '<td>' + esc(r['Indiciado'] || '—') + '</td>' +
@@ -899,7 +931,7 @@
       return '<div class="gc"><div class="gt">' + titulo + '</div><div class="brs">' + en.map(function (e) { return mkB(e[0], e[1], Math.round(e[1] / mx * 100), cFn(e[0])); }).join('') + '</div></div>';
     }
     function mkB(l, q, p, c) { return '<div class="br2"><span class="bl" title="' + esc(l) + '">' + esc(l) + '</span><div class="btr"><div class="bfi" style="width:' + p + '%;background:' + c + ';"></div></div><span class="bq">' + q + '</span></div>'; }
-    function cRes(r) { if (!r) return '#6b7280'; var rl = r.toLowerCase(); if (rl.includes('arquiv')) return '#b91c1c'; if (rl.includes('condena')) return '#166534'; if (rl.includes('extinca') || rl.includes('punib')) return '#4c1d95'; return '#2b5a8c'; }
+    function cRes(r) { if (!r) return '#6b7280'; var rl = r.toLowerCase(); if (rl.includes('arquiv')) return '#b91c1c'; if (rl.includes('condena')) return '#166534'; if (rl.includes('extinca') || rl.includes('punib')) return '#4c1d95'; return 'var(--qtco-accent, #2b5a8c)'; }
     function somaObj(o) {
       if (!o) return 0;
       if (Array.isArray(o)) return o.reduce(function (a, e) { return a + (e.qtd || e || 0); }, 0);
@@ -1082,9 +1114,9 @@ function gerarHTMLSugestoes(d) {
         var txCop = '====================================================================\n' +
                     '*P3-DICAS: Sistema de Análise Qualitativa de Sentenças de TCO*\n\n' +
                     'TIPO DE ARQUIVAMENTO: ' + s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s) encontrado(s) para essa tipificação)\n\n' +
-                    '❌ FALHA: ' + s.falha + '\n\n' +
                     (s.tip ? '⚖️ TIPIFICAÇÃO: ' + s.tip + '\n\n' : '') +
-                    '✔️ SUGESTÃO: ' + s.sug + '\n\n' +
+                    '❌ FALHA ENCONTRADA: ' + s.falha + '\n\n' +
+                    '✅ ORIENTAÇÃO: ' + s.sug + '\n\n' +
                     'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
                     '====================================================================\n';
 
@@ -1126,8 +1158,8 @@ function gerarHTMLSugestoes(d) {
                       '*P3-DICAS: TOP ' + (idx + 1) + ' — Atipicidade mais recorrente*\n\n' +
                       'TIPO: ' + s.cat.toUpperCase() + ' (' + s.qtd + ' caso(s)) identificados\n\n' +
                       (arts.length ? 'ARTIGO(S): ' + arts.join(', ') + '\n\n' : '') +
-                      '❌ FALHA: ' + s.falha + '\n\n' +
                       (s.tip ? '⚖️ TIPIFICAÇÃO: ' + s.tip + '\n\n' : '') +
+                      '❌ FALHA ENCONTRADA: ' + s.falha + '\n\n' +
                       '✅ ORIENTAÇÃO: ' + s.sug + '\n\n' +
                       'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
                       '====================================================================\n';
@@ -1161,9 +1193,9 @@ function gerarHTMLSugestoes(d) {
                       '*P3-DICAS: Sistema de Análise Qualitativa de Sentenças de TCO*\n\n' +
                       'Orientação do dia ' + dataLbl + '*\n\n' +
                       'TIPO: ' + sDia.cat.toUpperCase() + ' (' + sDia.qtd + ' caso(s)) identificados\n\n' +
-                      '❌ FALHA : ' + sDia.falha + '\n\n' +
                       (sDia.tip ? '⚖️ TIPIFICAÇÃO: ' + sDia.tip + '\n\n' : '') +
-                      '✅ Orientação: '+ sDia.sug + '\n\n' +
+                      '❌ FALHA ENCONTRADA: ' + sDia.falha + '\n\n' +
+                      '✅ ORIENTAÇÃO: '+ sDia.sug + '\n\n' +
                       'Seção de Planejamento, Estatística e Instrução - 10º BPM \n\n' +
                       '====================================================================\n';
           txCalTudo += (dia > 1 ? SEP : '') + '[' + dataLbl + '] ' + sDia.cat.toUpperCase() + ' — ' + sDia.falha + '\nSUGESTÃO: ' + sDia.sug;
@@ -1342,6 +1374,7 @@ function gerarHTMLSugestoes(d) {
       } catch(e) { console.warn('Guarnição/TCO:', e.message); }
 
       el.innerHTML = renderAceitabilidade(d, guarPorBoletim, tcos);
+      filtrarMilitares();
     }
 
     // ── Renderiza toda a aba de Aceitabilidade ─────────────────────
@@ -1350,12 +1383,14 @@ function gerarHTMLSugestoes(d) {
       var anoObj= d.porAno    || {};
 
       // ── REGRAS DE NEGÓCIO ────────────────────────────────────────
-      // Aceitável   = Transação Penal Cumprida OU ANPP Cumprido
+      // Aceitável   = Transação Penal Cumprida, ANPP Cumprido OU Composição Civil das Partes
       // Com Falha   = qualquer outro arquivamento (atipicidade, falta de justa causa, etc.)
       // Taxa        = Aceitáveis / Total de sentenças analisadas × 100
 
       var totalSent  = d.total || 0;
-      var totalAceit = buscarMotivo(mot, 'transac') + buscarMotivo(mot, 'anpp');
+      var totalAceit = Object.entries(mot).reduce(function (acc, e) {
+        return acc + (motivoEhAceitavel(e[0]) ? e[1] : 0);
+      }, 0);
       var totalFalha = somaObj(mot) - totalAceit;
       var taxa       = totalSent > 0 ? Math.round(totalAceit / totalSent * 100) : 0;
 
@@ -1379,7 +1414,7 @@ function gerarHTMLSugestoes(d) {
       var pFalha = totalSent > 0 ? Math.round(totalFalha/totalSent*100) : 0;
 
       h += '<div style="margin-bottom:14px;">';
-      h += '<div style="display:flex;justify-content:space-between;font-size:12px;color:#667;margin-bottom:5px;">';
+      h += '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--p3-text-muted, #667);margin-bottom:5px;">';
       h += '<span><b style="color:#166534;">✓ Aceitáveis</b>: ' + totalAceit + ' (' + pAceit + '%)</span>';
       h += '<span><b style="color:#991b1b;">✗ Com Falha</b>: ' + totalFalha + ' (' + pFalha + '%)</span>';
       h += '</div>';
@@ -1393,11 +1428,11 @@ function gerarHTMLSugestoes(d) {
       h += '</div></div>';
 
       // Legenda de critério
-      h += '<div style="background:#f7f9fc;border-radius:6px;padding:10px 14px;font-size:12px;' +
-           'color:#506070;line-height:1.7;border-left:3px solid #0a448f;">' +
-           '<strong style="color:#0a448f;">Critério de Aceitabilidade:</strong><br>' +
+      h += '<div style="background:var(--qtco-zebra, #f7f9fc);border-radius:6px;padding:10px 14px;font-size:12px;' +
+           'color:var(--p3-text-muted, #506070);line-height:1.7;border-left:3px solid var(--qtco-accent, #0a448f);">' +
+           '<strong style="color:var(--qtco-accent, #0a448f);">Critério de Aceitabilidade:</strong><br>' +
            '<span style="color:#166534;">&#10003; <b>Aceitável</b></span> — arquivado por ' +
-           '<em>Transação Penal Cumprida</em> ou <em>ANPP Cumprido</em>: ' +
+           '<em>Transação Penal Cumprida</em>, <em>ANPP Cumprido</em> ou <em>Composição Civil das Partes</em>: ' +
            'TCO cumpriu seu papel de justiça consensual.<br>' +
            '<span style="color:#991b1b;">&#10005; <b>Com Falha</b></span> — arquivado por qualquer outro motivo: ' +
            'indica erro de instrução, tipificação equivocada ou falta de provas na lavratura.' +
@@ -1421,8 +1456,7 @@ function gerarHTMLSugestoes(d) {
           var acAno = 0, faAno = 0;
           Object.entries(motAno).forEach(function(e) {
             if (e[0] === '_textos') return;
-            var norm = _semAcento(String(textos[e[0]] || e[0]).toLowerCase());
-            var isAc = norm.includes('transac') || norm.includes('anpp');
+            var isAc = motivoEhAceitavel(textos[e[0]] || e[0]);
             if (isAc) acAno += e[1];
             else      faAno += e[1];
           });
@@ -1437,7 +1471,7 @@ function gerarHTMLSugestoes(d) {
           // Cabeçalho do ano
           h += '<div style="display:flex;align-items:center;justify-content:space-between;' +
                'margin-bottom:6px;">';
-          h += '<span style="font-size:14px;font-weight:700;color:#0a448f;">' + ano + '</span>';
+          h += '<span style="font-size:14px;font-weight:700;color:var(--qtco-accent, #0a448f);">' + ano + '</span>';
           h += '<div style="display:flex;gap:16px;font-size:12px;">';
           h += '<span style="color:#166534;font-weight:600;">&#10003; Aceitáveis: ' + acAno + '</span>';
           h += '<span style="color:#991b1b;font-weight:600;">&#10005; Com Falha: ' + faAno + '</span>';
@@ -1467,8 +1501,7 @@ function gerarHTMLSugestoes(d) {
             h += '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">';
             motDetalhes.forEach(function(e) {
               var txtExib = textos[e[0]] || e[0];
-              var norm    = _semAcento(String(txtExib).toLowerCase());
-              var isAc    = norm.includes('transac') || norm.includes('anpp');
+              var isAc    = motivoEhAceitavel(txtExib);
               var cor     = isAc ? '#166534' : '#991b1b';
               var bgTag   = isAc ? '#d4edda' : '#fde8e8';
               h += '<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 10px;' +
@@ -1483,7 +1516,7 @@ function gerarHTMLSugestoes(d) {
 
           // Linha separadora entre anos (exceto o último)
           if (ano !== anosDisp[anosDisp.length-1]) {
-            h += '<hr style="border:none;border-top:1px solid #e0e7f0;margin:4px 0 18px;">';
+            h += '<hr style="border:none;border-top:1px solid var(--p3-border, #e0e7f0);margin:4px 0 18px;">';
           }
         });
 
@@ -1522,7 +1555,7 @@ function gerarHTMLSugestoes(d) {
           h += '<div style="font-size:18px;margin-bottom:4px;">' + vis.icon + '</div>';
           h += '<div style="font-size:22px;font-weight:800;color:' + vis.cor + ';">' + qtd + '</div>';
           h += '<div style="font-size:10px;font-weight:700;color:' + vis.cor + ';text-transform:uppercase;letter-spacing:.06em;margin:3px 0;">' + vis.label + '</div>';
-          h += '<div style="font-size:11px;color:#667;">' + pct + '% do total</div>';
+          h += '<div style="font-size:11px;color:var(--p3-text-muted, #667);">' + pct + '% do total</div>';
           h += '</div>';
         });
         h += '</div>';
@@ -1532,21 +1565,21 @@ function gerarHTMLSugestoes(d) {
         h += '<table style="width:100%;border-collapse:collapse;font-size:12px;">';
         h += '<thead><tr>';
         ['Categoria / Tipo de Decisão', 'Qtd', 'Grupo', 'O que indica'].forEach(function(c) {
-          h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+          h += '<th style="background:linear-gradient(90deg,var(--qtco-accent, #0a448f),var(--qtco-accent-2, #3b6fb8));color:#fff;' +
                'padding:8px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">' + c + '</th>';
         });
         h += '</tr></thead><tbody>';
 
         catEntries.forEach(function(c, i) {
           var vis = GRUPO_VISUAL[c.grupo] || GRUPO_VISUAL['outros'];
-          var bg  = i%2===0 ? '#fff' : '#f7f9fc';
+          var bg  = i%2===0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f7f9fc)';
           h += '<tr style="background:' + bg + ';">';
-          h += '<td style="padding:8px 14px;font-weight:600;color:#1c2b3a;">' + esc(c.texto) + '</td>';
+          h += '<td style="padding:8px 14px;font-weight:600;color:var(--p3-text, #1c2b3a);">' + esc(c.texto) + '</td>';
           h += '<td style="padding:8px 14px;text-align:center;font-weight:700;font-size:15px;color:' + vis.cor + ';">' + c.qtd + '</td>';
           h += '<td style="padding:8px 14px;">' +
                '<span style="display:inline-block;padding:2px 10px;background:' + vis.bg + ';color:' + vis.cor + ';' +
                'border-radius:20px;font-size:11px;font-weight:700;">' + vis.icon + ' ' + vis.label + '</span></td>';
-          h += '<td style="padding:8px 14px;font-size:11px;color:#506070;font-style:italic;">' + vis.desc + '</td>';
+          h += '<td style="padding:8px 14px;font-size:11px;color:var(--p3-text-muted, #506070);font-style:italic;">' + vis.desc + '</td>';
           h += '</tr>';
         });
         h += '</tbody></table></div></div>';
@@ -1568,7 +1601,7 @@ function gerarHTMLSugestoes(d) {
         h += '<thead><tr>';
         var ths = ['Motivo de Arquivamento','Qtd','% do Total','Classificação','Volume'];
         ths.forEach(function(c){
-          h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+          h += '<th style="background:linear-gradient(90deg,var(--qtco-accent, #0a448f),var(--qtco-accent-2, #3b6fb8));color:#fff;' +
                'padding:9px 14px;text-align:left;font-size:11px;font-weight:700;' +
                'text-transform:uppercase;letter-spacing:.06em;">' + c + '</th>';
         });
@@ -1577,24 +1610,23 @@ function gerarHTMLSugestoes(d) {
         motEntries.forEach(function(entry, i) {
           var motivo  = entry[0];
           var qtd     = entry[1];
-          var norm    = _semAcento(motivo.toLowerCase());
-          var isAceit = norm.includes('transac') || norm.includes('anpp');
+          var isAceit = motivoEhAceitavel(motivo);
           var pctArq  = totalArq > 0 ? (qtd/totalArq*100).toFixed(1) : '0';
           var barPct  = Math.round(qtd/maxQt*100);
           var cor     = isAceit ? '#166534' : '#991b1b';
           var bgBadge = isAceit ? '#d4edda' : '#fde8e8';
           var label   = isAceit ? '&#10003; Aceitável' : '&#10005; Com Falha';
-          var bg      = i % 2 === 0 ? '#fff' : '#f7f9fc';
+          var bg      = i % 2 === 0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f7f9fc)';
 
           h += '<tr style="background:' + bg + ';">';
-          h += '<td style="padding:9px 14px;font-weight:600;color:#1c2b3a;">' + esc(motivo) + '</td>';
+          h += '<td style="padding:9px 14px;font-weight:600;color:var(--p3-text, #1c2b3a);">' + esc(motivo) + '</td>';
           h += '<td style="padding:9px 14px;text-align:center;font-weight:700;font-size:16px;color:' + cor + ';">' + qtd + '</td>';
-          h += '<td style="padding:9px 14px;text-align:center;color:#667;">' + pctArq + '%</td>';
+          h += '<td style="padding:9px 14px;text-align:center;color:var(--p3-text-muted, #667);">' + pctArq + '%</td>';
           h += '<td style="padding:9px 14px;">' +
                '<span style="display:inline-block;padding:3px 12px;background:' + bgBadge + ';color:' + cor + ';' +
                'border-radius:20px;font-size:11px;font-weight:700;">' + label + '</span></td>';
           h += '<td style="padding:9px 14px;min-width:160px;">';
-          h += '<div style="background:#e8edf5;border-radius:4px;height:12px;overflow:hidden;">';
+          h += '<div style="background:var(--p3-border, #e8edf5);border-radius:4px;height:12px;overflow:hidden;">';
           h += '<div style="height:100%;width:' + barPct + '%;background:' + cor + ';' +
                'border-radius:4px;transition:width .7s;"></div>';
           h += '</div></td>';
@@ -1615,7 +1647,7 @@ function gerarHTMLSugestoes(d) {
         h += '<div class="card-titulo">&#128200; Distribuição de Sentenças por Ano</div>';
         h += '<div class="brs">';
         anoArr.forEach(function(e){
-          h += mkB(String(e[0]), e[1], Math.round(e[1]/maxAno*100), '#0a448f');
+          h += mkB(String(e[0]), e[1], Math.round(e[1]/maxAno*100), 'var(--qtco-accent, #0a448f)');
         });
         h += '</div></div>';
       }
@@ -1725,8 +1757,9 @@ function gerarHTMLSugestoes(d) {
         });
       }
 
-      // Contagem por militar
-      var cont = {};
+      // Lista achatada de casos: um item por (TCO × militar da guarnição)
+      var esajAno = d.esajAno || {};
+      var casos = [];
 
       tcos.forEach(function(t) {
         var esaj = String(t['E-SAJ'] || t['ESAJ'] || t['LocalE-SAJ'] || '').trim();
@@ -1758,57 +1791,125 @@ function gerarHTMLSugestoes(d) {
         if (!igs.length) return;
 
         var tip = String(t['Tipicidade Geral'] || '—');
+        var ano = esajAno[esaj] || esajAno[_norm(esaj)] || '—';
 
         igs.forEach(function(ig) {
           if (!ig) return;
           var posto = String(ig.POSTO_GRADUACAO || ig['Posto / Graduação'] || '').trim();
           var nome  = String(ig.NOME_GUERRA || ig['Nome de guerra'] || ig.NOME_COMPLETO || '').trim();
           if (!nome) return;
-          var chave = posto + '|' + nome;
-          if (!cont[chave]) cont[chave] = { nome:nome, posto:posto, falhas:0, aceitaveis:0, tips:{} };
-
-          if (classif === 'aceitavel') {
-            cont[chave].aceitaveis++;
-          } else {
-            cont[chave].falhas++;
-            cont[chave].tips[tip] = (cont[chave].tips[tip] || 0) + 1;
-          }
+          casos.push({ numero: esaj || '—', cop: bol, posto: posto, nome: nome, ano: ano, tip: tip, classif: classif });
         });
       });
 
-      // Ranking: apenas militares com pelo menos 1 falha, ordenado por falhas
-      var ranking = Object.values(cont)
-        .filter(function(m){ return m.falhas > 0; })
-        .sort(function(a,b){ return b.falhas - a.falhas; })
-        .slice(0, 20);
-
-      if (!ranking.length) {
+      if (!casos.length) {
         return '<div class="card"><div class="card-titulo">&#127942; Militares — Resultados por TCO</div>' +
           '<div class="vz" style="padding:20px;"><div class="vt">Nenhum cruzamento encontrado</div>' +
           '<div class="vs">Os boletins dos TCOs precisam ter guarnição registrada no Firebase ' +
           'em <code>/guarnicao/&lt;Nº Ocorrência&gt;</code>.</div></div></div>';
       }
 
-      var h = '<div class="card">';
+      window._CASOS_MILITARES = casos;
+      window._MIL_ANO_ATIVO = ''; // cada novo relatório recomeça na aba "Todos"
+
+      var anos = Array.from(new Set(casos.map(function(c){ return c.ano; })
+        .filter(function(a){ return a && a !== '—'; }))).sort();
+
+      var h = '<div class="card" id="card-militares">';
       h += '<div class="card-titulo">&#127942; Militares — Falhas e Aceitáveis</div>';
-      h += '<div style="font-size:11px;color:#667;margin-bottom:12px;padding:8px 12px;' +
-           'background:#f7f9fc;border-radius:6px;border-left:3px solid #0a448f;line-height:1.8;">' +
-           '<b style="color:#0a448f;">Critérios:</b><br>' +
+      h += '<div style="font-size:11px;color:var(--p3-text-muted, #667);margin-bottom:12px;padding:8px 12px;' +
+           'background:var(--qtco-zebra, #f7f9fc);border-radius:6px;border-left:3px solid var(--qtco-accent, #0a448f);line-height:1.8;">' +
+           '<b style="color:var(--qtco-accent, #0a448f);">Critérios:</b><br>' +
            '<span style="color:#991b1b;">&#10005; Falha</span> = arquivado por atipicidade, falta de justa causa ou outros motivos de rejeição<br>' +
-           '<span style="color:#166534;">&#10003; Aceitável</span> = Transação Penal, ANPP, condenação, homologação, perda/destruição de bem, ' +
-           'absolvição com mérito ou qualquer desfecho de aceitação plena/processual' +
+           '<span style="color:#166534;">&#10003; Aceitável</span> = Transação Penal, ANPP, Composição Civil das Partes, condenação, homologação, ' +
+           'perda/destruição de bem, absolvição com mérito ou qualquer desfecho de aceitação plena/processual' +
            '</div>';
-      h += '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
+
+      // Abas de período (Todos + um por ano encontrado nos casos)
+      h += '<div class="tabs-mil" id="tabs-mil">';
+      h += '<button class="tab-mil-btn ativo" data-ano="" onclick="filtrarMilitaresPeriodo(this,\'\')">Todos</button>';
+      anos.forEach(function(a) {
+        h += '<button class="tab-mil-btn" data-ano="' + a + '" onclick="filtrarMilitaresPeriodo(this,\'' + a + '\')">' + a + '</button>';
+      });
+      h += '</div>';
+
+      // Filtros: número de processo, COP, nome, aceitável, falha
+      h += '<div class="filtro-mil-bar">';
+      h += '<input type="text" id="mil-f-proc" placeholder="&#128269; Nº Processo" oninput="filtrarMilitares()">';
+      h += '<input type="text" id="mil-f-cop" placeholder="&#128269; COP (Boletim)" oninput="filtrarMilitares()">';
+      h += '<input type="text" id="mil-f-nome" placeholder="&#128269; Militar" oninput="filtrarMilitares()">';
+      h += '<label><input type="checkbox" id="mil-f-aceit" checked onchange="filtrarMilitares()"> &#10003; Aceitável</label>';
+      h += '<label><input type="checkbox" id="mil-f-falha" checked onchange="filtrarMilitares()"> &#10005; Falha</label>';
+      h += '</div>';
+
+      h += '<div id="mil-resultado"></div>';
+      h += '</div>';
+      return h;
+    }
+
+    // ── Recalcula o ranking por militar a partir de uma lista de casos já filtrada ──
+    function rankingDeCasos(casos) {
+      var cont = {};
+      casos.forEach(function(c) {
+        var chave = c.posto + '|' + c.nome;
+        if (!cont[chave]) cont[chave] = { nome: c.nome, posto: c.posto, falhas: 0, aceitaveis: 0, tips: {}, casos: [] };
+        cont[chave].casos.push(c);
+        if (c.classif === 'aceitavel') {
+          cont[chave].aceitaveis++;
+        } else {
+          cont[chave].falhas++;
+          cont[chave].tips[c.tip] = (cont[chave].tips[c.tip] || 0) + 1;
+        }
+      });
+      return Object.values(cont).sort(function(a, b) { return (b.falhas - a.falhas) || (b.aceitaveis - a.aceitaveis); });
+    }
+
+    // ── Re-renderiza o painel de militares (ranking + lista de casos) aplicando os filtros ativos ──
+    function filtrarMilitares() {
+      var todos = window._CASOS_MILITARES || [];
+      var el = document.getElementById('mil-resultado');
+      if (!el) return;
+
+      var ano   = window._MIL_ANO_ATIVO || '';
+      var fProc = _semAcento((document.getElementById('mil-f-proc')  || {}).value  || '').toLowerCase();
+      var fCop  = _semAcento((document.getElementById('mil-f-cop')   || {}).value  || '').toLowerCase();
+      var fNome = _semAcento((document.getElementById('mil-f-nome')  || {}).value  || '').toLowerCase();
+      var showAceit = (document.getElementById('mil-f-aceit') || {}).checked;
+      var showFalha = (document.getElementById('mil-f-falha') || {}).checked;
+
+      var casos = todos.filter(function(c) {
+        if (ano && c.ano !== ano) return false;
+        if (c.classif === 'aceitavel' && !showAceit) return false;
+        if (c.classif === 'falha' && !showFalha) return false;
+        if (fProc && !_semAcento(String(c.numero).toLowerCase()).includes(fProc)) return false;
+        if (fCop  && !_semAcento(String(c.cop).toLowerCase()).includes(fCop))     return false;
+        if (fNome && !_semAcento(String(c.nome).toLowerCase()).includes(fNome))   return false;
+        return true;
+      });
+
+      if (!casos.length) {
+        el.innerHTML = '<div class="vz" style="padding:20px;"><div class="vt">Nenhum caso encontrado com esses filtros</div></div>';
+        return;
+      }
+
+      var ranking = rankingDeCasos(casos).slice(0, 20);
+      window._MIL_RANKING_ATUAL = ranking;
+
+      // Uma única tabela: clicar no militar expande, na própria linha, os
+      // processos/COPs que formam aquela contagem — evita repetir a mesma
+      // informação numa segunda lista gigante embaixo. O wrap com max-height
+      // evita que a página cresça sem limite quando há muitos militares.
+      var h = '<div class="mil-tabela-wrap"><table style="width:100%;border-collapse:collapse;font-size:12px;">';
       h += '<thead><tr>';
-      ['#','Militar','&#10005; C/ Falha','&#10003; Aceitáveis','Tipificações com Falha'].forEach(function(c){
-        h += '<th style="background:linear-gradient(90deg,#0a448f,#3b6fb8);color:#fff;' +
+      ['','Militar','&#10005; C/ Falha','&#10003; Aceitáveis','Tipificações com Falha'].forEach(function(c){
+        h += '<th style="position:sticky;top:0;z-index:2;background:linear-gradient(90deg,var(--qtco-accent, #0a448f),var(--qtco-accent-2, #3b6fb8));color:#fff;' +
              'padding:9px 12px;text-align:left;font-size:11px;font-weight:700;' +
              'text-transform:uppercase;letter-spacing:.05em;">' + c + '</th>';
       });
       h += '</tr></thead><tbody>';
 
       ranking.forEach(function(mil, i) {
-        var bg  = i%2===0 ? '#fff' : '#f7f9fc';
+        var bg  = i%2===0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f7f9fc)';
         var med = i===0?'&#127945;':i===1?'&#129352;':i===2?'&#129353;':String(i+1)+'.';
         var tops = Object.entries(mil.tips)
           .sort(function(a,b){ return b[1]-a[1]; }).slice(0,3)
@@ -1818,17 +1919,80 @@ function gerarHTMLSugestoes(d) {
               esc(e[0]) + ' <b>(' + e[1] + ')</b></span>';
           }).join('');
 
-        h += '<tr style="background:'+bg+';">';
-        h += '<td style="padding:9px 12px;text-align:center;font-size:15px;">' + med + '</td>';
-        h += '<td style="padding:9px 12px;font-weight:700;color:#0a448f;">' + esc(mil.nome) + '</td>';
+        h += '<tr class="mil-row" id="mil-row-' + i + '" style="background:'+bg+';" onclick="toggleMilDetalhe(' + i + ')">';
+        h += '<td style="padding:9px 12px;text-align:center;font-size:13px;"><span class="mil-seta">&#9654;</span></td>';
+        h += '<td style="padding:9px 12px;font-weight:700;color:var(--qtco-accent, #0a448f);">' + med + ' ' + esc(mil.nome) + '</td>';
         h += '<td style="padding:9px 12px;text-align:center;font-size:22px;font-weight:800;color:#991b1b;">' + mil.falhas + '</td>';
         h += '<td style="padding:9px 12px;text-align:center;font-size:18px;font-weight:700;color:#166534;">' + mil.aceitaveis + '</td>';
-        h += '<td style="padding:9px 12px;">' + (tops||'<span style="color:#999;font-size:11px;">—</span>') + '</td>';
+        h += '<td style="padding:9px 12px;">' + (tops||'<span style="color:var(--p3-text-muted, #999);font-size:11px;">—</span>') + '</td>';
+        h += '</tr>';
+        h += '<tr class="mil-det" id="mil-det-' + i + '" style="display:none;">' +
+             '<td colspan="5" style="padding:0;">' +
+             '<div id="mil-det-inner-' + i + '" class="mil-det-inner"></div>' +
+             '</td></tr>';
+      });
+      h += '</tbody></table></div>';
+
+      el.innerHTML = h;
+    }
+
+    // ── Monta a mini-tabela de processos/COPs de um único militar (usada dentro do acordeão) ──
+    function mkMilDetalhe(mil) {
+      var casos = mil.casos.slice().sort(function(a,b){ return String(a.numero).localeCompare(String(b.numero)); });
+      var h = '<table style="width:100%;border-collapse:collapse;font-size:11.5px;">';
+      h += '<thead><tr>';
+      ['Nº Processo','COP (Boletim)','Ano','Tipificação','Classificação'].forEach(function(c){
+        h += '<th style="position:sticky;top:0;background:var(--qtco-zebra, #f7f9fc);color:var(--p3-text-muted, #667);font-size:10px;font-weight:700;' +
+             'text-transform:uppercase;letter-spacing:.06em;padding:6px 12px;text-align:left;border-bottom:1px solid var(--p3-border, #e0e7f0);">' + c + '</th>';
+      });
+      h += '</tr></thead><tbody>';
+      casos.forEach(function(c, i) {
+        var bg      = i%2===0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f7f9fc)';
+        var isAc    = c.classif === 'aceitavel';
+        var cor     = isAc ? '#166534' : '#991b1b';
+        var bgBadge = isAc ? '#d4edda' : '#fde8e8';
+        var label   = isAc ? '&#10003; Aceitável' : '&#10005; Falha';
+
+        h += '<tr style="background:'+bg+';">';
+        h += '<td style="padding:6px 12px;"><span class="pn">' + esc(c.numero) + '</span></td>';
+        h += '<td style="padding:6px 12px;font-family:Consolas,monospace;font-size:11px;color:var(--p3-success, #1a6b45);font-weight:700;">' + esc(c.cop) + '</td>';
+        h += '<td style="padding:6px 12px;white-space:nowrap;">' + esc(c.ano) + '</td>';
+        h += '<td style="padding:6px 12px;">' + esc(c.tip) + '</td>';
+        h += '<td style="padding:6px 12px;"><span style="display:inline-block;padding:2px 10px;background:' + bgBadge + ';color:' + cor + ';' +
+             'border-radius:20px;font-size:10.5px;font-weight:700;">' + label + '</span></td>';
         h += '</tr>';
       });
-
-      h += '</tbody></table></div></div>';
+      h += '</tbody></table>';
       return h;
+    }
+
+    // ── Expande/recolhe, em acordeão (só um aberto por vez), os processos de um militar ──
+    function toggleMilDetalhe(idx) {
+      var det = document.getElementById('mil-det-' + idx);
+      var row = document.getElementById('mil-row-' + idx);
+      if (!det) return;
+      var jaAberto = det.style.display !== 'none';
+
+      document.querySelectorAll('.mil-det').forEach(function(d){ d.style.display = 'none'; });
+      document.querySelectorAll('.mil-row').forEach(function(r){ r.classList.remove('aberto'); });
+
+      if (jaAberto) return;
+
+      var inner = document.getElementById('mil-det-inner-' + idx);
+      var mil = (window._MIL_RANKING_ATUAL || [])[idx];
+      if (inner && mil && !inner.innerHTML) inner.innerHTML = mkMilDetalhe(mil);
+
+      det.style.display = 'table-row';
+      if (row) row.classList.add('aberto');
+    }
+
+    // ── Alterna a aba de período (Todos / ano específico) no painel de militares ──
+    window._MIL_ANO_ATIVO = '';
+    function filtrarMilitaresPeriodo(btn, ano) {
+      window._MIL_ANO_ATIVO = ano;
+      document.querySelectorAll('.tab-mil-btn').forEach(function(b){ b.classList.remove('ativo'); });
+      btn.classList.add('ativo');
+      filtrarMilitares();
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -1885,9 +2049,9 @@ function gerarHTMLSugestoes(d) {
             td.style.cssText = 'padding:6px 14px;font-size:11px;';
             var nomes = igs
               .filter(function(ig){ return ig && ig.NOME_GUERRA; })
-              .map(function(ig){ return '<span style="display:inline-block;background:#eef3fb;color:#0a448f;padding:1px 7px;border-radius:10px;margin:1px;font-size:10px;">' + esc(String(ig.POSTO_GRADUACAO || '')) + ' ' + esc(String(ig.NOME_GUERRA || '')) + '</span>'; })
+              .map(function(ig){ return '<span style="display:inline-block;background:var(--qtco-hover, #eef3fb);color:var(--qtco-accent, #0a448f);padding:1px 7px;border-radius:10px;margin:1px;font-size:10px;">' + esc(String(ig.POSTO_GRADUACAO || '')) + ' ' + esc(String(ig.NOME_GUERRA || '')) + '</span>'; })
               .join('');
-            td.innerHTML = nomes || '<span style="color:#999;">—</span>';
+            td.innerHTML = nomes || '<span style="color:var(--p3-text-muted, #999);">—</span>';
             linhas[j].appendChild(td);
             break;
           }
@@ -1899,7 +2063,7 @@ function gerarHTMLSugestoes(d) {
       if (thead && thead.textContent !== 'Guarnição') {
         var thGuar = document.createElement('th');
         thGuar.textContent = 'Guarnição';
-        thGuar.style.cssText = 'background:#f7f9fc;color:#667;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:left;border-bottom:1px solid #e0e7f0;';
+        thGuar.style.cssText = 'background:var(--qtco-zebra, #f7f9fc);color:var(--p3-text-muted, #667);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:left;border-bottom:1px solid var(--p3-border, #e0e7f0);';
         det.querySelector('tr').appendChild(thGuar);
       }
     }
@@ -1932,12 +2096,20 @@ function gerarHTMLSugestoes(d) {
     window.location.href = '../page/login.html';
   }
 
-  document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('DOMContentLoaded', async function () {
     atualizarRelogio();
     setInterval(atualizarRelogio, 1000);
     checkLogin();
+
+    // Logout — conectado antes do await de configuração de rede abaixo,
+    // para não depender de Firebase/GAS responderem para funcionar.
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', logout);
+
+    const cfg = await P3.loadUnidadeConfig();
+    FB_GUARNICAO = cfg.firebase.databaseURL + '/guarnicao.json';
+    GAS_URL = cfg.gas.SENTENCAS;
+    TCO_URL = cfg.gas.TCO;
   });
 </script>
 </body>

@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Leitor de Shapefile — P3 · 10º BPM</title>
 <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="../css/theme.css">
 <link rel="stylesheet" href="../css/style.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -266,12 +270,13 @@ table.attrs tr:hover td{background:rgba(255,255,255,.02);}
 </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <!-- HEADER -->
 <header class="hdr">
   <span class="hdr-badge">P3 · 10º BPM</span>
   <div class="hdr-title">Leitor de <span>Shapefile</span> — Dados Censitários</div>
-  <a href="../page/dashboard-p3.html" class="hdr-back">
+  <a href="../page/dashboard-cruzado.html" class="hdr-back">
     <i class="fas fa-arrow-left"></i> Dashboard
   </a>
 </header>
@@ -755,7 +760,7 @@ function enviarParaDashboard() {
     mostrarFeedback(
       `✅ Camada <b>"${nome}"</b> enviada para o dashboard!<br>` +
       `${camada.feicoes.toLocaleString('pt-BR')} feições · ${kb} KB<br>` +
-      `<a href="../page/dashboard-p3.html" target="_blank"
+      `<a href="../page/dashboard-cruzado.html" target="_blank"
          style="color:#00e5ff;text-decoration:none;font-weight:700;">
          → Abrir Dashboard</a>`,
       'ok'
@@ -906,5 +911,6 @@ function st(tipo, msg) {
   t.textContent=msg;
 }
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - USUÁRIOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stylesmandado.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* ── Abas Usuários / Acesso por Página ── */
+        .nav-abas-adm {
+            display: flex; gap: 4px; border-bottom: 2px solid var(--p3-border);
+            margin-bottom: 1.25rem;
+        }
+        .nav-abas-adm button {
+            background: none; border: none; border-bottom: 3px solid transparent;
+            padding: 10px 18px; font-size: .85rem; font-weight: 700;
+            color: var(--p3-text-muted); cursor: pointer; margin-bottom: -2px;
+            transition: color .15s, border-color .15s;
+        }
+        .nav-abas-adm button.ativo { color: var(--p3-blue-700); border-bottom-color: var(--p3-blue-700); }
+        .nav-abas-adm button:hover:not(.ativo) { color: var(--p3-blue-500); }
+        .aba-adm { display: none; }
+        .aba-adm.ativa { display: block; }
+
+        /* ── Painel Acesso por Página ── */
+        .acesso-bar {
+            display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem;
+            padding: 1rem 1.25rem; background: var(--p3-surface); border: 1px solid var(--p3-border);
+            border-radius: var(--p3-radius-md); margin-bottom: 1.25rem; box-shadow: var(--p3-shadow-sm);
+        }
+        .acesso-bar .campo-acesso { display: flex; flex-direction: column; gap: .3rem; min-width: 220px; }
+        .acesso-bar label { font-size: .68rem; font-weight: 700; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+        .acesso-bar select {
+            padding: 8px 10px; border: 1.5px solid var(--p3-border); border-radius: 6px;
+            font-size: .85rem; background: var(--p3-bg); color: var(--p3-text);
+        }
+        .status-acesso { font-size: .82rem; font-weight: 700; padding: 6px 14px; border-radius: 20px; }
+        .status-acesso.liberado   { background: rgba(47,143,91,.12); color: var(--p3-success); }
+        .status-acesso.restrito   { background: rgba(181,134,10,.12); color: var(--p3-warning); }
+
+        .grupo-paginas { margin-bottom: 1.25rem; }
+        .grupo-paginas h4 {
+            font-size: .78rem; font-weight: 700; color: var(--p3-blue-700); text-transform: uppercase;
+            letter-spacing: .05em; margin-bottom: .6rem; padding-bottom: .4rem; border-bottom: 1px solid var(--p3-border);
+        }
+        .grid-paginas { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .5rem; }
+        .item-pagina {
+            display: flex; align-items: center; gap: .55rem; padding: .55rem .75rem;
+            background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 6px;
+            font-size: .83rem; color: var(--p3-text); cursor: pointer;
+        }
+        .item-pagina:hover { border-color: var(--p3-blue-300); }
+        .item-pagina input { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; }
+
+        .acesso-acoes { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1rem; }
+        .btn-acesso {
+            padding: 9px 18px; border-radius: 6px; font-size: .83rem; font-weight: 700; cursor: pointer; border: none;
+        }
+        .btn-acesso.primario { background: var(--p3-blue-700); color: #fff; }
+        .btn-acesso.secundario { background: transparent; border: 1.5px solid var(--p3-border); color: var(--p3-text-muted); }
+        .btn-acesso.perigo { background: transparent; border: 1.5px solid var(--p3-danger); color: var(--p3-danger); }
+        .btn-acesso:hover { opacity: .88; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <header>
+        <div class="header-info-left">
+            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
+            <div class="cabecalhotexto">
+                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
+                <h3 id="cabecalho-unidade"></h3>
+            </div>
+        </div>
+
+        <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
+            <div class="relogio" id="relogio"></div>
+            <div class="exibirusuario" id="user-info"></div>
+        </div>
+    </header>
+
+    <section class="pagecomplete">
+        <nav class="navegacao">
+            <a href="../index.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home--v1" />
+                <p>Home</p>
+            </a>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
+            </a>
+            <a href="../page/cadastroocorrencias.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
+                <p>Cadastro de Ocorrências</p>
+            </a>
+            <a href="../page/materiais.html">
+                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
+                <p>Materiais Apreendidos</p>
+            </a>
+            <a href="../page/eventos.html">
+                <img width="32" height="32"
+                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
+                    alt="eventos" />
+                <p>Eventos</p>
+            </a>
+            <a href="../page/instrucoes.html">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
+                <p>Instrução</p>
+            </a>
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
+                <p>Soluções IA</p>
+            </a>
+            <a href="admin-usuarios.html" class="active">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
+            </a>
+            <button id="btn-logout" class="btn-logout">
+                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
+                <p>Sair</p>
+            </button>
+        </nav>
+
+        <main>
+            <div class="saudacao">
+                <h2>GESTÃO DE USUÁRIOS</h2>
+                <p>Acesso restrito ao administrador — criação, edição e desativação de contas</p>
+            </div>
+
+            <div class="nav-abas-adm" id="tabs-admin">
+                <button class="ativo" data-aba="usuarios" onclick="trocarAbaAdmin('usuarios')">👤 Usuários</button>
+                <button data-aba="acesso" onclick="trocarAbaAdmin('acesso')">🔐 Acesso por Página</button>
+            </div>
+
+            <div class="aba-adm ativa" id="aba-usuarios">
+            <div class="TabelaEventos">
+                <h3>Usuários Cadastrados</h3>
+
+                <div class="adicionar-cadastro-container">
+                    <button id="btn-adicionar-cadastro">
+                        <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png" alt="Adicionar" />
+                        Novo Usuário
+                    </button>
+                    <a href="admin-unidades.html" style="margin-left:auto; font-weight:bold; color:#0a448f;">
+                        Gerenciar Unidades →
+                    </a>
+                    <p id="mensagem-carregamento">Carregando usuários, aguarde...</p>
+                </div>
+
+                <div class="tabela-container">
+                    <table id="tabela-materiais">
+                        <thead>
+                            <tr>
+                                <th>Graduação</th>
+                                <th>Nome</th>
+                                <th>Nome de Guerra</th>
+                                <th>CPF</th>
+                                <th>Nível</th>
+                                <th>Unidade</th>
+                                <th>Status</th>
+                                <th>AÇÕES</th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="overlay-sidebar" class="overlay-sidebar"></div>
+
+            <form class="sidbarform" id="form-usuario">
+                <button type="button" class="btn-fechar" id="btn-fechar-sidebar">FECHAR / CANCELAR</button>
+                <h4 id="form-titulo">Novo Usuário</h4>
+
+                <input type="hidden" id="form-cpf-original">
+
+                <div class="formulario-scroll">
+                    <div class="formulario">
+                        <p>Graduação</p>
+                        <select id="f-graduacao">
+                            <option value="">Selecione</option>
+                            <option>Soldado</option>
+                            <option>Cabo</option>
+                            <option>3º Sargento</option>
+                            <option>2º Sargento</option>
+                            <option>1º Sargento</option>
+                            <option>Subtenente</option>
+                            <option>Aspirante</option>
+                            <option>2º Tenente</option>
+                            <option>1º Tenente</option>
+                            <option>Capitão</option>
+                            <option>Major</option>
+                            <option>Tenente Coronel</option>
+                            <option>Coronel</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>Nome Completo</p>
+                        <input type="text" id="f-nome">
+                    </div>
+                    <div class="formulario">
+                        <p>Nome de Guerra</p>
+                        <input type="text" id="f-nomeguerra">
+                    </div>
+                    <div class="formulario">
+                        <p>CPF (somente números)</p>
+                        <input type="text" id="f-cpf" maxlength="11" inputmode="numeric">
+                    </div>
+                    <div class="formulario">
+                        <p>Senha <span id="f-senha-hint" style="font-weight:normal;"></span></p>
+                        <input type="password" id="f-senha">
+                    </div>
+                    <div class="formulario">
+                        <p>Nível de Acesso</p>
+                        <select id="f-nivel">
+                            <option value="operador">Operador</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>Unidade</p>
+                        <select id="f-unidade">
+                            <option value="10bpm">10º BPM (padrão)</option>
+                        </select>
+                    </div>
+                    <div class="formulario">
+                        <p>Status</p>
+                        <select id="f-ativo">
+                            <option value="true">Ativo</option>
+                            <option value="false">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" id="btn-salvar-form" class="btn-salvar-evento"
+                    style="width: 100%; padding: 15px; margin-top: 20px;">
+                    SALVAR USUÁRIO
+                </button>
+            </form>
+            </div><!-- /aba-usuarios -->
+
+            <!-- ══ ABA: ACESSO POR PÁGINA ══════════════════════════════ -->
+            <div class="aba-adm" id="aba-acesso">
+                <div class="acesso-bar">
+                    <div class="campo-acesso">
+                        <label>Unidade</label>
+                        <select id="sel-unidade-acesso" onchange="carregarPermissoesDaUnidade()"></select>
+                    </div>
+                    <span class="status-acesso" id="status-acesso-unidade">—</span>
+                </div>
+
+                <div id="paginas-container"></div>
+
+                <div class="acesso-acoes">
+                    <button class="btn-acesso primario" onclick="salvarPermissoesAcesso()">💾 Salvar Restrição</button>
+                    <button class="btn-acesso secundario" onclick="marcarTodasPaginas(true)">Marcar todas</button>
+                    <button class="btn-acesso secundario" onclick="marcarTodasPaginas(false)">Desmarcar todas</button>
+                    <button class="btn-acesso perigo" onclick="liberarAcessoTotal()">✕ Remover restrição (liberar tudo)</button>
+                </div>
+            </div><!-- /aba-acesso -->
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script>
+        // Guarda de acesso — só administrador chega até aqui.
+        const sessao = P3.requireAdmin();
+
+        const sidebar = document.querySelector('.sidbarform');
+        const overlay = document.getElementById('overlay-sidebar');
+        const form = document.getElementById('form-usuario');
+
+        function atualizarRelogio() {
+            const agora = new Date();
+            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
+            document.getElementById('relogio').innerHTML =
+                `${agora.toLocaleDateString('pt-BR', opcoesData)} <br> ${agora.toLocaleTimeString('pt-BR')}`;
+        }
+
+        function exibirUsuarioLogado() {
+            if (!sessao) return;
+            document.getElementById('user-info').innerHTML =
+                `<p>Bem Vindo(a):</p><p class="user-nome">${sessao.graduacao} ${sessao.nomeGuerra}</p>`;
+        }
+
+        function abrirSidebar() {
+            sidebar.classList.add('active');
+            overlay.style.display = 'block';
+        }
+
+        function fecharSidebar() {
+            sidebar.classList.remove('active');
+            overlay.style.display = 'none';
+            form.reset();
+            document.getElementById('form-cpf-original').value = '';
+        }
+
+        document.getElementById('btn-fechar-sidebar').addEventListener('click', fecharSidebar);
+        overlay.addEventListener('click', fecharSidebar);
+
+        document.getElementById('btn-adicionar-cadastro').addEventListener('click', () => {
+            form.reset();
+            document.getElementById('form-cpf-original').value = '';
+            document.getElementById('form-titulo').textContent = 'Novo Usuário';
+            document.getElementById('f-cpf').disabled = false;
+            document.getElementById('f-senha-hint').textContent = '(obrigatória)';
+            abrirSidebar();
+        });
+
+        // ── Carrega lista de unidades para o <select> do formulário ─────────
+        async function carregarUnidadesNoSelect() {
+            const select = document.getElementById('f-unidade');
+            try {
+                const resp = await fetch(`${P3.DIRETORIO_BASE_URL}/unidades.json`);
+                const dados = resp.ok ? await resp.json() : null;
+                if (!dados) return;
+                Object.keys(dados).forEach(id => {
+                    if (id === '10bpm') return; // já existe como opção padrão
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = dados[id].nome || id;
+                    select.appendChild(opt);
+                });
+            } catch (err) {
+                console.error('Erro ao carregar unidades:', err);
+            }
+        }
+
+        // ── Lista de usuários ────────────────────────────────────────────────
+        async function carregarUsuarios() {
+            const tbody = document.querySelector('#tabela-materiais tbody');
+            try {
+                const resp = await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios.json`);
+                const dados = resp.ok ? await resp.json() : null;
+                tbody.innerHTML = '';
+
+                if (!dados) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Nenhum usuário cadastrado.</td></tr>`;
+                    return;
+                }
+
+                Object.keys(dados).forEach(cpf => {
+                    const u = dados[cpf];
+                    const ativo = u.ativo !== false;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${u.graduacao || ''}</td>
+                        <td>${u.nome || ''}</td>
+                        <td>${u.nomeGuerra || ''}</td>
+                        <td>${cpf}</td>
+                        <td>${u.nivel || 'operador'}</td>
+                        <td>${u.unidade || '10bpm'}</td>
+                        <td>${ativo ? 'Ativo' : 'Inativo'}</td>
+                        <td>
+                            <button class="btn-editar" data-cpf="${cpf}">EDITAR</button>
+                            <button class="btn-editar" data-cpf="${cpf}" data-toggle="1">${ativo ? 'DESATIVAR' : 'ATIVAR'}</button>
+                            <button class="btn-editar" data-cpf="${cpf}" data-excluir="1" style="background:#c0392b;">EXCLUIR</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                    tr.dataset.raw = JSON.stringify(u);
+                });
+
+                if (document.getElementById('mensagem-carregamento')) {
+                    document.getElementById('mensagem-carregamento').style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Erro ao carregar usuários:', err);
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Erro ao carregar usuários.</td></tr>`;
+            }
+        }
+
+        document.querySelector('#tabela-materiais tbody').addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-cpf]');
+            if (!btn) return;
+            const cpf = btn.dataset.cpf;
+            const tr = btn.closest('tr');
+            const usuario = JSON.parse(tr.dataset.raw);
+
+            if (btn.dataset.excluir) {
+                if (!confirm(`Excluir o usuário ${usuario.nome} (CPF ${cpf})? Esta ação não pode ser desfeita.`)) return;
+                await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios/${cpf}.json`, { method: 'DELETE' });
+                carregarUsuarios();
+                return;
+            }
+
+            if (btn.dataset.toggle) {
+                const novoStatus = usuario.ativo === false ? true : false;
+                await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios/${cpf}.json`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ativo: novoStatus })
+                });
+                carregarUsuarios();
+                return;
+            }
+
+            // Editar
+            document.getElementById('form-titulo').textContent = `Editar Usuário — ${usuario.nome}`;
+            document.getElementById('form-cpf-original').value = cpf;
+            document.getElementById('f-graduacao').value = usuario.graduacao || '';
+            document.getElementById('f-nome').value = usuario.nome || '';
+            document.getElementById('f-nomeguerra').value = usuario.nomeGuerra || '';
+            document.getElementById('f-cpf').value = cpf;
+            document.getElementById('f-cpf').disabled = true;
+            document.getElementById('f-senha').value = '';
+            document.getElementById('f-senha-hint').textContent = '(deixe em branco para manter a atual)';
+            document.getElementById('f-nivel').value = usuario.nivel || 'operador';
+            document.getElementById('f-unidade').value = usuario.unidade || '10bpm';
+            document.getElementById('f-ativo').value = String(usuario.ativo !== false);
+            abrirSidebar();
+        });
+
+        // ── Criar / Editar ────────────────────────────────────────────────
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const cpfOriginal = document.getElementById('form-cpf-original').value;
+            const cpf = (document.getElementById('f-cpf').value || '').replace(/\D/g, '').trim();
+            const senha = document.getElementById('f-senha').value.trim();
+
+            if (!cpfOriginal && cpf.length !== 11) {
+                alert('CPF deve ter 11 dígitos.');
+                return;
+            }
+            if (!cpfOriginal && senha.length < 4) {
+                alert('A senha deve ter pelo menos 4 caracteres.');
+                return;
+            }
+
+            const dados = {
+                graduacao: document.getElementById('f-graduacao').value,
+                nome: document.getElementById('f-nome').value.trim(),
+                nomeGuerra: document.getElementById('f-nomeguerra').value.trim(),
+                cpf: cpfOriginal || cpf,
+                nivel: document.getElementById('f-nivel').value,
+                unidade: document.getElementById('f-unidade').value,
+                ativo: document.getElementById('f-ativo').value === 'true'
+            };
+            if (senha) dados.senha = senha;
+
+            try {
+                if (cpfOriginal) {
+                    // Edição — PATCH só com os campos alterados
+                    await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios/${cpfOriginal}.json`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                } else {
+                    // Criação — verifica se CPF já existe antes de gravar
+                    const existente = await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios/${cpf}.json`).then(r => r.json());
+                    if (existente) {
+                        alert('CPF já cadastrado no sistema.');
+                        return;
+                    }
+                    dados.cadastrado_em = new Date().toISOString();
+                    await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios/${cpf}.json`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                }
+
+                fecharSidebar();
+                carregarUsuarios();
+            } catch (err) {
+                console.error('Erro ao salvar usuário:', err);
+                alert('Erro ao salvar. Tente novamente.');
+            }
+        });
+
+        // ════════════════════════════════════════════════════════════════
+        // ABA: ACESSO POR PÁGINA
+        // Controla o campo /unidades/{id}/paginasPermitidas — lido por
+        // js/core/session.js (restringirAcessoPorPagina) em toda página
+        // dentro de page/. Sem esse campo definido, a unidade continua com
+        // acesso liberado a tudo (comportamento padrão, sem quebrar nada
+        // que já estava funcionando antes desse painel existir).
+        // ════════════════════════════════════════════════════════════════
+        const CATALOGO_PAGINAS = {
+            'Painéis': [
+                ['dashboard-p3.html', 'Dashboard'],
+                ['dashboard-cruzado.html', 'Dashboard Cruzado'],
+                ['dashboard-mapa.html', 'Dashboard Mapa'],
+                ['dashboard-copom.html', 'Dashboard COPOM'],
+            ],
+            'Cadastro e Operações': [
+                ['cadastroocorrencias.html', 'Cadastro de Ocorrências'],
+                ['materiais.html', 'Materiais Apreendidos'],
+                ['eventos.html', 'Eventos'],
+                ['calendario.html', 'Calendário de Eventos'],
+                ['instrucoes.html', 'Instrução'],
+                ['gerarvisitas.html', 'Gerar Visitas Orientativas'],
+            ],
+            'Categorias de Ocorrência': [
+                ['mvi.html', 'MVI / CVLI'],
+                ['cvp.html', 'CVP'],
+                ['tco.html', 'TCO'],
+                ['violenciadomestica.html', 'Violência Doméstica'],
+                ['armas.html', 'Armas Apreendidas'],
+                ['drogas.html', 'Drogas'],
+                ['perturbacao.html', 'Perturbação do Sossego'],
+                ['ait.html', 'AIT'],
+                ['mandado.html', 'Cumprimento de Mandados'],
+                ['exibirvisitas.html', 'Visitas Orientativas'],
+            ],
+            'Análises e Relatórios': [
+                ['qualitativo_tco.html', 'Análise Qualitativa de TCOs (ÍRIS)'],
+                ['relatorio_quantitativo_tco.html', 'Relatório Quantitativo de TCO'],
+                ['analise_tco.html', 'Análise de TCO'],
+                ['analisePreditiva.html', 'Análise Preditiva'],
+                ['jurimetria.html', 'Jurimetria'],
+                ['mapaInteligencia.html', 'Mapa de Inteligência'],
+                ['opo_inteligente.html', 'OPO Inteligente'],
+                ['prelecao.html', 'Preleção'],
+                ['leitorShapeFile.html', 'Leitor de ShapeFile'],
+                ['solucoesia.html', 'Soluções IA'],
+            ],
+        };
+
+        let _unidadesAcessoCache = null; // { id: {nome, paginasPermitidas, ...} }
+
+        function trocarAbaAdmin(aba) {
+            document.querySelectorAll('#tabs-admin button').forEach(b => b.classList.toggle('ativo', b.dataset.aba === aba));
+            document.getElementById('aba-usuarios').classList.toggle('ativa', aba === 'usuarios');
+            document.getElementById('aba-acesso').classList.toggle('ativa', aba === 'acesso');
+            if (aba === 'acesso' && !_unidadesAcessoCache) carregarUnidadesSelectAcesso();
+        }
+
+        async function carregarUnidadesSelectAcesso() {
+            const sel = document.getElementById('sel-unidade-acesso');
+            sel.innerHTML = '<option value="">Carregando...</option>';
+            try {
+                const resp = await fetch(`${P3.DIRETORIO_BASE_URL}/unidades.json`);
+                const dados = (resp.ok ? await resp.json() : null) || {};
+                if (!dados['10bpm']) {
+                    dados['10bpm'] = { nome: P3.DEFAULT_10BPM_CONFIG.nome, _padrao: true };
+                }
+                _unidadesAcessoCache = dados;
+
+                sel.innerHTML = '';
+                Object.keys(dados).sort().forEach(id => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = dados[id].nome || id;
+                    sel.appendChild(opt);
+                });
+
+                renderChecklistPaginas();
+                carregarPermissoesDaUnidade();
+            } catch (err) {
+                console.error('Erro ao carregar unidades:', err);
+                sel.innerHTML = '<option value="">Erro ao carregar</option>';
+            }
+        }
+
+        function renderChecklistPaginas() {
+            const cont = document.getElementById('paginas-container');
+            let h = '';
+            Object.entries(CATALOGO_PAGINAS).forEach(([grupo, paginas]) => {
+                h += `<div class="grupo-paginas"><h4>${grupo}</h4><div class="grid-paginas">`;
+                paginas.forEach(([arquivo, label]) => {
+                    h += `<label class="item-pagina">
+                        <input type="checkbox" class="chk-pagina" value="${arquivo}">
+                        ${label}
+                    </label>`;
+                });
+                h += '</div></div>';
+            });
+            cont.innerHTML = h;
+        }
+
+        function carregarPermissoesDaUnidade() {
+            const id = document.getElementById('sel-unidade-acesso').value;
+            const unidade = (_unidadesAcessoCache || {})[id] || {};
+            const permitidas = Array.isArray(unidade.paginasPermitidas) ? unidade.paginasPermitidas : null;
+
+            const statusEl = document.getElementById('status-acesso-unidade');
+            if (permitidas === null) {
+                statusEl.textContent = '✓ Acesso liberado a todas as páginas (sem restrição definida)';
+                statusEl.className = 'status-acesso liberado';
+            } else {
+                statusEl.textContent = `🔒 Restrita a ${permitidas.length} página(s)`;
+                statusEl.className = 'status-acesso restrito';
+            }
+
+            document.querySelectorAll('.chk-pagina').forEach(chk => {
+                chk.checked = permitidas === null ? true : permitidas.includes(chk.value);
+            });
+        }
+
+        function marcarTodasPaginas(marcar) {
+            document.querySelectorAll('.chk-pagina').forEach(chk => { chk.checked = marcar; });
+        }
+
+        async function salvarPermissoesAcesso() {
+            const id = document.getElementById('sel-unidade-acesso').value;
+            if (!id) return;
+            const selecionadas = Array.from(document.querySelectorAll('.chk-pagina:checked')).map(chk => chk.value);
+
+            try {
+                await fetch(`${P3.DIRETORIO_BASE_URL}/unidades/${id}/paginasPermitidas.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(selecionadas)
+                });
+                if (_unidadesAcessoCache[id]) _unidadesAcessoCache[id].paginasPermitidas = selecionadas;
+                alert(`Acesso salvo: ${id} agora só acessa ${selecionadas.length} página(s) selecionada(s).`);
+                carregarPermissoesDaUnidade();
+            } catch (err) {
+                console.error('Erro ao salvar permissões:', err);
+                alert('Erro ao salvar. Tente novamente.');
+            }
+        }
+
+        async function liberarAcessoTotal() {
+            const id = document.getElementById('sel-unidade-acesso').value;
+            if (!id) return;
+            if (!confirm('Remover toda restrição desta unidade? Ela voltará a acessar TODAS as páginas.')) return;
+            try {
+                await fetch(`${P3.DIRETORIO_BASE_URL}/unidades/${id}/paginasPermitidas.json`, { method: 'DELETE' });
+                if (_unidadesAcessoCache[id]) delete _unidadesAcessoCache[id].paginasPermitidas;
+                carregarPermissoesDaUnidade();
+            } catch (err) {
+                console.error('Erro ao remover restrição:', err);
+                alert('Erro ao remover restrição. Tente novamente.');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            exibirUsuarioLogado();
+            atualizarRelogio();
+            setInterval(atualizarRelogio, 1000);
+            carregarUnidadesNoSelect();
+            carregarUsuarios();
+            document.getElementById('btn-logout').addEventListener('click', P3.logout);
+        });
+    </script>
+</body>
+</html>

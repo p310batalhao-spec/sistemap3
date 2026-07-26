@@ -6,6 +6,10 @@
   <title>Preleção Operacional | P3 — 10º BPM</title>
 
   <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../css/theme.css">
   <link rel="stylesheet" href="../css/style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -517,6 +521,7 @@
   </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <div id="loader">
   <div class="loader-ring"></div>
@@ -543,7 +548,7 @@
 
   <div class="hdr-right">
     <span class="user-tag" id="user-tag">—</span>
-    <a class="hdr-btn" href="../page/dashboard-p3.html">
+    <a class="hdr-btn" href="../page/dashboard-cruzado.html">
       <i class="fas fa-tachometer-alt"></i> Dashboard
     </a>
     <a class="hdr-btn" href="../page/opo_inteligente.html">
@@ -672,18 +677,15 @@
 //  Turnos do serviço 08h→08h, cruzando a meia-noite
 // ════════════════════════════════════════════════════════════════
 
-// ── Firebase ─────────────────────────────────────────────────────
-const FB_CONFIG = {
-  apiKey:            'AIzaSyBRZn_EOfV6ozsx6NNzOlq1sjIV_xVm7xE',
-  authDomain:        'sistema-p3-v2.firebaseapp.com',
-  databaseURL:       'https://sistema-p3-v2-default-rtdb.firebaseio.com',
-  projectId:         'sistema-p3-v2',
-  storageBucket:     'sistema-p3-v2.firebasestorage.app',
-  messagingSenderId: '1019080251258',
-  appId:             '1:1019080251258:web:93f9e299cf19b16189e8c3',
-};
-firebase.initializeApp(FB_CONFIG);
-const db = firebase.database();
+// ── Firebase — config definida em runtime a partir da unidade do usuário logado (ver js/core/session.js) ──
+let db = null;
+async function _ensureFirebase() {
+  if (db) return db;
+  const cfg = await P3.loadUnidadeConfig();
+  if (!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+  db = firebase.database();
+  return db;
+}
 const NODE = 'geral';
 
 // ── Coordenadas das cidades ───────────────────────────────────────
@@ -1255,10 +1257,12 @@ function gerarDiretrizes(ocs, hotspots, turno) {
 }
 
 // ── Inicialização ─────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await _ensureFirebase();
   initMapa();
   carregarDados();
 });
 </script>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
 </body>
 </html>

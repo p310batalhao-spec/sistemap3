@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa de Inteligência — 10º BPM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -409,6 +413,7 @@
     </style>
 </head>
 <body>
+    <script src="../js/core/session.js"></script>
 
 <!-- ══ HEADER ════════════════════════════════════════════════════ -->
 <header>
@@ -416,11 +421,15 @@
         <img class="brasao" src="../img/brasao.png" alt="brasão" onerror="this.style.display='none'">
         <div class="cabecalhotexto">
             <h1>MAPA DE INTELIGÊNCIA POLICIAL</h1>
-            <h3>10º BATALHÃO DE POLÍCIA MILITAR — SEÇÃO P3</h3>
+            <h3><span id="cabecalho-unidade"></span> — SEÇÃO P3</h3>
         </div>
     </div>
     <div class="header-info-right">
-        <a href="../page/dashboard-p3.html"
+        <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+            <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+            <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        </button>
+        <a href="../page/dashboard-cruzado.html"
             style="color:rgba(255,255,255,.75);font-size:.78rem;text-decoration:none;
                    display:flex;align-items:center;gap:6px;
                    background:rgba(255,255,255,.1);padding:5px 12px;border-radius:6px;">
@@ -636,7 +645,8 @@
 <!-- ══ FOOTER ════════════════════════════════════════════════════ -->
 <footer>
     <h4>Seção de Planejamento, Instrução e Estatística — P3 / 10º BPM</h4>
-</footer>
+<div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
 
 <!-- ═══════════════════════════════════════════════════════════════
      SCRIPT PRINCIPAL
@@ -647,7 +657,7 @@
 // ─────────────────────────────────────────────────────────────────
 // CONFIGURAÇÕES DE CONEXÃO
 // ─────────────────────────────────────────────────────────────────
-const FB_BASE       = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let FB_BASE         = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 const SUPABASE_URL  = 'https://zxynbnnooauasmasgzxp.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eW5ibm5vb2F1YXNtYXNnenhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDgxNjUsImV4cCI6MjA4ODQyNDE2NX0.2LVOegWWYaVrvQ5DzrSgyBvPaYsanitK_sdWjSHOhkw';
 
@@ -868,6 +878,8 @@ async function fbFetch(no) {
 }
 
 async function carregarFirebase() {
+    const cfg = await P3.loadUnidadeConfig();
+    FB_BASE = cfg.firebase.databaseURL;
     setLoader('Conectando ao Firebase…');
     try {
         const [geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, autores] = await Promise.all([

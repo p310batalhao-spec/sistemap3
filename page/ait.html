@@ -5,22 +5,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Gerenciamento P3 - AIT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="../css/stylesait.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
 </head>
 
 <body>
+    <script src="../js/core/session.js"></script>
     <header>
         <div class="header-info-left">
             <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
             <div class="cabecalhotexto">
                 <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3>10º BATALHÃO DE POLÍCIA MILITAR</h3>
+                <h3 id="cabecalho-unidade"></h3>
             </div>
         </div>
 
         <div class="header-info-right">
+            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
+                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+            </button>
             <div class="relogio" id="relogio"></div>
             <div class="exibirusuario" id="user-info">
             </div>
@@ -34,10 +43,9 @@
                     alt="home" />
                 <p>Home</p>
             </a>
-            <a href="../page/dashboard-p3.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
-                    alt="performance-macbook" />
-                <p>Dashboard</p>
+            <a href="../page/dashboard-cruzado.html">
+                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
+                <p>Dashboard Cruzado</p>
             </a><!--termina dashboard-->
             <a href="../page/cadastroocorrencias.html">
                 <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências" />
@@ -57,9 +65,17 @@
                 <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
                 <p>Instrução</p>
             </a>
-            <a href="../page/solucoesia.html">
+            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
+                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                <p>Chat Xerife</p>
+            </a><!--termina chat xerife-->
+            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
                 <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA" />
                 <p>Soluções IA</p>
+            </a>
+            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
+                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
+                <p>Usuários</p>
             </a>
             <button id="btn-logout" class="btn-logout">
                 <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
@@ -131,11 +147,12 @@
 
     <footer>
         <p>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</p>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
 
     <script>
         // ATENÇÃO: SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU GOOGLE APPS SCRIPT
-        const WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
+        let WEBAPP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
         const CHAVE_PRIMARIA = 'NUMERO_AIT';
         const VALOR_INICIAL_CHAVE = '[NOVO NÚMERO AIT]'; // Valor padrão para novas linhas
 
@@ -517,7 +534,7 @@
          * 5. INICIALIZAÇÃO
          */
 
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
             // Inicializa o Relógio
             atualizarRelogio();
             setInterval(atualizarRelogio, 1000);
@@ -525,11 +542,17 @@
             // Verifica Login
             checkLogin();
 
+            // Conectado antes do await de configuração de rede: o botão de
+            // sair não pode depender de Firebase/GAS responderem para funcionar.
+            document.getElementById('btn-logout').addEventListener('click', logout);
+
+            const cfg = await P3.loadUnidadeConfig();
+            WEBAPP_URL = cfg.gas.AIT;
+
             // Carrega os dados do AIT
             loadAIT();
 
             // Anexa Listeners
-            document.getElementById('btn-logout').addEventListener('click', logout);
             document.getElementById('btn-adicionar-cadastro').addEventListener('click', addNewRow);
             document.getElementById('btn-aplicar-filtro').addEventListener('click', aplicarFiltro);
             document.getElementById('btn-limpar-filtro').addEventListener('click', limparFiltro);

@@ -1,4 +1,4 @@
-const DATABASE_URL = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let DATABASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 const NODE_TCO = 'tco_geral';
 
 // Função baseada no Art. 109 do CP
@@ -112,6 +112,8 @@ function buscarPenaMaxima(tipicidade) {
 }
 
 async function carregarPrescricoes() {
+    const cfg = await P3.loadUnidadeConfig();
+    DATABASE_URL = cfg.firebase.databaseURL;
     try {
         const res = await fetch(`${DATABASE_URL}/${NODE_TCO}.json`);
         const data = await res.json();
@@ -203,4 +205,6 @@ document.addEventListener('DOMContentLoaded', () =>{
     carregarPrescricoes ();
     atualizarRelogio ();
     checkLogin();
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) btnLogout.addEventListener('click', () => P3.logout());
 })

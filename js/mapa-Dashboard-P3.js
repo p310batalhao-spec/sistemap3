@@ -3,7 +3,7 @@
 // ══════════════════════════════════════════════════════════════════
 // CONFIGURAÇÃO
 // ══════════════════════════════════════════════════════════════════
-const FB_BASE          = 'https://sistema-p3-v2-default-rtdb.firebaseio.com';
+let FB_BASE            = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 const FB_DESENHOS_PATH = 'mapa_desenhos';   // nó Firebase para polígonos/marcadores
 
 // ══════════════════════════════════════════════════════════════════
@@ -309,6 +309,8 @@ async function fbDeletar(path) {
 // CARREGAMENTO PRINCIPAL (usa cache em todos os nós)
 // ══════════════════════════════════════════════════════════════════
 async function carregarFirebase() {
+    const cfg = await P3.loadUnidadeConfig();
+    FB_BASE = cfg.firebase.databaseURL;
     setLoader('Verificando cache…');
 
     // Carrega todos os nós em paralelo — se já estiverem em cache, é instantâneo
