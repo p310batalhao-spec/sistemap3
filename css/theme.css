@@ -1,0 +1,394 @@
+/* ════════════════════════════════════════════════════════════════
+   Sistema P3 — Design tokens e componentes compartilhados
+   ════════════════════════════════════════════════════════════════
+   Carregado antes de css/style.css e do CSS específico de cada
+   página. Centraliza o que antes era duplicado manualmente em ~15
+   arquivos (sidebar de cadastro, botões de filtro, tabelas) e define
+   as variáveis de cor/tipografia/sombra usadas em todo o sistema.
+*/
+
+:root {
+    /* Paleta — Minimalista Neutro (padrão do sistema) */
+    --p3-blue-900: #14140f;
+    --p3-blue-700: #2f5fdd;
+    --p3-blue-500: #2450bd;
+    --p3-blue-300: #7592e8;
+    --p3-blue-100: #eef2fd;
+
+    --p3-bg:        #fafaf8;
+    --p3-surface:   #ffffff;
+    --p3-border:    #e5e3dc;
+    --p3-text:      #1c1c1a;
+    --p3-text-muted:#7a7a72;
+
+    --p3-success: #2f8f5b;
+    --p3-danger:  #c0392b;
+    --p3-warning: #b5860a;
+
+    /* "Gradiente" — no minimalista é praticamente sólido (a marca some pelo sistema, não vira barra colorida) */
+    --p3-gradient: linear-gradient(90deg, var(--p3-blue-700) 0%, var(--p3-blue-500) 100%);
+
+    --p3-radius-sm: 0.375rem;
+    --p3-radius-md: 0.5rem;
+    --p3-radius-lg: 0.625rem;
+
+    --p3-shadow-sm: none;
+    --p3-shadow-md: 0 0.0625rem 0.125rem rgba(20, 20, 15, 0.05);
+    --p3-shadow-lg: 0 0.125rem 0.625rem rgba(20, 20, 15, 0.08);
+
+    --p3-font: 'Inter', 'Segoe UI', Arial, Helvetica, sans-serif;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Modo escuro — "Centro de Operações" (alternado via botão de tema)
+   Troca só os VALORES dos tokens acima; nenhuma outra regra do
+   sistema precisa saber que o modo escuro existe.
+   ════════════════════════════════════════════════════════════════ */
+:root[data-p3-theme="dark"] {
+    --p3-blue-900: #030810;
+    --p3-blue-700: #12719c;
+    --p3-blue-500: #0c1a2e;
+    --p3-blue-300: #35c9ff;
+    --p3-blue-100: rgba(53, 201, 255, 0.08);
+
+    --p3-bg:        #050b13;
+    --p3-surface:   #0c1a2e;
+    --p3-border:    rgba(64, 196, 255, 0.16);
+    --p3-text:      #cfe3f5;
+    --p3-text-muted:#5c7a94;
+
+    --p3-success: #2be3a6;
+    --p3-danger:  #ff5d4e;
+    --p3-warning: #ffb347;
+
+    --p3-gradient: linear-gradient(90deg, #050b13 0%, #0b1c33 50%, #050b13 100%);
+
+    --p3-shadow-sm: 0 0 0 1px rgba(64, 196, 255, 0.10);
+    --p3-shadow-md: 0 0 1.25rem rgba(53, 201, 255, 0.12);
+    --p3-shadow-lg: 0 0 2rem rgba(53, 201, 255, 0.18);
+}
+
+/* ── Tipografia base (aplica em toda página que carrega theme.css) ── */
+body {
+    font-family: var(--p3-font);
+    transition: background-color .2s ease, color .2s ease;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Botão de alternar tema — presente no cabeçalho de toda página
+   ════════════════════════════════════════════════════════════════ */
+.btn-tema {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    flex-shrink: 0;
+    border-radius: 999px;
+    border: 0.0625rem solid var(--p3-border);
+    background: transparent;
+    color: currentColor;
+    cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease;
+}
+
+.btn-tema:hover { background: rgba(127, 127, 127, 0.12); }
+
+.btn-tema svg { width: 1.05rem; height: 1.05rem; }
+
+.btn-tema .icone-lua { display: none; }
+
+:root[data-p3-theme="dark"] .btn-tema .icone-sol { display: none; }
+:root[data-p3-theme="dark"] .btn-tema .icone-lua { display: inline-flex; }
+
+/* ════════════════════════════════════════════════════════════════
+   Sidebar de cadastro (form lateral) + overlay
+   — antes duplicado em ~15 arquivos CSS de página
+   ════════════════════════════════════════════════════════════════ */
+.sidbarform {
+    position: fixed;
+    top: 0;
+    right: -28.125rem;
+    width: 25rem;
+    height: 100vh;
+    background-color: var(--p3-surface);
+    box-shadow: -0.3125rem 0 0.9375rem rgba(0, 0, 0, 0.25);
+    transition: right 0.35s ease-in-out;
+    z-index: 2000;
+    padding: 1.5625rem;
+    overflow-y: auto;
+}
+
+.sidbarform.active { right: 0; }
+
+.overlay-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(10, 20, 40, 0.55);
+    display: none;
+    z-index: 1999;
+}
+
+.overlay-sidebar.active { display: block; }
+
+.formulario p {
+    margin: 0 0 0.3125rem 0;
+    font-weight: 600;
+    color: var(--p3-text-muted);
+    font-size: 0.85rem;
+}
+
+.formulario input,
+.formulario select,
+.formulario textarea {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    border: 0.0625rem solid var(--p3-border);
+    border-radius: var(--p3-radius-sm);
+    font-size: 0.95rem;
+    font-family: var(--p3-font);
+    background: var(--p3-bg);
+    color: var(--p3-text);
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.formulario input:focus,
+.formulario select:focus,
+.formulario textarea:focus {
+    outline: none;
+    border-color: var(--p3-blue-500);
+    background: var(--p3-surface);
+}
+
+.btn-salvar-evento {
+    background: var(--p3-gradient);
+    color: white;
+    border: none;
+    padding: 0.9375rem;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border-radius: var(--p3-radius-sm);
+    width: 100%;
+    margin-top: 0.625rem;
+    margin-bottom: 1.875rem;
+    transition: opacity 0.2s;
+}
+
+.btn-salvar-evento:hover { opacity: 0.92; }
+
+.btn-fechar {
+    background-color: var(--p3-danger);
+    color: white;
+    padding: 0.625rem;
+    border-radius: var(--p3-radius-sm);
+    margin-bottom: 1.25rem;
+    display: block;
+    text-align: center;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Barra de ações e filtros (botão "Adicionar", filtro de coluna)
+   — antes duplicado em ~15 arquivos CSS de página
+   ════════════════════════════════════════════════════════════════ */
+.adicionar-cadastro-container,
+.filtros-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 0.75rem;
+    border-radius: var(--p3-radius-sm);
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+}
+
+.adicionar-cadastro-container button {
+    padding: 0.6rem 1.1rem;
+    border: none;
+    border-radius: var(--p3-radius-sm);
+    background-color: var(--p3-success);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.adicionar-cadastro-container button:hover { opacity: 0.9; }
+
+.adicionar-cadastro-container a.adicionar-cadastro {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.6rem 1.1rem;
+    border: none;
+    border-radius: var(--p3-radius-sm);
+    background-color: var(--p3-blue-700);
+    color: white;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.adicionar-cadastro-container a.adicionar-cadastro:hover { opacity: 0.9; }
+
+#btn-aplicar-filtro {
+    background: var(--p3-blue-700);
+    color: white;
+    border: none;
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--p3-radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#btn-aplicar-filtro:hover { background-color: var(--p3-blue-900); }
+
+#btn-limpar-filtro {
+    background-color: transparent;
+    color: var(--p3-blue-700);
+    border: 0.0625rem solid var(--p3-blue-700);
+    padding: 0.6rem 1.1rem;
+    border-radius: var(--p3-radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#btn-limpar-filtro:hover { background-color: var(--p3-blue-700); color: white; }
+
+.filtros-container input,
+.filtros-container select {
+    padding: 0.55rem 0.75rem;
+    border: 0.0625rem solid var(--p3-border);
+    border-radius: var(--p3-radius-sm);
+    font-family: var(--p3-font);
+    font-size: 0.9rem;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Tabelas de listagem (cadastro/CRUD)
+   — antes duplicado em ~15 arquivos CSS de página
+   ════════════════════════════════════════════════════════════════ */
+.TabelaEventos {
+    margin-top: 1.875rem;
+    border-radius: var(--p3-radius-md);
+    background-color: var(--p3-surface);
+    padding: 1.25rem;
+    width: 100%;
+    box-shadow: var(--p3-shadow-sm);
+}
+
+.tabela-container {
+    width: 100%;
+    max-height: 70vh;
+    overflow: auto;
+    margin-top: 1.25rem;
+    background-color: var(--p3-surface);
+    border: 0.0625rem solid var(--p3-border);
+    border-radius: var(--p3-radius-md);
+}
+
+.tabela-container table,
+#tabela-materiais,
+#tabela-ait {
+    width: auto;
+    min-width: 100%;
+    border-collapse: collapse;
+}
+
+.tabela-container th,
+.tabela-container td,
+#tabela-materiais th,
+#tabela-materiais td,
+#tabela-ait th,
+#tabela-ait td {
+    white-space: nowrap;
+    padding: 0.75rem 0.9rem;
+    text-align: left;
+    border-bottom: 0.0625rem solid var(--p3-border);
+    font-size: 0.8rem;
+}
+
+.tabela-container th,
+#tabela-materiais th,
+#tabela-ait th {
+    background-color: var(--p3-blue-700);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    position: sticky;
+    top: 0;
+}
+
+.tabela-container tbody tr:hover,
+#tabela-materiais tbody tr:hover,
+#tabela-ait tbody tr:hover {
+    background-color: var(--p3-blue-100);
+}
+
+.btn-editar {
+    background: var(--p3-blue-700);
+    color: white;
+    border: none;
+    padding: 0.35rem 0.7rem;
+    border-radius: var(--p3-radius-sm);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 0.25rem;
+}
+
+.btn-editar:hover { opacity: 0.9; }
+
+/* ════════════════════════════════════════════════════════════════
+   Cards de contagem (KPIs no topo das páginas de listagem)
+   — antes duplicado em ~8 arquivos CSS de página
+   ════════════════════════════════════════════════════════════════ */
+.totalcards {
+    margin-top: 1.25rem;
+    display: flex;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.cardnumero {
+    background-color: var(--p3-surface);
+    padding: 0.625rem;
+    border-radius: var(--p3-radius-md);
+    box-shadow: var(--p3-shadow-md);
+    width: 13.75rem;
+    height: 6.25rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: transform 0.2s, border-color 0.2s;
+    border-top: 0.1875rem solid transparent;
+}
+
+.cardnumero:hover {
+    transform: translateY(-0.3125rem);
+    border-top-color: var(--p3-blue-700);
+}
+
+.cardnumero p {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--p3-blue-700);
+    margin: 0;
+}
+
+.cardnumero span {
+    font-size: 0.75rem;
+    color: var(--p3-text-muted);
+    text-align: center;
+}
