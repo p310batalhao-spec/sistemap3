@@ -61,11 +61,32 @@
         await configCarregada;
     }
 
+    // Timeout pra QUALQUER fetch feito por este módulo — sem isso, uma
+    // Apps Script externa lenta/travada (já visto nesta mesma planilha em
+    // outro contexto — ver comentário de obterGuarnicoesPlanilha em
+    // js/cumprimento-core.js) prende `fetch()` indefinidamente, o que por
+    // sua vez trava Promise.all() pra sempre — ex.: montarCasosMilitaresTCO()
+    // (usada por obterRelatorioCidade(), que alimenta a apresentação em
+    // slides do dashboard JARVIS) ficava "Montando apresentação…" pra
+    // sempre se a Apps Script de TCO ou Sentenças não respondesse. 20s é
+    // generoso o bastante pro cold-start típico de Apps Script, sem deixar
+    // a tela travada por tempo indefinido — o try/catch de cada chamador já
+    // trata falha aqui como "essa parte fica null", nunca quebra o resto.
+    async function fetchComTimeout(url, opts, timeoutMs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeoutMs || 20000);
+        try {
+            return await fetch(url, Object.assign({}, opts, { signal: controller.signal }));
+        } finally {
+            clearTimeout(timer);
+        }
+    }
+
     const NODE_CACHE = {};
     async function fetchNode(node) {
         await garantirConfig();
         if (NODE_CACHE[node]) return NODE_CACHE[node];
-        const resp = await fetch(`${DATABASE_URL}/${node}.json`);
+        const resp = await fetchComTimeout(`${DATABASE_URL}/${node}.json`);
         const dados = resp.ok ? await resp.json() : null;
         const lista = dados ? Object.values(dados) : [];
         NODE_CACHE[node] = lista;
@@ -74,7 +95,7 @@
     async function fetchTCO() {
         await garantirConfig();
         if (NODE_CACHE.__tco) return NODE_CACHE.__tco;
-        const resp = await fetch(`${APPS_SCRIPT_TCO_URL}?action=getTCO`, { redirect: 'follow' });
+        const resp = await fetchComTimeout(`${APPS_SCRIPT_TCO_URL}?action=getTCO`, { redirect: 'follow' });
         const json = await resp.json();
         const lista = Array.isArray(json) ? json : [];
         NODE_CACHE.__tco = lista;
@@ -87,7 +108,7 @@
     async function fetchMateriais() {
         await garantirConfig();
         if (NODE_CACHE.__materiais) return NODE_CACHE.__materiais;
-        const resp = await fetch(`${APPS_SCRIPT_MATERIAIS_URL}?action=read`, { redirect: 'follow' });
+        const resp = await fetchComTimeout(`${APPS_SCRIPT_MATERIAIS_URL}?action=read`, { redirect: 'follow' });
         const json = await resp.json();
         const lista = Array.isArray(json) ? json : [];
         NODE_CACHE.__materiais = lista;
@@ -102,7 +123,7 @@
     async function fetchSentencas() {
         await garantirConfig();
         if (NODE_CACHE.__sentencas) return NODE_CACHE.__sentencas;
-        const resp = await fetch(`${APPS_SCRIPT_SENTENCAS_URL}?action=listarSentencas`, { redirect: 'follow' });
+        const resp = await fetchComTimeout(`${APPS_SCRIPT_SENTENCAS_URL}?action=listarSentencas`, { redirect: 'follow' });
         const json = await resp.json();
         const lista = Array.isArray(json) ? json : [];
         NODE_CACHE.__sentencas = lista;
@@ -116,7 +137,7 @@
     async function fetchGuarnicao() {
         await garantirConfig();
         if (NODE_CACHE.__guarnicao) return NODE_CACHE.__guarnicao;
-        const resp = await fetch(`${DATABASE_URL}/guarnicao.json`);
+        const resp = await fetchComTimeout(`${DATABASE_URL}/guarnicao.json`);
         const dados = resp.ok ? await resp.json() : null;
         const guarPorBoletim = {};
         if (dados && typeof dados === 'object') {
@@ -155,25 +176,85 @@
         llmEstado = 'baixando';
         atualizarBadgeIA();
         try {
-            const webllm = await import('https://esm.run/@mlc-ai/web-llm');
+            // Importa do VENDOR LOCAL (js/vendor/), não do CDN — testado e
+            // confirmado que um Service Worker do tipo module falha o
+            // registro ("ServiceWorker cannot be started") ao importar uma
+            // biblioteca de origem CRUZADA (ex.: https://esm.run/...); a
+            // MESMA biblioteca importada de um arquivo local (mesma
+            // origem) registra normalmente. Por isso a página e o Service
+            // Worker (ver xerife-sw.js) importam o mesmo arquivo vendorizado
+            // — necessário pra persistência funcionar, e também evita uma
+            // segunda cópia (CDN) da biblioteca sendo baixada à toa.
+            // import() dinâmico DENTRO DE UM <script> CLÁSSICO (não-module,
+            // como js/xerife.js é carregado) resolve caminho relativo em
+            // relação à URL do PRÓPRIO SCRIPT (js/xerife.js), não à página
+            // que o incluiu — por isso NÃO usa o mesmo "prefixo" baseado em
+            // location.pathname que o resto do arquivo usa (isso gerava
+            // ".../js/js/vendor/..." duplicado, 404). Como js/vendor/ fica
+            // dentro da MESMA pasta de js/xerife.js, o caminho certo é
+            // sempre "./vendor/...", em qualquer página do sistema.
+            const webllm = await import('./vendor/web-llm-0.2.84.esm.js');
             const progressCb = (info) => {
                 llmProgresso = Math.round((info && info.progress || 0) * 100);
                 atualizarBadgeIA();
             };
 
-            // Tenta manter a IA viva num Service Worker — assim ela carrega
-            // só UMA VEZ e sobrevive a recarregar a página ou navegar pra
+            // Mantém a IA viva num Service Worker — assim ela carrega só
+            // UMA VEZ e sobrevive a recarregar a página ou navegar pra
             // outra (ver xerife-sw.js). Se der qualquer problema (navegador
-            // sem suporte, biblioteca sem esse recurso, etc.), cai pro modo
+            // sem suporte, biblioteca sem esse recurso etc.), cai pro modo
             // "carrega só nesta página" de antes, sem quebrar o Xerife.
+            // register() (ao contrário do import() acima) resolve relativo
+            // à PÁGINA, não ao script — por isso usa o prefixo baseado em
+            // location.pathname aqui, igual o resto do arquivo já fazia.
             if ('serviceWorker' in navigator && webllm.CreateServiceWorkerMLCEngine) {
                 try {
                     const prefixo = /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
                     await navigator.serviceWorker.register(prefixo + 'xerife-sw.js', { type: 'module' });
                     await navigator.serviceWorker.ready;
-                    llmEngine = await webllm.CreateServiceWorkerMLCEngine(MODELO_LLM, { initProgressCallback: progressCb });
+                    // clients.claim() (ver xerife-sw.js) assume o controle
+                    // da aba atual sem precisar de reload, mas isso ainda é
+                    // ASSÍNCRONO — no 1º registro (aba ainda não controlada
+                    // quando "ready" resolve), CreateServiceWorkerMLCEngine
+                    // falharia com "There is no active service worker" sem
+                    // esperar o evento "controllerchange" chegar primeiro.
+                    if (!navigator.serviceWorker.controller) {
+                        await new Promise(resolve => {
+                            navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+                            setTimeout(resolve, 3000); // failsafe — segue mesmo se o evento não vier
+                        });
+                    }
+                    // Watchdog — mesma classe de trava já vista nesta sessão
+                    // (fetch a Apps Script e Web Speech API que ficavam
+                    // penduradas pra sempre, sem erro nem progresso
+                    // nenhum): se NENHUM tick de progresso chegar em
+                    // TIMEOUT_SW_SEM_PROGRESSO_MS, trata como travado e cai
+                    // pro modo direto (sem service worker), em vez de ficar
+                    // preso em "0%" indefinidamente. Uma vez que o
+                    // progresso começa a se mover (mesmo 1%), o watchdog
+                    // NUNCA mais interfere — download real de modelo grande
+                    // pode legitimamente demorar bastante, e queremos deixar.
+                    const TIMEOUT_SW_SEM_PROGRESSO_MS = 15000;
+                    let houveProgresso = false;
+                    const progressComWatchdog = (info) => { houveProgresso = true; progressCb(info); };
+                    const criacaoSw = webllm.CreateServiceWorkerMLCEngine(MODELO_LLM, { initProgressCallback: progressComWatchdog });
+                    const corrida = await Promise.race([
+                        criacaoSw.then(engine => ({ ok: true, engine })),
+                        new Promise(resolve => setTimeout(() => resolve({ ok: false }), TIMEOUT_SW_SEM_PROGRESSO_MS)),
+                    ]);
+                    if (corrida.ok) {
+                        llmEngine = corrida.engine;
+                    } else if (houveProgresso) {
+                        // Já tinha progresso real rolando, só não tinha
+                        // terminado ainda dentro do prazo — não é trava, é
+                        // só demorado (normal). Continua esperando a MESMA
+                        // promise original (nunca reinicia do zero).
+                        llmEngine = await criacaoSw;
+                    } else {
+                        throw new Error(`service worker da IA sem nenhum progresso em ${TIMEOUT_SW_SEM_PROGRESSO_MS / 1000}s — provável trava`);
+                    }
                 } catch (eSw) {
-                    console.warn('Xerife: service worker da IA indisponível, carregando só nesta página.', eSw);
+                    console.warn('Xerife: service worker da IA indisponível/travado, carregando só nesta página.', eSw);
                     llmEngine = await webllm.CreateMLCEngine(MODELO_LLM, { initProgressCallback: progressCb });
                 }
             } else {
@@ -212,7 +293,22 @@
     // vence (por isso termos mais específicos vêm antes dos genéricos).
     const CATEGORIAS = {
         mvicvli: {
-            nomes: ['mvi', 'cvli', 'morte violenta', 'morte intencional', 'homicidio', 'feminicidio', 'assassinato'],
+            // Nomes por extenso adicionados a pedido explícito do usuário —
+            // "mvi" = mortes violentas intencionais, "cvli" = crimes
+            // violentos letais intencionais. Antes só tinha a forma
+            // SINGULAR ("morte violenta"), que não batia com a pergunta
+            // real do usuário no PLURAL ("mortes violentas intencionais")
+            // por ser um includes() de substring exato — "mortes" (plural)
+            // não contém "morte" (singular) como substring seguido de
+            // espaço, então nunca casava.
+            nomes: [
+                'mvi', 'cvli',
+                'morte violenta', 'mortes violentas',
+                'morte intencional', 'mortes intencionais',
+                'morte violenta intencional', 'mortes violentas intencionais',
+                'crime violento letal intencional', 'crimes violentos letais intencionais',
+                'homicidio', 'feminicidio', 'assassinato',
+            ],
             label: 'CVLI (Crimes Violentos Letais Intencionais)',
             fetch: () => fetchNode('geral'),
             filtroBase: i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI'); },
@@ -221,7 +317,16 @@
             campoStatus: i => CAMPO(i, 'SOLUCAO', 'SOLUÇÃO') || 'não informado',
         },
         cvp: {
-            nomes: ['cvp', 'roubo', 'furto', 'patrimonio', 'extorsao', 'latrocinio'],
+            // "cpp" incluído como sinônimo de "cvp" a pedido do usuário —
+            // não existe categoria/nó de dados separado pra "crimes contra
+            // o patrimônio" (sem "violentos") no sistema, então mapeia pra
+            // esta mesma categoria (a única fonte real desse dado).
+            nomes: [
+                'cvp', 'cpp',
+                'crime violento contra o patrimonio', 'crimes violentos contra o patrimonio',
+                'crime contra o patrimonio', 'crimes contra o patrimonio',
+                'roubo', 'furto', 'patrimonio', 'extorsao', 'latrocinio',
+            ],
             label: 'CVP (Crimes Violentos contra o Patrimônio)',
             fetch: () => fetchNode('cvp'),
             filtroBase: isCVP,
@@ -230,7 +335,7 @@
             campoStatus: i => CAMPO(i, 'SOLUCAO', 'SOLUÇÃO') || 'não informado',
         },
         tco: {
-            nomes: ['tco', 'termo circunstanciado'],
+            nomes: ['tco', 'termo circunstanciado', 'termo circunstanciado de ocorrencia'],
             label: 'TCO',
             fetch: () => fetchTCO(),
             filtroBase: () => true,
@@ -510,6 +615,13 @@
         return q.includes('critic') || q.includes('rota critica') || q.includes('hotspot') ||
             (q.includes('bairro') && (q.includes('horario') || q.includes('turno') || q.includes('perigos')));
     }
+    // "Cadastrar/registrar evento" não é uma pergunta de dado (não tem
+    // CATEGORIA em CATEGORIAS — Eventos é cadastro, não estatística) — sem
+    // isso, cair no fallback genérico de categoria ("MVI/CVLI, CVP, TCO...")
+    // confundia o usuário, já que Eventos nem aparece nessa lista.
+    function ehCadastroEvento(q) {
+        return q.includes('evento') && (q.includes('cadastr') || q.includes('registrar') || q.includes('registro') || q.includes('lancar') || q.includes('criar'));
+    }
     // Produtividade do COPOM (quem mais atendeu/despachou) — mesma lógica de
     // js/dashboard-copom.js (campo item.atendente do nó /geral).
     function ehAtendenteCopom(q) {
@@ -712,6 +824,79 @@
         return secoes;
     }
 
+    // Cruza um NOME em todas as CATEGORIAS que têm campo de nome (autor/
+    // solicitante/vítima) — mostra onde mais esse nome aparece registrado,
+    // além do caso original sendo consultado. Pedido explícito do usuário:
+    // "cruzamento também dos autores para mostrar onde os autores ou nomes
+    // completos estão vinculados em ocorrências".
+    async function cruzarNomeEmCategorias(nome, excluirBoletim) {
+        const alvo = NORM(nome);
+        if (!alvo) return [];
+        const achados = [];
+        for (const cat of Object.values(CATEGORIAS)) {
+            if (!cat.campoNome) continue;
+            try {
+                const bruto = await cat.fetch();
+                bruto.filter(cat.filtroBase).forEach(item => {
+                    const nomeItem = cat.campoNome(item);
+                    if (!nomeItem || !NORM(nomeItem).includes(alvo)) return;
+                    const boletim = normBoletim(CAMPO(item, 'BOLETIM', 'NUMEROOCORRENCIA'));
+                    if (excluirBoletim && boletim === excluirBoletim) return; // não repete o próprio caso já mostrado
+                    achados.push({
+                        categoria: cat.label, boletim: boletim || null,
+                        data: cat.campoData ? cat.campoData(item) : null,
+                        cidade: cat.campoCidade ? cat.campoCidade(item) : null,
+                        tip: cat.campoTip ? cat.campoTip(item) : null,
+                    });
+                });
+            } catch (e) { /* categoria pode falhar (GAS fora do ar etc.) — segue com as outras */ }
+        }
+        return achados;
+    }
+    // Verifica se um nome (ex.: autor de um TCO/boletim) é o MESMO nome de
+    // uma ASSISTIDA (solicitante/vítima em violência doméstica) — pedido
+    // explícito do usuário: só mostra o dossiê da assistida quando o
+    // CONTEXTO exigir (autor de um caso batendo com uma assistida
+    // cadastrada), nunca solto. Endereço/telefone entram quando existirem
+    // nos registros de origem (decisão explícita do usuário — mais
+    // completo, mesmo sendo dado de contato).
+    async function verificarVinculoAssistida(nome) {
+        const alvo = NORM(nome);
+        if (!alvo) return null;
+        let bruto = [];
+        try { bruto = await fetchNode('violencia_domestica'); } catch (e) { return null; }
+        const casos = bruto.filter(i => {
+            const solicitante = CAMPO(i, 'SOLICITANTE');
+            return solicitante && NORM(solicitante).includes(alvo);
+        });
+        if (!casos.length) return null;
+        const nomeReal = CAMPO(casos[0], 'SOLICITANTE');
+        const endereco = CAMPO(casos[0], 'ENDERECO', 'ENDEREÇO', 'LOGRADOURO');
+        const telefone = CAMPO(casos[0], 'TELEFONE', 'CONTATO', 'CELULAR');
+        return {
+            nome: nomeReal, endereco: endereco || null, telefone: telefone || null,
+            totalCasos: casos.length,
+            casos: casos.slice(0, 5).map(c => ({
+                boletim: CAMPO(c, 'BOLETIM', 'NUMEROOCORRENCIA') || null,
+                data: CAMPO(c, 'DATA', 'data') || null,
+                cidade: CAMPO(c, 'CIDADE') || null,
+                status: CAMPO(c, 'SOLUÇÃO DA OCORRÊNCIA', 'SOLUÇÃO', 'SOLUCAO') || null,
+            })),
+        };
+    }
+    function montarBlocoAssistida(v) {
+        const linhasCasos = v.casos.map(c => `&nbsp;&nbsp;• ${c.data || '—'}, boletim ${c.boletim || '—'}, ${c.cidade || '—'} — ${c.status || 'status não informado'}`).join('<br>');
+        const contato = [v.endereco ? 'endereço: ' + escHtml(v.endereco) : null, v.telefone ? 'telefone: ' + escHtml(v.telefone) : null].filter(Boolean).join(' | ');
+        return `🛡️ <strong>Contexto — Assistida (Violência Doméstica)</strong>: <strong>${escHtml(v.nome)}</strong> tem <strong>${v.totalCasos}</strong> caso(s) de violência doméstica vinculado(s) a esse nome.` +
+            (contato ? `<br>${contato}` : '') +
+            (linhasCasos ? `<br>${linhasCasos}` : '');
+    }
+    function montarBlocoCruzamentoNome(achados) {
+        if (!achados.length) return '';
+        const linhas = achados.slice(0, 8).map(a => `&nbsp;&nbsp;• <strong>${escHtml(a.categoria)}</strong>${a.boletim ? ', boletim ' + escHtml(a.boletim) : ''}, ${a.data || '—'}, ${a.cidade || '—'}${a.tip ? ' — ' + escHtml(a.tip) : ''}`).join('<br>');
+        return `🔗 <strong>Esse nome também aparece em outras ${achados.length} ocorrência(s)</strong>:<br>${linhas}`;
+    }
+
     // ── Relatório completo por BOLETIM/COP/BO ou processo/E-SAJ ─────────
     // Boletim e E-SAJ são as DUAS pontas da mesma chave (o TCO tem os dois
     // campos — Nº Ocorrência e E-SAJ), por isso, dado QUALQUER um dos dois,
@@ -741,9 +926,31 @@
             secoes.push(...await coletarSecoesOcorrencia(boletim));
             try {
                 const autores = await fetchNode('autor');
-                autores.filter(a => normBoletim(CAMPO(a, 'BOLETIM')) === boletim).forEach(a => {
-                    secoes.push(`👤 <strong>Autor/envolvido</strong>: ${CAMPO(a, 'NOME') || 'sem nome'}, ${CAMPO(a, 'NATUREZA') || CAMPO(a, 'TIPIFICACAO') || '—'}, situação: ${CAMPO(a, 'SITUACAO') || '—'}, ${CAMPO(a, 'CIDADE') || '—'}${CAMPO(a, 'BAIRRO') ? '/' + CAMPO(a, 'BAIRRO') : ''}, CPF: ${CAMPO(a, 'CPF') || '—'}`);
-                });
+                const autoresDoBoletim = autores.filter(a => normBoletim(CAMPO(a, 'BOLETIM')) === boletim);
+                for (const a of autoresDoBoletim) {
+                    const nomeAutor = CAMPO(a, 'NOME') || 'sem nome';
+                    secoes.push(`👤 <strong>Autor/envolvido</strong>: ${nomeAutor}, ${CAMPO(a, 'NATUREZA') || CAMPO(a, 'TIPIFICACAO') || '—'}, situação: ${CAMPO(a, 'SITUACAO') || '—'}, ${CAMPO(a, 'CIDADE') || '—'}${CAMPO(a, 'BAIRRO') ? '/' + CAMPO(a, 'BAIRRO') : ''}, CPF: ${CAMPO(a, 'CPF') || '—'}`);
+                    // Cruzamento contextual — pedido explícito do usuário:
+                    // "caso eu peça para buscar algum boletim ou tco
+                    // cadastrado em que o nome do autor seja o mesmo que
+                    // esteja vinculado a assistida, aí pode apresentar os
+                    // dados". Só aparece SE o nome bater com uma assistida
+                    // real (violência doméstica) — nunca solto.
+                    if (nomeAutor && nomeAutor !== 'sem nome') {
+                        try {
+                            const vinculoAssistida = await verificarVinculoAssistida(nomeAutor);
+                            if (vinculoAssistida) secoes.push(montarBlocoAssistida(vinculoAssistida));
+                        } catch (e) { /* cruzamento é um extra — nunca quebra o relatório principal */ }
+                        // "Cruzamento também dos autores para mostrar onde
+                        // os autores ou nomes completos estão vinculados em
+                        // ocorrências" — pedido explícito do usuário.
+                        try {
+                            const outrasOcorrencias = await cruzarNomeEmCategorias(nomeAutor, boletim);
+                            const blocoCruzamento = montarBlocoCruzamentoNome(outrasOcorrencias);
+                            if (blocoCruzamento) secoes.push(blocoCruzamento);
+                        } catch (e) { /* idem — extra, nunca quebra o relatório principal */ }
+                    }
+                }
             } catch (e) { /* nó de autores pode não existir — ignora */ }
         }
 
@@ -783,6 +990,22 @@
                 blocos.push([linha, ...extra].join('<br>'));
             }
             const titulo = identificador.tipo === 'nome' ? `pro nome "<strong>${identificador.valor}</strong>"` : 'pro CPF informado';
+            // Mesmo cruzamento contextual de montarRelatorioCompleto — feito
+            // UMA VEZ pro nome buscado (não por achado, todos os achados já
+            // são do mesmo nome) — pedido explícito do usuário: cruzamento
+            // com assistida (violência doméstica) e com outras categorias.
+            const nomeAlvo = identificador.tipo === 'nome' ? identificador.valor : (CAMPO(achados[0], 'NOME') || null);
+            if (nomeAlvo) {
+                try {
+                    const vinculoAssistida = await verificarVinculoAssistida(nomeAlvo);
+                    if (vinculoAssistida) blocos.push(montarBlocoAssistida(vinculoAssistida));
+                } catch (e) { /* extra — nunca quebra a resposta principal */ }
+                try {
+                    const outrasOcorrencias = await cruzarNomeEmCategorias(nomeAlvo, null);
+                    const blocoCruzamento = montarBlocoCruzamentoNome(outrasOcorrencias);
+                    if (blocoCruzamento) blocos.push(blocoCruzamento);
+                } catch (e) { /* idem */ }
+            }
             return `🔎 ${achados.length} registro(s) encontrado(s) ${titulo}:<br><br>` + blocos.join('<br><br>');
         }
         if (identificador.tipo === 'processo' || identificador.tipo === 'boletim') {
@@ -792,23 +1015,38 @@
     }
 
     // ── Respostas ────────────────────────────────────────────────────
-    // categoriasFiltro: se informado (ex.: usuário pediu "resumo de MVI e CVP"),
-    // mostra só essas categorias em vez das 7 padrão.
-    async function responderResumo(periodo, categoriasFiltro) {
-        const chaves = (categoriasFiltro && categoriasFiltro.length) ? categoriasFiltro : ['mvicvli', 'tco', 'armas', 'drogas', 'perturbacao', 'violencia', 'visita'];
-        const linhas = [];
+    // Conta quantos registros de cada categoria caem dentro do período —
+    // núcleo compartilhado por responderResumo() (texto) e obterKPIs()
+    // (dados estruturados pro dashboard JARVIS), pra nunca haver dois
+    // jeitos de contar a mesma coisa.
+    async function contarCategoriasPeriodo(chaves, periodo) {
+        const resultado = {};
         for (const chave of chaves) {
             const cat = CATEGORIAS[chave];
             if (!cat) continue;
             try {
                 const bruto = await cat.fetch();
                 const filtrada = bruto.filter(cat.filtroBase).filter(i => { const d = parseData(cat.campoData(i)); return d && d >= periodo.ini && d <= periodo.fim; });
-                if (chave === 'mvicvli') {
-                    linhas.push(`• <strong>${filtrada.length}</strong> CVLI (dos quais <strong>${filtrada.filter(isMVI).length}</strong> MVI)`);
-                } else {
-                    linhas.push(`• <strong>${filtrada.length}</strong> ${cat.label}`);
-                }
-            } catch (e) { /* categoria falhou, segue pras outras */ }
+                resultado[chave] = { total: filtrada.length, mvi: chave === 'mvicvli' ? filtrada.filter(isMVI).length : null };
+            } catch (e) { resultado[chave] = null; }
+        }
+        return resultado;
+    }
+    // categoriasFiltro: se informado (ex.: usuário pediu "resumo de MVI e CVP"),
+    // mostra só essas categorias em vez das 7 padrão.
+    async function responderResumo(periodo, categoriasFiltro) {
+        const chaves = (categoriasFiltro && categoriasFiltro.length) ? categoriasFiltro : ['mvicvli', 'tco', 'armas', 'drogas', 'perturbacao', 'violencia', 'visita'];
+        const contagens = await contarCategoriasPeriodo(chaves, periodo);
+        const linhas = [];
+        for (const chave of chaves) {
+            const cat = CATEGORIAS[chave];
+            const c = contagens[chave];
+            if (!cat || !c) continue;
+            if (chave === 'mvicvli') {
+                linhas.push(`• <strong>${c.total}</strong> CVLI (dos quais <strong>${c.mvi}</strong> MVI)`);
+            } else {
+                linhas.push(`• <strong>${c.total}</strong> ${cat.label}`);
+            }
         }
         return `📋 Resumo ${periodo.label}:<br>${linhas.join('<br>')}`;
     }
@@ -1219,7 +1457,9 @@
     function classificarTcoFallback(t) {
         const mov = NORM(CAMPO(t, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO')).toLowerCase();
         const cat = NORM(CAMPO(t, 'categoriaAceitabilidade')).toLowerCase();
-        if (mov.includes('julgado')) return 'aceitavel';
+        // "julgad" (não só "julgado") — pega também a flexão feminina
+        // "julgada", igual à referência em qualitativo_tco.html.
+        if (mov.includes('julgado') || mov.includes('julgad')) return 'aceitavel';
         if (mov.includes('arquiv')) {
             if (cat && ACEIT_CAT_X.some(k => cat.includes(k))) return 'aceitavel';
             if (cat && FALHA_CAT_X.some(k => cat.includes(k))) return 'falha';
@@ -1234,10 +1474,26 @@
     // só que aqui em formato de pergunta/resposta em vez de dashboard.
     async function montarCasosMilitaresTCO() {
         if (NODE_CACHE.__casosMilitares) return NODE_CACHE.__casosMilitares;
-        const [tcos, sentencas, guarPorBoletim] = await Promise.all([fetchTCO(), fetchSentencas(), fetchGuarnicao()]);
+        const [tcos, sentencas, guarPorBoletim, geral] = await Promise.all([fetchTCO(), fetchSentencas(), fetchGuarnicao(), fetchNode('geral')]);
+
+        // TCO não tem CIDADE própria (só Comarca, via sentença) — cruza por
+        // boletim com /geral (fonte de verdade da cidade) pra permitir
+        // agrupar aceitabilidade por cidade também, não só por comarca.
+        const cidadePorBoletim = {};
+        geral.forEach(item => {
+            const bol = normBoletim(CAMPO(item, 'BOLETIM', 'NUMEROOCORRENCIA'));
+            if (bol && !cidadePorBoletim[bol]) cidadePorBoletim[bol] = CAMPO(item, 'CIDADE');
+        });
 
         const semAcentoMin = s => NORM(s).toLowerCase();
-        const esajMap = {}, esajData = {}, esajComarca = {}, esajMotivo = {};
+        const esajMap = {}, esajData = {}, esajComarca = {}, esajMotivoCanon = {};
+        // Um mesmo E-SAJ pode aparecer em mais de uma linha de sentença —
+        // por isso ACUMULA em conjuntos (não sobrescreve um mapa único),
+        // igual à referência (mkRankingMilitares/buildDashboardFromRaw em
+        // qualitativo_tco.html: esajsAceitaveis/esajsFalha são LISTAS, e na
+        // hora de classificar FALHA tem prioridade sobre ACEITÁVEL quando
+        // o mesmo processo aparece nos dois grupos).
+        const esajFalhaSet = new Set(), esajAceitavelSet = new Set();
         sentencas.forEach(r => {
             const numero = semAcentoMin(CAMPO(r, 'Nº Processo'));
             if (!numero) return;
@@ -1246,9 +1502,12 @@
                 CAMPO(r, 'Erro – Atipicidade Material', 'Erro - Atipicidade Material'),
                 CAMPO(r, 'Erro – Atipicidade Formal', 'Erro - Atipicidade Formal')
             );
+            const grupo = grupoDoRegistroX(motivoCanon, CAMPO(r, 'Resultado'));
             esajData[numero] = parseData(CAMPO(r, 'Data da Sentença'));
             esajComarca[numero] = CAMPO(r, 'Comarca') || '';
-            esajMotivo[numero] = { motivoCanon, grupo: grupoDoRegistroX(motivoCanon, CAMPO(r, 'Resultado')) };
+            esajMotivoCanon[numero] = motivoCanon;
+            if (grupo === 'falha') esajFalhaSet.add(numero);
+            else if (grupo === 'aceitavel' || grupo === 'processual') esajAceitavelSet.add(numero);
         });
         tcos.forEach(t => {
             const esaj = semAcentoMin(CAMPO(t, 'E-SAJ', 'ESAJ'));
@@ -1264,10 +1523,9 @@
         const casos = [];
         tcos.forEach(t => {
             const esaj = semAcentoMin(CAMPO(t, 'E-SAJ', 'ESAJ'));
-            const info = esaj && esajMotivo[esaj];
             let classif = null;
-            if (info && info.grupo === 'falha') classif = 'falha';
-            else if (info && (info.grupo === 'aceitavel' || info.grupo === 'processual')) classif = 'aceitavel';
+            if (esaj && esajFalhaSet.has(esaj)) classif = 'falha';
+            else if (esaj && esajAceitavelSet.has(esaj)) classif = 'aceitavel';
             if (!classif) classif = classificarTcoFallback(t);
             if (!classif) return;
 
@@ -1279,7 +1537,8 @@
             const tip = CAMPO(t, 'Tipicidade Geral') || '—';
             const data = (esaj && esajData[esaj]) || parseData(CAMPO(t, 'DATA')) || null;
             const comarca = (esaj && esajComarca[esaj]) || '';
-            const motivoCanon = (esaj && esajMotivo[esaj] && esajMotivo[esaj].motivoCanon) || null;
+            const cidade = cidadePorBoletim[normBoletim(bol)] || '';
+            const motivoCanon = (esaj && esajMotivoCanon[esaj]) || null;
 
             igs.forEach(ig => {
                 if (!ig) return;
@@ -1287,7 +1546,7 @@
                 if (posto === '---') posto = '';
                 const nome = String(ig.NOME_GUERRA || ig['Nome de guerra'] || ig.NOME_COMPLETO || '').trim();
                 if (!nome) return;
-                casos.push({ esaj: esaj || '—', bol, posto, nome, data, comarca, tip, classif, motivoCanon });
+                casos.push({ esaj: esaj || '—', bol, posto, nome, data, comarca, cidade, tip, classif, motivoCanon });
             });
         });
 
@@ -1393,6 +1652,75 @@
             ? `${i + 1}. <strong>${e.nome}</strong> — ✓ ${e.aceitaveis} aceitável(is) / ✗ ${e.falhas} arquivado(s)`
             : `${i + 1}. <strong>${e.nome}</strong> — ${e[criterio]}`);
         return `${titulo}${sufixoMotivo}${sufixoComarca}${sufixoPeriodo} (cruzamento Sentenças × TCO × Guarnição):<br>` + linhas.join('<br>');
+    }
+
+    // ── Percentual de aceitabilidade/falha de TCO por CIDADE e/ou COMARCA ──
+    // Diferente do ranking por militar acima: aqui cada TCO conta UMA VEZ só
+    // (não uma vez por integrante da guarnição), senão um TCO com guarnição
+    // de 3 pessoas pesaria 3x mais que um com 1 só, distorcendo o percentual
+    // por local.
+    function casosUnicosPorTco(casos) {
+        const vistos = new Set();
+        const unicos = [];
+        casos.forEach(c => {
+            const chave = (c.esaj && c.esaj !== '—') ? 'esaj:' + c.esaj : 'bol:' + c.bol;
+            if (vistos.has(chave)) return;
+            vistos.add(chave);
+            unicos.push(c);
+        });
+        return unicos;
+    }
+    function ehAceitabilidadePorLocal(qMin) {
+        const mencionaLocal = qMin.includes('cidade') || qMin.includes('comarca');
+        const mencionaAceitabilidade = qMin.includes('aceitabilidade') || qMin.includes('aceitacao') ||
+            qMin.includes('taxa de aceit') || qMin.includes('percentual de aceit') || qMin.includes('porcentagem de aceit') ||
+            qMin.includes('percentual de rejeic') || qMin.includes('porcentagem de rejeic') ||
+            qMin.includes('percentual de recus') || qMin.includes('porcentagem de recus') ||
+            qMin.includes('percentual de falha') || qMin.includes('porcentagem de falha') ||
+            qMin.includes('taxa de rejeic') || qMin.includes('taxa de recus') || qMin.includes('taxa de falha');
+        return mencionaLocal && mencionaAceitabilidade;
+    }
+    async function responderAceitabilidadePorLocal(q, qMin) {
+        let casos;
+        try { casos = await montarCasosMilitaresTCO(); }
+        catch (e) { return '⚠️ Não consegui buscar os dados agora. Tente de novo em instantes.'; }
+        if (!casos.length) {
+            return 'Não encontrei nenhum cruzamento entre TCO, Sentenças e Guarnição — confira se os boletins têm guarnição registrada no Firebase (nó /guarnicao) e se as sentenças foram importadas.';
+        }
+
+        const unicos = casosUnicosPorTco(casos);
+        const periodo = detectarPeriodo(qMin);
+        let filtrados = unicos.slice();
+        if (!periodo.implicito) filtrados = filtrados.filter(c => c.data && c.data >= periodo.ini && c.data <= periodo.fim);
+        if (!filtrados.length) return `Não encontrei TCOs${periodo.implicito ? '' : ' ' + periodo.label} pra calcular percentual de aceitabilidade.`;
+
+        const sufixoPeriodo = periodo.implicito ? '' : ` ${periodo.label}`;
+        const montarBloco = (campo, rotulo, emoji) => {
+            const agrupado = {};
+            filtrados.forEach(c => {
+                const local = c[campo] || 'não informada';
+                if (!agrupado[local]) agrupado[local] = { aceitaveis: 0, falhas: 0 };
+                if (c.classif === 'aceitavel') agrupado[local].aceitaveis++; else agrupado[local].falhas++;
+            });
+            const linhas = Object.entries(agrupado)
+                .map(([local, c]) => {
+                    const total = c.aceitaveis + c.falhas;
+                    return { local, total, pctAceit: total ? Math.round(c.aceitaveis / total * 100) : 0, pctFalha: total ? Math.round(c.falhas / total * 100) : 0 };
+                })
+                .filter(e => e.total > 0)
+                .sort((a, b) => b.total - a.total);
+            if (!linhas.length) return null;
+            const texto = linhas.map((e, i) => `${i + 1}. <strong>${e.local}</strong> — ✓ ${e.pctAceit}% aceitável / ✗ ${e.pctFalha}% falha (${e.total} TCO(s))`).join('<br>');
+            return `${emoji} Percentual de aceitabilidade por <strong>${rotulo}</strong>${sufixoPeriodo} (cruzamento Sentenças × TCO × Guarnição, cada TCO contado uma vez):<br>${texto}`;
+        };
+
+        const quisCidade = qMin.includes('cidade');
+        const quisComarca = qMin.includes('comarca');
+        const blocos = [];
+        if (quisCidade) { const b = montarBloco('cidade', 'cidade', '📍'); if (b) blocos.push(b); }
+        if (quisComarca) { const b = montarBloco('comarca', 'comarca', '⚖️'); if (b) blocos.push(b); }
+        if (!blocos.length) return `Não encontrei TCOs cruzados com cidade/comarca${sufixoPeriodo} (confira se o boletim tem cidade em /geral e se o processo tem Comarca na Sentença).`;
+        return blocos.join('<br><br>');
     }
 
     // Detecta pra QUAL mês a previsão foi pedida (ex.: "previsão de MVI pra
@@ -1525,23 +1853,37 @@
     }
 
     // Horários/bairros críticos por cidade — réplica da lógica de turnos e
-    // pesos de gravidade de js/gerarcartao.js (últimos 90 dias, prioridade
-    // gravidade > quantidade, mesma escala de cor 25%/50%).
-    async function responderCriticidade(qOriginal) {
-        let geral, cvp, cvli, droga;
-        try {
-            [geral, cvp, cvli, droga] = await Promise.all([
-                fetchNode('geral'), fetchNode('cvp'), fetchNode('cvli'), fetchNode('droga')
-            ]);
-        } catch (e) { return '⚠️ Não consegui buscar os dados agora. Tente de novo em instantes.'; }
+    // pesos de gravidade de js/gerarcartao.js (padrão: últimos 90 dias,
+    // prioridade gravidade > quantidade, mesma escala de cor 25%/50%).
+    // Se a pergunta citar um mês/ano/período explícito, usa ESSA janela em
+    // vez dos 90 dias fixos (ex.: "bairros críticos em Palmeira em março" ou
+    // "...este ano") — mesmo parser de período usado no resto do Xerife.
+    // Núcleo de cálculo (sem HTML) — compartilhado entre responderCriticidade
+    // (texto do chat) e obterHotspots (dados estruturados pro dashboard
+    // JARVIS), pra nunca haver dois jeitos de pontuar criticidade.
+    // cidadeForcada: quando informado, pula a detecção por texto (usado por
+    // obterHotspots, que recebe a cidade já resolvida).
+    async function calcularCriticidade(qOriginal, qMin, cidadeForcada) {
+        const [geral, cvp, cvli, droga] = await Promise.all([
+            fetchNode('geral'), fetchNode('cvp'), fetchNode('cvli'), fetchNode('droga')
+        ]);
 
-        const cidadeAlvo = detectarCidadeEmListas(qOriginal, [geral, cvp, cvli, droga]);
-        if (!cidadeAlvo) return 'Preciso saber de qual cidade — pergunte, por exemplo: <em>"quais os horários e bairros críticos em Palmeira dos Índios?"</em>.';
+        const cidadeAlvo = cidadeForcada || detectarCidadeEmListas(qOriginal, [geral, cvp, cvli, droga]);
+        if (!cidadeAlvo) return null;
 
         const PESOS_CRIT = { cvli: 5, droga: 4, cvp: 3, geral: 1 };
-        const hoje = new Date();
-        const limite90 = new Date(hoje); limite90.setDate(hoje.getDate() - 90);
-        const dentroJanela = dataStr => { const d = parseData(dataStr); return d && d >= limite90 && d <= hoje; };
+        const periodoInfo = detectarPeriodo(qMin || '');
+        let janelaIni, janelaFim, rotuloJanela;
+        if (periodoInfo.implicito) {
+            const hoje = new Date();
+            janelaFim = hoje;
+            janelaIni = new Date(hoje); janelaIni.setDate(hoje.getDate() - 90);
+            rotuloJanela = 'últimos 90 dias';
+        } else {
+            janelaIni = periodoInfo.ini; janelaFim = periodoInfo.fim;
+            rotuloJanela = periodoInfo.label;
+        }
+        const dentroJanela = dataStr => { const d = parseData(dataStr); return d && d >= janelaIni && d <= janelaFim; };
         const horaValida = horaStr => {
             if (!horaStr) return null;
             const s = String(horaStr).trim();
@@ -1583,10 +1925,10 @@
 
         const totalGraveValido = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
         const totalQtdValido = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
-        const topBairros = (scores, n) => Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => e[0]);
+        const topBairros = (scores, n) => Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, n).map(e => ({ bairro: e[0], score: e[1] }));
 
         const nomesTurno = { manha: 'Manhã (06h–12h)', tarde: 'Tarde (12h–18h)', noite: 'Noite (18h–06h)' };
-        const linhas = [];
+        const turnos = [];
         for (const t of ['manha', 'tarde', 'noite']) {
             const somaGrave = Object.values(grave[t]).reduce((a, b) => a + b, 0);
             const somaQtd = Object.values(qtd[t]).reduce((a, b) => a + b, 0);
@@ -1600,22 +1942,121 @@
                 locais = topBairros(qtd[t], 3);
                 criterio = 'quantidade';
             } else { locais = []; pct = 0; criterio = null; }
-
-            if (!locais.length) { linhas.push(`• <strong>${nomesTurno[t]}</strong>: sem registros nos últimos 90 dias.`); continue; }
-            const nivel = pct > 50 ? '🔴 ROTA CRÍTICA' : pct >= 25 ? '🟠 Atenção' : '⬜ Normal';
-            linhas.push(`• <strong>${nomesTurno[t]}</strong>: ${locais.join(', ')} — ${nivel} (${criterio} ${pct.toFixed(0)}%)`);
+            const nivel = !locais.length ? null : pct > 50 ? 'critico' : pct >= 25 ? 'atencao' : 'normal';
+            turnos.push({ chave: t, nome: nomesTurno[t], locais, pct, criterio, nivel });
         }
-        return `🗺️ Horários e bairros críticos em <strong>${cidadeAlvo}</strong> (últimos 90 dias — mesmo critério do Cartão Programa: gravidade &gt; quantidade; peso cvli=5, droga=4, cvp=3):<br>${linhas.join('<br>')}`;
+        return { cidadeAlvo, rotuloJanela, turnos };
+    }
+    async function responderCriticidade(qOriginal, qMin) {
+        let dados;
+        try { dados = await calcularCriticidade(qOriginal, qMin); }
+        catch (e) { return '⚠️ Não consegui buscar os dados agora. Tente de novo em instantes.'; }
+        if (!dados) return 'Preciso saber de qual cidade — pergunte, por exemplo: <em>"quais os horários e bairros críticos em Palmeira dos Índios?"</em>.';
+
+        const NIVEL_LABEL = { critico: '🔴 ROTA CRÍTICA', atencao: '🟠 Atenção', normal: '⬜ Normal' };
+        const linhas = dados.turnos.map(t => {
+            if (!t.locais.length) return `• <strong>${t.nome}</strong>: sem registros nos últimos 90 dias.`;
+            const nomes = t.locais.map(l => l.bairro).join(', ');
+            return `• <strong>${t.nome}</strong>: ${nomes} — ${NIVEL_LABEL[t.nivel]} (${t.criterio} ${t.pct.toFixed(0)}%)`;
+        });
+        return `🗺️ Horários e bairros críticos em <strong>${dados.cidadeAlvo}</strong> (${dados.rotuloJanela} — mesmo critério do Cartão Programa: gravidade &gt; quantidade; peso cvli=5, droga=4, cvp=3):<br>${linhas.join('<br>')}`;
+    }
+
+    // ── Visitas orientativas SUGERIDAS (a fazer) ────────────────────────
+    // Réplica fiel do critério de buscarOcorrenciasParaVisita() em
+    // js/logica_visitas.js (usado em page/gerarvisitas.html): ocorrência do
+    // nó /geral cuja tipificação é sensível a escalada de violência + a
+    // solução dada NÃO indica encerramento totalmente seguro (inclui casos
+    // "resolvidos"/"executados" que ainda merecem acompanhamento) + o relato
+    // tem termo crítico — MESMO critério, só devolvido como lista de chat em
+    // vez de cards imprimíveis. Diferente da categoria "visita" (que conta
+    // visitas orientativas JÁ REALIZADAS, tipificação = "VISITA") — aqui é
+    // o oposto: ocorrências que AINDA precisam de visita.
+    const VISITA_TIPIFICACOES = ['PERTURBAÇÃO', 'VIOLÊNCIA DOMÉSTICA', 'AMEAÇA', 'LESÃO CORPORAL'];
+    const VISITA_SOLUCOES = ['FUGA', 'RESOLVIDO', 'EXECUTADO', 'INDISPONIBILIDADE'];
+    const VISITA_TERMOS_CRITICOS = ['FUGIU', 'ARMA', 'DISPARO', 'BATEU', 'AMEAÇOU', 'FACA', 'BRIGOU', 'GRITOU', 'ESPANCOU', 'AGREDIU', 'SANGUE', 'FERIU', 'MACHUCADO', 'VIOLÊNCIA', 'DOMÉSTICA', 'DOMESTICA', 'INDISPONIBILIDADE', 'RESOLVIDO', 'EXECUTADO'];
+    function ehVisitasSugeridas(qMin) {
+        if (!qMin.includes('visita')) return false;
+        return qMin.includes('precisam ser feita') || qMin.includes('precisa ser feita') || qMin.includes('precisam ser realizada') ||
+            qMin.includes('sugerid') || qMin.includes('recomend') || qMin.includes('a fazer') || qMin.includes('devo fazer') ||
+            qMin.includes('deveria') || qMin.includes('analise de visita') || qMin.includes('risco de escalada') ||
+            qMin.includes('quais visitas') || qMin.includes('que visitas');
+    }
+    // Núcleo de cálculo (sem HTML) — compartilhado entre responderVisitasSugeridas
+    // (texto do chat) e obterVisitasSugeridas (dados estruturados pro
+    // dashboard JARVIS).
+    async function calcularVisitasSugeridas(q, qMin) {
+        const geral = await fetchNode('geral');
+
+        const periodoInfo = detectarPeriodo(qMin);
+        let ini, fim, rotuloPeriodo;
+        if (periodoInfo.implicito) {
+            fim = new Date();
+            ini = new Date(fim); ini.setDate(fim.getDate() - 90);
+            rotuloPeriodo = 'nos últimos 90 dias';
+        } else {
+            ini = periodoInfo.ini; fim = periodoInfo.fim;
+            rotuloPeriodo = periodoInfo.label;
+        }
+        const cidade = detectarCidadeEmListas(q, [geral]);
+
+        const resultados = [];
+        geral.forEach(item => {
+            const d = parseData(CAMPO(item, 'DATA', 'data'));
+            if (!d || d < ini || d > fim) return;
+            if (cidade && NORM(CAMPO(item, 'CIDADE')) !== NORM(cidade)) return;
+
+            const tip = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO'));
+            const solucao = NORM(CAMPO(item, 'SOLUCAO', 'SOLUÇÃO', 'SOLUCAO_FINAL'));
+            const texto = NORM(
+                CAMPO(item, 'ATENDIMENTO_INICIAL') + ' ' +
+                CAMPO(item, 'TEXTO_DO_DESPACHANTE', 'TEXTO_DESPACHANTE') + ' ' +
+                CAMPO(item, 'RELATO')
+            );
+
+            const passouTip = VISITA_TIPIFICACOES.some(t => tip.includes(NORM(t)));
+            const passouSolucao = VISITA_SOLUCOES.some(t => solucao.includes(NORM(t)));
+            const temTermo = VISITA_TERMOS_CRITICOS.some(t => texto.includes(NORM(t)));
+            if (!(passouTip && passouSolucao && temTermo)) return;
+
+            resultados.push({
+                cop: CAMPO(item, 'BOLETIM', 'NUMEROOCORRENCIA') || '—',
+                solicitante: CAMPO(item, 'SOLICITANTE') || 'Não informado',
+                natureza: CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO') || '—',
+                data: CAMPO(item, 'DATA', 'data') || '—',
+                local: `${CAMPO(item, 'BAIRRO') || '—'} - ${CAMPO(item, 'CIDADE') || '—'}`,
+                solucao: CAMPO(item, 'SOLUCAO', 'SOLUÇÃO', 'SOLUCAO_FINAL') || '—',
+            });
+        });
+
+        return { cidade, rotuloPeriodo, resultados };
+    }
+    async function responderVisitasSugeridas(q, qMin) {
+        let dados;
+        try { dados = await calcularVisitasSugeridas(q, qMin); }
+        catch (e) { return '⚠️ Não consegui buscar os dados agora. Tente de novo em instantes.'; }
+        const { cidade, rotuloPeriodo, resultados } = dados;
+
+        const sufixoCidade = cidade ? ` em <strong>${cidade}</strong>` : '';
+        if (!resultados.length) return `✅ Não encontrei ocorrências com risco de escalada pendente de visita${sufixoCidade} ${rotuloPeriodo} (mesmo critério de tipificação/solução/termo crítico do Gerar Visitas).`;
+
+        const LIMITE = 15;
+        const linhas = resultados.slice(0, LIMITE).map((r, i) =>
+            `${i + 1}. COP nº ${r.cop} — <strong>${r.natureza}</strong> (${r.data}) — ${r.local} — desfecho: ${r.solucao} — solicitante: ${r.solicitante}`
+        );
+        const rodape = resultados.length > LIMITE ? `<br><br>+ ${resultados.length - LIMITE} outra(s) — veja a lista completa em <strong>Visitas Orientativas → Gerar Visitas</strong>.` : '';
+        return `🚨 <strong>${resultados.length}</strong> ocorrência(s) com risco de escalada pendente de visita orientativa${sufixoCidade} ${rotuloPeriodo} (mesmo critério do Gerar Visitas):<br>${linhas.join('<br>')}${rodape}`;
     }
 
     // ── Cartão Programa das guarnições ───────────────────────────────
-    // Réplica fiel de processarDados()/MAPA_RP_CIDADES/PESOS em
-    // js/gerarcartao.js (usado em relatorios/cartaoprograma.html) — MESMA
-    // inteligência criminal (90 dias, peso cvli=5/droga=4/cvp=3/geral=1,
-    // turnos manhã/tarde/noite, gravidade > quantidade > histórico geral) e
-    // MESMO cronograma fixo por RP — só muda o formato de saída (texto de
-    // chat em vez da tabela imprimível). Se mudar o critério lá, mudar aqui
-    // também (ver aviso equivalente no topo do arquivo pra regra de MVI).
+    // Chama window.processarDados() DIRETO — a MESMA função de
+    // js/gerarcartao.js (usada em relatorios/cartaoprograma.html), que já
+    // cobre RPs e os Táticos (Urbano/Rural 01/Rural 02). Antes esse trecho
+    // era uma "réplica fiel" copiada aqui — dava pra divergir sem querer
+    // (e de fato divergiu: não tinha os Táticos). js/gerarcartao.js
+    // precisa estar incluído na página (ver <script> em page/ia_xerife.html
+    // e page/chat-mobile.html) — se não estiver, processarCartaoPrograma()
+    // avisa em vez de quebrar.
     const MAPA_RP_CIDADES = {
         "RP 01": ["PALMEIRA DOS ÍNDIOS"],
         "RP 02": ["PALMEIRA DOS ÍNDIOS"],
@@ -1630,19 +2071,308 @@
         "IGACI": ["IGACI"],
         "QUEBRANGULO": ["QUEBRANGULO"],
     };
-    const PESOS_CARTAO = { cvli: 5, droga: 4, cvp: 3, geral: 1 };
+    // RP 03..RP 09 são o NÚMERO da viatura real de patrulhamento (mesmo
+    // valor visto no rastreamento GPS — ver js/cumprimento-core.js:
+    // SEED_RP_VIATURA, duplicado aqui de propósito pra não ter que
+    // carregar aquele módulo só pra resolver um número falado). Só RP
+    // 01/RP 02 (Palmeira) são chave literal em MAPA_RP_CIDADES — as demais
+    // cidades não têm o número escrito, então "cartão programa da RP 03"
+    // não achava nada antes desta tabela existir.
+    const NUMERO_RP_PARA_CHAVE = {
+        '03': 'MARIBONDO',
+        '04': 'BELÉM', // TANQUE D'ARCA é a mesma guarnição (RP 04)
+        '05': 'QUEBRANGULO',
+        '06': 'PAULO JACINTO', // MAR VERMELHO é a mesma guarnição (RP 06)
+        '07': 'IGACI',
+        '08': 'ESTRELA DE ALAGOAS', // MINADOR DO NEGRÃO é a mesma guarnição (RP 08)
+        '09': 'CACIMBINHAS',
+    };
+    // Coordenadas aproximadas do CENTRO de cada município da área de
+    // atuação (mesmas cidades de MAPA_RP_CIDADES acima) — o sistema NÃO tem
+    // geocodificação de bairro/endereço (BAIRRO é só texto livre), então o
+    // mapa do dashboard JARVIS só consegue posicionar por CIDADE, nunca por
+    // rua/bairro real. Cidade sem entrada aqui simplesmente não aparece no
+    // mapa (nunca inventa coordenada).
+    const CIDADE_COORDS_X = {
+        "PALMEIRA DOS ÍNDIOS": [-9.4059, -36.6285],
+        "BELÉM": [-9.6285, -36.4241],
+        "TANQUE D'ARCA": [-9.6113, -36.3813],
+        "CACIMBINHAS": [-9.3999, -36.9522],
+        "MINADOR DO NEGRÃO": [-9.3552, -36.8144],
+        "ESTRELA DE ALAGOAS": [-9.3527, -36.9138],
+        "MAR VERMELHO": [-9.5427, -36.4934],
+        "PAULO JACINTO": [-9.3966, -36.3958],
+        "MARIBONDO": [-9.3742, -36.3527],
+        "IGACI": [-9.5241, -36.6469],
+        "QUEBRANGULO": [-9.3299, -36.4708],
+    };
+    // Busca por nome comparando SEM acento (NORM) dos dois lados — as
+    // cidades vêm do Firebase com acento (ex.: "Palmeira dos Índios"), mas
+    // NORM(cidade) removeria o acento e não bateria contra uma chave do
+    // dicionário que também tem acento ("ÍNDIOS" ≠ "INDIOS").
+    function coordsPorCidade(cidade) {
+        const alvo = NORM(cidade);
+        for (const nome of Object.keys(CIDADE_COORDS_X)) {
+            if (NORM(nome) === alvo) return CIDADE_COORDS_X[nome];
+        }
+        return null;
+    }
+
+    // Checado ANTES de ehCartaoPrograma (mais abaixo) — este é bem mais
+    // específico ("cumpriu o cartão"/"cumprimento da OPO"), e ehCartaoPrograma
+    // bateria de qualquer forma (também contém "cartao"+"programa").
+    function ehCumprimentoCartao(qMin) {
+        const falaDeCartaoOuOpo = qMin.includes('cartao') || qMin.includes(' opo') || qMin.includes('opo ') || qMin === 'opo';
+        // "compr" além de "cumpr" — "comprimento" (mesmo som/erro de
+        // digitação comum de "cumprimento" em português, muito provável
+        // vindo de voz) também tem que cair aqui, não em ehCartaoPrograma.
+        // "porcentagem"/"percentual" também contam: perguntar "qual a
+        // porcentagem do cartão programa" só faz sentido como pergunta de
+        // CUMPRIMENTO (o cronograma em si não tem "porcentagem" nenhuma).
+        const falaDeCumprimento = /cumpr|compr|falh|nao cumpr|porcentagem|percentual/.test(qMin);
+        return falaDeCartaoOuOpo && falaDeCumprimento;
+    }
+    // Tenta achar uma cidade citada na pergunta comparando contra as
+    // cidades já conhecidas (CIDADE_COORDS_X) — sem acento, igual ao resto
+    // do arquivo. Sem nenhuma cidade citada, cumprimento é calculado pra
+    // TODOS os cartões/OPOs salvos da unidade (sem filtro de cidade).
+    function extrairCidadeCumprimento(qMin) {
+        for (const cidade of Object.keys(CIDADE_COORDS_X)) {
+            if (qMin.includes(NORM(cidade).toLowerCase())) return cidade;
+        }
+        return null;
+    }
+    // Carregamento sob demanda de js/cumprimento-core.js — mesmo padrão de
+    // carregarModuloDocumentos() (mais abaixo): só baixa esse módulo
+    // (cruzamento com o Firebase de frota/rastreamento) quando alguém
+    // realmente pergunta sobre cumprimento, não em toda página do sistema.
+    let promessaCumprimentoCore = null;
+    function carregarCumprimentoCore() {
+        if (window.CumprimentoCore) return Promise.resolve();
+        if (!promessaCumprimentoCore) {
+            promessaCumprimentoCore = new Promise((resolve, reject) => {
+                const prefixo = /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
+                const s = document.createElement('script');
+                s.src = prefixo + 'js/cumprimento-core.js';
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('falha ao carregar js/cumprimento-core.js'));
+                document.body.appendChild(s);
+            });
+        }
+        return promessaCumprimentoCore;
+    }
+    // Cumprimento de cartão-programa/OPO salvos — cruza com o rastreamento
+    // GPS real das viaturas (Firebase de frota do 10º BPM, ver
+    // js/cumprimento-core.js). cidade: opcional (filtra cartões cuja
+    // `cidade` contém o texto, sem acento); textoPeriodo: texto livre,
+    // mesmo detectarPeriodo() do resto do arquivo, filtra pela DATA DE
+    // CRIAÇÃO do cartão/OPO salvo (não pela data do cronograma em si).
+    async function obterCumprimentoCartoes(cidade, textoPeriodo) {
+        await garantirConfig();
+        try { await carregarCumprimentoCore(); } catch (e) { return { totalCartoes: 0, mediaPercentualCumprimento: null, detalhePorCartao: [] }; }
+        if (!window.CumprimentoCore) return { totalCartoes: 0, mediaPercentualCumprimento: null, detalhePorCartao: [] };
+
+        let salvos = null;
+        try {
+            const res = await fetch(`${DATABASE_URL}/cartoes_programa.json`);
+            salvos = res.ok ? (await res.json()) : null;
+        } catch (e) { salvos = null; }
+        if (!salvos) return { totalCartoes: 0, mediaPercentualCumprimento: null, detalhePorCartao: [] };
+
+        const periodo = detectarPeriodo(NORM(textoPeriodo || '').toLowerCase());
+        const cidadeAlvo = cidade ? NORM(cidade) : null;
+        const dataIniISO = periodo.ini.toISOString().slice(0, 10);
+        const dataFimISO = periodo.fim.toISOString().slice(0, 10);
+
+        // Cartão-programa é uma ROTINA DIÁRIA recorrente, não um evento
+        // pontual — não filtra por data de criação; em vez disso pega só o
+        // cartão MAIS RECENTE salvo por cidade/tipo (evita analisar o mesmo
+        // RP duas vezes se foi salvo mais de uma vez) e aplica esse
+        // cronograma contra o histórico real de TODO o período pedido.
+        let lista = Object.entries(salvos).map(([id, v]) => Object.assign({ id }, v));
+        if (cidadeAlvo) lista = lista.filter(c => NORM(c.cidade || '').includes(cidadeAlvo));
+        lista.sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
+        const vistos = new Set();
+        lista = lista.filter(c => {
+            const chave = (c.tipo || 'cartao') + '|' + (c.cidade || '');
+            if (vistos.has(chave)) return false;
+            vistos.add(chave);
+            return true;
+        }).slice(0, 6); // limita cruzamentos por resposta (cada um busca histórico real na planilha)
+
+        const detalhePorCartao = [];
+        for (const cartao of lista) {
+            try {
+                const cronograma = cartao.tipo === 'opo'
+                    ? (cartao.alocacoes || []).map(a => ({ ini: a.ini || '00:00', fim: a.fim || '23:59', miss: a.guarnicao, det: a.cidade, area: a.area }))
+                    : (cartao.cronograma || []);
+                const r = await window.CumprimentoCore.calcularCumprimentoPeriodo({
+                    cronograma, viaturaNome: cartao.viaturaResponsavel, dataIniISO, dataFimISO,
+                });
+                detalhePorCartao.push({
+                    id: cartao.id, tipo: cartao.tipo, cidade: cartao.cidade, data: cartao.data,
+                    viaturaResponsavel: cartao.viaturaResponsavel || null,
+                    viaturaEncontrada: r.viaturaEncontrada,
+                    percentualCumprido: r.percentualCumprido, percentualFalha: r.percentualFalha,
+                    totalBlocos: r.totalBlocos, blocosCumpridos: r.blocosCumpridos,
+                });
+            } catch (e) { /* pula esse cartão/OPO, não trava os demais */ }
+        }
+
+        const validos = detalhePorCartao.filter(d => d.percentualCumprido !== null);
+        const mediaPercentualCumprimento = validos.length
+            ? Math.round(validos.reduce((s, d) => s + d.percentualCumprido, 0) / validos.length)
+            : null;
+        return { totalCartoes: detalhePorCartao.length, mediaPercentualCumprimento, detalhePorCartao, periodoLabel: periodo.label };
+    }
+    async function responderCumprimentoCartao(q, qMin) {
+        const cidade = extrairCidadeCumprimento(qMin);
+        let resultado;
+        try { resultado = await obterCumprimentoCartoes(cidade, qMin); }
+        catch (e) { return '⚠️ Não consegui cruzar o cartão-programa com o rastreamento agora. Tenta de novo?'; }
+
+        if (!resultado.totalCartoes) {
+            return `🤔 Não encontrei nenhum cartão-programa ou OPO salvo${cidade ? ' pra <strong>' + escHtml(cidade) + '</strong>' : ''}. Gere e salve um cartão em <strong>Cartão-Programa</strong> ou uma OPO em <strong>OPO Inteligente</strong> primeiro, e depois pergunte de novo.`;
+        }
+
+        const linhas = resultado.detalhePorCartao.map(d => {
+            let pct;
+            if (d.percentualCumprido !== null) pct = `${d.percentualCumprido}% cumprido / ${d.percentualFalha}% falha`;
+            else if (!d.viaturaEncontrada) pct = 'guarnição não encontrada na planilha de rastreamento';
+            else pct = 'sem histórico suficiente nesse período';
+            const tipoLabel = d.tipo === 'opo' ? 'OPO' : 'Cartão';
+            return `<li><strong>${escHtml(d.cidade || '')}</strong> (${tipoLabel}, guarnição ${escHtml(d.viaturaResponsavel || '?')}) — ${pct}</li>`;
+        }).join('');
+
+        const mediaTxt = resultado.mediaPercentualCumprimento === null ? 'sem dados suficientes' : `${resultado.mediaPercentualCumprimento}%`;
+        return `📋 <strong>Cumprimento do Cartão-Programa/OPO${cidade ? ' — ' + escHtml(cidade) : ''}</strong><br>` +
+            `Período: <strong>${escHtml(resultado.periodoLabel || '')}</strong> | Média de cumprimento: <strong>${mediaTxt}</strong> (${resultado.totalCartoes} registro(s) analisado(s))` +
+            `<ul>${linhas}</ul>` +
+            `<small>Cálculo usando o histórico real da planilha (aba rastreamento_historico) — critério: tempo mínimo de permanência dentro do perímetro em cada bloco do cronograma.</small>`;
+    }
+
+    // ── Gestão de frota (sinistros, revisão/manutenção, dossiê de viatura
+    // e de motorista) — cruza os nós reais do MESMO Firebase de frota já
+    // usado pelo rastreamento/cumprimento (ver js/cumprimento-core.js:
+    // rankingMotoristasSinistro, rankingViaturasSinistro,
+    // viaturasProximasRevisao, obterDossieViatura, obterDossieMotorista).
+    // Pedido explícito do usuário — nunca inventa número, sempre os nós
+    // reais /sinistros, /manutencao, /vistorias, /motoristas, /viaturas.
+    function ehRankingSinistroMotorista(qMin) {
+        return qMin.includes('sinistro') && (qMin.includes('motorista') || qMin.includes('condutor')) &&
+            (qMin.includes('mais') || qMin.includes('ranking') || qMin.includes('quem'));
+    }
+    function ehRankingSinistroViatura(qMin) {
+        return qMin.includes('sinistro') && qMin.includes('viatura') &&
+            (qMin.includes('mais') || qMin.includes('ranking') || qMin.includes('qual'));
+    }
+    function ehRevisaoViatura(qMin) {
+        return (qMin.includes('revisao') || qMin.includes('manutencao')) && qMin.includes('viatura');
+    }
+    function ehDossieViatura(qMin) {
+        return qMin.includes('dossie') && qMin.includes('viatura');
+    }
+    function ehDossieMotorista(qMin) {
+        return qMin.includes('dossie') && (qMin.includes('motorista') || qMin.includes('condutor'));
+    }
+    // Pega o texto livre depois de "dossiê da viatura"/"dossiê do
+    // motorista" no texto ORIGINAL (preserva prefixo tipo "30-1260" e
+    // nomes com acento) — mesmo padrão de extração usada pra busca no
+    // Dashboard Mapa.
+    function extrairAlvoDossie(textoOriginal, tipo) {
+        const re = tipo === 'viatura' ? /dossi[eê]\s+d[ae]\s+viatura\s+(.+)/i : /dossi[eê]\s+d[oa]\s+motorista\s+(.+)/i;
+        const m = textoOriginal.match(re);
+        return m ? m[1].trim().replace(/[?.!]+$/, '') : null;
+    }
+    async function responderRankingSinistroMotorista() {
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '⚠️ Não consegui acessar os dados de frota agora.';
+            const ranking = await window.CumprimentoCore.rankingMotoristasSinistro(10);
+            if (!ranking.length) return 'Não encontrei sinistros registrados na frota.';
+            const linhas = ranking.map((m, i) => `${i + 1}. <strong>${escHtml(m.nome)}</strong>${m.posto ? ' (' + escHtml(m.posto) + ')' : ''} — <strong>${m.total}</strong> sinistro(s)`);
+            return `🚗 <strong>Ranking de sinistros por motorista</strong>:<br>${linhas.join('<br>')}`;
+        } catch (e) { return '⚠️ Não consegui buscar os dados de frota agora.'; }
+    }
+    async function responderRankingSinistroViatura() {
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '⚠️ Não consegui acessar os dados de frota agora.';
+            const ranking = await window.CumprimentoCore.rankingViaturasSinistro(10);
+            if (!ranking.length) return 'Não encontrei sinistros registrados na frota.';
+            const linhas = ranking.map((v, i) => `${i + 1}. <strong>${escHtml(v.prefixo || v.placa || '—')}</strong>${v.modelo ? ' (' + escHtml(v.modelo) + ')' : ''} — <strong>${v.total}</strong> sinistro(s)`);
+            return `🚓 <strong>Ranking de sinistros por viatura</strong>:<br>${linhas.join('<br>')}`;
+        } catch (e) { return '⚠️ Não consegui buscar os dados de frota agora.'; }
+    }
+    async function responderRevisaoViatura(qMin) {
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '⚠️ Não consegui acessar os dados de frota agora.';
+            const soVencidas = /vencid|atrasad|precisa|necessit/.test(qMin);
+            const lista = await window.CumprimentoCore.viaturasProximasRevisao(10, soVencidas);
+            if (!lista.length) return soVencidas ? '✅ Nenhuma viatura está com a revisão vencida agora.' : 'Não encontrei dados de manutenção da frota.';
+            const linhas = lista.map(v => `<strong>${escHtml(v.prefixo || v.placa || '—')}</strong>${v.modelo ? ' (' + escHtml(v.modelo) + ')' : ''} — ${v.vencida ? `🔴 revisão vencida há ${Math.abs(v.faltaKm)} km` : `faltam <strong>${v.faltaKm}</strong> km (${v.kmAtual ?? '—'}/${v.proxRevisao ?? '—'})`}`);
+            return `🔧 <strong>${soVencidas ? 'Viaturas com revisão vencida' : 'Viaturas mais próximas da revisão'}</strong>:<br>${linhas.join('<br>')}`;
+        } catch (e) { return '⚠️ Não consegui buscar os dados de manutenção agora.'; }
+    }
+    async function responderDossieViatura(textoOriginal) {
+        const alvo = extrairAlvoDossie(textoOriginal, 'viatura');
+        if (!alvo) return 'Qual viatura? Diga o prefixo (ex.: "30-1260") ou a placa.';
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '⚠️ Não consegui acessar os dados de frota agora.';
+            const dossie = await window.CumprimentoCore.obterDossieViatura(alvo);
+            if (!dossie) return `🤔 Não encontrei nenhuma viatura "${escHtml(alvo)}" na frota.`;
+            const partes = [];
+            if (dossie.viatura) partes.push(`🚓 <strong>${escHtml(dossie.viatura.prefixo || '—')}</strong> — ${escHtml(dossie.viatura.marca || '')} ${escHtml(dossie.viatura.modelo || '')} (${escHtml(dossie.viatura.placa || '—')}), ${escHtml(dossie.viatura.status || 'status não informado')}, ${dossie.viatura.kmAtual ?? '—'} km`);
+            if (dossie.manutencao) partes.push(`🔧 Manutenção: próxima revisão aos ${dossie.manutencao.proxRevisao ?? '—'} km (faltam ${dossie.manutencao.faltaKm ?? '—'} km) — ${escHtml(dossie.manutencao.situacao || '—')}`);
+            const linhasSinistro = dossie.sinistros.map(s => `&nbsp;&nbsp;• ${s.data || '—'}: ${(s.tipos || []).join(', ') || 'sem tipo'} — ${escHtml(s.danos || 'sem descrição')}`).join('<br>');
+            partes.push(`💥 Sinistros: <strong>${dossie.totalSinistros}</strong> registrado(s)` + (linhasSinistro ? '<br>' + linhasSinistro : ''));
+            if (dossie.ultimaVistoria) partes.push(`📋 Última vistoria: ${String(dossie.ultimaVistoria.dataHora || '').slice(0, 10) || '—'}, km ${dossie.ultimaVistoria.km || '—'}, por ${escHtml(dossie.ultimaVistoria.motorista || dossie.ultimaVistoria.nomeCivil || '—')}`);
+            return partes.join('<br><br>');
+        } catch (e) { return '⚠️ Não consegui montar o dossiê agora.'; }
+    }
+    async function responderDossieMotorista(textoOriginal) {
+        const alvo = extrairAlvoDossie(textoOriginal, 'motorista');
+        if (!alvo) return 'Qual motorista? Diga o nome ou a matrícula.';
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '⚠️ Não consegui acessar os dados de frota agora.';
+            const dossie = await window.CumprimentoCore.obterDossieMotorista(alvo);
+            if (!dossie) return `🤔 Não encontrei nenhum motorista "${escHtml(alvo)}" cadastrado.`;
+            const partes = [];
+            if (dossie.motorista) partes.push(`👤 <strong>${escHtml(dossie.motorista.nomeGuerra || dossie.motorista.nomeCivil || '—')}</strong> (${escHtml(dossie.motorista.posto || '—')}), matrícula ${escHtml(dossie.motorista.matricula || '—')}, CNH ${escHtml(dossie.motorista.categoriaCnh || '—')}, status ${escHtml(dossie.motorista.status || '—')}`);
+            const linhasSinistro = dossie.sinistros.map(s => `&nbsp;&nbsp;• ${s.data || '—'}: ${(s.tipos || []).join(', ') || 'sem tipo'} (viatura ${escHtml(s.prefixo || '—')})`).join('<br>');
+            partes.push(`💥 Sinistros como condutor: <strong>${dossie.totalSinistros}</strong>` + (linhasSinistro ? '<br>' + linhasSinistro : ''));
+            partes.push(`📋 Vistorias realizadas: <strong>${dossie.totalVistoriasRealizadas}</strong>`);
+            return partes.join('<br><br>');
+        } catch (e) { return '⚠️ Não consegui montar o dossiê agora.'; }
+    }
 
     function ehCartaoPrograma(qMin) {
         return qMin.includes('cartao programa') || qMin.includes('cartao de programa') ||
             (qMin.includes('cartao') && qMin.includes('programa')) ||
             (qMin.includes('programa') && (qMin.includes('guarnicao') || qMin.includes('patrulhamento') || / rp\b|\brp /.test(qMin)));
     }
-    // Aceita citar a RP direto ("RP 01", "Paulo Jacinto") ou só a cidade
-    // ("cartão programa de Palmeira") — usa o mesmo texto NORM (maiúsculo,
+    // Aceita citar a RP direto ("RP 01", "Paulo Jacinto"), só a cidade
+    // ("cartão programa de Palmeira") ou um Tático ("cartão do tático
+    // urbano", "tático rural 01/1") — usa o mesmo texto NORM (maiúsculo,
     // sem acento) já usado no resto do arquivo pra casar com as chaves.
     function detectarRPNaPergunta(q) {
+        // Táticos primeiro — não têm 1 cidade fixa em MAPA_RP_CIDADES
+        // (Rural 01/02 seguem a mancha criminal geral, não uma área só —
+        // ver processarDadosTatico em js/gerarcartao.js), então usa direto
+        // o mesmo texto que window.processarDados espera pra rotear.
+        if (q.includes('TATICO') && q.includes('URBANO')) return 'TÁTICO URBANO';
+        if (q.includes('TATICO') && q.includes('RURAL') && (q.includes(' 01') || q.includes(' 1') || / rural 1\b/.test(q))) return 'TÁTICO RURAL 01';
+        if (q.includes('TATICO') && q.includes('RURAL') && (q.includes(' 02') || q.includes(' 2') || / rural 2\b/.test(q))) return 'TÁTICO RURAL 02';
         for (const chave of Object.keys(MAPA_RP_CIDADES)) {
             if (q.includes(NORM(chave))) return chave;
+        }
+        const mNumeroRP = q.match(/\bRP\s*0?(\d{1,2})\b/);
+        if (mNumeroRP) {
+            const numAlvo = mNumeroRP[1].padStart(2, '0');
+            if (NUMERO_RP_PARA_CHAVE[numAlvo]) return NUMERO_RP_PARA_CHAVE[numAlvo];
         }
         for (const [chave, cidades] of Object.entries(MAPA_RP_CIDADES)) {
             if (cidades.some(c => q.includes(NORM(c)))) return chave;
@@ -1650,258 +2380,71 @@
         return null;
     }
 
+    // Mesmo padrão de carregarCumprimentoCore() acima: js/gerarcartao.js só
+    // baixa quando alguém realmente pergunta sobre cartão-programa, não em
+    // toda página do sistema que inclui xerife.js.
+    let promessaGerarCartao = null;
+    function carregarGerarCartao() {
+        if (window.processarDados) return Promise.resolve();
+        if (!promessaGerarCartao) {
+            promessaGerarCartao = new Promise((resolve, reject) => {
+                const prefixo = /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
+                const s = document.createElement('script');
+                s.src = prefixo + 'js/gerarcartao.js';
+                s.onload = () => resolve();
+                s.onerror = () => reject(new Error('falha ao carregar js/gerarcartao.js'));
+                document.body.appendChild(s);
+            });
+        }
+        return promessaGerarCartao;
+    }
+
     async function processarCartaoPrograma(chaveRP) {
+        await carregarGerarCartao();
+        if (!window.processarDados) throw new Error('gerarcartao.js não carregado');
         const [geral, cvp, cvli, droga] = await Promise.all([
             fetchNode('geral'), fetchNode('cvp'), fetchNode('cvli'), fetchNode('droga')
         ]);
-        const db = { geral, cvp, cvli, droga };
-        const cidadesAlvo = MAPA_RP_CIDADES[chaveRP].map(c => c.toUpperCase());
-
-        const hoje = new Date();
-        const limite90 = new Date(hoje); limite90.setDate(hoje.getDate() - 90);
-        const dentroJanelaCartao = dataStr => { const d = parseData(dataStr); return d && d >= limite90 && d <= hoje; };
-        // Mesma correção crítica do gerarcartao.js: HORA às vezes vem com o
-        // número do boletim (ex.: "46336") — só aceita 0–23, senão é lixo.
-        const horaValidaCartao = horaStr => {
-            if (!horaStr) return null;
-            const s = String(horaStr).trim();
-            const h = s.includes(':') ? parseInt(s.split(':')[0], 10) : parseInt(s, 10);
-            return (h >= 0 && h <= 23) ? h : null;
+        const dados = window.processarDados(chaveRP, { geral, cvp, cvli, droga });
+        return {
+            cidadesAlvo: dados.cidadesPatrulhadas,
+            cronograma: dados.cronograma,
+            resumo: dados.resumo,
+            totalQtd: dados.totalQtd,
         };
+    }
 
-        const qtd = { manha: {}, tarde: {}, noite: {} };
-        const grave = { manha: {}, tarde: {}, noite: {} };
-        const totalQtdTurno = { manha: 0, tarde: 0, noite: 0 };
-        const totalGraveTurno = { manha: 0, tarde: 0, noite: 0 };
-        const qtdGeral = {}, graveGeral = {};
-        const logradourosRurais = {};
-
-        Object.keys(db).forEach(categoria => {
-            (db[categoria] || []).forEach(item => {
-                const cid = String(CAMPO(item, 'CIDADE') || '').toUpperCase().trim();
-                if (!cidadesAlvo.some(c => cid.includes(c))) return;
-
-                const bairro = String(CAMPO(item, 'BAIRRO') || '').toUpperCase().trim();
-                const logradouro = String(CAMPO(item, 'LOGRADOURO', 'ENDERECO') || '').toUpperCase().trim();
-                if (!bairro) return;
-
-                const ehRural = bairro.includes('ZONA RURAL') || bairro.includes('RURAL');
-                if (ehRural && logradouro) {
-                    if (!logradourosRurais[bairro]) logradourosRurais[bairro] = {};
-                    logradourosRurais[bairro][logradouro] = (logradourosRurais[bairro][logradouro] || 0) + 1;
-                }
-
-                const pesoTotal = PESOS_CARTAO[categoria] || 1;
-                const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
-
-                qtdGeral[bairro] = (qtdGeral[bairro] || 0) + 1;
-                graveGeral[bairro] = (graveGeral[bairro] || 0) + pesoGravio;
-
-                if (!dentroJanelaCartao(CAMPO(item, 'DATA', 'data'))) return;
-                const h = horaValidaCartao(CAMPO(item, 'HORA', 'hora'));
-
-                if (h === null) {
-                    const frac = 1 / 3;
-                    ['manha', 'tarde', 'noite'].forEach(t => {
-                        qtd[t][bairro] = (qtd[t][bairro] || 0) + frac;
-                        grave[t][bairro] = (grave[t][bairro] || 0) + (pesoGravio * frac);
-                    });
-                    return;
-                }
-                const turno = (h >= 6 && h < 12) ? 'manha' : (h >= 12 && h < 18) ? 'tarde' : 'noite';
-                qtd[turno][bairro] = (qtd[turno][bairro] || 0) + 1;
-                grave[turno][bairro] = (grave[turno][bairro] || 0) + pesoGravio;
-                totalQtdTurno[turno] += 1;
-                totalGraveTurno[turno] += pesoGravio;
-            });
-        });
-
-        const resolverLocal = bairro => {
-            const ehRural = bairro.includes('ZONA RURAL') || bairro.includes('RURAL');
-            if (ehRural && logradourosRurais[bairro]) {
-                const top = Object.entries(logradourosRurais[bairro]).sort((a, b) => b[1] - a[1])[0];
-                return top ? top[0] : bairro;
+    // Cruzamento com a posição REAL da guarnição agora, via mesma planilha
+    // de rastreamento usada por page/rastreamento-guarnicao.html e
+    // js/cumprimento-core.js (obterGuarnicoesPlanilha) — pedido explícito
+    // do usuário: só quando a pergunta é sobre uma RP/cidade (não em
+    // buscas de CPF/nome/boletim/processo, sem relação com viatura).
+    // Só tenta pra chaves que normalizam pra "RP0X" (RP01..RP09) — as
+    // demais chaves do cartão-programa são NOMES DE CIDADE (ex.: "PAULO
+    // JACINTO", "MARIBONDO"), que não têm correspondência garantida com o
+    // campo `nome` real da planilha (esse é por rádio/unidade, tipo "RP
+    // 03", "RURAL 01", "PELOPES 01" — nunca literalmente o nome da
+    // cidade) — mostrar um cruzamento adivinhado seria pior que não
+    // mostrar nenhum, então nesses casos a função só devolve vazio.
+    async function anexarStatusRealRP(chaveRP) {
+        try {
+            await carregarCumprimentoCore();
+            if (!window.CumprimentoCore) return '';
+            const chave = window.CumprimentoCore.normalizarGuarnicao(chaveRP);
+            if (!/^RP\d{2}$/.test(chave)) return '';
+            const guarnicoes = await window.CumprimentoCore.obterGuarnicoesPlanilha();
+            const v = guarnicoes[chave];
+            if (!v || v.offline) return '';
+            let tempoTxt = 'horário desconhecido';
+            if (v.dataHoraGEO) {
+                const minAtras = Math.round((Date.now() - new Date(v.dataHoraGEO).getTime()) / 60000);
+                if (!isNaN(minAtras) && minAtras >= 0) tempoTxt = minAtras <= 0 ? 'agora' : `há ${minAtras} min`;
             }
-            return bairro;
-        };
-        const somaObjCartao = obj => Object.values(obj).reduce((a, b) => a + b, 0);
-        const topBairrosCartao = (scores, n) => Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(0, n).map(([b]) => resolverLocal(b));
-
-        const analisarTurnoCartao = (nomeTurno, nLocais) => {
-            const n = nLocais || 3;
-            const somaGraveTurno = somaObjCartao(grave[nomeTurno]);
-            const somaQtdTurno = somaObjCartao(qtd[nomeTurno]);
-            const totalGraveValido = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
-            const totalQtdValido = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
-
-            if (totalGraveTurno[nomeTurno] > 0 || somaGraveTurno > 0) {
-                const pct = totalGraveValido > 0 ? (totalGraveTurno[nomeTurno] / totalGraveValido) * 100 : 0;
-                const locais = topBairrosCartao(grave[nomeTurno], n);
-                const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr. c/ hora` : 'ocorrências';
-                const info = pct > 0 ? `GRAV.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
-                let miss = null, h = null;
-                if (pct > 50) { miss = '🚨 ROTA CRÍTICA'; h = 'red'; } else if (pct >= 25) { h = 'orange'; }
-                return { locais, info, miss, h };
-            }
-            if (totalQtdTurno[nomeTurno] > 0 || somaQtdTurno > 0) {
-                const pct = totalQtdValido > 0 ? (totalQtdTurno[nomeTurno] / totalQtdValido) * 100 : 0;
-                const locais = topBairrosCartao(qtd[nomeTurno], n);
-                const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr.` : 'registros';
-                const info = pct > 0 ? `QTD.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
-                let miss = null, h = null;
-                if (pct > 50) { miss = '🚨 ROTA CRÍTICA'; h = 'red'; } else if (pct >= 25) { h = 'orange'; }
-                return { locais, info, miss, h };
-            }
-            const fallback = Object.values(graveGeral).some(v => v > 0) ? graveGeral : qtdGeral;
-            return { locais: topBairrosCartao(fallback, n), info: 'HISTÓRICO GERAL', miss: null, h: null };
-        };
-
-        const montarLinha = (ini, fim, nomeTurno, missPadrao, nLocais) => {
-            const { locais, info, miss, h } = analisarTurnoCartao(nomeTurno, nLocais || 3);
-            const top = locais.length > 0 ? locais.join(' | ') : 'CENTRO DA CIDADE';
-            return { ini, fim, miss: miss || missPadrao, det: `${top}  (${info})`, h };
-        };
-        const fixa = (ini, fim, miss, det, h) => ({ ini, fim, miss, det, h: h || null });
-
-        let cronograma;
-        switch (chaveRP) {
-            case 'RP 01':
-                cronograma = [
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento Setorial'),
-                    fixa('13:00', '17:30', 'Almoço / Prontidão', 'BASE OPERACIONAL', 'green'),
-                    fixa('18:00', '19:00', 'JANTA', 'BASE OPERACIONAL', 'green'),
-                    montarLinha('19:00', '00:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('00:00', '03:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('03:00', '05:00', 'Descanso / Prontidão', 'BASE OPERACIONAL', null),
-                    montarLinha('05:00', '07:30', 'manha', 'OPO Alvorada'),
-                ];
-                break;
-            case 'RP 02':
-                cronograma = [
-                    fixa('08:00', '13:00', 'Prontidão / Adm / ALMOÇO', 'BASE OPERACIONAL', 'green'),
-                    montarLinha('12:00', '18:00', 'tarde', 'Patrulhamento Setorial'),
-                    montarLinha('18:00', '19:00', 'noite', 'Ronda Crítica Noturna'),
-                    fixa('19:00', '20:00', 'Janta / Prontidão', 'BASE OPERACIONAL', 'green'),
-                    fixa('20:00', '20:30', 'OPO - POLICIAMENTO ESCOLAR', 'ESCOLA EST. MONSENHOR RIBEIRO - PALMEIRA DE FORA', 'red'),
-                    montarLinha('20:30', '00:00', 'noite', 'Patrulhamento Noturno 1'),
-                    fixa('00:00', '03:00', 'DESCANSO / PRONTIDÃO', 'BASE OPERACIONAL', 'green'),
-                    montarLinha('03:00', '05:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('05:00', '07:00', 'Descanso / Prontidão', 'BASE OPERACIONAL', null),
-                ];
-                break;
-            case 'PAULO JACINTO':
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento - MAR VERMELHO'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    fixa('20:00', '20:30', 'OPO - POLICIAMENTO ESCOLAR', 'ESCOLA ESTADUAL JOSÉ MEDEIROS', 'red'),
-                    montarLinha('20:30', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            case 'MAR VERMELHO':
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento - PAULO JACINTO'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            case 'ESTRELA DE ALAGOAS':
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento - MINADOR DO NEGRÃO'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            case 'MINADOR DO NEGRÃO':
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento - ESTRELA DE ALAGOAS'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            case 'BELÉM':
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', "Patrulhamento - TANQUE D'ARCA"),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            case "TANQUE D'ARCA":
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento - BELÉM'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-                break;
-            default: // Demais RPs: Cacimbinhas, Maribondo, Igaci, Quebrangulo…
-                cronograma = [
-                    fixa('08:00', '08:30', 'Apresentação', 'APRESENTAÇÃO E PRELEÇÃO.', null),
-                    montarLinha('08:30', '13:00', 'manha', 'Patrulhamento Geral'),
-                    fixa('13:00', '16:30', 'Almoço e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('16:30', '19:00', 'tarde', 'Rota Prioritária Tarde'),
-                    fixa('19:00', '20:00', 'Janta e Prontidão', 'BASE OPERACIONAL.', 'green'),
-                    montarLinha('20:00', '22:00', 'noite', 'Patrulhamento Noturno 1'),
-                    montarLinha('22:00', '00:00', 'noite', 'Patrulhamento Noturno 2'),
-                    fixa('00:00', '05:00', 'Descanso/Prontidão', 'BASE OPERACIONAL.', null),
-                    montarLinha('05:00', '07:00', 'manha', 'OPO ALVORADA'),
-                    fixa('07:00', '08:00', 'Finalização', 'MANUTENÇÃO DE VIATURA E RENDIÇÃO.', null),
-                ];
-        }
-
-        const totalNos90 = ['manha', 'tarde', 'noite'].reduce((s, t) => s + somaObjCartao(qtd[t]), 0);
-        const nomesTurno = { manha: 'Manhã(06-12h)', tarde: 'Tarde(12-18h)', noite: 'Noite(18-05h)' };
-        const partesResumo = [];
-        const tV = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
-        const tG = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
-        for (const t of ['manha', 'tarde', 'noite']) {
-            const pQ = tV > 0 ? (totalQtdTurno[t] / tV * 100).toFixed(0) : 0;
-            const pG = tG > 0 ? (totalGraveTurno[t] / tG * 100).toFixed(0) : 0;
-            const sQ = Math.round(somaObjCartao(qtd[t]));
-            if (sQ > 0) partesResumo.push(`${nomesTurno[t]}: ${sQ} reg. | Grav.${pG}% / Qtd.${pQ}%`);
-        }
-
-        return { cidadesAlvo, cronograma, resumo: partesResumo.join(' • '), totalQtd: Math.round(totalNos90) };
+            const partes = [];
+            if (v.status) partes.push(escHtml(v.status));
+            if (v.militares) partes.push(escHtml(v.militares));
+            return `<br><br>📡 <strong>Posição real agora</strong> (rastreamento): ${partes.join(' — ') || 'sem detalhe'} — atualizado ${tempoTxt}.`;
+        } catch (e) { return ''; } // rastreamento indisponível — cartão-programa segue funcionando normal, sem esse trecho
     }
 
     async function responderCartaoPrograma(q, qMin) {
@@ -1921,9 +2464,12 @@
             ? `📊 <strong>${dados.totalQtd}</strong> registros (90 dias) — ${dados.cidadesAlvo.join(' + ')}: ${dados.resumo}`
             : `⚠️ Sem registros nos últimos 90 dias — exibindo bairros com maior histórico geral.`;
 
+        const statusReal = await anexarStatusRealRP(chaveRP);
+
         return `🚓 <strong>Cartão Programa — ${chaveRP}</strong> (${dados.cidadesAlvo.join(' / ')}) — ${new Date().toLocaleDateString('pt-BR')}:<br>${resumoHTML}<br><br>` +
             linhas.join('<br>') +
-            `<br><br><small>Critério: gravidade (cvli×5, droga×4, cvp×3) &gt; quantidade, últimos 90 dias — mesma lógica de relatorios/cartaoprograma.html.</small>`;
+            `<br><br><small>Critério: gravidade (cvli×5, droga×4, cvp×3) &gt; quantidade, últimos 90 dias — mesma lógica de relatorios/cartaoprograma.html.</small>` +
+            statusReal;
     }
 
     // Produtividade do COPOM — mesma extração de atendente de js/dashboard-copom.js.
@@ -2068,10 +2614,12 @@
         // Consulta por identificador (CPF/boletim/processo/nome) é busca de
         // cadastro exata — nunca deixar a IA "resumir" isso, sempre regra.
         const ehIdentificador = !!extrairIdentificador(qMin) || !!extrairNomeProvavel(textoOriginal, qMin);
-        const ehIntentoDeterministico = ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehPrevisao(qMin) ||
+        const ehIntentoDeterministico = ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehPrevisao(qMin) || ehCadastroEvento(qMin) ||
             ehCriticidade(qMin) || ehCartaoPrograma(qMin) || ehAtendenteCopom(qMin) || ehComarcaArquivamentos(qMin) || ehRankingMilitaresTCO(qMin) ||
+            ehAceitabilidadePorLocal(qMin) || ehVisitasSugeridas(qMin) ||
             ehLocalizacaoDroga(qMin) || ehMateriais(qMin) ||
-            ehResumo(qMin) || ehComparativo(qMin) || ehIdentificador || ehDetalheDrogas(qMin) || ehTopStatus(qMin);
+            ehResumo(qMin) || ehComparativo(qMin) || ehIdentificador || ehDetalheDrogas(qMin) || ehTopStatus(qMin) ||
+            ehRankingSinistroMotorista(qMin) || ehRankingSinistroViatura(qMin) || ehRevisaoViatura(qMin) || ehDossieViatura(qMin) || ehDossieMotorista(qMin);
         const chaveCatPreliminar = detectarCategoria(q);
         const categoriasPreliminar = detectarCategoriasMultiplas(q);
         const ehTcoAutorOperador = chaveCatPreliminar === 'tco' && (ehTopAutorTCO(qMin) || ehTopOperadorTCO(qMin));
@@ -2131,6 +2679,9 @@
         if (ehSaudacao(qMin)) return '🤠 E aí! Sou o Xerife, pergunte sobre os números da sua unidade — MVI, CVLI, CVP, TCO, armas, drogas, perturbação, violência doméstica ou visitas orientativas. Ex.: <em>"quantos TCOs este mês?"</em> ou <em>"resumo de hoje"</em>.';
         if (ehAjuda(qMin)) return montarAjuda();
         if (ehForaDeEscopo(qMin)) return respostaForaDeEscopo();
+        // Checado antes de tudo — é um pedido de AÇÃO (cadastro), não uma
+        // pergunta de dado, então não deve cair no fallback de categoria.
+        if (ehCadastroEvento(qMin)) return respostaCadastroEvento();
 
         // Consulta direta por identificador (CPF/boletim/processo/nome) —
         // checado cedo, antes de qualquer detecção de categoria/estatística,
@@ -2141,17 +2692,35 @@
         if (nomeProvavel) return await responderConsultaIdentificador({ tipo: 'nome', valor: nomeProvavel });
 
         if (ehPrevisao(qMin)) return await responderPrevisao(q, qMin);
+        // Gestão de frota (sinistros/revisão/dossiês) — checado cedo, são
+        // pedidos bem específicos que não têm relação com as categorias de
+        // ocorrência (CATEGORIAS) do resto do dispatch.
+        if (ehDossieViatura(qMin)) return await responderDossieViatura(textoOriginal);
+        if (ehDossieMotorista(qMin)) return await responderDossieMotorista(textoOriginal);
+        if (ehRankingSinistroMotorista(qMin)) return await responderRankingSinistroMotorista();
+        if (ehRankingSinistroViatura(qMin)) return await responderRankingSinistroViatura();
+        if (ehRevisaoViatura(qMin)) return await responderRevisaoViatura(qMin);
+        // Checado ANTES de ehCartaoPrograma — "cumprimento do cartão/OPO" é
+        // mais específico (cruza com rastreamento GPS real) do que só pedir
+        // pra gerar o cronograma; ehCartaoPrograma bateria de qualquer jeito
+        // (também contém "cartao"+"programa").
+        if (ehCumprimentoCartao(qMin)) return await responderCumprimentoCartao(q, qMin);
         // Checado ANTES de ehCriticidade — "cartão programa" é um pedido bem
         // mais específico (cronograma completo por RP/guarnição) do que só
         // "bairros/horários críticos"; não faz sentido cair no genérico.
         if (ehCartaoPrograma(qMin)) return await responderCartaoPrograma(q, qMin);
-        if (ehCriticidade(qMin)) return await responderCriticidade(q);
+        if (ehCriticidade(qMin)) return await responderCriticidade(q, qMin);
         if (ehAtendenteCopom(qMin)) return await responderAtendenteCopom(q, qMin);
         if (ehComarcaArquivamentos(qMin)) return await responderComarcaArquivamentos(detectarPeriodo(qMin), extrairMotivoArquivamento(qMin));
+        // Checado ANTES de ehRankingMilitaresTCO — esta é uma pergunta de
+        // percentual POR LOCAL (cidade/comarca), não por militar; não exige
+        // a palavra "militar", então precisa vencer antes desse outro check.
+        if (ehAceitabilidadePorLocal(qMin)) return await responderAceitabilidadePorLocal(q, qMin);
         // Checado ANTES do ehTopOperadorTCO genérico (mais abaixo, dentro do
         // fluxo de categoria) — "militar" + "arquivado/atipicidade" é o
         // cruzamento por guarnição, bem diferente de "quem lavrou o TCO".
         if (ehRankingMilitaresTCO(qMin)) return await responderRankingMilitaresTCO(q, qMin);
+        if (ehVisitasSugeridas(qMin)) return await responderVisitasSugeridas(q, qMin);
         if (ehLocalizacaoDroga(qMin)) return await responderLocalizacaoDroga(q, qMin);
         if (ehMateriais(qMin)) return await responderMateriais(q, qMin);
         if (ehResumo(qMin)) {
@@ -2176,6 +2745,16 @@
         if (ehComparativo(qMin) && anosDaPergunta.length < 2 && (qMin.includes('ano passado') || qMin.includes('ano anterior'))) {
             const hoje = new Date();
             anosDaPergunta = [hoje.getFullYear() - 1, hoje.getFullYear()];
+        }
+        // "comparativo do primeiro semestre atual com o anterior" — aqui
+        // "anterior" se refere ao SEMESTRE (não ao ano, como no caso
+        // acima), mas o efeito no cálculo é o mesmo: mesmo tipo de
+        // período (detectarPeriodo já entende "semestre", ver lá), em 2
+        // anos diferentes. Se JÁ tiver 1 ano citado ("...de 2026 com o
+        // anterior"), usa esse como base; senão usa o ano atual.
+        if (ehComparativo(qMin) && anosDaPergunta.length < 2 && qMin.includes('semestre') && qMin.includes('anterior')) {
+            const anoBase = anosDaPergunta[0] || new Date().getFullYear();
+            anosDaPergunta = [anoBase - 1, anoBase];
         }
         if (ehComparativo(qMin) && anosDaPergunta.length >= 2) {
             const categoriasComp = detectarCategoriasMultiplas(q);
@@ -2295,6 +2874,12 @@
     function respostaForaDeEscopo() {
         return '🤠 "Meta" não é um dado que existe no sistema (não há número-alvo definido em nenhum lugar) — isso eu não invento. Mas eu <strong>faço previsão</strong> de MVI, CVLI e CVP pro próximo mês, com o mesmo modelo estatístico da Análise Preditiva: pergunte, por exemplo, <em>"previsão de MVI pro próximo mês"</em>.';
     }
+    // Cadastro de Eventos é feito via anexo de ofício (OCR/PDF, ver
+    // js/xerife-documentos.js) — o chat só entende TEXTO de pergunta sobre
+    // dados; sem anexo não tem como extrair os campos do evento.
+    function respostaCadastroEvento() {
+        return '🎪 Pra cadastrar um evento, anexe o ofício (clique no 📎 aqui do chat) — eu leio o documento, preencho os campos automaticamente e te mostro pra confirmar antes de gravar. Se preferir, também dá pra cadastrar manualmente na página <strong>Eventos</strong>.';
+    }
 
     function montarAjuda() {
         return `🤠 Eu sou o <strong>Xerife</strong>, respondo só com base nos dados reais da sua unidade (Firebase/GAS) — não invento nada e não crio metas.<br><br>
@@ -2311,11 +2896,14 @@
         • "onde a maconha foi apreendida e com quem?" (local + autor, registro a registro)<br>
         • "quantos materiais tenho na guarda de Palmeira dos Índios?" (fonte: planilha de Materiais)<br>
         • "qual a comarca que mais arquivou por atipicidade material?" (fonte: planilha de Sentenças)<br>
+        • "percentual de aceitabilidade de TCO por cidade" / "taxa de rejeição de TCO por comarca este ano"<br>
+        • "quais visitas orientativas precisam ser feitas em Palmeira?" (mesmo critério do Gerar Visitas)<br>
         • "status dos TCOs este mês" / "movimentação das drogas este ano"<br>
         • "CPF 123.456.789-00" / "boletim 123456" / "processo 0700660-61.2026.8.02.0146" (consulta direta de cadastro)<br>
         • "tipificação mais comum de drogas este mês"<br>
         • "MVI do 1º semestre de 2026 comparado com o mesmo período de 2025 mês a mês"<br>
-        • "resumo de hoje" / "resumo de 2026 mês a mês de MVI e CVP"<br><br>
+        • "resumo de hoje" / "resumo de 2026 mês a mês de MVI e CVP"<br>
+        • "quero cadastrar um novo evento" (te explico como anexar o ofício)<br><br>
         Períodos que entendo: hoje, ontem, esta semana, este mês, mês passado, este ano, ano passado, um ano específico (ex.: 2025), um mês (ex.: "em março"), mês+ano juntos, intervalo de meses ("de janeiro a julho") e 1º/2º semestre. Se eu não entender o período, uso o ano atual.`;
     }
 
@@ -2381,6 +2969,8 @@
                     <div style="font-size:.68rem;opacity:.85;">Assistente da unidade — dados em tempo real</div>
                     <div id="xerife-status-ia" style="font-size:.65rem;opacity:.85;margin-top:1px;display:flex;align-items:center;"></div>
                 </div>
+                <a href="${prefixo}page/ia_xerife.html" title="Abrir IA Xerife (voz, mapa, apresentações)" aria-label="Abrir IA Xerife"
+                    style="background:rgba(255,255,255,.15);color:#fff;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;text-decoration:none;">🪐</a>
                 <button id="xerife-fechar" title="Fechar" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:.9rem;flex-shrink:0;">✕</button>
             </div>
             <div id="xerife-mensagens" style="flex:1;overflow-y:auto;padding:.9rem;display:flex;flex-direction:column;gap:.6rem;background:var(--p3-bg,#fafaf8);"></div>
@@ -2506,11 +3096,13 @@
             'padding:.55rem .8rem;border-radius:14px;font-size:.82rem;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.06);';
 
         const conteudo = document.createElement('div');
+        conteudo.className = 'xerife-conteudo';
         conteudo.innerHTML = html;
         bolha.appendChild(conteudo);
 
         const acoes = document.createElement('div');
-        acoes.style.cssText = `display:flex;justify-content:${doUsuario ? 'flex-end' : 'flex-start'};margin-top:.3rem;`;
+        acoes.className = 'xerife-acoes';
+        acoes.style.cssText = `display:flex;align-items:center;justify-content:${doUsuario ? 'flex-end' : 'flex-start'};margin-top:.3rem;`;
         const botao = document.createElement('button');
         botao.type = 'button';
         botao.style.cssText = `background:none;border:none;cursor:pointer;font-size:.68rem;padding:0;opacity:.75;color:${doUsuario ? '#fff' : 'inherit'};font-family:inherit;`;
@@ -2543,11 +3135,130 @@
             const resposta = await responderPerguntaComposta(texto);
             bolhaCarregando.innerHTML = resposta;
             adicionarAoHistorico(texto, resposta);
+            // "Dispara e esquece" — de propósito SEM await, pra nunca atrasar
+            // a resposta na tela (ver doutrina completa no bloco de
+            // TELEMETRIA logo abaixo desta função).
+            registrarInteracaoTelemetria(texto, bolhaCarregando);
         } catch (e) {
             console.error('Xerife: erro ao responder', e);
             bolhaCarregando.innerHTML = '⚠️ Deu um problema aqui. Tenta perguntar de novo?';
         }
         document.getElementById('xerife-mensagens').scrollTop = document.getElementById('xerife-mensagens').scrollHeight;
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // TELEMETRIA / APRENDIZADO — log OPCIONAL de interações pra uma API
+    // HTTP externa (PHP/MySQL própria do usuário, fora deste repositório),
+    // usada só pra descobrir gírias/termos regionais que faltam nas listas
+    // de sinônimos (CATEGORIAS.nomes, eh*()) — NUNCA pra recalcular nada:
+    // a resposta ao usuário já saiu antes desta função ser chamada.
+    //
+    // REGRAS DE PRIVACIDADE (decisão explícita — sistema policial, dado
+    // sensível de verdade):
+    //   1. Consulta de identificador (CPF/nome/boletim/processo) NUNCA é
+    //      logada — nem a categoria, nem o texto. O simples fato de "esse
+    //      usuário consultou tal CPF" já é, por si, um dado sensível de
+    //      quem foi consultado.
+    //   2. A RESPOSTA (resposta_gerada) nunca é enviada — pode conter
+    //      contagem/nome real (ex.: "Militar Fulano teve 5 TCOs
+    //      arquivados"). Só a CATEGORIA da pergunta é enviada.
+    //   3. O TEXTO da pergunta só é enviado quando ela NÃO foi reconhecida
+    //      por nenhuma categoria — é o único caso em que o texto bruto tem
+    //      valor real (achar um termo novo pra ensinar); pergunta já
+    //      reconhecida não precisa do texto, a categoria basta.
+    //   4. Falha de rede aqui é sempre silenciosa — nunca aparece pro
+    //      usuário, nunca atrasa nem interrompe o assistente.
+    //
+    // TELEMETRIA_ATIVA começa `false` de propósito — só ligar depois de
+    // preencher TELEMETRIA_API_URL com o domínio real e confirmar que o
+    // endpoint aceita esse contrato (action=log_interaction /
+    // action=update_feedback, ver tools/xerife-ml/README.md).
+    // ════════════════════════════════════════════════════════════════
+    const TELEMETRIA_API_URL = 'https://irispmal.io/api/xerife_api.php';
+    const TELEMETRIA_ATIVA = true;
+
+    // Mesma ideia de detectarCategoria(), mas cobrindo também as intenções
+    // "especiais" que não têm entrada em CATEGORIAS (criticidade, previsão,
+    // cartão programa...) — só pra rotular o log, nunca usada pra decidir a
+    // resposta em si (isso continua 100% em processarPergunta()).
+    function detectarCategoriaOuIntencaoParaLog(qMin) {
+        if (ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehCadastroEvento(qMin)) return null; // não é pergunta de dado
+        if (ehCriticidade(qMin)) return 'criticidade';
+        if (ehCartaoPrograma(qMin)) return 'cartao_programa';
+        if (ehAtendenteCopom(qMin)) return 'atendente_copom';
+        if (ehComarcaArquivamentos(qMin)) return 'comarca_arquivamentos';
+        if (ehAceitabilidadePorLocal(qMin)) return 'aceitabilidade_tco_local';
+        if (ehRankingMilitaresTCO(qMin)) return 'ranking_tco_militares';
+        if (ehVisitasSugeridas(qMin)) return 'visitas_sugeridas';
+        if (ehPrevisao(qMin)) return 'previsao';
+        if (ehLocalizacaoDroga(qMin)) return 'localizacao_droga';
+        if (ehMateriais(qMin)) return 'materiais';
+        if (ehResumo(qMin)) return 'resumo';
+        if (ehComparativo(qMin)) return 'comparativo';
+        return detectarCategoria(qMin); // mvicvli, cvp, tco, armas, drogas, visita, perturbacao, violencia — ou null
+    }
+
+    // bolhaConteudo: opcional — quando informado (chat com UI de bolhas),
+    // liga os botões de 👍/👎 na mesma bolha assim que o log é confirmado.
+    async function registrarInteracaoTelemetria(textoOriginal, bolhaConteudo) {
+        if (!TELEMETRIA_ATIVA) return;
+        try {
+            const qMin = NORM(textoOriginal).toLowerCase();
+            if (identificarConsulta(textoOriginal)) return; // regra 1 — nunca loga consulta de identificador
+
+            const categoria = detectarCategoriaOuIntencaoParaLog(qMin);
+            const payload = {
+                action: 'log_interaction',
+                categoria_detectada: categoria || 'nao_reconhecida',
+                pergunta: categoria ? null : textoOriginal.slice(0, 300), // regra 3
+            };
+            const resp = await fetch(TELEMETRIA_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            });
+            const json = await resp.json().catch(() => null);
+            const logId = json && json.id;
+            if (logId && bolhaConteudo) ligarBotoesFeedback(bolhaConteudo, logId);
+        } catch (e) { /* regra 4 — log é best-effort, nunca propaga erro */ }
+    }
+
+    function ligarBotoesFeedback(bolhaConteudo, logId) {
+        const acoes = bolhaConteudo.parentElement && bolhaConteudo.parentElement.querySelector('.xerife-acoes');
+        if (!acoes || acoes.querySelector('.xerife-feedback')) return;
+        const grupo = document.createElement('span');
+        grupo.className = 'xerife-feedback';
+        grupo.style.cssText = 'margin-left:.5rem;';
+        const botoes = [];
+        const mkBotao = (rotulo, valor) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.style.cssText = 'background:none;border:none;cursor:pointer;font-size:.75rem;padding:0 .2rem;opacity:.6;font-family:inherit;';
+            b.textContent = rotulo;
+            b.title = valor === 'positivo' ? 'Essa resposta ajudou' : 'Essa resposta não ajudou';
+            b.addEventListener('click', () => {
+                botoes.forEach(x => { x.disabled = true; x.style.opacity = '.3'; });
+                b.style.opacity = '1';
+                enviarFeedbackTelemetria(logId, valor);
+            });
+            botoes.push(b);
+            return b;
+        };
+        grupo.appendChild(mkBotao('👍', 'positivo'));
+        grupo.appendChild(mkBotao('👎', 'negativo'));
+        acoes.appendChild(grupo);
+    }
+
+    async function enviarFeedbackTelemetria(logId, valor) {
+        try {
+            await fetch(TELEMETRIA_API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update_feedback', id: logId, feedback_usuario: valor }),
+                keepalive: true,
+            });
+        } catch (e) { /* best-effort */ }
     }
 
     function escHtml(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
@@ -2559,10 +3270,288 @@
         if (painelAberto) setTimeout(() => document.getElementById('xerife-input')?.focus(), 100);
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // API DE DADOS ESTRUTURADOS — pro dashboard JARVIS (page/ia_xerife.html).
+    // Cada função aqui reaproveita a MESMA fonte/regra já usada no chat
+    // (nunca recalcula nada por conta própria) — só devolve OBJETO em vez
+    // de HTML, pra virar widget (KPI/tabela/mapa) em vez de bolha de texto.
+    // ════════════════════════════════════════════════════════════════
+    async function responderTexto(texto) {
+        return await responderPerguntaComposta(texto);
+    }
+    async function obterKPIs(textoPeriodo) {
+        const qMin = NORM(textoPeriodo || '').toLowerCase();
+        const periodo = detectarPeriodo(qMin);
+        const contagens = await contarCategoriasPeriodo(['mvicvli', 'cvp', 'tco', 'armas', 'drogas'], periodo);
+
+        let aceitabilidadeTcoPct = null, totalTcoCruzados = 0;
+        try {
+            const unicos = casosUnicosPorTco(await montarCasosMilitaresTCO());
+            // Ao contrário do texto do chat (onde "sem período" = histórico
+            // inteiro), este é um widget numérico com o período SEMPRE
+            // visível na tela (periodoLabel) — o número tem que bater com
+            // o rótulo mostrado, então filtra sempre por periodo.ini/fim,
+            // mesmo quando o período é o padrão implícito ("este ano").
+            const filtrados = unicos.filter(c => c.data && c.data >= periodo.ini && c.data <= periodo.fim);
+            totalTcoCruzados = filtrados.length;
+            if (totalTcoCruzados > 0) aceitabilidadeTcoPct = Math.round(filtrados.filter(c => c.classif === 'aceitavel').length / totalTcoCruzados * 100);
+        } catch (e) { /* fica null se der erro — nunca inventa número */ }
+
+        return {
+            periodoLabel: periodo.label,
+            mvi: contagens.mvicvli ? contagens.mvicvli.mvi : null,
+            cvli: contagens.mvicvli ? contagens.mvicvli.total : null,
+            cvp: contagens.cvp ? contagens.cvp.total : null,
+            tco: contagens.tco ? contagens.tco.total : null,
+            armas: contagens.armas ? contagens.armas.total : null,
+            drogas: contagens.drogas ? contagens.drogas.total : null,
+            aceitabilidadeTcoPct,
+            totalTcoCruzados,
+        };
+    }
+    // modo: 'aceitavel' | 'falha' | 'ambos' (padrão 'ambos').
+    async function obterRankingTCO(modo, textoPeriodo) {
+        const qMin = NORM(textoPeriodo || '').toLowerCase();
+        let casos;
+        try { casos = await montarCasosMilitaresTCO(); } catch (e) { return []; }
+        const periodo = detectarPeriodo(qMin);
+        const filtrados = periodo.implicito ? casos : casos.filter(c => c.data && c.data >= periodo.ini && c.data <= periodo.fim);
+
+        const contPorMilitar = {};
+        filtrados.forEach(c => {
+            const chave = (c.posto ? c.posto + ' ' : '') + c.nome;
+            if (!contPorMilitar[chave]) contPorMilitar[chave] = { nome: chave, aceitaveis: 0, falhas: 0 };
+            if (c.classif === 'aceitavel') contPorMilitar[chave].aceitaveis++; else contPorMilitar[chave].falhas++;
+        });
+        const criterio = modo === 'falha' ? 'falhas' : 'aceitaveis';
+        return Object.values(contPorMilitar).sort((a, b) => b[criterio] - a[criterio]).slice(0, 10);
+    }
+    // cidade: nome exato (ou o mais próximo — mesmo casamento usado no
+    // resto do Xerife) de uma das cidades da unidade. Sem coords (cidade
+    // fora de CIDADE_COORDS_X) o dashboard simplesmente não desenha o
+    // marcador — nunca inventa latitude/longitude.
+    async function obterHotspots(cidade, textoPeriodo) {
+        const qMin = NORM(textoPeriodo || '').toLowerCase();
+        let dados;
+        try { dados = await calcularCriticidade('', qMin, cidade); } catch (e) { return null; }
+        if (!dados) return null;
+        return { ...dados, coords: coordsPorCidade(dados.cidadeAlvo) };
+    }
+    async function obterVisitasSugeridas(textoLivre) {
+        const q = NORM(textoLivre || '');
+        const qMin = q.toLowerCase();
+        try { return await calcularVisitasSugeridas(q, qMin); }
+        catch (e) { return { cidade: null, rotuloPeriodo: '', resultados: [] }; }
+    }
+    // Cidades com coordenada conhecida (pro mapa desenhar os marcadores de
+    // base antes de qualquer pergunta) — mesma lista de CIDADE_COORDS_X.
+    function obterCidadesComCoordenadas() {
+        return Object.entries(CIDADE_COORDS_X).map(([cidade, coords]) => ({ cidade, coords }));
+    }
+    // Identifica se o texto é uma CONSULTA de cadastro (CPF/processo/
+    // boletim/nome) — mesma detecção usada em processarPergunta(), só que
+    // exposta sem executar a busca (o dashboard usa isso só pra decidir se
+    // mostra o botão de baixar PDF; a resposta em si continua vindo de
+    // responderTexto(), nunca recalculada aqui).
+    function identificarConsulta(textoOriginal) {
+        const qMin = NORM(textoOriginal || '').toLowerCase();
+        const ident = extrairIdentificador(qMin);
+        if (ident) return ident;
+        const nome = extrairNomeProvavel(textoOriginal || '', qMin);
+        if (nome) return { tipo: 'nome', valor: nome };
+        return null;
+    }
+    // Acha a RP (ver MAPA_RP_CIDADES/Cartão Programa) que cobre uma cidade —
+    // comparação sem acento dos dois lados.
+    function encontrarRPPorCidade(cidade) {
+        const alvo = NORM(cidade);
+        for (const [rp, cidades] of Object.entries(MAPA_RP_CIDADES)) {
+            if (cidades.some(c => NORM(c) === alvo)) return rp;
+        }
+        return null;
+    }
+    // Previsão (MVI/CVLI/CVP) recortada por CIDADE — mesma fórmula de
+    // responderPrevisao() (60% média ponderada dos últimos 3 meses + 40%
+    // regressão linear sobre 12 meses), mas responderPrevisao() é sempre
+    // da unidade inteira (sem filtro de cidade) e o relatório por cidade
+    // precisa especificamente disso — por isso a fórmula (não a
+    // CLASSIFICAÇÃO, que continua vindo de isMVI/isCVP) é reaplicada aqui
+    // sobre a lista já filtrada pela cidade. Mudou a fórmula lá, muda aqui.
+    async function calcularPrevisaoCidade(cidade) {
+        const [geral, cvp] = await Promise.all([fetchNode('geral'), fetchNode('cvp')]);
+        const cidadeNorm = NORM(cidade);
+        const dessaCidade = lista => lista.filter(i => NORM(CAMPO(i, 'CIDADE')) === cidadeNorm);
+        const geralCidade = dessaCidade(geral), cvpCidade = dessaCidade(cvp);
+
+        const mviItens = geralCidade.filter(isMVI);
+        const cvliItens = geralCidade.filter(i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINICIDIO') || t.includes('LATROCINIO'); });
+        const cvpItens = cvpCidade.filter(isCVP);
+
+        const hoje = new Date();
+        const meses12 = [];
+        for (let i = 11; i >= 0; i--) { const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1); meses12.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`); }
+        const chaveMes = item => { const d = parseData(CAMPO(item, 'DATA', 'data')); return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : null; };
+        const serie = itens => { const por = {}; itens.forEach(i => { const ch = chaveMes(i); if (ch) por[ch] = (por[ch] || 0) + 1; }); return meses12.map(ch => por[ch] || 0); };
+        const regressaoLinear1 = arr => {
+            const n = arr.length; if (n < 2) return arr[0] ?? 0;
+            let sx = 0, sy = 0, sxy = 0, sx2 = 0;
+            arr.forEach((v, i) => { sx += i; sy += v; sxy += i * v; sx2 += i * i; });
+            const denom = n * sx2 - sx * sx;
+            const m = denom ? (n * sxy - sx * sy) / denom : 0;
+            const b = (sy - m * sx) / n;
+            return Math.round(Math.max(0, m * n + b));
+        };
+        const mediaPonderada3 = arr => {
+            const ult = arr.slice(-3); if (!ult.length) return 0;
+            const pesos = [1, 2, 3].slice(3 - ult.length);
+            const soma = ult.reduce((a, v, i) => a + v * pesos[i], 0);
+            return Math.round(soma / pesos.reduce((a, v) => a + v, 0));
+        };
+        const prever = arr => Math.round(mediaPonderada3(arr) * 0.6 + regressaoLinear1(arr) * 0.4);
+
+        const montar = itens => { const s = serie(itens); return { ultimosTresMeses: s.slice(-3), previstoProximoMes: prever(s) }; };
+        return { mvi: montar(mviItens), cvli: montar(cvliItens), cvp: montar(cvpItens) };
+    }
+    // Relatório agregado de UMA CIDADE em UM ANO — reaproveita 100% das
+    // mesmas fontes/regras já usadas em outras partes do Xerife (contagem
+    // por categoria+cidade+período, cruzamento TCO×Sentenças×Guarnição,
+    // criticidade por bairro/turno, previsão, Cartão Programa) — só agrupa
+    // tudo numa resposta só, pro dashboard montar o relatório detalhado ou
+    // a apresentação narrada.
+    // cidade: null/vazio = RELATÓRIO GERAL DA UNIDADE (agregado de todas
+    // as cidades, sem filtro) — pedido explícito do usuário: "se eu não
+    // falar nenhuma cidade ou unidade, entenda que será o geral da
+    // unidade logada". textoPeriodo: texto livre (não só um ano) — usa o
+    // MESMO detectarPeriodo() do resto do arquivo, que já entende ano
+    // isolado, mês, "este/esse ano", "mês passado" E SEMESTRE ("primeiro
+    // semestre de 2026", "2º semestre") — só passar a frase inteira já
+    // basta, nada de extrair só o ano feito antes.
+    async function obterRelatorioCidade(cidade, textoPeriodo) {
+        const qMinPeriodo = NORM(String(textoPeriodo || '')).toLowerCase();
+        const periodoDet = detectarPeriodo(qMinPeriodo);
+        const periodo = { ini: periodoDet.ini, fim: periodoDet.fim };
+        const ano = periodoDet.ini.getFullYear();
+
+        const contagens = {};
+        for (const chave of ['mvicvli', 'cvp', 'armas', 'drogas']) {
+            const cat = CATEGORIAS[chave];
+            try {
+                const bruto = await cat.fetch();
+                const filtrada = bruto.filter(cat.filtroBase).filter(i => {
+                    const d = parseData(cat.campoData(i));
+                    if (!d || d < periodo.ini || d > periodo.fim) return false;
+                    if (cidade && cat.campoCidade && NORM(cat.campoCidade(i)) !== NORM(cidade)) return false;
+                    return true;
+                });
+                contagens[chave] = { total: filtrada.length, mvi: chave === 'mvicvli' ? filtrada.filter(isMVI).length : null };
+            } catch (e) { contagens[chave] = null; }
+        }
+
+        const tco = { total: null, aceitabilidadePct: null };
+        try {
+            const unicos = casosUnicosPorTco(await montarCasosMilitaresTCO());
+            const doPeriodo = unicos.filter(c => c.data && c.data >= periodo.ini && c.data <= periodo.fim && (!cidade || NORM(c.cidade) === NORM(cidade)));
+            tco.total = doPeriodo.length;
+            if (tco.total > 0) tco.aceitabilidadePct = Math.round(doPeriodo.filter(c => c.classif === 'aceitavel').length / tco.total * 100);
+        } catch (e) { /* fica null */ }
+
+        // Hotspots/previsão/cartão-programa são conceitos POR CIDADE (rankeia
+        // bairro dentro de UMA cidade, ou prevê tendência de UMA cidade) —
+        // sem cidade (relatório geral), ficam de fora; os totais agregados
+        // acima já são o valor real desse caso.
+        let hotspots = null;
+        if (cidade) { try { hotspots = await calcularCriticidade('', qMinPeriodo || ('em ' + ano), cidade); } catch (e) { /* fica null */ } }
+
+        let previsao = null;
+        if (cidade) { try { previsao = await calcularPrevisaoCidade(cidade); } catch (e) { /* fica null */ } }
+
+        let cartaoPrograma = null;
+        if (cidade) {
+            const rp = encontrarRPPorCidade(cidade);
+            if (rp) { try { cartaoPrograma = { rp, dados: await processarCartaoPrograma(rp) }; } catch (e) { /* fica null */ } }
+        }
+
+        return {
+            cidade: cidade || null, ano, periodoLabel: periodoDet.label,
+            mvi: contagens.mvicvli ? contagens.mvicvli.mvi : null,
+            cvli: contagens.mvicvli ? contagens.mvicvli.total : null,
+            cvp: contagens.cvp ? contagens.cvp.total : null,
+            armas: contagens.armas ? contagens.armas.total : null,
+            drogas: contagens.drogas ? contagens.drogas.total : null,
+            tco, hotspots, previsao, cartaoPrograma,
+            coords: cidade ? coordsPorCidade(cidade) : null,
+        };
+    }
+
+    // Relatório agregado de UMA CATEGORIA (ex.: "relatório de violência
+    // doméstica") num período — total, top cidades, tendência mês a mês,
+    // status. Reaproveita o MESMO CATEGORIAS/detectarCategoria/
+    // detectarPeriodo do resto do arquivo — nunca duplica a lógica de
+    // busca/filtro. cidade: opcional (sem cidade = toda a unidade, mesmo
+    // princípio do relatório geral/obterRelatorioCidade). Retorna null se
+    // o texto não corresponder a nenhuma categoria conhecida (chamador
+    // decide o que fazer — nunca inventa uma categoria).
+    async function obterRelatorioCategoria(textoCategoria, textoPeriodo, cidade) {
+        // detectarCategoria espera o texto em MAIÚSCULAS (só NORM, sem
+        // toLowerCase — ver uso real em responderPergunta: `const q =
+        // NORM(textoOriginal)`, sempre maiúsculo) — os nomes em
+        // CATEGORIAS[].nomes também passam por NORM() na comparação, que
+        // já uppercasa; um texto em minúsculas aqui nunca bate com nada.
+        const chave = detectarCategoria(NORM(textoCategoria || ''));
+        if (!chave) return null;
+        const cat = CATEGORIAS[chave];
+        const qMinPeriodo = NORM(String(textoPeriodo || '')).toLowerCase();
+        const periodoDet = detectarPeriodo(qMinPeriodo);
+
+        let bruto = [];
+        try { bruto = await cat.fetch(); } catch (e) { /* fica vazio — relatório mostra zerado, nunca quebra */ }
+        let filtrada = bruto.filter(cat.filtroBase).filter(i => {
+            const d = parseData(cat.campoData(i));
+            return d && d >= periodoDet.ini && d <= periodoDet.fim;
+        });
+        if (cidade && cat.campoCidade) filtrada = filtrada.filter(i => NORM(cat.campoCidade(i)) === NORM(cidade));
+
+        const porCidade = {};
+        if (!cidade && cat.campoCidade) {
+            filtrada.forEach(i => { const c = cat.campoCidade(i) || 'não informado'; porCidade[c] = (porCidade[c] || 0) + 1; });
+        }
+        const topCidades = Object.entries(porCidade).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+        const porStatus = {};
+        if (cat.campoStatus) {
+            filtrada.forEach(i => { const s = cat.campoStatus(i) || 'não informado'; porStatus[s] = (porStatus[s] || 0) + 1; });
+        }
+        const topStatus = Object.entries(porStatus).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+        const meses = listarMesesDoPeriodo(periodoDet);
+        const porMes = meses.map(m => {
+            const ini = new Date(m.ano, m.mes, 1), fim = new Date(m.ano, m.mes + 1, 0, 23, 59, 59, 999);
+            const qtd = filtrada.filter(i => { const d = parseData(cat.campoData(i)); return d && d >= ini && d <= fim; }).length;
+            return { label: `${MESES_EXIBICAO[m.mes]}/${m.ano}`, qtd };
+        });
+
+        return {
+            categoria: cat.label, cidade: cidade || null, periodoLabel: periodoDet.label,
+            total: filtrada.length, topCidades, topStatus, porMes,
+        };
+    }
+    // Versão SÍNCRONA/leve (não busca dado nenhum) de detectarCategoria —
+    // exposta pro dashboard JARVIS conseguir decidir, num detector de
+    // texto puro, se "relatório de X" é uma CATEGORIA (violência
+    // doméstica, drogas...) antes de chamar obterRelatorioCategoria de
+    // verdade (que já faz o fetch pesado).
+    function identificarCategoriaPorTexto(texto) {
+        // Mesmo motivo do comentário em obterRelatorioCategoria — sem
+        // toLowerCase, detectarCategoria precisa do texto em MAIÚSCULAS.
+        const chave = detectarCategoria(NORM(texto || ''));
+        return chave ? CATEGORIAS[chave].label : null;
+    }
+
     // Além de `alternar` (abre/fecha o balão flutuante), expõe um punhado de
-    // internos pra página dedicada de chat mobile (page/chat-mobile.html) e
-    // pro módulo de análise de documentos (js/xerife-documentos.js)
-    // reaproveitarem o MESMO motor de perguntas/respostas/IA local, em vez
+    // internos pra página dedicada de chat mobile (page/chat-mobile.html),
+    // pro módulo de análise de documentos (js/xerife-documentos.js) e pro
+    // dashboard JARVIS (js/components/jarvis-dashboard.js) reaproveitarem o
+    // MESMO motor de perguntas/respostas/IA local/regras de negócio, em vez
     // de duplicar essa lógica numa UI separada.
     window.Xerife = {
         alternar,
@@ -2572,5 +3561,22 @@
         escHtml,
         gerarComIA,
         obterEstadoIA: () => llmEstado,
+        obterProgressoIA: () => llmProgresso,
+        responderTexto,
+        obterKPIs,
+        obterRankingTCO,
+        obterHotspots,
+        obterVisitasSugeridas,
+        obterCidadesComCoordenadas,
+        identificarConsulta,
+        obterRelatorioCidade,
+        obterRelatorioCategoria,
+        identificarCategoriaPorTexto,
+        obterCumprimentoCartoes,
+        // Fire-and-forget — ver doutrina de privacidade completa acima de
+        // registrarInteracaoTelemetria(). texto: pergunta original;
+        // bolhaConteudo é opcional (só o chat com bolhas usa, pra ligar os
+        // botões de 👍/👎 — o dashboard JARVIS chama sem esse 2º argumento).
+        registrarInteracaoTelemetria,
     };
 })();

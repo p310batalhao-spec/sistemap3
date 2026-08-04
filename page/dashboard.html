@@ -16,76 +16,9 @@
 
 <body>
     <script src="../js/core/session.js"></script>
-    <header>
-        <div class="header-info-left">
-            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
-            <div class="cabecalhotexto">
-                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3 id="cabecalho-unidade"></h3>
-            </div> <!--termina cabecalhotexto-->
-        </div><!--termina header-info-left-->
-
-        <div class="header-info-right">
-            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
-                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-            </button>
-            <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info"></div>
-        </div><!--termina header-info-right-->
-    </header>
+    <script src="../js/core/header-nav.js" data-active="dashboard-self" data-extra='[{"id":"dashboard-self","href":"page/dashboard.html","label":"Dashboard","icone":"https://img.icons8.com/ios/50/performance-macbook.png","w":50,"h":50,"depoisDe":"home"}]'></script>
 
     <section class="pagecomplete">
-        <nav class="navegacao">
-            <a href="../index.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
-                    alt="home--v1" />
-                <p>Home</p>
-            </a><!--termina home-->
-            <a href="../page/dashboard.html" class="active">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/performance-macbook.png"
-                    alt="performance-macbook" />
-                <p>Dashboard</p>
-            </a>
-            <a href="../page/dashboard-cruzado.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
-                <p>Dashboard Cruzado</p>
-            </a><!--termina dashboard-->
-            <a href="../page/cadastroocorrencias.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
-                <p>Cadastro de Ocorrências</p>
-            </a><!--termina cadastroocorrencias-->
-            <a href="../page/materiais.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
-                <p>Materiais Apreendidos</p>
-            </a><!--termina materiais apreendidos-->
-            <a href="../page/eventos.html">
-                <img width="32" height="32"
-                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
-                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
-                <p>Eventos</p>
-            </a><!--termina eventos-->
-            <a href="../page/instrucoes.html">
-                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
-                <p>Instrução</p>
-            </a>
-            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
-                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
-                <p>Chat Xerife</p>
-            </a><!--termina chat xerife-->
-            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
-                <p>Soluções IA</p>
-            </a><!--termina solucoes ia-->
-            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
-                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
-                <p>Usuários</p>
-            </a>
-            <button id="btn-logout" class="btn-logout">
-                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
-                <p>Sair</p>
-            </button><!--termina sair-->
-        </nav><!--termina navegacao-->
         <main>
             <div class="saudacao">
                 <h2>Dashboard de Análise</h2>
@@ -108,38 +41,9 @@
     </footer>
 
     <script>
-        // --- FUNÇÕES DE UTILIDADE (MANTIDAS) ---
-
-        function atualizarRelogio() {
-            const agora = new Date();
-            const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-            const dataFormatada = agora.toLocaleDateString('pt-BR', opcoesData);
-            const horaFormatada = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById('relogio').innerHTML = `${dataFormatada} <br> ${horaFormatada}`;
-        }
-
-        function checkLogin() {
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            const userInfoEl = document.getElementById('user-info');
-
-            if (graduacao && nomeGuerra) {
-                userInfoEl.innerHTML = `
-                <p>Bem Vindo(a):</p>
-                <p class="user-nome">${graduacao} ${nomeGuerra}</p>
-            `;
-            } else {
-                alert('Sessão expirada ou não iniciada. Redirecionando para a tela de Login.');
-                window.location.href = 'login.html';
-            }
-        }
-
-         document.addEventListener('DOMContentLoaded', function () {
-            // Inicializa o Relógio
-            atualizarRelogio();
-            setInterval(atualizarRelogio, 1000);
-
-            // Verifica Login
-            checkLogin();
+        // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
+        // js/core/header-nav.js — aqui só falta a guarda de autenticação.
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!P3.requireAuth()) return;
         });
     </script>

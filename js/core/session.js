@@ -119,6 +119,11 @@
     function logout(opts) {
         SESSION_KEYS.forEach(k => localStorage.removeItem(k));
         localStorage.removeItem(INATIVIDADE_CHAVE);
+        // Token do login cruzado no Íris PMAL (ver page/login.html) — sai
+        // junto da sessão do P3, senão ficaria válido (até expirar sozinho,
+        // 7 dias) mesmo depois do usuário deslogar.
+        localStorage.removeItem('irisToken');
+        localStorage.removeItem('irisUnidadeChave');
         Object.keys(sessionStorage)
             .filter(k => k.indexOf('p3_unidade_config_') === 0 || k.indexOf('p3_xerife_historico_') === 0)
             .forEach(k => sessionStorage.removeItem(k));
@@ -196,6 +201,23 @@
             return null;
         }
         return session;
+    }
+
+    // Nível "copom": diferente de requireAdmin()/requireUnidade10bpm()
+    // (que bloqueiam UMA página específica pra quem NÃO tem o nível), aqui
+    // é o oposto — bloqueia TODAS as páginas do sistema pra quem TEM esse
+    // nível, exceto a única liberada (rastreamento de guarnição). Chamada
+    // incondicionalmente no fim deste arquivo, então roda em toda página
+    // que inclui session.js, sem precisar adicionar nada em cada uma.
+    const PAGINA_UNICA_COPOM = 'rastreamento-guarnicao.html';
+    function restringirNivelCopom() {
+        document.addEventListener('DOMContentLoaded', () => {
+            const session = getSession();
+            if (!session || session.nivel !== 'copom') return;
+            const pagina = (global.location.pathname.split('/').pop() || '').toLowerCase();
+            if (pagina === PAGINA_UNICA_COPOM || pagina === 'login.html') return;
+            global.location.href = estaEmSubpasta() ? PAGINA_UNICA_COPOM : 'page/' + PAGINA_UNICA_COPOM;
+        });
     }
 
     function mergeSobreDefault(base, override) {
@@ -308,7 +330,7 @@
     // liberado — o padrão é NÃO restringir, pra não travar unidades já em
     // uso antes dessa função existir. Só entra em vigor depois que o admin
     // salva uma lista explícita (mesmo vazia) para aquela unidade.
-    const PAGINAS_SEMPRE_LIBERADAS = ['index.html', 'login.html', 'admin-usuarios.html', 'admin-unidades.html', 'chat-mobile.html', ''];
+    const PAGINAS_SEMPRE_LIBERADAS = ['index.html', 'login.html', 'admin-usuarios.html', 'admin-unidades.html', 'chat-mobile.html', 'ia_xerife.html', ''];
 
     async function restringirAcessoPorPagina() {
         const session = getSession();
@@ -350,12 +372,25 @@
     function injetarXerife() {
         document.addEventListener('DOMContentLoaded', () => {
             if (!getSession()) return;
-            // page/chat-mobile.html já É o chat do Xerife em tela cheia (inclui
-            // js/xerife.js diretamente) — sem essa guarda, apareceria um botão
-            // flutuante duplicado por cima da própria tela de chat.
+            // page/chat-mobile.html e page/ia_xerife.html já SÃO o Xerife em
+            // tela cheia (incluem js/xerife.js diretamente) — sem essa
+            // guarda, apareceria um botão flutuante duplicado por cima da
+            // própria tela. login.html nunca deve mostrar o Xerife — não faz
+            // sentido conversar com o assistente antes de entrar no sistema,
+            // e uma sessão antiga ainda em localStorage (sem logout
+            // explícito) podia fazer o botão aparecer ali por engano.
             const pagina = (global.location.pathname.split('/').pop() || '').toLowerCase();
-            if (pagina === 'chat-mobile.html') return;
+            if (pagina === 'chat-mobile.html' || pagina === 'ia_xerife.html' || pagina === 'login.html') return;
             if (document.getElementById('xerife-botao')) return;
+            // Página carregada DENTRO de um iframe (single embed ou split do
+            // IA Xerife, ver js/components/jarvis-dashboard.js) — nunca
+            // injeta o botão flutuante aqui: a esfera de partículas do
+            // documento PAI já É o Xerife ativo. Sem essa guarda, tinha 2
+            // interfaces de Xerife coexistindo (o botão/balão desta página
+            // por cima da esfera externa) — pedido explícito do usuário:
+            // "no mapa ou em qualquer página renderizada dentro do IA
+            // Xerife eu quero que funcione somente o globo de partículas".
+            try { if (window.self !== window.top) return; } catch (e) { return; } // cross-origin (não deveria acontecer) — mais seguro não injetar
 
             const prefixo = estaEmSubpasta() ? '../' : '';
             // Logo em img/xerife-logo.png; se ainda não existir, cai pro emoji
@@ -434,5 +469,6 @@
     exibirUnidadeNoHeader();
     iniciarMonitorInatividade();
     restringirAcessoPorPagina();
+    restringirNivelCopom();
     injetarXerife();
 })(window);

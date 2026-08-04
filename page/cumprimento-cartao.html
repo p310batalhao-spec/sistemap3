@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Cumprimento do Cartão-Programa</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        .cc-secao {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 10px;
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .cc-secao h3 { margin-top: 0; }
+
+        .cc-ajuda { font-size: .82rem; color: var(--p3-text-muted, #666); margin-top: -.3rem; }
+
+        .cc-tabela { width: 100%; border-collapse: collapse; margin: .6rem 0; }
+
+        .cc-tabela th, .cc-tabela td {
+            border: 1px solid var(--p3-border, #ddd);
+            padding: .45rem .6rem;
+            text-align: left;
+            font-size: .85rem;
+        }
+
+        .cc-tabela select, .cc-tabela input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid var(--p3-border, #ccc);
+            border-radius: 4px;
+            padding: .3rem .4rem;
+            font-size: .85rem;
+        }
+
+        .cc-linha-controles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .8rem;
+            align-items: center;
+            margin-bottom: .6rem;
+        }
+
+        .cc-linha-controles label {
+            display: flex;
+            flex-direction: column;
+            font-size: .78rem;
+            color: var(--p3-text-muted, #666);
+            gap: .2rem;
+        }
+
+        .cc-linha-controles select, .cc-linha-controles input {
+            padding: .4rem .5rem;
+        }
+
+        .cc-linha-controles select.cc-select-largo { min-width: 240px; }
+
+        .cc-resumo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .cc-card {
+            flex: 1;
+            min-width: 140px;
+            background: var(--p3-surface-2, #f4f6f8);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 8px;
+            padding: .8rem 1rem;
+            text-align: center;
+        }
+
+        .cc-card h4 { margin: 0 0 .3rem; font-size: .78rem; color: var(--p3-text-muted, #666); }
+
+        .cc-card p { margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--p3-blue-300, #003366); }
+
+        button.cc-btn {
+            background-color: #003366;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: .55rem 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            align-self: flex-end;
+        }
+
+        button.cc-btn:hover { background-color: #002244; }
+
+        button.cc-btn:disabled { opacity: .7; cursor: default; }
+
+        #cc-mapa-status { margin-left: .6rem; font-size: .85rem; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/cumprimento-core.js"></script>
+    <script src="../js/core/header-nav.js" data-active="cumprimento" data-extra='[{"id":"nav-ia-xerife","href":"page/ia_xerife.html","label":"IA Xerife","icone":"../img/xerife-logo.png","w":48,"h":48,"titulo":"IA Xerife — voz, mapa tático, apresentações","depoisDe":"chat-xerife"}]'></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>Cumprimento do Cartão-Programa / OPO</h2>
+                <p>Cruza o cronograma salvo com o histórico REAL da planilha (aba rastreamento_historico) num período — ex.: "quanto % de julho a RP 01 patrulhou dentro do perímetro".</p>
+            </div>
+
+            <details class="cc-secao" id="cc-mapeamento">
+                <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">Mapeamento cidade ↔ guarnição</summary>
+                <p class="cc-ajuda">Escolha a guarnição responsável por cada cidade/RP — lista vem direto da planilha de rastreamento (posições ativas hoje). Esse mapeamento é o MESMO usado por Rastreamento e Cumprimento — salvar aqui já vale nas duas telas, sem precisar refazer.</p>
+                <table class="cc-tabela">
+                    <thead><tr><th>Cidade / RP do cartão</th><th>Guarnição responsável</th></tr></thead>
+                    <tbody id="cc-mapa-body"></tbody>
+                </table>
+                <button type="button" class="cc-btn" id="cc-btn-salvar-mapa">💾 Salvar mapeamento</button>
+                <span id="cc-mapa-status"></span>
+            </details>
+
+            <section class="cc-secao" id="cc-analise-guarnicao">
+                <h3>Cumprimento por guarnição</h3>
+                <p class="cc-ajuda">
+                    Escolha a guarnição — o sistema já acha o cartão-programa correspondente (pelo mapeamento acima)
+                    e calcula quanto foi cumprido no período. "Militar" é opcional: restringe aos dias em que ele foi
+                    confirmado nessa guarnição (cruzando com as vistorias da frota).
+                </p>
+                <div class="cc-linha-controles">
+                    <label>Guarnição
+                        <select id="cc-guarnicao-select" class="cc-select-largo"><option value="">-- selecione --</option></select>
+                    </label>
+                    <label>Militar (opcional)
+                        <input type="text" id="cc-analise-militar" placeholder="ex.: Sd Fulano" style="width:180px;">
+                    </label>
+                    <label>De
+                        <input type="date" id="cc-analise-data-ini">
+                    </label>
+                    <label>Até
+                        <input type="date" id="cc-analise-data-fim">
+                    </label>
+                    <label>Tempo mínimo (min)
+                        <input type="number" id="cc-analise-limiar" value="15" min="1" style="width:70px;">
+                    </label>
+                    <button type="button" class="cc-btn" id="cc-btn-analisar-guarnicao">🔎 Analisar cumprimento</button>
+                </div>
+                <p class="cc-ajuda" id="cc-guarnicao-info"></p>
+            </section>
+
+            <details class="cc-secao" id="cc-tabela-secao">
+                <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">Cartões-programa e OPOs salvos</summary>
+                <p class="cc-ajuda">Do mais recente pro mais antigo. Pesquisa direta em todos os campos ao mesmo tempo — cidade, RP, mês, data, bairro ou horário de algum bloco.</p>
+                <div class="cc-linha-controles">
+                    <label style="flex:1;min-width:260px;">Pesquisar
+                        <input type="text" id="cc-tabela-busca" placeholder="ex.: RP 01, Palmeira, 07/2026, Centro, 19:00...">
+                    </label>
+                    <button type="button" class="cc-btn" id="cc-btn-tabela-limpar">✕ Limpar</button>
+                </div>
+                <p class="cc-ajuda" id="cc-tabela-contagem"></p>
+                <div style="overflow-x:auto;">
+                    <table class="cc-tabela">
+                        <thead>
+                            <tr><th>Tipo</th><th>Cidade / RP</th><th>Data</th><th>Criado em</th><th>Válido até</th><th>Guarnição</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody id="cc-tabela-cartoes-body"></tbody>
+                    </table>
+                </div>
+            </details>
+
+            <details class="cc-secao" id="cc-lista">
+                <summary style="cursor:pointer;font-weight:700;font-size:1.05rem;">Buscar um cartão/OPO específico (avançado)</summary>
+                <p class="cc-ajuda">Pra conferir uma OPO, ou um cartão específico fora do mapeamento padrão — a busca por guarnição acima já cobre o uso comum.</p>
+                <div class="cc-linha-controles">
+                    <label>Mês do cartão salvo
+                        <input type="month" id="cc-filtro-mes">
+                    </label>
+                    <label>Cidade
+                        <select id="cc-filtro-cidade"><option value="">-- todas --</option></select>
+                    </label>
+                    <button type="button" class="cc-btn" id="cc-btn-limpar-filtros">✕ Limpar filtros</button>
+                </div>
+                <div class="cc-linha-controles">
+                    <label style="flex:1;min-width:280px;">Cartão / OPO salvo
+                        <select id="cc-select-cartao">
+                            <option value="">-- selecione um cartão ou OPO salvo --</option>
+                        </select>
+                    </label>
+                    <label>Guarnição/viatura
+                        <select id="cc-analise-viatura" class="cc-select-largo"><option value="">-- selecione o cartão acima primeiro --</option></select>
+                    </label>
+                    <button type="button" class="cc-btn" id="cc-btn-analisar">🔎 Analisar este cartão</button>
+                </div>
+                <p class="cc-ajuda" id="cc-lista-vazia" style="display:none;">Nenhum cartão/OPO salvo pra esse filtro — gere e salve um em Cartão-Programa ou OPO Inteligente, ou ajuste o filtro de mês/cidade.</p>
+            </details>
+
+            <section class="cc-secao" id="cc-resultado" style="display:none;">
+                <h3>Resultado</h3>
+                <p class="cc-ajuda" id="cc-resultado-info"></p>
+                <div class="cc-resumo">
+                    <div class="cc-card"><h4>% Cumprido no período</h4><p id="cc-pct-cumprido">—</p></div>
+                    <div class="cc-card"><h4>% Falha no período</h4><p id="cc-pct-falha">—</p></div>
+                    <div class="cc-card"><h4>Dias × blocos avaliados</h4><p id="cc-total-blocos" style="font-size:1.2rem;">—</p></div>
+                </div>
+                <table class="cc-tabela">
+                    <thead>
+                        <tr><th>Horário</th><th>Missão</th><th>Bairros/Cidade</th><th>Dias cumpridos</th><th>% do bloco</th></tr>
+                    </thead>
+                    <tbody id="cc-blocos-body"></tbody>
+                </table>
+            </section>
+
+            <section class="cc-secao" id="cc-busca-militar">
+                <h3>Buscar por militar (todas as guarnições)</h3>
+                <p class="cc-ajuda">
+                    Sem precisar saber de antemão em qual RP ele estava — cruza as VISTORIAS de viatura (frota) pra
+                    achar em quais guarnições esse militar apareceu no período e calcula o cumprimento de cada uma.
+                </p>
+                <div class="cc-linha-controles">
+                    <label>Militar
+                        <input type="text" id="cc-militar-nome" placeholder="ex.: Sd Fulano" style="width:200px;">
+                    </label>
+                    <label>De
+                        <input type="date" id="cc-militar-data-ini">
+                    </label>
+                    <label>Até
+                        <input type="date" id="cc-militar-data-fim">
+                    </label>
+                    <label>Tempo mínimo (min)
+                        <input type="number" id="cc-militar-limiar" value="15" min="1" style="width:70px;">
+                    </label>
+                    <button type="button" class="cc-btn" id="cc-btn-buscar-militar">🔎 Buscar por militar</button>
+                </div>
+                <div id="cc-militar-resultado"></div>
+            </section>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+        <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script>
+        // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
+        // js/core/header-nav.js.
+        P3.requireAuth();
+
+        // Mesma lista de valores do <select id="select-rp"> de
+        // relatorios/cartaoprograma.html — mantém em sincronia se aquele
+        // dropdown mudar.
+        const CIDADES_DROPDOWN = [
+            'PALMEIRA DOS ÍNDIOS (RP 01)', 'PALMEIRA DOS ÍNDIOS (RP 02)', 'BELÉM (RP)', 'CACIMBINHAS (RP)',
+            'MINADOR DO NEGRÃO (RP)', 'MAR VERMELHO (RP)', 'PAULO JACINTO (RP)', "TANQUE D'ARCA (RP)",
+            'MARIBONDO (RP)', 'ESTRELA DE ALAGOAS (RP)', 'IGACI (RP)', 'QUEBRANGULO (RP)',
+        ];
+
+        let cfgGlobal = null;
+        let cartoesCache = [];
+        let guarnicoesPlanilhaCache = {}; // nome normalizado -> {nome, idRadio, ...}
+        let mapaAtualCache = {}; // RP/cidade -> guarnição (rp_viatura_map), sempre a versão mais recente salva
+        let cartaoDaGuarnicaoAtual = null; // cartão resolvido pra guarnição escolhida em "Cumprimento por guarnição"
+
+        function escHtml(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // "AAAA-MM-DD" no fuso LOCAL, não UTC — .toISOString() converte pra
+        // UTC e, depois das 21h no horário do 10º BPM (UTC-3), já mostra o
+        // dia seguinte (ver mesmo bug corrigido em rastreamento-guarnicao.html).
+        function fmtDataLocalISO(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        function primeiroEUltimoDiaDoMesAtual() {
+            const hoje = new Date();
+            const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+            return { ini: fmtDataLocalISO(ini), fim: fmtDataLocalISO(fim) };
+        }
+
+        // ── Mapeamento cidade ↔ guarnição (dropdown com nomes reais da planilha) ──
+        async function carregarGuarnicoesPlanilha() {
+            try {
+                guarnicoesPlanilhaCache = window.CumprimentoCore ? await window.CumprimentoCore.obterGuarnicoesPlanilha() : {};
+            } catch (e) { guarnicoesPlanilhaCache = {}; }
+        }
+
+        function opcoesGuarnicoesHtml(selecionado) {
+            const nomes = Object.values(guarnicoesPlanilhaCache).map(g => g.nome).sort();
+            let html = '<option value="">-- selecione --</option>';
+            nomes.forEach(n => {
+                html += `<option value="${escHtml(n)}" ${n === selecionado ? 'selected' : ''}>${escHtml(n)}</option>`;
+            });
+            // Garante que o valor salvo apareça mesmo se não estiver ativo na planilha agora
+            if (selecionado && !nomes.includes(selecionado)) {
+                html += `<option value="${escHtml(selecionado)}" selected>${escHtml(selecionado)} (fora de serviço agora)</option>`;
+            }
+            return html;
+        }
+
+        async function carregarMapeamento() {
+            const dbUrl = cfgGlobal.firebase.databaseURL;
+            const mapa = window.CumprimentoCore ? await window.CumprimentoCore.obterMapaViatura(dbUrl) : {};
+            mapaAtualCache = mapa;
+            const tbody = document.getElementById('cc-mapa-body');
+            tbody.innerHTML = '';
+            CIDADES_DROPDOWN.forEach(cidade => {
+                const tr = document.createElement('tr');
+                const tdCidade = document.createElement('td');
+                tdCidade.textContent = cidade;
+                const tdViatura = document.createElement('td');
+                const select = document.createElement('select');
+                select.innerHTML = opcoesGuarnicoesHtml(mapa[cidade] || '');
+                select.dataset.cidade = cidade;
+                tdViatura.appendChild(select);
+                tr.appendChild(tdCidade);
+                tr.appendChild(tdViatura);
+                tbody.appendChild(tr);
+            });
+            popularSelectGuarnicoes();
+        }
+
+        // <select> de guarnição pra "Cumprimento por guarnição" — só os
+        // nomes CANÔNICOS que aparecem como valor no mapeamento (ex.: "RP
+        // 01".."RP 09"), não a lista de guarnições ativas na planilha agora
+        // (que muda por turno) — aqui é sobre o mapeamento fixo, não quem
+        // está de plantão neste minuto.
+        function popularSelectGuarnicoes() {
+            const select = document.getElementById('cc-guarnicao-select');
+            const atual = select.value;
+            const nomes = Array.from(new Set(Object.values(mapaAtualCache).filter(Boolean))).sort();
+            select.innerHTML = '<option value="">-- selecione --</option>' +
+                nomes.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+            if (nomes.includes(atual)) select.value = atual;
+        }
+
+        async function salvarMapeamento() {
+            const dbUrl = cfgGlobal.firebase.databaseURL;
+            const mapa = {};
+            document.querySelectorAll('#cc-mapa-body select').forEach(sel => {
+                if (sel.value) mapa[sel.dataset.cidade] = sel.value;
+            });
+            const status = document.getElementById('cc-mapa-status');
+            status.textContent = 'Salvando...';
+            try {
+                const res = await fetch(`${dbUrl}/rp_viatura_map.json`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(mapa),
+                });
+                status.textContent = res.ok ? '✅ Salvo!' : '⚠️ Falha ao salvar.';
+                if (res.ok) { mapaAtualCache = mapa; popularSelectGuarnicoes(); }
+            } catch (e) { status.textContent = '⚠️ Falha ao salvar.'; }
+            setTimeout(() => { status.textContent = ''; }, 3000);
+        }
+
+        // ── Lista de cartões/OPOs salvos (pra escolher QUAL cronograma analisar) ──
+        async function carregarCartoes() {
+            const dbUrl = cfgGlobal.firebase.databaseURL;
+            try {
+                const res = await fetch(`${dbUrl}/cartoes_programa.json`);
+                const dados = res.ok ? (await res.json()) : {};
+                cartoesCache = Object.entries(dados || {})
+                    .map(([id, v]) => Object.assign({ id }, v))
+                    .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
+            } catch (e) { cartoesCache = []; }
+
+            popularFiltroCidade();
+            aplicarFiltrosLista();
+            renderizarTabelaCartoes();
+        }
+
+        // ── Tabela de cartões/OPOs salvos: pesquisa direta (1 campo só, olha
+        // tipo/cidade/RP/data/mês/bairro/horário de cada bloco de uma vez) +
+        // exclusão. Concatena tudo que é buscável de um cartão num texto só
+        // normalizado (sem acento/maiúscula) — a busca é um includes() nesse
+        // texto, sem precisar de campos separados por coluna.
+        function textoBuscavelCartao(c) {
+            const partes = [c.tipo === 'opo' ? 'OPO' : 'CARTAO', c.cidade, c.rpSelecionado, c.data, c.viaturaResponsavel];
+            const dCriado = c.criadoEm ? new Date(c.criadoEm) : null;
+            if (dCriado && !isNaN(dCriado.getTime())) {
+                partes.push(dCriado.toLocaleDateString('pt-BR'));
+                partes.push(String(dCriado.getMonth() + 1).padStart(2, '0') + '/' + dCriado.getFullYear());
+            }
+            if (c.tipo === 'opo') {
+                (c.alocacoes || []).forEach(a => partes.push(a.cidade, a.guarnicao, a.ini, a.fim));
+            } else {
+                (c.cronograma || []).forEach(b => partes.push(b.det, b.miss, b.ini, b.fim));
+            }
+            const texto = partes.filter(Boolean).join(' ');
+            return window.CumprimentoCore ? window.CumprimentoCore.normalizarStr(texto) : texto.toUpperCase();
+        }
+
+        function renderizarTabelaCartoes() {
+            const termoRaw = document.getElementById('cc-tabela-busca').value.trim();
+            const termo = window.CumprimentoCore ? window.CumprimentoCore.normalizarStr(termoRaw) : termoRaw.toUpperCase();
+            const filtrados = cartoesCache.filter(c => !termo || textoBuscavelCartao(c).includes(termo));
+
+            const tbody = document.getElementById('cc-tabela-cartoes-body');
+            tbody.innerHTML = '';
+            filtrados.forEach(c => {
+                const tipoLabel = c.tipo === 'opo' ? 'OPO' : 'Cartão';
+                const dCriado = c.criadoEm ? new Date(c.criadoEm) : null;
+                const criadoTxt = dCriado && !isNaN(dCriado.getTime()) ? dCriado.toLocaleDateString('pt-BR') : '—';
+                const validoTxt = c.validoAte ? new Date(c.validoAte).toLocaleDateString('pt-BR') : '—';
+                const valido = window.CumprimentoCore ? window.CumprimentoCore.ehCartaoValido(c) : true;
+                const guarnicaoTxt = c.tipo === 'opo' ? `${(c.alocacoes || []).length} cidade(s)` : (c.viaturaResponsavel || '—');
+                const cidadeRp = c.tipo === 'opo' ? (c.cidade || '—') : `${c.cidade || ''} (${c.rpSelecionado || '—'})`;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escHtml(tipoLabel)}</td>
+                    <td>${escHtml(cidadeRp)}</td>
+                    <td>${escHtml(c.data || '—')}</td>
+                    <td>${escHtml(criadoTxt)}</td>
+                    <td>${escHtml(validoTxt)}${valido ? '' : ' ⚠️ expirado'}</td>
+                    <td>${escHtml(guarnicaoTxt)}</td>
+                    <td><button type="button" class="cc-btn" style="background:#a30000;padding:.35rem .7rem;font-size:.78rem;" data-excluir-id="${escHtml(c.id)}">🗑️ Excluir</button></td>`;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('cc-tabela-contagem').textContent =
+                `${filtrados.length} de ${cartoesCache.length} salvo(s)${termoRaw ? ` — filtrado por "${termoRaw}"` : ''}`;
+        }
+
+        async function excluirCartao(id) {
+            const cartao = cartoesCache.find(c => c.id === id);
+            if (!cartao) return;
+            const label = `${cartao.tipo === 'opo' ? 'OPO' : 'Cartão'} — ${cartao.cidade || ''} (${cartao.data || cartao.criadoEm || ''})`;
+            if (!confirm(`Excluir definitivamente "${label}"? Essa ação não pode ser desfeita.`)) return;
+            try {
+                const dbUrl = cfgGlobal.firebase.databaseURL;
+                const res = await fetch(`${dbUrl}/cartoes_programa/${id}.json`, { method: 'DELETE' });
+                if (!res.ok) { alert('Falha ao excluir — tente novamente.'); return; }
+                cartoesCache = cartoesCache.filter(c => c.id !== id);
+                popularFiltroCidade();
+                aplicarFiltrosLista();
+                renderizarTabelaCartoes();
+            } catch (e) {
+                console.error(e);
+                alert('Falha ao excluir — tente novamente.');
+            }
+        }
+
+        function popularFiltroCidade() {
+            const select = document.getElementById('cc-filtro-cidade');
+            const atual = select.value;
+            const cidades = Array.from(new Set(cartoesCache.map(c => c.cidade).filter(Boolean))).sort();
+            select.innerHTML = '<option value="">-- todas --</option>' +
+                cidades.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+            if (cidades.includes(atual)) select.value = atual;
+        }
+
+        function aplicarFiltrosLista() {
+            const mes = document.getElementById('cc-filtro-mes').value;
+            const cidade = document.getElementById('cc-filtro-cidade').value;
+
+            const filtrados = cartoesCache.filter(c => {
+                if (cidade && c.cidade !== cidade) return false;
+                if (mes) {
+                    const d = c.criadoEm ? new Date(c.criadoEm) : null;
+                    if (!d || isNaN(d.getTime())) return false;
+                    const chaveMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                    if (chaveMes !== mes) return false;
+                }
+                return true;
+            });
+
+            const select = document.getElementById('cc-select-cartao');
+            select.innerHTML = '<option value="">-- selecione um cartão ou OPO salvo --</option>';
+            filtrados.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                const tipoLabel = c.tipo === 'opo' ? 'OPO' : 'Cartão';
+                const viaturaLabel = c.tipo === 'opo'
+                    ? `${(c.alocacoes || []).length} cidade(s)`
+                    : (c.viaturaResponsavel || 'sem guarnição');
+                const valido = window.CumprimentoCore ? window.CumprimentoCore.ehCartaoValido(c) : true;
+                opt.textContent = `[${tipoLabel}] ${c.cidade || ''} — ${c.data || ''} (${viaturaLabel})${valido ? '' : ' — EXPIRADO'}`;
+                select.appendChild(opt);
+            });
+            document.getElementById('cc-lista-vazia').style.display = filtrados.length ? 'none' : 'block';
+        }
+
+        function limparFiltrosLista() {
+            document.getElementById('cc-filtro-mes').value = '';
+            document.getElementById('cc-filtro-cidade').value = '';
+            aplicarFiltrosLista();
+        }
+
+        // Ao escolher um cartão salvo, pré-seleciona a guarnição responsável
+        // (só como sugestão — o campo continua um <select> livre, então dá
+        // pra trocar por qualquer outra guarnição/viatura da planilha).
+        function aoEscolherCartao() {
+            const id = document.getElementById('cc-select-cartao').value;
+            const selectViatura = document.getElementById('cc-analise-viatura');
+            if (!id) {
+                selectViatura.innerHTML = '<option value="">-- selecione o cartão acima primeiro --</option>';
+                return;
+            }
+            const cartao = cartoesCache.find(c => c.id === id);
+            // Prefere o mapeamento ATUAL (rp_viatura_map) sobre o valor
+            // congelado no cartão — se alguém corrigir o mapeamento depois
+            // de o cartão já ter sido salvo, essa tela já reflete a
+            // correção sem precisar gerar o cartão de novo.
+            const sugestao = cartao && cartao.tipo !== 'opo'
+                ? (window.CumprimentoCore
+                    ? window.CumprimentoCore.resolverViaturaPorRP(cartao.rpSelecionado, mapaAtualCache, cartao.viaturaResponsavel)
+                    : cartao.viaturaResponsavel) || ''
+                : '';
+            selectViatura.innerHTML = opcoesGuarnicoesHtml(sugestao);
+        }
+
+        // ── Cumprimento por guarnição (fluxo principal) ──────────────────
+        // Acha, no mapeamento ATUAL, quais chaves de RP/cidade apontam pra
+        // essa guarnição (pode ser mais de uma — ex.: RP 04 = BELÉM +
+        // TANQUE D'ARCA).
+        function resolverRPsDaGuarnicao(guarnicao) {
+            if (!window.CumprimentoCore) return [];
+            const alvo = window.CumprimentoCore.normalizarStr(guarnicao);
+            return Object.entries(mapaAtualCache)
+                .filter(([, v]) => window.CumprimentoCore.normalizarStr(v) === alvo)
+                .map(([k]) => k);
+        }
+
+        // Entre os cartões (tipo:'cartao', válidos) salvos pras RPs dessa
+        // guarnição, pega o mais recente.
+        function acharCartaoDaGuarnicao(guarnicao) {
+            const rps = resolverRPsDaGuarnicao(guarnicao);
+            if (!rps.length) return null;
+            const candidatos = cartoesCache
+                .filter(c => c.tipo !== 'opo' && rps.includes(c.rpSelecionado))
+                .filter(c => !window.CumprimentoCore || window.CumprimentoCore.ehCartaoValido(c))
+                .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
+            return candidatos[0] || null;
+        }
+
+        function aoEscolherGuarnicao() {
+            const guarnicao = document.getElementById('cc-guarnicao-select').value;
+            const info = document.getElementById('cc-guarnicao-info');
+            if (!guarnicao) { info.textContent = ''; cartaoDaGuarnicaoAtual = null; return; }
+            cartaoDaGuarnicaoAtual = acharCartaoDaGuarnicao(guarnicao);
+            if (!cartaoDaGuarnicaoAtual) {
+                info.textContent = `⚠️ Nenhum cartão-programa válido salvo pra ${guarnicao} — gere e salve um em Cartão-Programa primeiro.`;
+            } else {
+                const dataCriacao = cartaoDaGuarnicaoAtual.criadoEm ? new Date(cartaoDaGuarnicaoAtual.criadoEm).toLocaleDateString('pt-BR') : '?';
+                info.textContent = `Cartão-programa encontrado: ${cartaoDaGuarnicaoAtual.cidade} (${cartaoDaGuarnicaoAtual.rpSelecionado}) — salvo em ${dataCriacao}.`;
+            }
+        }
+
+        async function analisarPorGuarnicao() {
+            const guarnicao = document.getElementById('cc-guarnicao-select').value;
+            if (!guarnicao) { alert('Selecione a guarnição.'); return; }
+            if (!cartaoDaGuarnicaoAtual) { alert('Nenhum cartão-programa válido salvo pra essa guarnição.'); return; }
+
+            const militar = document.getElementById('cc-analise-militar').value.trim();
+            const dataIni = document.getElementById('cc-analise-data-ini').value;
+            const dataFim = document.getElementById('cc-analise-data-fim').value;
+            if (!dataIni || !dataFim) { alert('Selecione o período (de/até).'); return; }
+            const limiar = parseInt(document.getElementById('cc-analise-limiar').value, 10) || 15;
+
+            const btn = document.getElementById('cc-btn-analisar-guarnicao');
+            btn.disabled = true;
+            btn.textContent = 'Analisando...';
+            try {
+                let resultado;
+                if (militar) {
+                    const cruzado = await window.CumprimentoCore.buscarCumprimentoPorMilitar({
+                        nomeMilitar: militar, dataIniISO: dataIni, dataFimISO: dataFim,
+                        cartoesSalvos: cartoesCache, mapaViatura: mapaAtualCache,
+                        rpFiltro: cartaoDaGuarnicaoAtual.rpSelecionado, limiarMinutos: limiar,
+                    });
+                    const item = cruzado.porGuarnicao[0];
+                    if (!item || !item.cartaoEncontrado || !item.resultado) {
+                        alert(`Não encontrei "${militar}" nas vistorias dessa guarnição nesse período.`);
+                        return;
+                    }
+                    resultado = item.resultado;
+                } else {
+                    // Por TURNO (8h de cada dia até 8h do seguinte) — o serviço
+                    // da guarnição é um turno de 24h, não bate com a meia-noite
+                    // do calendário (ver js/cumprimento-core.js).
+                    resultado = await window.CumprimentoCore.calcularCumprimentoPeriodoTurno({
+                        cronograma: cartaoDaGuarnicaoAtual.cronograma, viaturaNome: guarnicao,
+                        dataIniISO: dataIni, dataFimISO: dataFim, limiarMinutos: limiar,
+                    });
+                }
+                if (resultado.erro === 'viatura-nao-encontrada') {
+                    alert('Não encontrei essa guarnição na planilha de rastreamento agora (ela pode estar fora de serviço no momento).');
+                    return;
+                }
+                renderizarResultado(resultado, { viatura: guarnicao, militar, dataIni, dataFim, cartao: cartaoDaGuarnicaoAtual });
+            } catch (e) {
+                console.error(e);
+                alert('Não foi possível calcular o cumprimento agora — tente novamente.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔎 Analisar cumprimento';
+            }
+        }
+
+        function renderizarResultado(resultado, contexto) {
+            document.getElementById('cc-resultado').style.display = 'block';
+            document.getElementById('cc-pct-cumprido').textContent = resultado.percentualCumprido === null ? '—' : resultado.percentualCumprido + '%';
+            document.getElementById('cc-pct-falha').textContent = resultado.percentualFalha === null ? '—' : resultado.percentualFalha + '%';
+            document.getElementById('cc-total-blocos').textContent = `${resultado.blocosCumpridos} / ${resultado.totalBlocos}`;
+            const cartaoTxt = contexto.cartao ? `Cartão-programa: ${contexto.cartao.cidade} (RP: ${contexto.cartao.rpSelecionado}) | ` : '';
+            document.getElementById('cc-resultado-info').textContent =
+                `${cartaoTxt}Guarnição: ${contexto.viatura}${contexto.militar ? ' | Militar: ' + contexto.militar : ''} | Período: ${contexto.dataIni} a ${contexto.dataFim} | ${resultado.totalPontosHistorico || 0} ponto(s) de histórico encontrados na planilha.`;
+
+            // Agrupa por bloco (missão + local) — soma quantos dias cumpriram
+            // esse bloco específico, já que o resultado bruto é 1 linha por
+            // dia × bloco (poderia ser 30+ linhas num mês inteiro).
+            const grupos = new Map();
+            (resultado.blocos || []).forEach(b => {
+                const chave = `${b.ini}_${b.fim}_${b.miss}_${b.det}`;
+                if (!grupos.has(chave)) grupos.set(chave, { ini: b.ini, fim: b.fim, miss: b.miss, det: b.det, total: 0, cumpridos: 0 });
+                if (b.aplica) {
+                    grupos.get(chave).total++;
+                    if (b.cumprido) grupos.get(chave).cumpridos++;
+                }
+            });
+
+            const tbody = document.getElementById('cc-blocos-body');
+            tbody.innerHTML = '';
+            Array.from(grupos.values()).forEach(g => {
+                const pct = g.total ? Math.round((g.cumpridos / g.total) * 100) : null;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${escHtml(g.ini || '')}–${escHtml(g.fim || '')}</td>
+                    <td>${escHtml(g.miss || '')}</td>
+                    <td>${escHtml(g.det || '')}</td>
+                    <td>${g.cumpridos} / ${g.total}</td>
+                    <td>${pct === null ? '—' : pct + '%'}</td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        async function analisar() {
+            const id = document.getElementById('cc-select-cartao').value;
+            if (!id) { alert('Selecione um cartão/OPO salvo — é dele que vem o cronograma a conferir.'); return; }
+            const cartao = cartoesCache.find(c => c.id === id);
+            if (!cartao) return;
+
+            const viatura = document.getElementById('cc-analise-viatura').value;
+            if (!viatura) { alert('Selecione a guarnição/viatura a analisar.'); return; }
+
+            const militar = document.getElementById('cc-analise-militar').value.trim();
+            const dataIni = document.getElementById('cc-analise-data-ini').value;
+            const dataFim = document.getElementById('cc-analise-data-fim').value;
+            if (!dataIni || !dataFim) { alert('Selecione o período (de/até).'); return; }
+            const limiar = parseInt(document.getElementById('cc-analise-limiar').value, 10) || 15;
+
+            const cronograma = cartao.tipo === 'opo'
+                ? (cartao.alocacoes || []).map(a => ({ ini: a.ini || '00:00', fim: a.fim || '23:59', miss: a.guarnicao, det: a.cidade, area: a.area }))
+                : (cartao.cronograma || []);
+
+            const btn = document.getElementById('cc-btn-analisar');
+            btn.disabled = true;
+            btn.textContent = 'Analisando...';
+            try {
+                let resultado;
+                if (militar) {
+                    // Com militar preenchido, cruza com as VISTORIAS (frota) pra
+                    // restringir a análise só aos dias em que esse militar foi
+                    // confirmado NESSA guarnição — mais preciso que só filtrar o
+                    // texto solto "militares" do histórico de rastreamento.
+                    const cruzado = await window.CumprimentoCore.buscarCumprimentoPorMilitar({
+                        nomeMilitar: militar, dataIniISO: dataIni, dataFimISO: dataFim,
+                        cartoesSalvos: cartoesCache, mapaViatura: mapaAtualCache,
+                        rpFiltro: cartao.rpSelecionado, limiarMinutos: limiar,
+                    });
+                    const item = cruzado.porGuarnicao[0];
+                    if (!item || !item.cartaoEncontrado || !item.resultado) {
+                        alert(`Não encontrei "${militar}" nas vistorias dessa guarnição nesse período.`);
+                        return;
+                    }
+                    resultado = item.resultado;
+                } else {
+                    // Por TURNO (8h-8h) — ver comentário equivalente em analisarPorGuarnicao().
+                    resultado = await window.CumprimentoCore.calcularCumprimentoPeriodoTurno({
+                        cronograma, viaturaNome: viatura, dataIniISO: dataIni, dataFimISO: dataFim,
+                        limiarMinutos: limiar,
+                    });
+                }
+                if (resultado.erro === 'viatura-nao-encontrada') {
+                    alert('Não encontrei essa guarnição na planilha de rastreamento (nome/idRadio). Confira o mapeamento acima.');
+                    return;
+                }
+                renderizarResultado(resultado, { viatura, militar, dataIni, dataFim, cartao });
+            } catch (e) {
+                console.error(e);
+                alert('Não foi possível calcular o cumprimento agora — tente novamente.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔎 Analisar cumprimento';
+            }
+        }
+
+        function renderizarResultadoMilitar(resultado, contexto) {
+            const cont = document.getElementById('cc-militar-resultado');
+            if (!resultado.encontrado) {
+                cont.innerHTML = `<p class="cc-ajuda">Não encontrei nenhuma vistoria com o nome "${escHtml(contexto.nome)}" nesse período (planilha de frota, aba vistorias).</p>`;
+                return;
+            }
+            let html = `<p class="cc-ajuda">Guarnições em que "${escHtml(contexto.nome)}" apareceu (vistorias) entre ${contexto.dataIni} e ${contexto.dataFim}:</p>`;
+            html += '<table class="cc-tabela"><thead><tr><th>Guarnição</th><th>Cidade (cartão)</th><th>Dias identificado</th><th>% cumprido nesses dias</th></tr></thead><tbody>';
+            resultado.porGuarnicao.forEach(g => {
+                let pctTxt;
+                if (!g.cartaoEncontrado) pctTxt = 'sem cartão-programa salvo pra essa guarnição';
+                else if (g.resultado.percentualCumprido === null) pctTxt = 'sem blocos avaliáveis nesses dias';
+                else pctTxt = `${g.resultado.percentualCumprido}% cumprido / ${g.resultado.percentualFalha}% falha`;
+                html += `<tr><td>${escHtml(g.guarnicao)}</td><td>${escHtml(g.cidade || '—')}</td><td>${g.dias.length}</td><td>${pctTxt}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            cont.innerHTML = html;
+        }
+
+        async function buscarPorMilitar() {
+            const nome = document.getElementById('cc-militar-nome').value.trim();
+            if (!nome) { alert('Digite o nome do militar.'); return; }
+            const dataIni = document.getElementById('cc-militar-data-ini').value;
+            const dataFim = document.getElementById('cc-militar-data-fim').value;
+            if (!dataIni || !dataFim) { alert('Selecione o período (de/até).'); return; }
+            const limiar = parseInt(document.getElementById('cc-militar-limiar').value, 10) || 15;
+
+            const btn = document.getElementById('cc-btn-buscar-militar');
+            btn.disabled = true;
+            btn.textContent = 'Buscando...';
+            try {
+                const resultado = await window.CumprimentoCore.buscarCumprimentoPorMilitar({
+                    nomeMilitar: nome, dataIniISO: dataIni, dataFimISO: dataFim,
+                    cartoesSalvos: cartoesCache, mapaViatura: mapaAtualCache, limiarMinutos: limiar,
+                });
+                renderizarResultadoMilitar(resultado, { nome, dataIni, dataFim });
+            } catch (e) {
+                console.error(e);
+                alert('Não foi possível buscar agora — tente novamente.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔎 Buscar por militar';
+            }
+        }
+
+        document.getElementById('cc-btn-salvar-mapa').addEventListener('click', salvarMapeamento);
+        document.getElementById('cc-btn-analisar').addEventListener('click', analisar);
+        document.getElementById('cc-filtro-mes').addEventListener('change', aplicarFiltrosLista);
+        document.getElementById('cc-filtro-cidade').addEventListener('change', aplicarFiltrosLista);
+        document.getElementById('cc-btn-limpar-filtros').addEventListener('click', limparFiltrosLista);
+        document.getElementById('cc-select-cartao').addEventListener('change', aoEscolherCartao);
+        document.getElementById('cc-btn-buscar-militar').addEventListener('click', buscarPorMilitar);
+        document.getElementById('cc-guarnicao-select').addEventListener('change', aoEscolherGuarnicao);
+        document.getElementById('cc-btn-analisar-guarnicao').addEventListener('click', analisarPorGuarnicao);
+        document.getElementById('cc-tabela-busca').addEventListener('input', renderizarTabelaCartoes);
+        document.getElementById('cc-btn-tabela-limpar').addEventListener('click', () => {
+            document.getElementById('cc-tabela-busca').value = '';
+            renderizarTabelaCartoes();
+        });
+        document.getElementById('cc-tabela-cartoes-body').addEventListener('click', (e) => {
+            const btn = e.target.closest('button[data-excluir-id]');
+            if (btn) excluirCartao(btn.dataset.excluirId);
+        });
+
+        (async function iniciar() {
+            cfgGlobal = await P3.loadUnidadeConfig();
+            const periodoPadrao = primeiroEUltimoDiaDoMesAtual();
+            document.getElementById('cc-analise-data-ini').value = periodoPadrao.ini;
+            document.getElementById('cc-analise-data-fim').value = periodoPadrao.fim;
+            document.getElementById('cc-militar-data-ini').value = periodoPadrao.ini;
+            document.getElementById('cc-militar-data-fim').value = periodoPadrao.fim;
+            await carregarGuarnicoesPlanilha();
+            await carregarMapeamento();
+            await carregarCartoes();
+        })();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Notificações</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/stylesmandado.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        .painel-notif {
+            display: grid; grid-template-columns: minmax(280px, 380px) 1fr; gap: 1.25rem;
+            align-items: start;
+        }
+        @media (max-width: 900px) { .painel-notif { grid-template-columns: 1fr; } }
+
+        .cartao-notif {
+            background: var(--p3-surface); border: 1px solid var(--p3-border);
+            border-radius: var(--p3-radius-md); box-shadow: var(--p3-shadow-sm);
+            padding: 1.1rem 1.25rem;
+        }
+        .cartao-notif h3 {
+            font-size: .85rem; font-weight: 700; color: var(--p3-blue-700); text-transform: uppercase;
+            letter-spacing: .05em; margin: 0 0 .8rem; padding-bottom: .5rem; border-bottom: 1px solid var(--p3-border);
+        }
+
+        .campo-notif { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .9rem; }
+        .campo-notif label { font-size: .72rem; font-weight: 700; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+        .campo-notif input[type="text"], .campo-notif textarea {
+            padding: 9px 10px; border: 1.5px solid var(--p3-border); border-radius: 6px;
+            font-size: .88rem; background: var(--p3-bg); color: var(--p3-text); font-family: inherit;
+        }
+        .campo-notif textarea { min-height: 110px; resize: vertical; }
+
+        .barra-busca-usuarios { display: flex; gap: .5rem; margin-bottom: .6rem; }
+        .barra-busca-usuarios input {
+            flex: 1; padding: 8px 10px; border: 1.5px solid var(--p3-border); border-radius: 6px;
+            font-size: .82rem; background: var(--p3-bg); color: var(--p3-text);
+        }
+        .barra-busca-usuarios button {
+            padding: 8px 12px; border-radius: 6px; border: 1.5px solid var(--p3-border);
+            background: transparent; color: var(--p3-text-muted); font-size: .78rem; font-weight: 700; cursor: pointer;
+        }
+        .barra-busca-usuarios button:hover { border-color: var(--p3-blue-300); color: var(--p3-blue-700); }
+
+        .lista-usuarios-notif {
+            max-height: 420px; overflow-y: auto; border: 1px solid var(--p3-border);
+            border-radius: 6px; background: var(--p3-bg);
+        }
+        .item-usuario-notif {
+            display: flex; align-items: center; gap: .6rem; padding: .55rem .75rem;
+            border-bottom: 1px solid var(--p3-border); font-size: .83rem; color: var(--p3-text); cursor: pointer;
+        }
+        .item-usuario-notif:last-child { border-bottom: none; }
+        .item-usuario-notif:hover { background: var(--p3-surface); }
+        .item-usuario-notif input { flex-shrink: 0; width: 15px; height: 15px; cursor: pointer; }
+        .item-usuario-notif .nome-usuario-notif { font-weight: 600; }
+        .item-usuario-notif .meta-usuario-notif { font-size: .72rem; color: var(--p3-text-muted); margin-left: auto; text-align: right; }
+
+        .contagem-selecionados { font-size: .78rem; color: var(--p3-text-muted); margin: .5rem 0 .9rem; }
+        .contagem-selecionados strong { color: var(--p3-blue-700); }
+
+        .btn-enviar-notif {
+            width: 100%; padding: 12px; border: none; border-radius: 6px;
+            background: var(--p3-blue-700); color: #fff; font-size: .88rem; font-weight: 700; cursor: pointer;
+        }
+        .btn-enviar-notif:hover { opacity: .9; }
+        .btn-enviar-notif:disabled { opacity: .6; cursor: default; }
+
+        .msg-status-notif { font-size: .82rem; margin-top: .7rem; padding: 8px 12px; border-radius: 6px; display: none; }
+        .msg-status-notif.sucesso { display: block; background: rgba(47,143,91,.12); color: var(--p3-success); }
+        .msg-status-notif.erro { display: block; background: rgba(198,40,40,.12); color: var(--p3-danger); }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>NOTIFICAÇÕES — ADMINISTRAÇÃO</h2>
+                <p>Envie avisos para usuários específicos — aparecem no sino de cada um deles ao entrar no sistema</p>
+            </div>
+
+            <div class="painel-notif">
+                <div class="cartao-notif">
+                    <h3>Destinatários</h3>
+                    <div class="barra-busca-usuarios">
+                        <input type="text" id="busca-usuario-notif" placeholder="Buscar por nome, graduação ou CPF...">
+                        <button type="button" id="btn-selecionar-todos">Todos</button>
+                        <button type="button" id="btn-limpar-selecao">Limpar</button>
+                    </div>
+                    <div class="lista-usuarios-notif" id="lista-usuarios-notif">
+                        <p style="padding:.8rem;font-size:.82rem;color:var(--p3-text-muted);">Carregando usuários...</p>
+                    </div>
+                    <div class="contagem-selecionados"><strong id="qtd-selecionados">0</strong> usuário(s) selecionado(s)</div>
+                </div>
+
+                <div class="cartao-notif">
+                    <h3>Mensagem</h3>
+                    <form id="form-notificacao">
+                        <div class="campo-notif">
+                            <label for="titulo-notif">Título (opcional)</label>
+                            <input type="text" id="titulo-notif" placeholder="Ex.: Alteração no cartão-programa">
+                        </div>
+                        <div class="campo-notif">
+                            <label for="texto-notif">Mensagem</label>
+                            <textarea id="texto-notif" placeholder="Escreva o aviso..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn-enviar-notif" id="btn-enviar-notif">📢 Enviar Notificação</button>
+                        <div class="msg-status-notif" id="msg-status-notif"></div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+        <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script>
+        let TODOS_USUARIOS = []; // [{cpf, graduacao, nome, nomeGuerra, unidade, nivel}]
+        const selecionados = new Set();
+
+        function escaparHtml(s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        async function carregarUsuarios() {
+            const container = document.getElementById('lista-usuarios-notif');
+            try {
+                const resp = await fetch(`${P3.DIRETORIO_BASE_URL}/usuarios.json`);
+                const dados = resp.ok ? await resp.json() : null;
+                TODOS_USUARIOS = Object.entries(dados || {})
+                    .map(([cpf, u]) => Object.assign({ cpf }, u))
+                    .filter(u => u.ativo !== false)
+                    .sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                renderizarUsuarios(TODOS_USUARIOS);
+            } catch (e) {
+                container.innerHTML = '<p style="padding:.8rem;font-size:.82rem;color:var(--p3-danger);">Erro ao carregar usuários.</p>';
+            }
+        }
+
+        function renderizarUsuarios(lista) {
+            const container = document.getElementById('lista-usuarios-notif');
+            if (!lista.length) {
+                container.innerHTML = '<p style="padding:.8rem;font-size:.82rem;color:var(--p3-text-muted);">Nenhum usuário encontrado.</p>';
+                return;
+            }
+            container.innerHTML = lista.map(u => `
+                <label class="item-usuario-notif">
+                    <input type="checkbox" data-cpf="${escaparHtml(u.cpf)}" ${selecionados.has(u.cpf) ? 'checked' : ''}>
+                    <span class="nome-usuario-notif">${escaparHtml(u.graduacao || '')} ${escaparHtml(u.nomeGuerra || u.nome || '')}</span>
+                    <span class="meta-usuario-notif">${escaparHtml(u.unidade || '10bpm')}<br>${escaparHtml(u.cpf)}</span>
+                </label>
+            `).join('');
+            container.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+                chk.addEventListener('change', () => {
+                    const cpf = chk.dataset.cpf;
+                    if (chk.checked) selecionados.add(cpf); else selecionados.delete(cpf);
+                    atualizarContagem();
+                });
+            });
+        }
+
+        function atualizarContagem() {
+            document.getElementById('qtd-selecionados').textContent = String(selecionados.size);
+        }
+
+        function mostrarStatus(msg, tipo) {
+            const el = document.getElementById('msg-status-notif');
+            el.textContent = msg;
+            el.className = 'msg-status-notif ' + tipo;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sessao = P3.requireAdmin();
+            if (!sessao) return;
+
+            carregarUsuarios();
+
+            document.getElementById('busca-usuario-notif').addEventListener('input', function () {
+                const termo = this.value.toUpperCase().trim();
+                if (!termo) { renderizarUsuarios(TODOS_USUARIOS); return; }
+                renderizarUsuarios(TODOS_USUARIOS.filter(u =>
+                    (u.nome || '').toUpperCase().includes(termo) ||
+                    (u.nomeGuerra || '').toUpperCase().includes(termo) ||
+                    (u.graduacao || '').toUpperCase().includes(termo) ||
+                    (u.cpf || '').includes(termo)
+                ));
+            });
+
+            document.getElementById('btn-selecionar-todos').addEventListener('click', () => {
+                TODOS_USUARIOS.forEach(u => selecionados.add(u.cpf));
+                renderizarUsuarios(TODOS_USUARIOS);
+                atualizarContagem();
+            });
+            document.getElementById('btn-limpar-selecao').addEventListener('click', () => {
+                selecionados.clear();
+                renderizarUsuarios(TODOS_USUARIOS);
+                atualizarContagem();
+            });
+
+            document.getElementById('form-notificacao').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const texto = document.getElementById('texto-notif').value.trim();
+                if (!texto) return;
+                if (!selecionados.size) { mostrarStatus('Selecione pelo menos 1 destinatário.', 'erro'); return; }
+
+                const titulo = document.getElementById('titulo-notif').value.trim() || 'Aviso do administrador';
+                const btn = document.getElementById('btn-enviar-notif');
+                btn.disabled = true;
+                btn.textContent = 'Enviando...';
+
+                const payload = {
+                    titulo,
+                    texto,
+                    criadoEm: new Date().toISOString(),
+                    criadoPor: [sessao.graduacao, sessao.nomeGuerra].filter(Boolean).join(' '),
+                };
+
+                try {
+                    const cpfs = [...selecionados];
+                    const resultados = await Promise.all(cpfs.map(cpf =>
+                        fetch(`${P3.DIRETORIO_BASE_URL}/notificacoes_usuarios/${encodeURIComponent(cpf)}.json`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                        })
+                    ));
+                    const falhas = resultados.filter(r => !r.ok).length;
+                    if (falhas) {
+                        mostrarStatus(`Enviado com ${falhas} falha(s) de ${cpfs.length}.`, 'erro');
+                    } else {
+                        mostrarStatus(`Notificação enviada para ${cpfs.length} usuário(s).`, 'sucesso');
+                        document.getElementById('texto-notif').value = '';
+                        document.getElementById('titulo-notif').value = '';
+                    }
+                } catch (err) {
+                    mostrarStatus('Erro ao enviar: ' + err.message, 'erro');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = '📢 Enviar Notificação';
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

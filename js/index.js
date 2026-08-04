@@ -353,72 +353,13 @@ async function atualizarMateriaisEMandados() {
 }
 
 // ====================================================================
-// NOTIFICAÇÕES
-// ====================================================================
-let lastCountAIT = localStorage.getItem('lastCountAIT') || 0;
-
-function checkNewNotifications() {
-    fetch(WEBAPP_URL_AIT + "?action=countAITs")
-        .then(res => res.json())
-        .then(data => {
-            const currentCount = data.count || data.numeroait;
-            if (currentCount > lastCountAIT && lastCountAIT != 0) {
-                const novos = currentCount - lastCountAIT;
-                addNotification(`Existem ${novos} novas inclusões de AIT.`);
-                const badge = document.getElementById('notif-count');
-                badge.innerText = novos;
-                badge.style.display = 'block';
-            }
-        }).catch(e => console.log("Erro Notificações:", e));
-}
-
-function addNotification(text) {
-    const container = document.getElementById('notif-items');
-    const emptyMsg = container.querySelector('.empty-msg');
-    if (emptyMsg) emptyMsg.remove();
-    const item = document.createElement('div');
-    item.className = 'notif-item';
-    item.innerHTML = `<strong>Novo Registro:</strong><br>${text}`;
-    container.prepend(item);
-}
-
-// ====================================================================
-// RELÓGIO E LOGIN
-// ====================================================================
-function atualizarRelogio() {
-    const agora = new Date();
-    const opcoesData = { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' };
-    document.getElementById('relogio').innerHTML =
-        agora.toLocaleDateString('pt-BR', opcoesData) + '<br>' +
-        agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
-
-function checkLogin() {
-    const session = P3.requireAuth();
-    if (!session) return; // P3.requireAuth() já redireciona para o login
-    const userInfoEl = document.getElementById('user-info');
-    userInfoEl.innerHTML = `<p>Bem Vindo(a):</p><p class="user-nome">${session.graduacao} ${session.nomeGuerra}</p>`;
-}
-
-// ====================================================================
 // INICIALIZAÇÃO
 // ====================================================================
+// Relógio, "Bem-vindo(a)", botão Sair e o toggle do sino já são
+// centralizados por js/core/header-nav.js — aqui só falta a guarda de
+// autenticação (redireciona pro login se a sessão não existir).
 async function inicializar() {
-    atualizarRelogio();
-    setInterval(atualizarRelogio, 1000);
-    checkLogin();
-
-    // Conectado ANTES do await de configuração de rede abaixo: o botão
-    // de sair não pode depender de Firebase/GAS responderem para funcionar.
-    const btnLogout = document.getElementById('btn-logout');
-    if (btnLogout) btnLogout.addEventListener('click', P3.logout);
-
-    const bell = document.getElementById('bell-icon');
-    if (bell) bell.addEventListener('click', () => {
-        const dropdown = document.getElementById('notif-dropdown');
-        dropdown.style.display = dropdown.style.display === 'block' ? 'none' : 'block';
-        document.getElementById('notif-count').style.display = 'none';
-    });
+    if (!P3.requireAuth()) return;
 
     const cfg = await P3.loadUnidadeConfig();
     DATABASE_URL         = cfg.firebase.databaseURL;

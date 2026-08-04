@@ -100,6 +100,7 @@ header {
 #bell-icon {
     color: var(--p3-text-muted);
     font-size: 1.5rem;
+    display: block;
 }
 
 .badge {
@@ -133,6 +134,24 @@ header {
     border-bottom: 0.0625rem solid var(--p3-border);
     font-weight: 600;
     border-radius: var(--p3-radius-md) var(--p3-radius-md) 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.notif-limpar-tudo {
+    background: none;
+    border: none;
+    color: var(--p3-blue-700);
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.15rem 0.35rem;
+    border-radius: var(--p3-radius-sm);
+}
+
+.notif-limpar-tudo:hover {
+    background: var(--p3-blue-100);
 }
 
 #notif-items {
@@ -147,12 +166,32 @@ header {
 }
 
 .notif-item {
-    padding: 0.625rem;
+    position: relative;
+    padding: 0.625rem 1.75rem 0.625rem 0.625rem;
     border-bottom: 0.0625rem solid var(--p3-border);
     font-size: 0.85rem;
 }
 
 .notif-item:last-child { border-bottom: none; }
+
+.notif-dismiss {
+    position: absolute;
+    top: 0.4rem;
+    right: 0.4rem;
+    background: none;
+    border: none;
+    color: var(--p3-text-muted);
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.2rem 0.35rem;
+    border-radius: var(--p3-radius-sm);
+}
+
+.notif-dismiss:hover {
+    background: var(--p3-danger);
+    color: #fff;
+}
 
 /* --- ESTRUTURA / SIDEBAR DE NAVEGAÇÃO --- */
 .pagecomplete {

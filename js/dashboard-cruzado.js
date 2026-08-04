@@ -148,6 +148,10 @@
             campoTip: item => CAMPO(item, 'TIPO_DROGA', 'TIPO') || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipo de Droga', labelStatus: 'Solução',
+            // Presença desse campo é o que faz a aba inteira (série
+            // temporal, KPIs, tipo de droga, cidades, status) somar PESO em
+            // vez de contar ocorrências — ver uso em renderAba().
+            campoPeso: item => { const n = parseFloat(String(CAMPO(item, 'QUANTIDADE', 'PESO') || '0').replace(',', '.')); return isNaN(n) ? 0 : n; },
             kpiExtra: lista => {
                 let soma = 0;
                 lista.forEach(i => { const n = parseFloat(String(CAMPO(i, 'QUANTIDADE', 'PESO') || '0').replace(',', '.')); if (!isNaN(n)) soma += n; });
@@ -296,19 +300,38 @@
     // ════════════════════════════════════════════════════════════════
     const MESES_LBL = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-    function agregarPorMesAno(lista, campoData, ano) {
+    // Grama vira Kg a partir de 1000 — mesmo critério já usado no
+    // kpiExtra de drogas, agora reaproveitado pelos KPIs de topo também.
+    function formatarPeso(valor) {
+        return valor >= 1000
+            ? (valor / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' Kg'
+            : valor.toLocaleString('pt-BR', { minimumFractionDigits: 3 }) + ' g';
+    }
+
+    // campoPeso (opcional): quando informado, soma o peso do item (via
+    // campoPeso(item)) em vez de contar +1 — usado só pela categoria
+    // "drogas" (CATEGORIAS.drogas.campoPeso), que quer os valores em peso
+    // (gramas/Kg apreendidos), não em número de ocorrências. Sem esse
+    // parâmetro, o comportamento pras outras categorias fica idêntico ao
+    // de antes (contagem).
+    function agregarPorMesAno(lista, campoData, ano, campoPeso) {
         const contagem = new Array(12).fill(0);
         lista.forEach(item => {
             const dt = parseData(campoData(item));
-            if (dt && dt.getFullYear() === ano) contagem[dt.getMonth()]++;
+            if (dt && dt.getFullYear() === ano) contagem[dt.getMonth()] += campoPeso ? campoPeso(item) : 1;
         });
-        return contagem;
+        // Arredonda 2 casas — sem efeito nas contagens normais (já são
+        // inteiras), só limpa as somas de peso (ex.: 45.5231 -> 45.52).
+        return contagem.map(v => Math.round(v * 100) / 100);
     }
 
-    function topEntries(lista, campoFn, n) {
+    function topEntries(lista, campoFn, n, campoPeso) {
         const cont = {};
-        lista.forEach(item => { const v = campoFn(item); if (v) cont[v] = (cont[v] || 0) + 1; });
-        return Object.entries(cont).sort((a, b) => b[1] - a[1]).slice(0, n || 8);
+        lista.forEach(item => { const v = campoFn(item); if (v) cont[v] = (cont[v] || 0) + (campoPeso ? campoPeso(item) : 1); });
+        return Object.entries(cont)
+            .map(([k, v]) => [k, Math.round(v * 100) / 100])
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, n || 8);
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -412,15 +435,25 @@
         renderChipsDaAba(cat);
 
         // ── KPIs (ano atual x anterior, com variação) ──────────────
+        // Categoria "drogas" tem campoPeso — nesse caso os totais somam
+        // PESO (gramas/Kg apreendidos) em vez de contar ocorrências;
+        // qualquer outra categoria (sem campoPeso) continua contando como
+        // sempre contou.
         const semCrossParaKpi = aplicarCross(base, cat, null);
-        const totalAtual = semCrossParaKpi.filter(i => { const dt = parseData(d.campoData(i)); return dt && dt.getFullYear() === anoAtual; }).length;
-        const totalAnterior = semCrossParaKpi.filter(i => { const dt = parseData(d.campoData(i)); return dt && dt.getFullYear() === anoAnterior; }).length;
+        const somarOuContar = (lista, ano) => {
+            const filtrada = lista.filter(i => { const dt = parseData(d.campoData(i)); return dt && dt.getFullYear() === ano; });
+            return d.campoPeso ? filtrada.reduce((s, i) => s + d.campoPeso(i), 0) : filtrada.length;
+        };
+        const totalAtual = somarOuContar(semCrossParaKpi, anoAtual);
+        const totalAnterior = somarOuContar(semCrossParaKpi, anoAnterior);
         const variacao = totalAnterior > 0 ? Math.round((totalAtual - totalAnterior) / totalAnterior * 100) : (totalAtual > 0 ? 100 : 0);
         const kpiEl = document.getElementById('kpis-' + cat);
         if (kpiEl) {
+            const totalAnteriorFmt = d.campoPeso ? formatarPeso(totalAnterior) : totalAnterior;
+            const totalAtualFmt = d.campoPeso ? formatarPeso(totalAtual) : totalAtual;
             let h = '';
-            h += mkKpi('⏮️', totalAnterior, 'Ano Anterior · ' + anoAnterior);
-            h += mkKpi('🗓️', totalAtual, 'Ano Atual · ' + anoAtual);
+            h += mkKpi('⏮️', totalAnteriorFmt, 'Ano Anterior · ' + anoAnterior);
+            h += mkKpi('🗓️', totalAtualFmt, 'Ano Atual · ' + anoAtual);
             const setaCls = variacao > 0 ? 'alta' : variacao < 0 ? 'baixa' : 'estavel';
             const setaIc = variacao > 0 ? '📈' : variacao < 0 ? '📉' : '➡️';
             h += '<div class="kpi-dc kpi-var-' + setaCls + '"><div class="ki">' + setaIc + '</div><div class="kn">' + (variacao > 0 ? '+' : '') + variacao + '%</div><div class="kl">Variação vs. ano anterior</div></div>';
@@ -430,23 +463,23 @@
 
         // ── Duas séries temporais (ano anterior / ano atual) ───────
         const listaSerie = aplicarCross(base, cat, 'mes');
-        criarSerieClicavel('chart-' + cat + '-serieAnt', agregarPorMesAno(listaSerie, d.campoData, anoAnterior), '#7592e8', cores, cat, anoAnterior);
-        criarSerieClicavel('chart-' + cat + '-serieAtu', agregarPorMesAno(listaSerie, d.campoData, anoAtual), '#2f5fdd', cores, cat, anoAtual);
+        criarSerieClicavel('chart-' + cat + '-serieAnt', agregarPorMesAno(listaSerie, d.campoData, anoAnterior, d.campoPeso), '#7592e8', cores, cat, anoAnterior);
+        criarSerieClicavel('chart-' + cat + '-serieAtu', agregarPorMesAno(listaSerie, d.campoData, anoAtual, d.campoPeso), '#2f5fdd', cores, cat, anoAtual);
 
         // ── Top Cidades ─────────────────────────────────────────────
         if (d.campoCidade) {
             const listaCidade = aplicarCross(base, cat, 'cidade');
-            criarBarraHorizontal('chart-' + cat + '-cidade', topEntries(listaCidade, d.campoCidade, 8), cores, cat, 'cidade');
+            criarBarraHorizontal('chart-' + cat + '-cidade', topEntries(listaCidade, d.campoCidade, 8, d.campoPeso), cores, cat, 'cidade');
         }
 
         // ── Tipificação/Tipo ─────────────────────────────────────────
         const listaTip = aplicarCross(base, cat, 'tip');
-        criarBarraHorizontal('chart-' + cat + '-tip', topEntries(listaTip, d.campoTip, 8), cores, cat, 'tip');
+        criarBarraHorizontal('chart-' + cat + '-tip', topEntries(listaTip, d.campoTip, 8, d.campoPeso), cores, cat, 'tip');
 
         // ── Status/Solução ───────────────────────────────────────────
         if (d.campoStatus) {
             const listaStatus = aplicarCross(base, cat, 'status');
-            criarBarraHorizontal('chart-' + cat + '-status', topEntries(listaStatus, d.campoStatus, 8), cores, cat, 'status');
+            criarBarraHorizontal('chart-' + cat + '-status', topEntries(listaStatus, d.campoStatus, 8, d.campoPeso), cores, cat, 'status');
         }
     }
     window.renderAbaDash = renderAba;

@@ -1255,6 +1255,7 @@
 
 <body>
     <script src="../js/core/session.js"></script>
+    <script src="../js/cumprimento-core.js"></script>
 
   <!-- ═══════ CABEÇALHO ═══════ -->
   <header>
@@ -1276,6 +1277,7 @@
         📥 BAIXAR COMO WORD (.docx)
       </button>
       <button class="btn-imprimir" onclick="window.print()">🖨 IMPRIMIR OPO</button>
+      <button class="btn-imprimir" id="btn-salvar-opo" onclick="salvarOpoAtual()">💾 SALVAR OPO</button>
     </div>
   </header>
 
@@ -3191,6 +3193,87 @@
     // ══════════════════════════════════════════════════════════
     //  BAIXAR DOCX — Usa efetivo real do 10ºBPM
     // ══════════════════════════════════════════════════════════
+    // ── Salvar OPO (Firebase da própria unidade — /cartoes_programa) ──
+    // Centralizado em js/cumprimento-core.js (obterOuSemearMapaViatura) —
+    // reaproveitado aqui em vez de duplicar, pra garantir que uma correção
+    // de mapeamento feita na tela de Cumprimento valha em todo lugar.
+    async function obterOuSemearMapaViaturaOPO(dbUrl) {
+        if (window.CumprimentoCore) return window.CumprimentoCore.obterOuSemearMapaViatura(dbUrl);
+        return {};
+    }
+
+    async function salvarOpoAtual() {
+        if (!dadosAnalise) { alert('Gere a OPO primeiro.'); return; }
+        const btn = document.getElementById('btn-salvar-opo');
+        const textoOriginal = btn ? btn.textContent : '';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Salvando...'; }
+
+        try {
+            const cfg = await P3.loadUnidadeConfig();
+            const dbUrl = cfg.firebase.databaseURL;
+            const { cidade, periodo, ocorrencias, tatica, escopo, turno, alocacao } = dadosAnalise;
+
+            // Normaliza os dois escopos possíveis (10ºBPM inteiro ou 1 cidade
+            // específica) num array só de {cidade, guarnicao, nivel} — ver
+            // js/cumprimento-core.js calcularCumprimentoCartao() (tipo:'opo').
+            let alocacoesBase;
+            if (escopo === 'bpm' && Array.isArray(alocacao)) {
+                alocacoesBase = alocacao.map(a => ({ cidade: a.cidade, guarnicao: a.guarnicao, nivel: a.nivel }));
+            } else {
+                const ef = tatica && tatica.efetivoCidade;
+                const guarnicaoLabel = (ef && ef.rps && ef.rps.length)
+                    ? ef.rps.map(r => r.label).join(' + ')
+                    : 'RP não identificada';
+                alocacoesBase = [{ cidade, guarnicao: guarnicaoLabel, nivel: ef ? ef.nivelGeral : null }];
+            }
+
+            const mapaViatura = await obterOuSemearMapaViaturaOPO(dbUrl);
+            // Resolve a viatura pelo 1º RP citado no rótulo de guarnição contra
+            // o mesmo mapeamento cidade↔viatura do cartão-programa —
+            // simplificação: quando mais de uma RP aparece pra mesma cidade
+            // (ex. Palmeira RP01+RP02), só a 1ª é usada pra checar cumprimento.
+            const alocacoes = alocacoesBase.map(a => {
+                const area = window.CumprimentoCore
+                    ? window.CumprimentoCore.resolverAreaBairro(null, a.cidade, ocorrencias)
+                    : null;
+                // Compara sem acento (normalizarStr) dos dois lados — as chaves
+                // de rp_viatura_map têm acento ("BELÉM (RP)") mas a cidade que
+                // vem da análise pode não ter ("BELEM"), então um .includes()
+                // direto nunca bateria.
+                const norm = s => (window.CumprimentoCore ? window.CumprimentoCore.normalizarStr(s) : String(s || '').toUpperCase());
+                const chave = Object.keys(mapaViatura).find(k => norm(k).includes(norm(a.cidade)));
+                return Object.assign({}, a, { area, viaturaResponsavel: chave ? mapaViatura[chave] : null });
+            });
+
+            const sessao = window.P3 && window.P3.getSession ? window.P3.getSession() : null;
+            const criadoEm = new Date().toISOString();
+            const payload = {
+                tipo: 'opo',
+                criadoEm,
+                // Válida por 1 mês a partir de agora (ou até uma nova OPO ser
+                // salva pra mesma cidade) — pedido explícito do usuário.
+                validoAte: window.CumprimentoCore ? window.CumprimentoCore.calcularValidoAte(criadoEm) : null,
+                criadoPor: sessao ? [sessao.graduacao, sessao.nomeGuerra].filter(Boolean).join(' ') : null,
+                data: new Date().toLocaleDateString('pt-BR'),
+                cidade: escopo === 'bpm' ? '10ºBPM — ÁREA COMPLETA' : cidade,
+                escopo, periodoDias: periodo, turno: turno || null,
+                alocacoes,
+            };
+
+            const res = await fetch(`${dbUrl}/cartoes_programa.json`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+            });
+            if (!res.ok) throw new Error('Falha ao gravar no Firebase');
+
+            if (btn) btn.textContent = '✅ Salvo!';
+            setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = textoOriginal || '💾 SALVAR OPO'; } }, 3000);
+        } catch (err) {
+            console.error(err);
+            alert('Não foi possível salvar a OPO. Tente novamente.');
+            if (btn) { btn.disabled = false; btn.textContent = textoOriginal || '💾 SALVAR OPO'; }
+        }
+    }
+
     async function baixarDocx() {
       if (!dadosAnalise) { alert('Gere a OPO primeiro.'); return; }
 

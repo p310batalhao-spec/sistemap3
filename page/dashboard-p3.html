@@ -284,60 +284,9 @@
 </head>
 <body>
     <script src="../js/core/session.js"></script>
-    <header>
-        <div class="header-info-left">
-            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
-            <div class="cabecalhotexto">
-                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3 id="cabecalho-unidade"></h3>
-            </div>
-        </div>
-        <div class="header-info-right">
-            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
-                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-            </button>
-            <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info"></div>
-        </div>
-    </header>
+    <script src="../js/core/header-nav.js"></script>
 
     <section class="pagecomplete">
-        <nav class="navegacao">
-            <a href="../index.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png" alt="home"/>
-                <p>Home</p>
-            </a>
-            <a href="../page/dashboard-cruzado.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
-                <p>Dashboard Cruzado</p>
-            </a>
-            <a href="../page/cadastroocorrencias.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="ocorrências"/>
-                <p>Cadastro de Ocorrências</p>
-            </a>
-            <a href="../page/materiais.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais"/>
-                <p>Materiais Apreendidos</p>
-            </a>
-            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="IA"/>
-                <p>Soluções IA</p>
-            </a>
-            <a href="admin-usuarios.html" id="nav-usuarios" style="display:none">
-                <img width="48" height="48" src="https://img.icons8.com/ios/50/administrator-male.png" alt="usuários" />
-                <p>Usuários</p>
-            </a>
-            <a href="chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
-                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
-                <p>Chat Xerife</p>
-            </a><!--termina chat xerife-->
-            <button id="btn-logout" class="btn-logout">
-                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair"/>
-                <p>Sair</p>
-            </button>
-        </nav>
-
         <main id="dash-main">
             <div class="loader-dash" id="loader">
                 <i class="fas fa-spinner fa-spin" style="font-size:1.4rem;color:#1a237e;"></i>

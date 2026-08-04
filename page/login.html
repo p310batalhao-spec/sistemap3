@@ -411,6 +411,35 @@ function mostrarAnimacaoSucesso(nomeExibicao) {
     document.getElementById('overlay-sucesso').classList.add('ativo');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// LOGIN CRUZADO NO ÍRIS PMAL (sistema à parte, mesma unidade, banco
+// MySQL/Hostinger) — best-effort e SILENCIOSO: tenta autenticar lá com
+// o MESMO CPF+senha que acabou de validar aqui no P3. Se bater, guarda
+// o token JWT do Íris (localStorage) pra usar direto na página de
+// Rastreamento (dados do botão de pânico). Se não bater (senha
+// diferente ou usuário não existe no Íris), NÃO bloqueia nem avisa o
+// login do P3 — só não fica com o token; a página de Rastreamento
+// oferece autenticar manualmente nesse caso.
+const IRIS_API_URL = 'https://irispmal.io/api/iris_api.php';
+async function tentarLoginIris(cpf, senha) {
+    try {
+        const res = await fetch(IRIS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ acao: 'login_mysql', cpf, senha }),
+        });
+        const data = await res.json().catch(() => null);
+        if (data && data.ok && data.token) {
+            localStorage.setItem('irisToken', data.token);
+            localStorage.setItem('irisUnidadeChave', data.unidade || '');
+        } else {
+            localStorage.removeItem('irisToken');
+            localStorage.removeItem('irisUnidadeChave');
+        }
+    } catch (e) {
+        console.error('Login cruzado no Íris (best-effort) falhou:', e);
+    }
+}
+
 // Se o usuário chegou aqui deslogado por inatividade (js/core/session.js
 // redireciona pra login.html?motivo=inatividade), mostra o motivo em vez
 // de deixar o formulário mudo sobre por que ele "caiu" do sistema.
@@ -463,6 +492,11 @@ async function fazerLogin() {
         localStorage.setItem('userNivel',     usuario.nivel || 'operador');
         localStorage.setItem('userUnidade',   usuario.unidade || '10bpm');
         localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
+
+        // Best-effort, sem await de propósito — não atrasa o login do P3.
+        // Roda em paralelo à animação de sucesso (~3.4s), tempo de sobra
+        // pra terminar antes do redirecionamento.
+        tentarLoginIris(cpf, senha);
 
         // Animação de sucesso, depois redireciona para a home
         mostrarAnimacaoSucesso(`${usuario.graduacao} ${usuario.nomeGuerra}`);

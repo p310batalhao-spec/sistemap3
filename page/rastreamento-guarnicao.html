@@ -1,0 +1,1705 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Rastreamento de Guarnição</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        .rg-secao {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 10px;
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .rg-secao h3 { margin-top: 0; }
+
+        .rg-linha-controles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .8rem;
+            align-items: center;
+            margin-bottom: .8rem;
+        }
+
+        .rg-linha-controles select, .rg-linha-controles input[type="date"] {
+            padding: .4rem .5rem;
+        }
+
+        button.rg-btn {
+            background-color: #003366;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            padding: .55rem 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button.rg-btn:hover { background-color: #002244; }
+
+        button.rg-btn:disabled { opacity: .7; cursor: default; }
+
+        /* ── Área do mapa: o mapa preenche 100% do container, com uma barra
+           de controles SOBREPOSTA por cima (não empurra o mapa pra baixo) —
+           mesmo comportamento dentro e fora da tela cheia, só o tamanho do
+           container muda. */
+        #rg-area-mapa {
+            position: relative;
+            width: 100%;
+            height: 72vh;
+            min-height: 460px;
+            border-radius: 8px;
+            border: 1px solid var(--p3-border, #ddd);
+            overflow: hidden;
+        }
+
+        #rg-mapa { width: 100%; height: 100%; }
+
+        #rg-status { font-size: .85rem; color: var(--p3-text-muted, #666); }
+
+        /* ── Barra de controles sobreposta ao mapa ── */
+        .rg-overlay-barra {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px;
+            z-index: 1200;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .5rem;
+            pointer-events: none; /* só os filhos (botões/spans com bg) recebem clique */
+        }
+        .rg-overlay-barra > * { pointer-events: auto; }
+        .rg-overlay-barra #rg-status {
+            background: var(--p3-surface, #fff);
+            padding: .5rem .7rem;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.25);
+        }
+
+        button.rg-btn-sm { padding: .5rem .8rem; font-size: .82rem; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+
+        /* ── Cards de % de cumprimento (sobrepostos, atualizam sozinhos) ──
+           Fundo sólido (não translúcido) + borda, pra nunca se misturar
+           com o mapa por baixo; cor do texto vem de variável de tema
+           (não mais fixa em azul-escuro, que ficava ilegível no modo
+           escuro — fundo escuro + texto escuro). A cor do PERCENTUAL em
+           si é sobrescrita via JS (corPorPercentual: vermelho/laranja/
+           verde), isso aqui é só o "—" inicial antes de calcular. */
+        .rg-card-cumprimento {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ccc);
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.35);
+            padding: .5rem 1rem;
+            min-width: 128px;
+            text-align: center;
+        }
+        .rg-card-cumprimento h5 {
+            margin: 0 0 .15rem; font-size: .68rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .02em;
+            color: var(--p3-text-muted, #666);
+        }
+        .rg-card-cumprimento p {
+            margin: 0; font-size: 1.5rem; font-weight: 800;
+            color: var(--p3-text, #1c1c1a);
+            line-height: 1.15;
+        }
+
+        /* ── Menus suspensos (histórico / cartão-programa) sobrepostos ao mapa ── */
+        .rg-dropdown { position: relative; }
+        .rg-dropdown-painel {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            right: 0;
+            width: 340px;
+            max-width: 90vw;
+            max-height: 75vh;
+            overflow-y: auto;
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 10px;
+            box-shadow: 0 8px 28px rgba(0,0,0,.35);
+            padding: 1rem 1.1rem;
+            z-index: 1300;
+        }
+        .rg-dropdown-painel.aberto { display: block; }
+        .rg-dropdown-painel h4 { margin: 0 0 .3rem; }
+        .rg-dropdown-painel label,
+        .rg-dropdown-painel select,
+        .rg-dropdown-painel input[type="date"] {
+            display: block;
+            width: 100%;
+            margin-bottom: .6rem;
+        }
+        .rg-dropdown-painel select, .rg-dropdown-painel input[type="date"] { padding: .4rem .5rem; }
+        .rg-dropdown-acoes { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .3rem; }
+        .rg-dropdown-fechar {
+            position: absolute; top: 8px; right: 10px;
+            background: none; border: none; font-size: 1.1rem;
+            cursor: pointer; color: var(--p3-text-muted, #666); line-height: 1;
+        }
+
+        .rg-linha-perimetro {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: .6rem;
+            padding: .5rem 0;
+            border-bottom: 1px solid var(--p3-border, #eee);
+            font-size: .85rem;
+        }
+
+        .rg-linha-perimetro:last-child { border-bottom: none; }
+
+        .rg-linha-perimetro span.rg-titulo-item { flex: 1; min-width: 220px; }
+
+        .rg-linha-perimetro input[type="number"] {
+            width: 70px;
+            padding: .35rem .4rem;
+            border-radius: 4px;
+            border: 1px solid var(--p3-border, #ccc);
+        }
+
+        .rg-status-item { font-size: .8rem; color: var(--p3-text-muted, #666); }
+
+        /* ── Token GEO ── */
+        .token-banner {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px; border-radius: 8px; font-size: .83rem;
+            font-weight: 600; margin-bottom: .8rem; flex-wrap: wrap;
+        }
+        .token-ok   { background: rgba(0,100,50,.1);  color: #006432; border: 1px solid #006432; }
+        .token-warn { background: rgba(180,100,0,.1); color: #b46400; border: 1px solid #b46400; }
+        .token-err  { background: rgba(180,0,0,.1);   color: #b40000; border: 1px solid #b40000; }
+        .token-banner button {
+            margin-left: auto; padding: 4px 12px;
+            background: #003366; color: white; border: none;
+            border-radius: 5px; font-size: .78rem; cursor: pointer; font-weight: 700;
+        }
+
+        /* ── Modal token ── */
+        #modal-token {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.55); z-index: 9000;
+            align-items: center; justify-content: center;
+        }
+        #modal-token.aberto { display: flex; }
+        .modal-token-box {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 12px; max-width: 530px; width: 95%;
+            overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35);
+        }
+        .modal-token-head {
+            background: #003366; color: white;
+            padding: 14px 18px; display: flex;
+            justify-content: space-between; align-items: center;
+            font-weight: 700; font-size: .95rem;
+        }
+        .modal-token-head button {
+            background: none; border: none; color: rgba(255,255,255,.7);
+            font-size: 1.3rem; cursor: pointer; line-height: 1;
+        }
+        .modal-token-body { padding: 18px; }
+        .token-instrucao {
+            background: var(--p3-surface-alt, #f5f5f5);
+            border-left: 3px solid #003366;
+            padding: 10px 14px; border-radius: 0 6px 6px 0;
+            font-size: .8rem; line-height: 1.75; margin-bottom: 14px;
+            color: var(--p3-text, #333);
+        }
+        .modal-token-body label {
+            display: block; font-size: .75rem; font-weight: 700;
+            text-transform: uppercase; color: var(--p3-text-muted, #666); margin-bottom: 5px;
+        }
+        .modal-token-body textarea {
+            width: 100%; height: 80px; padding: 8px;
+            border: 2px solid #003366; border-radius: 6px;
+            font-size: .78rem; font-family: monospace;
+            resize: vertical; background: var(--p3-surface,#fff);
+            color: var(--p3-text,#333);
+        }
+        .modal-token-foot {
+            padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end;
+        }
+        .modal-token-foot .rg-btn-cancel {
+            background: var(--p3-surface-alt,#eee); color: var(--p3-text,#333);
+            border: 1px solid var(--p3-border,#ccc); border-radius: 5px;
+            padding: 7px 16px; cursor: pointer; font-size: .85rem;
+        }
+        .msg-token { font-size: .78rem; color: #b40000; min-height: 16px; margin-top: 6px; font-weight: 600; }
+
+        /* ── Countdown ── */
+        #rg-countdown {
+            font-size: .78rem; color: var(--p3-text-muted,#666);
+            margin-left: 4px; font-weight: 600;
+        }
+
+        /* ── Tela cheia real: o wrapper vira a área do mapa inteira
+           (100vw×100vh, sem borda/raio/scroll) — histórico e cartão-programa
+           continuam acessíveis como os mesmos menus suspensos sobrepostos,
+           e o botão do Xerife (realocado pra dentro via JS, já que o
+           Fullscreen API só renderiza o elemento em tela cheia e seus
+           descendentes — um position:fixed fora dele some) fica visível por
+           cima do mapa também. */
+        #rg-fullscreen-wrapper:fullscreen,
+        #rg-fullscreen-wrapper:-webkit-full-screen {
+            width: 100vw; height: 100vh;
+            padding: 0; margin: 0;
+            background: #000;
+        }
+        #rg-fullscreen-wrapper:fullscreen #rg-area-mapa,
+        #rg-fullscreen-wrapper:-webkit-full-screen #rg-area-mapa {
+            width: 100vw; height: 100vh; min-height: 0;
+            border: none; border-radius: 0;
+        }
+        #rg-fullscreen-wrapper:fullscreen #xerife-botao,
+        #rg-fullscreen-wrapper:-webkit-full-screen #xerife-botao {
+            position: fixed;
+            z-index: 1400;
+        }
+        /* Equivalente CSS-only das 3 regras acima, usado quando esta página
+           está embutida dentro do IA Xerife (single embed ou split) — NUNCA
+           chama requestFullscreen() nesse caso (ver JS), pra esfera de
+           partículas do documento pai continuar visível por cima. Mesmo
+           layout, sem depender do estado real de fullscreen do navegador. */
+        #rg-fullscreen-wrapper.rg-maximizado-css {
+            position: fixed; inset: 0; z-index: 1300;
+            width: 100vw; height: 100vh;
+            padding: 0; margin: 0;
+            background: #000;
+        }
+        #rg-fullscreen-wrapper.rg-maximizado-css #rg-area-mapa {
+            width: 100vw; height: 100vh; min-height: 0;
+            border: none; border-radius: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/cumprimento-core.js"></script>
+    <script src="../js/core/header-nav.js" data-active="rastreamento" data-extra='[{"id":"nav-ia-xerife","href":"page/ia_xerife.html","label":"IA Xerife","icone":"../img/xerife-logo.png","w":48,"h":48,"titulo":"IA Xerife — voz, mapa tático, apresentações","depoisDe":"chat-xerife"}]'></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>Rastreamento de Guarnição</h2>
+                <p>Posição das guarnições — última atualização da planilha (Google Sheets) — e trajeto histórico por dia.</p>
+            </div>
+
+            <!-- Banner de status do token -->
+            <div id="token-banner" class="token-banner token-err" style="display:none">
+                <span id="token-banner-texto">Token não configurado</span>
+                <button onclick="abrirModalToken()">🔑 Configurar token</button>
+                <span id="rg-countdown"></span>
+            </div>
+
+            <div id="rg-fullscreen-wrapper">
+            <div id="rg-area-mapa">
+                <div id="rg-mapa"></div>
+
+                <!-- Barra superior sobreposta ao mapa: status + ações gerais -->
+                <div class="rg-overlay-barra">
+                    <span id="rg-status">Carregando da planilha…</span>
+                    <button type="button" class="rg-btn rg-btn-sm" id="rg-btn-gas">🔄 Atualizar</button>
+                    <button type="button" class="rg-btn rg-btn-sm" id="rg-btn-fullscreen" title="Tela cheia">⛶ Tela cheia</button>
+                    <div class="rg-card-cumprimento" title="% de blocos cumpridos, somando todos os cartões válidos, do dia 1º do mês até hoje">
+                        <h5>Cumprimento do mês</h5><p id="rg-card-mes">—</p>
+                    </div>
+                    <div class="rg-card-cumprimento" title="% de blocos cumpridos no turno de serviço de hoje (8h de hoje até 8h de amanhã), somando todos os cartões válidos">
+                        <h5>Cumprimento do dia</h5><p id="rg-card-dia">—</p>
+                    </div>
+                    <div class="rg-card-cumprimento" title="% do cartão escolhido em 'Cartão-Programa/OPO' abaixo, no turno de serviço de hoje (8h de hoje até 8h de amanhã)">
+                        <h5>Cartão selecionado</h5><p id="rg-card-selecionado">—</p>
+                    </div>
+                    <span style="flex:1"></span>
+                    <div class="rg-dropdown">
+                        <button type="button" class="rg-btn rg-btn-sm" id="rg-toggle-historico">🛰️ Trajeto histórico ▾</button>
+                        <div class="rg-dropdown-painel" id="rg-painel-historico">
+                            <button type="button" class="rg-dropdown-fechar" id="rg-fechar-historico" title="Fechar">✕</button>
+                            <h4>Trajeto histórico</h4>
+                            <p class="rg-ajuda">Guarnições da planilha de rastreamento (Sheets/GAS) — busca o histórico do período direto na planilha.</p>
+                            <select id="rg-select-viatura"><option value="">-- selecione uma viatura --</option></select>
+                            <label>De: <input type="date" id="rg-data-ini"></label>
+                            <label>Até: <input type="date" id="rg-data-fim"></label>
+                            <div class="rg-dropdown-acoes">
+                                <button type="button" class="rg-btn" id="rg-btn-trajeto">🛰️ Ver trajeto</button>
+                                <button type="button" class="rg-btn" id="rg-btn-limpar">✕ Limpar trajeto</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="rg-dropdown">
+                        <button type="button" class="rg-btn rg-btn-sm" id="rg-toggle-perimetro">📋 Cartão-Programa/OPO ▾</button>
+                        <div class="rg-dropdown-painel" id="rg-painel-perimetro">
+                            <button type="button" class="rg-dropdown-fechar" id="rg-fechar-perimetro" title="Fechar">✕</button>
+                            <h4>Perímetro do cartão-programa/OPO</h4>
+                            <p class="rg-ajuda">Selecione a RP/cidade (e, se quiser, uma data) — mostra no mapa só o perímetro do <strong>último</strong> cartão/OPO salvo que bate com o filtro.</p>
+                            <select id="rg-perimetro-rp">
+                                <option value="">-- selecione a RP/cidade --</option>
+                                <option value="PALMEIRA DOS ÍNDIOS (RP 01)">PALMEIRA (RP 01)</option>
+                                <option value="PALMEIRA DOS ÍNDIOS (RP 02)">PALMEIRA (RP 02)</option>
+                                <option value="BELÉM (RP)">BELEM (RP)</option>
+                                <option value="CACIMBINHAS (RP)">CACIMBINHAS (RP)</option>
+                                <option value="MINADOR DO NEGRÃO (RP)">MINADOR DO NEGRÃO (RP)</option>
+                                <option value="MAR VERMELHO (RP)">MAR VERMELHO (RP)</option>
+                                <option value="PAULO JACINTO (RP)">PAULO JACINTO (RP)</option>
+                                <option value="TANQUE D'ARCA (RP)">TANQUE D'ARCA (RP)</option>
+                                <option value="MARIBONDO (RP)">MARIBONDO (RP)</option>
+                                <option value="ESTRELA DE ALAGOAS (RP)">ESTRELA (RP)</option>
+                                <option value="IGACI (RP)">IGACI (RP)</option>
+                                <option value="QUEBRANGULO (RP)">QUEBRANGULO (RP)</option>
+                            </select>
+                            <label>Data (opcional): <input type="date" id="rg-perimetro-data"></label>
+                            <div class="rg-dropdown-acoes">
+                                <button type="button" class="rg-btn" id="rg-btn-buscar-perimetro">🔎 Buscar</button>
+                                <button type="button" class="rg-btn" id="rg-btn-limpar-perimetros">✕ Limpar do mapa</button>
+                            </div>
+                            <div id="rg-perimetro-resultado"></div>
+                        </div>
+                    </div>
+                    <div class="rg-dropdown">
+                        <button type="button" class="rg-btn rg-btn-sm" id="rg-toggle-panico">🚨 Botão de Pânico ▾</button>
+                        <div class="rg-dropdown-painel" id="rg-painel-panico" style="width:380px;">
+                            <button type="button" class="rg-dropdown-fechar" id="rg-fechar-panico" title="Fechar">✕</button>
+                            <h4>Botão de Pânico — Íris PMAL</h4>
+                            <p class="rg-ajuda">Acionamentos da unidade logada (sistema à parte, banco próprio).</p>
+
+                            <div id="rg-panico-login" style="display:none;">
+                                <p class="rg-ajuda" style="margin-bottom:.4rem;">Sua senha do P3 não confere com a do Íris — autentique separadamente:</p>
+                                <!-- <form>, não <div> solto — Chrome avisa no console quando um
+                                     input[type=password] não está dentro de um <form> (autofill/
+                                     gerenciador de senha esperam isso). onsubmit retorna false pra
+                                     não recarregar a página; a lógica de envio continua sendo o
+                                     clique no botão (autenticarPanico()), sem duplicar. -->
+                                <form onsubmit="autenticarPanico(); return false;">
+                                    <!-- Campo de usuário oculto (CPF, preenchido via JS ao abrir o
+                                         painel) — Chrome também sugere isso pra formulário de senha
+                                         funcionar bem com gerenciador de senha, mesmo não sendo
+                                         digitável (CPF já vem da sessão do P3). -->
+                                    <input type="text" id="rg-panico-usuario" autocomplete="username" readonly style="position:absolute;left:-9999px;" tabindex="-1" aria-hidden="true">
+                                    <label>Senha do Íris <input type="password" id="rg-panico-senha" autocomplete="current-password"></label>
+                                    <div class="rg-dropdown-acoes">
+                                        <button type="submit" class="rg-btn" id="rg-btn-panico-login">🔑 Autenticar</button>
+                                    </div>
+                                </form>
+                                <p class="rg-ajuda" id="rg-panico-login-msg" style="color:#b40000;"></p>
+                            </div>
+
+                            <div id="rg-panico-conteudo" style="display:none;">
+                                <label style="display:flex;align-items:center;gap:.4rem;flex-direction:row;">
+                                    <input type="checkbox" id="rg-panico-historico" style="width:auto;margin:0;">
+                                    Mostrar histórico completo (senão, só o acionamento em aberto)
+                                </label>
+                                <div class="rg-dropdown-acoes">
+                                    <button type="button" class="rg-btn" id="rg-btn-panico-atualizar">🔄 Atualizar</button>
+                                </div>
+                                <div id="rg-panico-resultado" style="margin-top:.6rem;max-height:260px;overflow-y:auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </main>
+    </section>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+        <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <!-- MODAL TOKEN GEO -->
+    <div id="modal-token">
+        <div class="modal-token-box">
+            <div class="modal-token-head">
+                🔑 Token de Acesso — GEO SEDS/AL
+                <button onclick="fecharModalToken()" title="Fechar">✕</button>
+            </div>
+            <div class="modal-token-body">
+                <div class="token-instrucao">
+                    <strong>Como obter o token de acesso:</strong><br>
+                    1. Acesse o GEO normalmente pelo navegador<br>
+                    2. Na tela de <strong>Validação de Token</strong>, anote o token exibido<br>
+                    3. O formato é <code>TK</code> seguido de números — ex: <code>TK2037113550</code><br>
+                    4. Cole o token abaixo — o sistema faz o login automaticamente<br>
+                    <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente.</span>
+                </div>
+                <label>Token de acesso GEO (ex: TK2037113550):</label>
+                <textarea id="input-token-geo"
+                    placeholder="TK2037113550"
+                    style="height:54px;font-size:1.1rem;text-align:center;letter-spacing:3px;font-family:monospace"
+                    oninput="this.value=this.value.toUpperCase()"></textarea>
+                <div class="msg-token" id="msg-token-geo"></div>
+            </div>
+            <div class="modal-token-foot">
+                <button class="rg-btn-cancel" onclick="fecharModalToken()">Cancelar</button>
+                <button class="rg-btn" onclick="salvarTokenGEO()">✅ Salvar e iniciar coleta</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
+        // js/core/header-nav.js.
+        P3.requireAuth();
+
+        const sessao = P3.getSession();
+
+        // Nível "copom" só tem acesso a ESTA página (ver
+        // restringirNivelCopom() em js/core/session.js, que já redireciona
+        // pra cá de qualquer outra página) — some com os demais links de
+        // navegação, já que clicar neles só ia resultar num redirecionamento
+        // de volta pra cá. Registrado em DOMContentLoaded (não direto) pra
+        // rodar DEPOIS de exibirLinkSolucoesIANoMenu()/exibirLinkAdminNoMenu()
+        // (session.js, carregado antes desta tag) — senão esses dois
+        // reexibiam o link deles por cima do nosso hide.
+        if (sessao && sessao.nivel === 'copom') {
+            document.addEventListener('DOMContentLoaded', () => {
+                document.querySelectorAll('nav.navegacao > a').forEach(a => {
+                    if (a.getAttribute('href') !== 'rastreamento-guarnicao.html') a.style.display = 'none';
+                });
+            });
+        }
+
+        // Data de hoje (fuso LOCAL — ver dataLocalISO()/hojeISO() mais abaixo)
+        // pré-preenchida no campo de trajeto histórico (período de 1 dia por padrão).
+        document.getElementById('rg-data-ini').value = hojeISO();
+        document.getElementById('rg-data-fim').value = hojeISO();
+
+        let mapa = null;
+        let marcadores = {}; // idRadio -> L.Marker
+        let linhaTrajeto = null;
+        let pontosTrajeto = []; // L.CircleMarker[] — 1 por captura de posição
+        let refreshTimer = null;
+        let circulosPerimetro = []; // L.Circle[] — perímetros dos cartões/OPOs salvos
+
+        // Chegada via Xerife ("onde a rp1 está?" → rastreamento-guarnicao.html
+        // ?foco=RP%2001) — centraliza e abre o popup dessa guarnição assim
+        // que os marcadores da planilha carregarem pela 1ª vez. Só aplica
+        // uma vez (o usuário pode navegar livremente pelo mapa depois).
+        const _focoQueryParam = new URLSearchParams(location.search).get('foco');
+        let _focoAplicado = false;
+        function normFoco(s) {
+            let n = String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/\s+/g, '');
+            // "MARIMBONDO" (inseto — palavra bem mais comum em português) é
+            // uma confusão fonética plausível de voz/digitação pra
+            // "MARIBONDO" (a cidade/RP real) — bug relatado pelo usuário
+            // ("cartão programa da RP marimbondo" não encontrava nada).
+            n = n.replace('MARIMBONDO', 'MARIBONDO');
+            return n;
+        }
+        // Cache do mapeamento cidade↔viatura (SEED_RP_VIATURA de
+        // js/cumprimento-core.js + eventuais ajustes salvos em
+        // /rp_viatura_map) — carregado 1x em carregarMapaViaturaCache() e
+        // usado por rgBuscarPerimetroPorNome pra resolver "RP 03".."RP 09"
+        // (o dropdown #rg-perimetro-rp só tem o número ESCRITO pra RP 01/02;
+        // as demais cidades aparecem só como "(RP)", sem número — o número
+        // vem do mapeamento, não do texto da option).
+        let mapaViaturaCache = window.CumprimentoCore ? Object.assign({}, window.CumprimentoCore.SEED_RP_VIATURA) : {};
+        async function carregarMapaViaturaCache() {
+            if (!window.CumprimentoCore) return;
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                mapaViaturaCache = await window.CumprimentoCore.obterMapaViatura(cfg.firebase.databaseURL);
+            } catch (e) { /* mantém o SEED como fallback */ }
+        }
+        function cidadesDaViatura(nomeViaturaNorm) {
+            return Object.entries(mapaViaturaCache)
+                .filter(([, viat]) => normFoco(viat) === nomeViaturaNorm)
+                .map(([cidade]) => cidade);
+        }
+        // Última lista de guarnições vista (atualizada a cada
+        // atualizarViaturasGAS) — reaproveitada tanto pelo foco automático
+        // de chegada (?foco=) quanto por focarGuarnicaoPorNome(), chamada a
+        // qualquer momento pelo comando de voz "abrir detalhes da
+        // guarnição X" vindo do Xerife (ver window.rgAbrirDetalhes abaixo).
+        let ultimasGuarnicoesConhecidas = [];
+        function focarGuarnicaoPorNome(nomeAlvo) {
+            const alvo = normFoco(nomeAlvo);
+            const match = ultimasGuarnicoesConhecidas.find(v => normFoco(v.nome) === alvo || normFoco(v.nome).includes(alvo) || alvo.includes(normFoco(v.nome)));
+            if (!match) return false;
+            const chave = 'gas_' + (match.idRadio || match.nome);
+            const m = marcadores[chave];
+            if (!m) return false;
+            mapa.setView([match.lat, match.lng], 15);
+            m.openPopup();
+            return true;
+        }
+        function aplicarFocoQuery(guarnicoes) {
+            if (!_focoQueryParam || _focoAplicado) return;
+            if (focarGuarnicaoPorNome(_focoQueryParam)) _focoAplicado = true;
+        }
+
+        function iniciarMapa() {
+            // zoomControl:false + L.control.zoom(bottomleft) abaixo — o
+            // padrão do Leaflet é topleft, mas o pedido foi juntar zoom e
+            // tipos de mapa no canto inferior esquerdo.
+            mapa = L.map('rg-mapa', { zoomControl: false }).setView([-9.4500, -36.6200], 10);
+            L.control.zoom({ position: 'bottomleft' }).addTo(mapa);
+
+            // Camadas base — várias formas de visualização (o padrão
+            // "Ruas" fica ativo; o controle no canto deixa trocar).
+            const camadaRuas = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap', maxZoom: 19,
+            });
+            const camadaSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics', maxZoom: 19,
+            });
+            const camadaTopo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenTopoMap (CC-BY-SA)', maxZoom: 17,
+            });
+            camadaRuas.addTo(mapa);
+            // bottomleft, junto do zoom — nenhum dos dois briga com a barra
+            // de controles sobreposta no topo do mapa (status/cards/dropdowns).
+            L.control.layers({
+                'Ruas': camadaRuas,
+                'Satélite': camadaSatelite,
+                'Relevo': camadaTopo,
+            }, null, { position: 'bottomleft', collapsed: true }).addTo(mapa);
+        }
+
+        // Só popula o <select> de "Trajeto histórico" (nome/idRadio) — NÃO
+        // desenha marcador nenhum no mapa. O mapa ao vivo agora vem só da
+        // planilha (atualizarViaturasGAS), por pedido explícito — antes as
+        // duas fontes apareciam juntas e ficava confuso qual era a posição
+        // "de verdade". A lista de guarnições vem do mesmo mapeamento da
+        // planilha usado pelo cumprimento (obterGuarnicoesPlanilha), não
+        // mais do Firebase antigo de frota — é a fonte real hoje.
+        async function popularSelectHistorico() {
+            try {
+                const guarnicoesPorNome = await window.CumprimentoCore.obterGuarnicoesPlanilha();
+                const lista = Object.values(guarnicoesPorNome).sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+                const select = document.getElementById('rg-select-viatura');
+                select.innerHTML = '<option value="">-- selecione uma viatura --</option>';
+                lista.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.idRadio;
+                    opt.textContent = v.nome;
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // ── Fonte ÚNICA da posição ao vivo: planilha Google Sheets via GAS ──
+        // Campos confirmados no retorno real: idRadio, nome, lat, lng,
+        // militares, status, modalidade, tipoVeiculo, ocorrencia,
+        // dataHoraGEO, coletadoEm — mesmo formato do nó /rastreamento do
+        // Firebase de frota, só que servido via planilha. O fetch em si é
+        // feito por window.CumprimentoCore.obterGuarnicoesPlanilha()
+        // (js/cumprimento-core.js) — dedup'd entre esta página, os cards de
+        // cumprimento e o select de histórico, pra não bater várias vezes
+        // concorrentes no mesmo endpoint (ver comentário em
+        // atualizarViaturasGAS() mais abaixo).
+        const GAS_RASTREAMENTO_URL = 'https://script.google.com/macros/s/AKfycbwuyKpN4AbmV_CmQfZr2olClY1JveArwKEcJE3__DFf74xfnd3AlhXqnde7RPkXDlqx/exec';
+
+        // Cor do ícone por tipo de guarnição: PELOPES/TÁTICO = preto, RP =
+        // azul, FT = laranja. Comparação sem acento/maiúscula pra pegar
+        // variações como "Rp 08", "TATICO RURAL 02", "Pelopes 01".
+        function corPorGuarnicao(nome) {
+            const n = (nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+            if (n.includes('PELOPES') || n.includes('TATICO')) return '#111111';
+            if (n.includes('FT')) return '#e65100';
+            if (n.includes('RP')) return '#1565c0';
+            return '#2e7d32';
+        }
+
+        // Pin em formato de gota (estilo do ícone de referência): a gota
+        // inteira usa a cor do tipo de guarnição, com um círculo branco no
+        // topo contendo o pictograma da viatura (frente de carro + giroflex)
+        // sempre em preto — só a cor da gota muda por tipo.
+        function iconePorGuarnicao(nome) {
+            const cor = corPorGuarnicao(nome);
+            const svg = `
+                <svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17 0C7.611 0 0 7.611 0 17c0 11.75 17 25 17 25s17-13.25 17-25C34 7.611 26.389 0 17 0z"
+                          fill="${cor}" stroke="#fff" stroke-width="1.5"/>
+                    <circle cx="17" cy="17" r="12" fill="#fff"/>
+                    <g fill="#111111">
+                        <path d="M11 14l1-1.2h10L23 14v1h-2v1.3h-8V15H11z"/>
+                        <rect x="8.5" y="15.3" width="17" height="6.4" rx="2.3"/>
+                        <circle cx="12.2" cy="18.4" r="1.35" fill="#fff"/>
+                        <circle cx="21.8" cy="18.4" r="1.35" fill="#fff"/>
+                        <rect x="12.5" y="10.6" width="9" height="2" rx="1"/>
+                        <path d="M13.5 10.4l-1.6-2.1M17 10.2V8M20.5 10.4l1.6-2.1" stroke="#111111" stroke-width="1.1" stroke-linecap="round"/>
+                    </g>
+                </svg>`;
+            return L.divIcon({
+                className: '',
+                html: `<div style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));">${svg}</div>`,
+                iconSize: [34, 42], iconAnchor: [17, 42], popupAnchor: [0, -38]
+            });
+        }
+
+        // Marcadores da planilha, mais o Set de chaves vistas na última
+        // atualização — qualquer marcador de uma atualização anterior que
+        // não apareceu de novo é removido (evita pin "fantasma" de uma
+        // guarnição que saiu da planilha).
+        async function atualizarViaturasGAS() {
+            const btn = document.getElementById('rg-btn-gas');
+            const status = document.getElementById('rg-status');
+            btn.disabled = true;
+            status.textContent = 'Carregando da planilha...';
+            try {
+                // Reaproveita a MESMA chamada (dedup'd) que os cards de
+                // cumprimento e o select de histórico já usam, em vez de
+                // fazer outro fetch próprio a ?acao=atual — eram 2+ chamadas
+                // concorrentes pro mesmo dado, e o redirecionamento interno
+                // do Apps Script (script.google.com → .../macros/echo) não
+                // aguenta bem esse volume simultâneo (apareciam 404 no
+                // console, mesmo a funcionalidade não quebrando). Ver
+                // obterGuarnicoesPlanilha em js/cumprimento-core.js.
+                const guarnicoesPorNome = await window.CumprimentoCore.obterGuarnicoesPlanilha();
+                // Exclui entradas "offline" (cache de idRadio pra cumprimento,
+                // sem posição real — ver mesmo arquivo) — essas não têm
+                // lat/lng de verdade pra desenhar no mapa.
+                const guarnicoes = Object.values(guarnicoesPorNome)
+                    .filter(v => !v.offline && typeof v.lat === 'number' && typeof v.lng === 'number');
+
+                const chavesVistas = new Set();
+                guarnicoes.forEach(v => {
+                    const chave = 'gas_' + (v.idRadio || v.nome);
+                    chavesVistas.add(chave);
+                    const popup = `<strong>${escHtml(v.nome)}</strong><br>${escHtml(v.status)}<br><small>${escHtml(v.militares)}</small>`;
+                    if (marcadores[chave]) {
+                        marcadores[chave].setLatLng([v.lat, v.lng]);
+                        marcadores[chave].setPopupContent(popup);
+                    } else {
+                        marcadores[chave] = L.marker([v.lat, v.lng], { icon: iconePorGuarnicao(v.nome) }).addTo(mapa).bindPopup(popup);
+                    }
+                });
+                Object.keys(marcadores).forEach(chave => {
+                    if (!chavesVistas.has(chave)) { mapa.removeLayer(marcadores[chave]); delete marcadores[chave]; }
+                });
+
+                ultimasGuarnicoesConhecidas = guarnicoes;
+                aplicarFocoQuery(guarnicoes);
+
+                status.textContent = guarnicoes.length
+                    ? `${guarnicoes.length} guarnição(ões) — planilha atualizada às ${new Date().toLocaleTimeString('pt-BR')}`
+                    : '⚠️ A planilha não retornou nenhuma guarnição agora.';
+
+                // "Última coleta REAL" vem do campo dataHoraGEO que o próprio
+                // Apps Script grava (servidor, não o navegador) — ao
+                // contrário do countdown antigo (um palpite do cliente que
+                // reiniciava do zero a cada F5), isso reflete a realidade e só
+                // muda quando a coleta de verdade acontecer de novo.
+                const timestamps = guarnicoes
+                    .map(v => v.dataHoraGEO)
+                    .filter(Boolean)
+                    .map(s => new Date(s))
+                    .filter(d => !isNaN(d.getTime()));
+                if (timestamps.length) {
+                    _ultimaColetaReal = new Date(Math.max(...timestamps.map(d => d.getTime())));
+                }
+                atualizarLinhaUltimaColeta();
+            } catch (e) {
+                console.error(e);
+                status.textContent = '⚠️ Falha ao buscar da planilha (Sheets/GAS).';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function escHtml(s) {
+            return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        // Classifica cada ponto do trajeto como "em movimento" ou "parado"
+        // (comparando com o ponto anterior — velocidade abaixo do limiar
+        // conta como parado, absorve o jitter normal do GPS) e acumula
+        // "tempo parado" enquanto a sequência de pontos parados continua.
+        const LIMIAR_PARADO_KMH = 3;
+        function processarPontosTrajeto(pontos) {
+            let inicioParadaMs = null;
+            return pontos.map((p, i) => {
+                let velocidadeKmh = null, parado = true;
+                if (i > 0) {
+                    const anterior = pontos[i - 1];
+                    const distKm = window.CumprimentoCore.haversineKm(anterior.lat, anterior.lng, p.lat, p.lng);
+                    const deltaH = (p.dt - anterior.dt) / 3600000;
+                    velocidadeKmh = deltaH > 0 ? distKm / deltaH : 0;
+                    parado = velocidadeKmh < LIMIAR_PARADO_KMH;
+                }
+                if (parado) {
+                    if (inicioParadaMs === null) inicioParadaMs = (i > 0 ? pontos[i - 1].dt : p.dt).getTime();
+                } else {
+                    inicioParadaMs = null;
+                }
+                const tempoParadaMin = parado && inicioParadaMs !== null ? Math.round((p.dt.getTime() - inicioParadaMs) / 60000) : 0;
+                return Object.assign({}, p, { velocidadeKmh, parado, tempoParadaMin });
+            });
+        }
+
+        function limparPontosTrajeto() {
+            pontosTrajeto.forEach(m => mapa.removeLayer(m));
+            pontosTrajeto = [];
+        }
+
+        async function verTrajeto() {
+            const idRadio = document.getElementById('rg-select-viatura').value;
+            const dataIni = document.getElementById('rg-data-ini').value;
+            const dataFim = document.getElementById('rg-data-fim').value;
+            if (!idRadio || !dataIni || !dataFim) { alert('Selecione a viatura e o período (de/até).'); return; }
+
+            const btn = document.getElementById('rg-btn-trajeto');
+            btn.disabled = true;
+            btn.textContent = 'Carregando...';
+            try {
+                const brutos = await window.CumprimentoCore.buscarHistoricoPlanilha(idRadio, dataIni, dataFim);
+                if (linhaTrajeto) mapa.removeLayer(linhaTrajeto);
+                limparPontosTrajeto();
+                if (!brutos.length) { alert('Sem pontos de rastreamento nesse período pra essa viatura.'); return; }
+
+                const pontos = processarPontosTrajeto(brutos);
+                const latlngs = pontos.map(p => [p.lat, p.lng]);
+
+                // Linha pontilhada só de conexão (não é mais o dado principal
+                // — os pontos individuais é que mostram a captura real).
+                linhaTrajeto = L.polyline(latlngs, { color: '#555', weight: 2, dashArray: '4,7', opacity: .8 }).addTo(mapa);
+
+                pontos.forEach(p => {
+                    const cor = p.parado ? '#757575' : '#1565c0'; // cinza = parado, azul = em movimento
+                    const marcador = L.circleMarker([p.lat, p.lng], {
+                        radius: 5, color: '#fff', weight: 1.5, fillColor: cor, fillOpacity: .95,
+                    }).addTo(mapa);
+                    const horaTxt = p.dt.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+                    marcador.bindPopup(
+                        `<div style="min-width:170px;">` +
+                        `<strong>${p.parado ? '🅿️ Parado' : '🚓 Em movimento'}</strong><br>` +
+                        `<small>Horário: ${horaTxt}</small><br>` +
+                        `<small>Velocidade: ${p.velocidadeKmh === null ? '—' : p.velocidadeKmh.toFixed(1) + ' km/h'}</small><br>` +
+                        (p.parado ? `<small>Parado há: ${p.tempoParadaMin} min</small><br>` : '') +
+                        (p.militares ? `<small>${escHtml(p.militares)}</small>` : '') +
+                        `</div>`
+                    );
+                    pontosTrajeto.push(marcador);
+                });
+
+                mapa.fitBounds(linhaTrajeto.getBounds(), { padding: [30, 30] });
+            } catch (e) {
+                console.error(e);
+                alert('Não foi possível carregar o trajeto agora.');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🛰️ Ver trajeto';
+            }
+        }
+
+        function limparPerimetros() {
+            circulosPerimetro.forEach(c => mapa.removeLayer(c));
+            circulosPerimetro = [];
+        }
+
+        // ── Botão de Pânico (Íris PMAL — sistema à parte, mesma unidade,
+        // banco MySQL/Hostinger) ──────────────────────────────────────
+        // Autenticação: login.html já tenta logar no Íris com o MESMO
+        // CPF+senha do P3 (best-effort, silencioso) e guarda o token JWT em
+        // localStorage['irisToken']. Se não bateu lá (senha diferente),
+        // esse painel pede a senha do Íris na hora. NÃO existe token de
+        // serviço fixo no front — exigiria expor uma chave/segredo no
+        // código-fonte da página, visível a qualquer visitante.
+        const IRIS_API_URL = 'https://irispmal.io/api/iris_api.php';
+        let marcadoresPanico = [];
+
+        function limparMarcadoresPanico() {
+            marcadoresPanico.forEach(m => mapa.removeLayer(m));
+            marcadoresPanico = [];
+        }
+
+        // coordenada_gps (tbl_acionamentos) não tem formato documentado —
+        // extrai os 2 primeiros números decimais da string, cobre "lat,lng",
+        // "lat, lng" ou variações. Cai pro link_gps (provável URL do Google
+        // Maps) se coordenada_gps não render.
+        function parseCoordenadaGps(str) {
+            if (!str) return null;
+            const nums = String(str).match(/-?\d{1,3}\.\d+/g);
+            if (!nums || nums.length < 2) return null;
+            const lat = parseFloat(nums[0]), lng = parseFloat(nums[1]);
+            return (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : null;
+        }
+
+        // "AAAA-MM-DD HH:MM:SS" (MySQL) -> "DD/MM/AAAA HH:MM" — sem passar
+        // por Date/fuso: exibe exatamente o horário que o servidor do Íris
+        // gravou, já que não sei em qual fuso o PHP da Hostinger está.
+        function formatarDataHoraMysql(str) {
+            if (!str) return '—';
+            const m = String(str).match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : String(str);
+        }
+
+        function iconePanico() {
+            return L.divIcon({
+                className: '',
+                html: `<div style="background:#c62828;color:#fff;border-radius:50%;width:30px;height:30px;
+                                   display:flex;align-items:center;justify-content:center;font-size:16px;
+                                   border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.5);">🚨</div>`,
+                iconSize: [30, 30], iconAnchor: [15, 15],
+            });
+        }
+
+        async function chamarIris(params) {
+            const token = localStorage.getItem('irisToken');
+            if (!token) return { ok: false, erro: 'sem-token' };
+            try {
+                const url = IRIS_API_URL + '?' + new URLSearchParams(params).toString();
+                const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+                if (res.status === 401) { localStorage.removeItem('irisToken'); return { ok: false, erro: 'token-expirado' }; }
+                const data = await res.json().catch(() => null);
+                return data || { ok: false, erro: 'resposta-invalida' };
+            } catch (e) {
+                console.error(e);
+                return { ok: false, erro: 'falha-rede' };
+            }
+        }
+
+        function renderizarAcionamentos(registros) {
+            limparMarcadoresPanico();
+            const cont = document.getElementById('rg-panico-resultado');
+            if (!registros.length) {
+                cont.innerHTML = '<p class="rg-ajuda">Nenhum acionamento encontrado.</p>';
+                return;
+            }
+            let html = '';
+            registros.forEach(r => {
+                const coord = parseCoordenadaGps(r.coordenada_gps) || parseCoordenadaGps(r.link_gps);
+                const aberto = !r.data_hora_resposta;
+                if (coord) {
+                    const marcador = L.marker([coord.lat, coord.lng], { icon: iconePanico() }).addTo(mapa);
+                    marcador.bindPopup(
+                        `<div style="min-width:200px;">` +
+                        `<strong>🚨 ${escHtml(r.nome_assistida || 'Assistida')}</strong><br>` +
+                        `<small>${aberto ? '<span style="color:#c62828;font-weight:700;">EM ABERTO</span>' : 'Respondido'}</small><br>` +
+                        `<small>Status: ${escHtml(r.status || '—')}</small><br>` +
+                        `<small>Acionado em: ${formatarDataHoraMysql(r.data_hora_acio)}</small><br>` +
+                        (r.data_hora_resposta ? `<small>Respondido em: ${formatarDataHoraMysql(r.data_hora_resposta)}</small><br>` : '') +
+                        (r.endereco ? `<small>${escHtml(r.endereco)}${r.cidade ? ' — ' + escHtml(r.cidade) : ''}</small><br>` : '') +
+                        (r.telefone ? `<small>Tel: ${escHtml(r.telefone)}</small>` : '') +
+                        `</div>`
+                    );
+                    marcadoresPanico.push(marcador);
+                }
+                html += `<div class="rg-linha-perimetro">` +
+                    `<span class="rg-titulo-item">${escHtml(r.nome_assistida || 'Assistida')} ${aberto ? '🔴' : '✅'}${coord ? '' : ' <small>(sem coordenada)</small>'}</span>` +
+                    `<span class="rg-status-item">${formatarDataHoraMysql(r.data_hora_acio)}</span>` +
+                    `</div>`;
+            });
+            cont.innerHTML = html;
+            if (marcadoresPanico.length) mapa.fitBounds(L.featureGroup(marcadoresPanico).getBounds(), { padding: [40, 40] });
+        }
+
+        // Sem checkbox de histórico: só o acionamento em ABERTO mais recente
+        // (data_hora_resposta ainda vazio) — com histórico: todos os
+        // acionamentos retornados (mais recentes primeiro).
+        async function atualizarPanico() {
+            const historico = document.getElementById('rg-panico-historico').checked;
+            const cont = document.getElementById('rg-panico-resultado');
+            cont.innerHTML = '<p class="rg-ajuda">Carregando...</p>';
+            const resp = await chamarIris({ acao: 'listar', tabela: 'acionamentos', ordem: 'DESC', limite: historico ? 200 : 30 });
+            if (!resp.ok) {
+                if (resp.erro === 'token-expirado' || resp.erro === 'sem-token') mostrarLoginPanico();
+                else cont.innerHTML = '<p class="rg-ajuda">⚠️ Falha ao buscar dados do Íris.</p>';
+                return;
+            }
+            let registros = resp.registros || [];
+            if (!historico) {
+                const aberto = registros.find(r => !r.data_hora_resposta);
+                registros = aberto ? [aberto] : [];
+                if (!aberto) { cont.innerHTML = '<p class="rg-ajuda">Nenhum acionamento em aberto no momento.</p>'; limparMarcadoresPanico(); return; }
+            }
+            renderizarAcionamentos(registros);
+        }
+
+        function mostrarLoginPanico() {
+            document.getElementById('rg-panico-login').style.display = 'block';
+            document.getElementById('rg-panico-conteudo').style.display = 'none';
+            const sessao = P3.getSession();
+            if (sessao) document.getElementById('rg-panico-usuario').value = sessao.cpf || '';
+        }
+        function mostrarConteudoPanico() {
+            document.getElementById('rg-panico-login').style.display = 'none';
+            document.getElementById('rg-panico-conteudo').style.display = 'block';
+        }
+
+        function abrirPainelPanico() {
+            if (localStorage.getItem('irisToken')) {
+                mostrarConteudoPanico();
+                atualizarPanico();
+            } else {
+                mostrarLoginPanico();
+            }
+        }
+
+        async function autenticarPanico() {
+            const senha = document.getElementById('rg-panico-senha').value;
+            const msg = document.getElementById('rg-panico-login-msg');
+            const sessao = P3.getSession();
+            if (!senha || !sessao) { msg.textContent = 'Digite a senha.'; return; }
+            msg.textContent = 'Autenticando...';
+            try {
+                const res = await fetch(IRIS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ acao: 'login_mysql', cpf: sessao.cpf, senha }),
+                });
+                const data = await res.json().catch(() => null);
+                if (data && data.ok && data.token) {
+                    localStorage.setItem('irisToken', data.token);
+                    localStorage.setItem('irisUnidadeChave', data.unidade || '');
+                    msg.textContent = '';
+                    document.getElementById('rg-panico-senha').value = '';
+                    mostrarConteudoPanico();
+                    atualizarPanico();
+                } else {
+                    msg.textContent = (data && data.erro) || 'CPF/senha não confere no Íris.';
+                }
+            } catch (e) {
+                console.error(e);
+                msg.textContent = 'Falha de conexão com o Íris.';
+            }
+        }
+
+        // Clique no botão "Autenticar" (type=submit) e Enter no campo de
+        // senha já disparam autenticarPanico() sozinhos via o onsubmit do
+        // <form> acima — nada a registrar aqui pra esses dois (registrar de
+        // novo chamaria a função 2x por interação).
+        document.getElementById('rg-btn-panico-atualizar').addEventListener('click', atualizarPanico);
+        document.getElementById('rg-panico-historico').addEventListener('change', atualizarPanico);
+
+        // ── Cards de % de cumprimento (mês / dia / cartão selecionado) ──
+        // Mesma lógica de calcularCumprimentoPeriodo() usada em
+        // page/cumprimento-cartao.html, só que agregada aqui pra dar um
+        // resumo rápido sem precisar trocar de página. "Do mês"/"Do dia"
+        // somam blocosCumpridos/totalBlocos de TODOS os cartões válidos (não
+        // é média das porcentagens — pondera pela quantidade real de blocos
+        // de cada cartão, senão um cartão pequeno pesaria igual a um grande).
+        // "AAAA-MM-DD" no fuso LOCAL — nunca usar .toISOString() aqui: ele
+        // converte pra UTC, e como o 10º BPM fica em UTC-3, depois das 21h
+        // (horário local) o UTC já virou o dia seguinte. Isso fazia o card
+        // "cumprimento do dia" pedir a data de AMANHÃ na planilha (sem
+        // nenhum dado ainda) enquanto os cards de período (mês/selecionado)
+        // continuavam funcionando por sorte — o intervalo deles ainda
+        // incluía o dia certo mesmo com o fim "adiantado" 1 dia.
+        function dataLocalISO(d) {
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        }
+        function primeiroDiaMesISO() {
+            const hoje = new Date();
+            return dataLocalISO(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+        }
+        function hojeISO() { return dataLocalISO(new Date()); }
+
+        // Turno ATIVO agora — usado pelos cards "do dia" e "selecionado"
+        // (que mostram o status do turno EM CURSO, não de calendário). Como
+        // o turno vai das 8h de um dia até as 8h do seguinte, antes das 8h
+        // da manhã o turno em curso ainda é o que começou ONTEM — só a
+        // partir das 8h que "o turno de hoje" já é o certo.
+        function turnoAtualISO() {
+            const agora = new Date();
+            const base = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+            if (agora.getHours() < 8) base.setDate(base.getDate() - 1);
+            return dataLocalISO(base);
+        }
+
+        // "Do mês" agrega por DIA DE CALENDÁRIO (calcularCumprimentoPeriodo) —
+        // fica como já estava, sem diferença prática num período de 1 mês
+        // inteiro (a virada de dia se compensa entre um dia e o seguinte).
+        async function calcularPctAgregadoMes(dataIniISO, dataFimISO) {
+            if (!window.CumprimentoCore) return null;
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const dbUrl = cfg.firebase.databaseURL;
+                const [resCartoes, mapaAtual] = await Promise.all([
+                    fetch(`${dbUrl}/cartoes_programa.json`),
+                    window.CumprimentoCore.obterMapaViatura(dbUrl),
+                ]);
+                const dados = resCartoes.ok ? await resCartoes.json() : {};
+                const cartoesValidos = Object.entries(dados || {})
+                    .map(([id, v]) => Object.assign({ id }, v))
+                    .filter(c => c.tipo !== 'opo')
+                    .filter(c => window.CumprimentoCore.ehCartaoValido(c));
+
+                let somaCumpridos = 0, somaTotal = 0;
+                for (const c of cartoesValidos) {
+                    const viatura = window.CumprimentoCore.resolverViaturaPorRP(c.rpSelecionado, mapaAtual, c.viaturaResponsavel);
+                    if (!viatura) continue;
+                    const r = await window.CumprimentoCore.calcularCumprimentoPeriodo({
+                        cronograma: c.cronograma, viaturaNome: viatura, dataIniISO, dataFimISO, limiarMinutos: 15,
+                    });
+                    if (r.erro) continue;
+                    somaCumpridos += r.blocosCumpridos;
+                    somaTotal += r.totalBlocos;
+                }
+                return somaTotal ? Math.round((somaCumpridos / somaTotal) * 100) : null;
+            } catch (e) { console.error(e); return null; }
+        }
+
+        // "Do dia" = o TURNO de serviço de hoje (8h de hoje até 8h de
+        // amanhã) — a guarnição trabalha em turno de 24h que não bate com a
+        // meia-noite do calendário, então usa calcularCumprimentoPeriodoTurno
+        // (ver comentário grande em js/cumprimento-core.js).
+        async function calcularPctAgregadoTurno(dataIniISO, dataFimISO) {
+            if (!window.CumprimentoCore) return null;
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const dbUrl = cfg.firebase.databaseURL;
+                const [resCartoes, mapaAtual] = await Promise.all([
+                    fetch(`${dbUrl}/cartoes_programa.json`),
+                    window.CumprimentoCore.obterMapaViatura(dbUrl),
+                ]);
+                const dados = resCartoes.ok ? await resCartoes.json() : {};
+                const cartoesValidos = Object.entries(dados || {})
+                    .map(([id, v]) => Object.assign({ id }, v))
+                    .filter(c => c.tipo !== 'opo')
+                    .filter(c => window.CumprimentoCore.ehCartaoValido(c));
+
+                let somaCumpridos = 0, somaTotal = 0;
+                for (const c of cartoesValidos) {
+                    const viatura = window.CumprimentoCore.resolverViaturaPorRP(c.rpSelecionado, mapaAtual, c.viaturaResponsavel);
+                    if (!viatura) continue;
+                    const r = await window.CumprimentoCore.calcularCumprimentoPeriodoTurno({
+                        cronograma: c.cronograma, viaturaNome: viatura, dataIniISO, dataFimISO, limiarMinutos: 15,
+                    });
+                    if (r.erro) continue;
+                    somaCumpridos += r.blocosCumpridos;
+                    somaTotal += r.totalBlocos;
+                }
+                return somaTotal ? Math.round((somaCumpridos / somaTotal) * 100) : null;
+            } catch (e) { console.error(e); return null; }
+        }
+
+        // <=40% vermelho, >40% e <=50% laranja, >50% verde — mesmo critério
+        // pros 3 cards (mês/dia/selecionado). Cor fixa (não usa variável de
+        // tema) porque é sinalização de status, não texto comum — precisa
+        // continuar vermelho/laranja/verde igual nos dois temas.
+        function corPorPercentual(pct) {
+            if (pct === null || pct === undefined) return '';
+            if (pct <= 40) return '#c62828';
+            if (pct <= 50) return '#e65100';
+            return '#2e7d32';
+        }
+        function definirCardPercentual(idEl, pct) {
+            const el = document.getElementById(idEl);
+            el.textContent = pct === null ? '—' : pct + '%';
+            el.style.color = corPorPercentual(pct);
+        }
+
+        async function atualizarCardsAgregados() {
+            const [pctMes, pctDia] = await Promise.all([
+                calcularPctAgregadoMes(primeiroDiaMesISO(), hojeISO()),
+                calcularPctAgregadoTurno(turnoAtualISO(), turnoAtualISO()),
+            ]);
+            definirCardPercentual('rg-card-mes', pctMes);
+            definirCardPercentual('rg-card-dia', pctDia);
+        }
+
+        // Cartão escolhido em "Perímetro do cartão-programa/OPO" (cartaoPerimetroAtual)
+        // — % dele sozinho, no TURNO de hoje (mesma lógica do card "do dia").
+        async function atualizarCardSelecionado() {
+            if (!cartaoPerimetroAtual || !window.CumprimentoCore) { definirCardPercentual('rg-card-selecionado', null); return; }
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const mapaAtual = await window.CumprimentoCore.obterMapaViatura(cfg.firebase.databaseURL);
+                const viatura = window.CumprimentoCore.resolverViaturaPorRP(cartaoPerimetroAtual.rpSelecionado, mapaAtual, cartaoPerimetroAtual.viaturaResponsavel);
+                if (!viatura) { definirCardPercentual('rg-card-selecionado', null); return; }
+                const turno = turnoAtualISO();
+                const r = await window.CumprimentoCore.calcularCumprimentoPeriodoTurno({
+                    cronograma: cartaoPerimetroAtual.cronograma, viaturaNome: viatura,
+                    dataIniISO: turno, dataFimISO: turno, limiarMinutos: 15,
+                });
+                definirCardPercentual('rg-card-selecionado', (r.erro || r.percentualCumprido === null) ? null : r.percentualCumprido);
+            } catch (e) { console.error(e); definirCardPercentual('rg-card-selecionado', null); }
+        }
+
+        function atualizarTodosCards() {
+            atualizarCardsAgregados();
+            atualizarCardSelecionado();
+        }
+
+        // ── Filtro de perímetro: RP/cidade (+ data opcional) → ÚLTIMO cartão ──
+        // Diferente de listar todos os cartões salvos (o que ficava poluído
+        // com vários registros repetidos de teste/edição) — aqui o usuário
+        // escolhe a RP (mesmo dropdown de relatorios/cartaoprograma.html) e,
+        // opcionalmente, uma data; mostra só o cartão MAIS RECENTE que bate
+        // com esse filtro (o do dia, se a data foi informada).
+        let cartaoPerimetroAtual = null;
+
+        function converterISOparaBR(iso) {
+            const [a, m, d] = iso.split('-');
+            return `${d}/${m}/${a}`;
+        }
+
+        async function buscarPerimetroFiltrado() {
+            const rp = document.getElementById('rg-perimetro-rp').value;
+            const dataFiltro = document.getElementById('rg-perimetro-data').value;
+            const cont = document.getElementById('rg-perimetro-resultado');
+            if (!rp) { alert('Selecione a RP/cidade.'); return; }
+
+            const btn = document.getElementById('rg-btn-buscar-perimetro');
+            btn.disabled = true;
+            btn.textContent = 'Buscando...';
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const dbUrl = cfg.firebase.databaseURL;
+                const res = await fetch(`${dbUrl}/cartoes_programa.json`);
+                const dados = res.ok ? await res.json() : {};
+                const dataBR = dataFiltro ? converterISOparaBR(dataFiltro) : null;
+
+                // Só cartões VÁLIDOS (1 mês a partir de quando foram salvos,
+                // ou até um novo ser gerado pra mesma RP) entram na busca.
+                const candidatos = Object.entries(dados || {})
+                    .map(([id, v]) => Object.assign({ id }, v))
+                    .filter(c => c.tipo !== 'opo' && c.rpSelecionado === rp)
+                    .filter(c => !window.CumprimentoCore || window.CumprimentoCore.ehCartaoValido(c))
+                    .filter(c => !dataBR || c.data === dataBR)
+                    .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
+
+                if (!candidatos.length) {
+                    limparPerimetros();
+                    cartaoPerimetroAtual = null;
+                    atualizarCardSelecionado();
+                    cont.innerHTML = `<p class="rg-ajuda" style="font-size:.85rem;color:var(--p3-text-muted,#666);">` +
+                        `Nenhum cartão VÁLIDO salvo pra "${escHtml(rp)}"${dataBR ? ' na data ' + escHtml(dataBR) : ''}.</p>`;
+                    return;
+                }
+
+                cartaoPerimetroAtual = candidatos[0];
+                // Resolve a guarnição pelo mapeamento ATUAL (rp_viatura_map),
+                // não o valor congelado — uma correção feita na tela de
+                // Cumprimento já vale aqui, sem precisar gerar o cartão de novo.
+                if (window.CumprimentoCore) {
+                    const mapaAtual = await window.CumprimentoCore.obterMapaViatura(dbUrl);
+                    cartaoPerimetroAtual.viaturaResponsavel = window.CumprimentoCore.resolverViaturaPorRP(
+                        cartaoPerimetroAtual.rpSelecionado, mapaAtual, cartaoPerimetroAtual.viaturaResponsavel
+                    );
+                }
+                desenharPerimetroCartao(cartaoPerimetroAtual);
+                renderizarPainelPerimetro(cartaoPerimetroAtual);
+                atualizarCardSelecionado();
+            } catch (e) {
+                console.error(e);
+                cont.innerHTML = '<p class="rg-ajuda">⚠️ Falha ao buscar.</p>';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔎 Buscar';
+            }
+        }
+
+        // Desenha o perímetro (círculo) de 1 cartão só — vem do MESMO campo
+        // `area` gravado ao salvar (ver salvarCartaoAtual() em
+        // js/gerarcartao.js) — nunca recalcula aqui, só exibe. Agrupa blocos
+        // com área EXATAMENTE igual (ex.: vários "BASE OPERACIONAL" no mesmo
+        // centro da cidade) num círculo só, e pula bloco administrativo
+        // (não entra no cálculo de cumprimento mesmo).
+        function desenharPerimetroCartao(cartao) {
+            limparPerimetros();
+            const grupos = new Map();
+            const linhas = cartao.tipo === 'opo' ? (cartao.alocacoes || []) : (cartao.cronograma || []);
+            linhas.forEach(linha => {
+                if (!linha.area) return;
+                if (window.CumprimentoCore && window.CumprimentoCore.ehBlocoAdministrativo(linha.det)) return;
+                const chave = `${linha.area.lat.toFixed(4)}_${linha.area.lng.toFixed(4)}_${linha.area.raioKm}`;
+                if (!grupos.has(chave)) grupos.set(chave, { area: linha.area, itens: [] });
+                grupos.get(chave).itens.push(linha);
+            });
+            grupos.forEach(grupo => {
+                // Vermelho = algum bloco desse círculo está dentro do
+                // horário ATUAL (ver estaDentroDoHorarioAtual em
+                // js/cumprimento-core.js) — é o mesmo critério usado pelo
+                // cálculo de cumprimento, então o círculo vermelho aqui é
+                // exatamente o que será conferido contra a planilha agora.
+                const ativoAgora = window.CumprimentoCore && grupo.itens.some(l => window.CumprimentoCore.estaDentroDoHorarioAtual(l));
+                const circulo = L.circle([grupo.area.lat, grupo.area.lng], {
+                    radius: grupo.area.raioKm * 1000,
+                    color: ativoAgora ? '#cc0000' : '#003366',
+                    weight: ativoAgora ? 3 : 1.5,
+                    opacity: ativoAgora ? 0.9 : 0.7,
+                    fillOpacity: ativoAgora ? 0.18 : 0.08,
+                }).addTo(mapa);
+                const itens = grupo.itens.map(l =>
+                    `<li>${escHtml(l.ini || '')}–${escHtml(l.fim || '')} — ${escHtml(l.miss || '')}<br>${escHtml(l.det || '')}</li>`
+                ).join('');
+                circulo.bindPopup(
+                    `<div style="max-width:260px;">${ativoAgora ? '<strong style="color:#cc0000;">🔴 Horário atual</strong><br>' : ''}` +
+                    `<small>Perímetro: ${grupo.area.raioKm} km ` +
+                    `(${grupo.area.origem === 'ocorrencias' ? 'centro real do bairro' : grupo.area.origem === 'coordenadas' ? 'agrupamento por coordenadas' : 'centro da cidade — fallback'})</small>` +
+                    `<ul style="padding-left:16px;margin:.3rem 0 0;">${itens}</ul></div>`
+                );
+                circulosPerimetro.push(circulo);
+            });
+            if (circulosPerimetro.length) {
+                mapa.fitBounds(L.featureGroup(circulosPerimetro).getBounds(), { padding: [40, 40] });
+            }
+        }
+
+        function renderizarPainelPerimetro(cartao) {
+            const cont = document.getElementById('rg-perimetro-resultado');
+            const tipoLabel = cartao.tipo === 'opo' ? 'OPO' : 'Cartão';
+            const horaAgora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            cont.innerHTML = `<p class="rg-ajuda" style="font-size:.8rem;color:var(--p3-text-muted,#666);margin:0 0 .4rem;">` +
+                `Horário atual: ${horaAgora} — o círculo em <strong style="color:#cc0000;">vermelho</strong> no mapa é o bloco agendado pra agora.</p>`;
+            const linha = document.createElement('div');
+            linha.className = 'rg-linha-perimetro';
+            linha.innerHTML =
+                `<span class="rg-titulo-item">[${escHtml(tipoLabel)}] ${escHtml(cartao.cidade || '')} — ${escHtml(cartao.data || '')} ` +
+                `(viatura: ${escHtml(cartao.viaturaResponsavel || 'não mapeada')})</span>` +
+                `<label>Novo perímetro (km): <input type="number" id="rg-input-novo-perimetro" value="${cartao.perimetroKm || 1}" min="0.3" step="0.1"></label>` +
+                `<button type="button" class="rg-btn" id="rg-btn-aplicar-novo-perimetro">Aplicar</button>` +
+                `<span id="rg-status-novo-perimetro" class="rg-status-item"></span>`;
+            cont.appendChild(linha);
+            document.getElementById('rg-btn-aplicar-novo-perimetro').addEventListener('click', aplicarNovoPerimetro);
+        }
+
+        async function aplicarNovoPerimetro() {
+            if (!cartaoPerimetroAtual) return;
+            const input = document.getElementById('rg-input-novo-perimetro');
+            const statusEl = document.getElementById('rg-status-novo-perimetro');
+            const novoRaio = parseFloat(input.value);
+            if (!novoRaio || novoRaio <= 0) { statusEl.textContent = '⚠️ valor inválido'; return; }
+
+            statusEl.textContent = 'Salvando...';
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const dbUrl = cfg.firebase.databaseURL;
+                const cartao = cartaoPerimetroAtual;
+
+                const atualizarLinhas = (linhas) => (linhas || []).map(l => {
+                    if (!l.area) return l;
+                    if (window.CumprimentoCore && window.CumprimentoCore.ehBlocoAdministrativo(l.det)) return l;
+                    return Object.assign({}, l, { area: Object.assign({}, l.area, { raioKm: novoRaio }) });
+                });
+
+                const atualizado = Object.assign({}, cartao, { perimetroKm: novoRaio });
+                const id = atualizado.id;
+                delete atualizado.id;
+                if (cartao.tipo === 'opo') atualizado.alocacoes = atualizarLinhas(cartao.alocacoes);
+                else atualizado.cronograma = atualizarLinhas(cartao.cronograma);
+
+                const res = await fetch(`${dbUrl}/cartoes_programa/${id}.json`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(atualizado),
+                });
+                if (!res.ok) throw new Error('falha ao salvar');
+
+                Object.assign(cartaoPerimetroAtual, atualizado, { id });
+                statusEl.textContent = '✅ Aplicado!';
+                desenharPerimetroCartao(cartaoPerimetroAtual);
+            } catch (e) {
+                console.error(e);
+                statusEl.textContent = '⚠️ Falha ao salvar';
+            } finally {
+                setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            }
+        }
+
+        function limparTrajeto() {
+            if (linhaTrajeto) { mapa.removeLayer(linhaTrajeto); linhaTrajeto = null; }
+            limparPontosTrajeto();
+        }
+
+        document.getElementById('rg-btn-trajeto').addEventListener('click', verTrajeto);
+        document.getElementById('rg-btn-limpar').addEventListener('click', limparTrajeto);
+        document.getElementById('rg-btn-buscar-perimetro').addEventListener('click', buscarPerimetroFiltrado);
+        document.getElementById('rg-btn-limpar-perimetros').addEventListener('click', () => { limparPerimetros(); cartaoPerimetroAtual = null; atualizarCardSelecionado(); document.getElementById('rg-perimetro-resultado').innerHTML = ''; });
+        document.getElementById('rg-btn-gas').addEventListener('click', () => {
+            if (!verificarTokenGEO()) { abrirModalToken(); return; }
+            dispararColetaGAS().then(() => atualizarViaturasGAS());
+        });
+
+        // ── Tela cheia: o mapa preenche 100vw×100vh; trajeto histórico e
+        // perímetro do cartão-programa/OPO são os mesmos menus suspensos
+        // sobrepostos ao mapa (não seções separadas), então continuam
+        // acessíveis dentro da tela cheia sem nenhuma duplicação de lógica.
+        // O botão do Xerife (injetado por
+        // injetarXerife() em session.js) é anexado direto no <body> — como o
+        // Fullscreen API só renderiza o elemento em tela cheia e seus
+        // descendentes, ele precisa ser realocado pra dentro do wrapper
+        // enquanto durar a tela cheia (e devolvido ao <body> ao sair, senão
+        // ficaria "perdido" dentro do wrapper escondido).
+        function moverXerifeParaFullscreen(dentro) {
+            const btn = document.getElementById('xerife-botao');
+            const wrapper = document.getElementById('rg-fullscreen-wrapper');
+            if (!btn || !wrapper) return;
+            if (dentro && btn.parentElement !== wrapper) wrapper.appendChild(btn);
+            else if (!dentro && btn.parentElement === wrapper) document.body.appendChild(btn);
+        }
+
+        // Dentro de um iframe (single embed ou split do IA Xerife) a
+        // Fullscreen API REAL esconderia a esfera de partículas do
+        // documento PAI (ela vive FORA deste iframe — a API só mantém
+        // visível o elemento em tela cheia e os descendentes DELE) —
+        // "deixando só o chat", exatamente o bug relatado pelo usuário.
+        // Nesse caso alterna uma classe CSS que reproduz o MESMO layout
+        // (100vw×100vh, sem borda — ver .rg-maximizado-css no <style> lá
+        // em cima) sem nunca chamar requestFullscreen(), então a esfera
+        // externa nunca some. Fora do IA Xerife (página acessada direto),
+        // continua usando a Fullscreen API real como antes.
+        const dentroDoXerife = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+        document.getElementById('rg-btn-fullscreen').addEventListener('click', () => {
+            const wrapper = document.getElementById('rg-fullscreen-wrapper');
+            if (dentroDoXerife) {
+                const emTelaCheiaCss = wrapper.classList.toggle('rg-maximizado-css');
+                const btn = document.getElementById('rg-btn-fullscreen');
+                if (btn) btn.textContent = emTelaCheiaCss ? '⛶ Sair da tela cheia' : '⛶ Tela cheia';
+                if (mapa) setTimeout(() => mapa.invalidateSize(), 200);
+                return;
+            }
+            if (!document.fullscreenElement) {
+                (wrapper.requestFullscreen || wrapper.webkitRequestFullscreen)?.call(wrapper);
+            } else {
+                document.exitFullscreen?.() || document.webkitExitFullscreen?.();
+            }
+        });
+        document.addEventListener('fullscreenchange', () => {
+            const emTelaCheia = !!document.fullscreenElement;
+            moverXerifeParaFullscreen(emTelaCheia);
+            const btn = document.getElementById('rg-btn-fullscreen');
+            if (btn) btn.textContent = emTelaCheia ? '⛶ Sair da tela cheia' : '⛶ Tela cheia';
+            if (mapa) setTimeout(() => mapa.invalidateSize(), 200);
+        });
+
+        // ── Menus suspensos (histórico / cartão-programa) sobrepostos ao
+        // mapa — abrir um fecha o outro; clique fora ou no ✕ fecha.
+        // Alinha a borda direita do painel com a do botão que abriu (padrão),
+        // mas SEM deixar vazar pra fora da área do mapa em nenhum dos dois
+        // lados — com a barra de cima ficando mais cheia (cards de %
+        // somados aos botões), o botão do dropdown pode acabar quebrando
+        // linha perto da borda esquerda; sem esse ajuste, o painel de
+        // 340px largo saía com x negativo (fora da tela) e o clique nos
+        // botões de dentro caía em outro elemento por baixo.
+        function posicionarPainelDropdown(idToggle, idPainel) {
+            const toggle = document.getElementById(idToggle);
+            const painel = document.getElementById(idPainel);
+            // .rg-dropdown (pai do botão) é o "containing block" real do
+            // painel (position:relative mais próximo) — o left calculado
+            // precisa ser relativo A ELE, não à área do mapa; só o CLAMP
+            // (não deixar vazar) usa os limites da área do mapa.
+            const dropdown = toggle.parentElement;
+            const area = document.getElementById('rg-area-mapa');
+            const areaRect = area.getBoundingClientRect();
+            const dropdownRect = dropdown.getBoundingClientRect();
+            const largura = Math.min(340, areaRect.width - 16);
+            let leftViewport = dropdownRect.right - largura; // alinhado à direita do botão, por padrão
+            leftViewport = Math.max(areaRect.left + 8, Math.min(leftViewport, areaRect.right - largura - 8));
+            painel.style.right = 'auto';
+            painel.style.left = (leftViewport - dropdownRect.left) + 'px';
+        }
+
+        function alternarDropdown(idPainel, abrir, idToggle) {
+            const painel = document.getElementById(idPainel);
+            ['rg-painel-historico', 'rg-painel-perimetro', 'rg-painel-panico'].forEach(id => {
+                document.getElementById(id).classList.toggle('aberto', id === idPainel && abrir);
+            });
+            if (abrir && idToggle) posicionarPainelDropdown(idToggle, idPainel);
+            if (abrir && idPainel === 'rg-painel-panico') abrirPainelPanico();
+        }
+        document.getElementById('rg-toggle-historico').addEventListener('click', (e) => {
+            e.stopPropagation();
+            alternarDropdown('rg-painel-historico', !document.getElementById('rg-painel-historico').classList.contains('aberto'), 'rg-toggle-historico');
+        });
+        document.getElementById('rg-toggle-perimetro').addEventListener('click', (e) => {
+            e.stopPropagation();
+            alternarDropdown('rg-painel-perimetro', !document.getElementById('rg-painel-perimetro').classList.contains('aberto'), 'rg-toggle-perimetro');
+        });
+        document.getElementById('rg-toggle-panico').addEventListener('click', (e) => {
+            e.stopPropagation();
+            alternarDropdown('rg-painel-panico', !document.getElementById('rg-painel-panico').classList.contains('aberto'), 'rg-toggle-panico');
+        });
+        document.getElementById('rg-fechar-historico').addEventListener('click', () => alternarDropdown('rg-painel-historico', false));
+        document.getElementById('rg-fechar-perimetro').addEventListener('click', () => alternarDropdown('rg-painel-perimetro', false));
+        document.getElementById('rg-fechar-panico').addEventListener('click', () => alternarDropdown('rg-painel-panico', false));
+        document.getElementById('rg-painel-historico').addEventListener('click', (e) => e.stopPropagation());
+        document.getElementById('rg-painel-perimetro').addEventListener('click', (e) => e.stopPropagation());
+        document.getElementById('rg-painel-panico').addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => alternarDropdown('', false));
+
+        iniciarMapa();
+        popularSelectHistorico();
+
+        // Cards de % de cumprimento: calcula já na entrada e depois se
+        // atualiza sozinho a cada 5min (mesmo intervalo da coleta GEO —
+        // ver COLETA_INTERVALO mais abaixo — não faz sentido recalcular
+        // mais rápido que a própria fonte de dados atualiza) enquanto o
+        // usuário estiver nesta página.
+        atualizarTodosCards();
+        setInterval(atualizarTodosCards, 5 * 60 * 1000);
+
+        // ================================================================
+        // GERENCIAMENTO DE TOKEN GEO
+        // ================================================================
+        // A COLETA em si (chamar ?acao=coletar) NÃO é mais responsabilidade
+        // do navegador — o Apps Script tem um gatilho de tempo próprio
+        // (executarColeta a cada 5min, configurado direto no editor do
+        // script, ver configurarColetaAutomatica()) que roda nos servidores
+        // do Google 24h, independente de qualquer aba aberta. O que ainda é
+        // feito por aqui: (1) ATUALIZAR a tela com o que já foi coletado
+        // (fetch simples, sem re-disparar coleta) e (2) o botão manual
+        // "🔄 Atualizar" força uma coleta extra sob demanda, se quiser.
+        const TOKEN_GEO_KEY    = 'geo_cookie_p3';
+        const TOKEN_GEO_TS_KEY = 'geo_cookie_ts_p3';
+        const TOKEN_TTL_MS     = 23 * 60 * 60 * 1000; // 23h
+        const COLETA_INTERVALO = 5 * 60 * 1000;       // 5min — mesmo ritmo do gatilho de tempo do Apps Script
+        let _atualizacaoTimer = null, _countdownTimer = null;
+        // Última coleta REAL (do servidor, via coletadoEm/dataHoraGEO) — ao
+        // contrário do antigo _proximaColeta (um palpite do cliente,
+        // reiniciado do zero a cada F5), isso só muda quando os dados
+        // realmente mudarem, então não "zera" ao atualizar a página.
+        let _ultimaColetaReal = null;
+
+        function verificarTokenGEO() {
+            const token = localStorage.getItem(TOKEN_GEO_KEY);
+            const ts    = parseInt(localStorage.getItem(TOKEN_GEO_TS_KEY) || '0');
+            const banner = document.getElementById('token-banner');
+            const texto  = document.getElementById('token-banner-texto');
+            banner.style.display = '';
+
+            if (!token) {
+                banner.className = 'token-banner token-err';
+                texto.textContent = '⛔ Token não configurado — o mapa ao vivo não funcionará';
+                pararAtualizacaoAutomatica();
+                return false;
+            }
+
+            const idadeMs = Date.now() - ts;
+            if (idadeMs > TOKEN_TTL_MS) {
+                banner.className = 'token-banner token-err';
+                texto.textContent = '⛔ Token expirado — renove agora para continuar';
+                pararAtualizacaoAutomatica();
+                return false;
+            }
+
+            const horas = Math.floor(idadeMs / 3600000);
+            const mins  = Math.floor((idadeMs % 3600000) / 60000);
+            const restH = Math.floor((TOKEN_TTL_MS - idadeMs) / 3600000);
+
+            if (idadeMs > TOKEN_TTL_MS - 2 * 3600000) {
+                banner.className = 'token-banner token-warn';
+                texto.textContent = '⚠️ Token expira em ~' + restH + 'h — renove em breve';
+            } else {
+                banner.className = 'token-banner token-ok';
+                texto.textContent = '✅ Token ativo — ' + horas + 'h' + mins + 'min de uso';
+            }
+            return true;
+        }
+
+        function inicializarTokenGEO() {
+            if (verificarTokenGEO()) {
+                // Só ATUALIZA a tela — não dispara coleta aqui (o Apps
+                // Script já coleta sozinho via gatilho de tempo).
+                atualizarViaturasGAS();
+                iniciarAtualizacaoAutomatica();
+            } else {
+                setTimeout(abrirModalToken, 600);
+            }
+            // Reverifica a cada minuto (detecta expiração)
+            setInterval(verificarTokenGEO, 60000);
+        }
+
+        function abrirModalToken() {
+            document.getElementById('modal-token').classList.add('aberto');
+            document.getElementById('input-token-geo').value = localStorage.getItem(TOKEN_GEO_KEY) || '';
+            document.getElementById('msg-token-geo').textContent = '';
+        }
+
+        function fecharModalToken() {
+            document.getElementById('modal-token').classList.remove('aberto');
+        }
+
+        async function salvarTokenGEO() {
+            const token = document.getElementById('input-token-geo').value.trim().toUpperCase();
+            const msgEl = document.getElementById('msg-token-geo');
+
+            if (!token) {
+                msgEl.textContent = 'Informe o token de acesso.';
+                return;
+            }
+            if (!/^TK\d+$/.test(token) && !/^\d+$/.test(token)) {
+                msgEl.textContent = 'Formato inválido. Use TK seguido de números (ex: TK2037113550).';
+                return;
+            }
+
+            msgEl.style.color = '#555';
+            msgEl.textContent = 'Validando token com o GEO...';
+
+            // GAS não aceita POST com Content-Type JSON por CORS.
+            // Solução: envia o token como parâmetro GET na URL (seguro pois é HTTPS)
+            // e verifica o status logo depois.
+            try {
+                const tokenParam = encodeURIComponent(token);
+                const urlComToken = GAS_RASTREAMENTO_URL + '?acao=definir_token&token=' + tokenParam;
+                const resp = await fetch(urlComToken, { redirect: 'follow' });
+                const texto = await resp.text().catch(() => '{}');
+                console.log('[GAS token] resposta:', texto.substring(0, 200));
+                const data = JSON.parse(texto.trim());
+                if (data.ok === false) {
+                    msgEl.style.color = '#b40000';
+                    msgEl.textContent = '❌ ' + (data.erro || 'Token inválido ou expirado.');
+                    if (data.logs) console.warn('[GAS logs]', data.logs);
+                    return;
+                }
+            } catch(e) {
+                console.warn('[GAS] erro:', e.message);
+                // Se não conseguiu ler a resposta mas o fetch não lançou erro de CORS,
+                // assume que o GAS recebeu e continua
+                if (e.message.includes('Failed to fetch')) {
+                    msgEl.style.color = '#b40000';
+                    msgEl.textContent = '❌ Erro de conexão com o GAS. Verifique a URL.';
+                    return;
+                }
+            }
+
+            localStorage.setItem(TOKEN_GEO_KEY,    token);
+            localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
+
+            msgEl.style.color = '#006432';
+            msgEl.textContent = '✅ Token validado! Iniciando coleta...';
+
+            setTimeout(() => {
+                fecharModalToken();
+                verificarTokenGEO();
+                iniciarAtualizacaoAutomatica();
+                // Só aqui faz sentido disparar 1 coleta manual: acabou de
+                // trocar o token, então vale a pena confirmar na hora que
+                // funcionou, em vez de esperar o próximo gatilho de tempo do
+                // Apps Script (até 5min).
+                dispararColetaGAS().then(() => atualizarViaturasGAS());
+            }, 900);
+        }
+
+        // Só pro botão "🔄 Atualizar" (força 1 coleta extra sob demanda) e
+        // pra confirmação acima logo após salvar um token novo — a coleta
+        // RECORRENTE não passa mais por aqui, é o gatilho de tempo do Apps
+        // Script (executarColeta, a cada 5min, configurado uma vez no editor
+        // do script — ver configurarColetaAutomatica()) que roda sozinho.
+        async function dispararColetaGAS() {
+            try {
+                await fetch(GAS_RASTREAMENTO_URL + '?acao=coletar', { redirect: 'follow' });
+            } catch(e) { /* ignora CORS do redirect */ }
+        }
+
+        // Atualiza a TELA periodicamente com o que já foi coletado no
+        // servidor — não dispara coleta nenhuma, só busca e redesenha.
+        function iniciarAtualizacaoAutomatica() {
+            pararAtualizacaoAutomatica();
+            _atualizacaoTimer = setInterval(async () => {
+                if (!verificarTokenGEO()) { pararAtualizacaoAutomatica(); return; }
+                await atualizarViaturasGAS();
+            }, COLETA_INTERVALO);
+            _countdownTimer = setInterval(atualizarLinhaUltimaColeta, 1000);
+            atualizarLinhaUltimaColeta();
+        }
+
+        function pararAtualizacaoAutomatica() {
+            if (_atualizacaoTimer) { clearInterval(_atualizacaoTimer); _atualizacaoTimer = null; }
+            if (_countdownTimer)   { clearInterval(_countdownTimer);   _countdownTimer = null; }
+            document.getElementById('rg-countdown').textContent = '';
+        }
+
+        // "Há X min" ticka a cada segundo, mas o valor de base
+        // (_ultimaColetaReal) só muda quando atualizarViaturasGAS() de fato
+        // buscar um coletadoEm mais novo — nunca reinicia sozinho.
+        function atualizarLinhaUltimaColeta() {
+            const el = document.getElementById('rg-countdown');
+            if (!_ultimaColetaReal) { el.textContent = ''; return; }
+            const minAtras = Math.floor((Date.now() - _ultimaColetaReal.getTime()) / 60000);
+            const horaTxt = _ultimaColetaReal.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            el.textContent = `| última coleta real: ${horaTxt} (${minAtras <= 0 ? 'agora' : 'há ' + minAtras + ' min'})`;
+        }
+
+        // Chamada aqui embaixo (não lá em cima, perto de iniciarMapa()) de
+        // propósito: inicializarTokenGEO() usa TOKEN_GEO_KEY (const definida
+        // logo acima) — chamar antes dessa definição já executar dava
+        // "Cannot access 'TOKEN_GEO_KEY' before initialization" (erro
+        // reportado no console).
+        inicializarTokenGEO();
+        carregarMapaViaturaCache();
+
+        // ════════════════════════════════════════════════════════════
+        // API exposta pro Xerife controlar esta página por voz enquanto
+        // ela está embutida (iframe, single ou split) dentro de
+        // page/ia_xerife.html — MESMO padrão já usado por
+        // js/mapa-Dashboard-P3.js (toggleCamada/aplicarFiltros/etc.),
+        // chamado via iframe.contentWindow a partir de
+        // js/components/jarvis-dashboard.js (ver "Controle por voz do
+        // Rastreamento" lá). Nunca duplica lógica — só chama as MESMAS
+        // funções que os botões/campos desta página já usam.
+        // ════════════════════════════════════════════════════════════
+        window.rgAbrirDetalhes = function (nomeGuarnicao) {
+            return focarGuarnicaoPorNome(nomeGuarnicao);
+        };
+        window.rgZoomIn = function () { if (mapa) mapa.zoomIn(); };
+        window.rgZoomOut = function () { if (mapa) mapa.zoomOut(); };
+        // Fecha só o painel/filtro específico (não a página toda) — bug
+        // real relatado: "fechar o filtro do cartão programa" fechava o
+        // mapa inteiro porque não existia um jeito de fechar SÓ o
+        // dropdown; o comando genérico de "fechar"/"voltar" caía direto
+        // no fecharOverlay() do IA Xerife (fecha a página embutida).
+        window.rgFecharPainelPerimetro = function () { alternarDropdown('rg-painel-perimetro', false); return true; };
+        window.rgFecharPainelHistorico = function () { alternarDropdown('rg-painel-historico', false); return true; };
+        window.rgFecharPainelPanico = function () { alternarDropdown('rg-painel-panico', false); return true; };
+        window.rgTemPainelAberto = function () {
+            return ['rg-painel-historico', 'rg-painel-perimetro', 'rg-painel-panico'].some(id => document.getElementById(id)?.classList.contains('aberto'));
+        };
+        // dataIniISO/dataFimISO no formato AAAA-MM-DD (mesmo formato de
+        // <input type="date">) — acha a viatura pelo NOME no <select>
+        // (o campo em si guarda o idRadio, não o nome).
+        window.rgVerTrajetoPorNome = function (nomeGuarnicao, dataIniISO, dataFimISO) {
+            const select = document.getElementById('rg-select-viatura');
+            const alvo = normFoco(nomeGuarnicao);
+            const opcao = Array.from(select.options).find(o => o.value && (normFoco(o.textContent) === alvo || normFoco(o.textContent).includes(alvo) || alvo.includes(normFoco(o.textContent))));
+            if (!opcao) return false;
+            select.value = opcao.value;
+            if (dataIniISO) document.getElementById('rg-data-ini').value = dataIniISO;
+            if (dataFimISO) document.getElementById('rg-data-fim').value = dataFimISO;
+            verTrajeto();
+            return true;
+        };
+        // nomeRP: texto livre ("rp 01", "paulo jacinto" etc.) — casa contra
+        // o MESMO dropdown #rg-perimetro-rp usado pelo botão "Buscar"
+        // (valores tipo "PALMEIRA DOS ÍNDIOS (RP 01)", "PAULO JACINTO (RP)").
+        window.rgBuscarPerimetroPorNome = function (nomeRP, dataISO) {
+            const select = document.getElementById('rg-perimetro-rp');
+            const alvo = normFoco(nomeRP);
+            let opcao = null;
+            const mRP = alvo.match(/RP0?(\d{1,2})/);
+            if (mRP) {
+                const numAlvo = mRP[1].padStart(2, '0');
+                opcao = Array.from(select.options).find(o => o.value && normFoco(o.value).includes('RP' + numAlvo));
+                // RP 03..RP 09 (e as demais) não aparecem no TEXTO do
+                // dropdown — só RP 01/02 (Palmeira) têm o número escrito na
+                // option; as outras cidades são só "(RP)". Resolve pelo
+                // mapeamento cidade↔viatura (mapaViaturaCache) em vez de
+                // casar direto no texto — bug relatado: "rp 03", "rp 04"
+                // etc. não achavam nada.
+                if (!opcao) {
+                    const cidades = cidadesDaViatura('RP' + numAlvo);
+                    if (cidades.length) {
+                        opcao = Array.from(select.options).find(o => cidades.includes(o.value));
+                    }
+                }
+            }
+            if (!opcao) {
+                opcao = Array.from(select.options).find(o => o.value && (normFoco(o.value).includes(alvo) || alvo.includes(normFoco(o.value).replace(/\(RP.*?\)/, ''))));
+            }
+            if (!opcao) return false;
+            select.value = opcao.value;
+            if (dataISO) document.getElementById('rg-perimetro-data').value = dataISO;
+            buscarPerimetroFiltrado();
+            return true;
+        };
+    </script>
+</body>
+
+</html>

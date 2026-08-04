@@ -1,0 +1,400 @@
+/* ════════════════════════════════════════════════════════════════════
+   IA XERIFE (dashboard) — vive DENTRO do layout padrão do sistema
+   (header + nav + main, igual a qualquer outra página do P3) — não é
+   mais uma tela cheia própria. Usa as MESMAS variáveis de cor do resto
+   do sistema (css/theme.css) — troca de tema claro/escuro (botão ou
+   comando de voz) já funciona automático, sem paleta própria fixa.
+   Tudo escopado em .jv-dash pra nunca vazar pras outras páginas.
+   ════════════════════════════════════════════════════════════════════ */
+
+.jv-dash {
+    --jv-cyan: var(--p3-blue-300);
+    --jv-cyan-forte: var(--p3-blue-700);
+    --jv-gold: var(--p3-warning);
+    --jv-danger: var(--p3-danger);
+    --jv-ok: var(--p3-success);
+    --jv-font: var(--p3-font);
+
+    position: relative;
+    color: var(--p3-text);
+    font-family: var(--jv-font);
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+}
+.jv-dash * { box-sizing: border-box; }
+
+.jv-dash-topo {
+    display: flex; align-items: center; justify-content: flex-end; gap: .7rem;
+}
+.jv-status-pill {
+    display: flex; align-items: center; gap: .4rem; font-size: .72rem; letter-spacing: .05em; text-transform: uppercase;
+    border: 1px solid var(--p3-border); border-radius: 999px; padding: .28rem .7rem .28rem .55rem; color: var(--jv-cyan);
+}
+.jv-status-pill .jv-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: jv-blink 2.4s ease-in-out infinite; }
+.jv-status-pill[data-estado="thinking"] { color: var(--jv-gold); border-color: var(--jv-gold); }
+.jv-status-pill[data-estado="listening"] { color: var(--jv-ok); border-color: var(--jv-ok); }
+.jv-status-pill[data-estado="off"] { color: var(--p3-text-muted); }
+.jv-btn-icone {
+    width: 2.125rem; height: 2.125rem; border-radius: 999px; border: 1px solid var(--p3-border); background: transparent;
+    color: currentColor; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1rem; transition: all .15s;
+}
+.jv-btn-icone:hover { background: rgba(127, 127, 127, 0.12); }
+.jv-btn-icone.jv-mudo { color: var(--jv-danger); border-color: var(--jv-danger); }
+.jv-btn-icone.jv-ativo { color: var(--jv-cyan); border-color: var(--jv-cyan); background: var(--p3-blue-100); }
+
+/* ── Corpo principal ────────────────────────────────────────────── */
+.jv-corpo {
+    display: grid;
+    grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) minmax(240px, 320px);
+    grid-template-rows: 1fr;
+    gap: .9rem;
+    /* ALTURA FIXA (não só min-height) — sem isso a linha "1fr" do grid
+       cresce pra caber o conteúdo do console, e a página inteira estica
+       pra baixo em vez do console rolar internamente. */
+    height: clamp(480px, calc(100vh - 260px), 760px);
+    transition: grid-template-columns .45s cubic-bezier(.16, 1, .3, 1);
+}
+@media (max-width: 980px) {
+    .jv-corpo { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; }
+}
+
+/* Modo "página incorporada" (mapa em tela cheia / outra página do sistema
+   carregada por comando de voz) — colunas laterais recolhem a 0 e a
+   esfera encolhe/desloca pro canto (ver .jv-nucleo.jv-recolhido abaixo,
+   controlado via FLIP animation em jarvis-dashboard.js). */
+.jv-corpo.jv-modo-imersivo { grid-template-columns: 0fr minmax(0, 1fr) 0fr; }
+.jv-corpo.jv-modo-imersivo .jv-coluna-esq,
+.jv-corpo.jv-modo-imersivo #jv-painel-console { opacity: 0; pointer-events: none; }
+
+/* ── Painel genérico ────────────────────────────────────────────── */
+.jv-painel {
+    position: relative;
+    background: var(--p3-surface);
+    border: 1px solid var(--p3-border);
+    border-radius: var(--p3-radius-lg);
+    box-shadow: var(--p3-shadow-md);
+    padding: .85rem .9rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.jv-painel-titulo {
+    font-size: .68rem; letter-spacing: .12em; text-transform: uppercase; color: var(--jv-cyan);
+    display: flex; align-items: center; gap: .4rem; margin-bottom: .55rem; flex-shrink: 0;
+}
+.jv-painel-titulo::before { content: '◈'; font-size: .7rem; }
+
+/* Marcadores angulares nos 4 cantos — moldura "cibernética" discreta */
+.jv-frame-canto { position: absolute; width: 14px; height: 14px; border-color: var(--jv-cyan); pointer-events: none; opacity: .6; }
+.jv-frame-canto.tl { top: -1px; left: -1px; border-top: 2px solid; border-left: 2px solid; border-top-left-radius: 6px; }
+.jv-frame-canto.tr { top: -1px; right: -1px; border-top: 2px solid; border-right: 2px solid; border-top-right-radius: 6px; }
+.jv-frame-canto.bl { bottom: -1px; left: -1px; border-bottom: 2px solid; border-left: 2px solid; border-bottom-left-radius: 6px; }
+.jv-frame-canto.br { bottom: -1px; right: -1px; border-bottom: 2px solid; border-right: 2px solid; border-bottom-right-radius: 6px; }
+
+.jv-painel.jv-vazio { opacity: .45; }
+
+/* ── Coluna esquerda ────────────────────────────────────────────── */
+.jv-coluna-esq { display: flex; flex-direction: column; gap: .9rem; min-height: 0; grid-column: 1; grid-row: 1; transition: opacity .3s ease; }
+#jv-painel-console { grid-column: 3; grid-row: 1; transition: opacity .3s ease; }
+
+/* ── Coluna central: esfera + voz ───────────────────────────────── */
+.jv-nucleo {
+    grid-row: 1; grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: .7rem;
+    position: relative;
+    min-height: 0;
+}
+/* Estado "recolhido": esfera fixa no canto INFERIOR direito da tela,
+   sempre visível e clicável por cima de mapa/página incorporada — a
+   transição suave entre os dois estados é feita via FLIP animation em
+   JS (jarvis-dashboard.js), não só CSS, porque a posição muda de
+   "dentro do grid" pra "fixed" (mudança de layout que o CSS sozinho não
+   anima bem). z-index acima do header (1001) e do overlay (1002). */
+.jv-nucleo.jv-recolhido {
+    position: fixed; bottom: 1rem; right: 1rem; z-index: 1003;
+    width: 240px; gap: .35rem; align-items: flex-end;
+}
+.jv-nucleo.jv-recolhido .jv-esfera-wrap { width: 84px; height: 84px; }
+/* O campo de texto CONTINUA visível/funcional aqui de propósito — com
+   uma página já aberta, digitar "abrir outra página" (ou "voltar")
+   precisa sempre funcionar, mesmo se o reconhecimento de voz falhar ou
+   não pegar bem o comando. */
+.jv-nucleo.jv-recolhido .jv-barra { width: 240px; padding: .3rem .3rem .3rem .6rem; box-shadow: var(--p3-shadow-lg); }
+.jv-nucleo.jv-recolhido #jv-wake-toggle,
+.jv-nucleo.jv-recolhido .jv-sem-voz { display: none; }
+
+.jv-esfera-wrap {
+    position: relative;
+    width: min(50vh, 380px);
+    height: min(50vh, 380px);
+    max-width: 92%;
+    aspect-ratio: 1 / 1;
+    transition: width .5s cubic-bezier(.16, 1, .3, 1), height .5s cubic-bezier(.16, 1, .3, 1);
+}
+.jv-esfera-wrap canvas { width: 100%; height: 100%; display: block; }
+
+.jv-anel {
+    position: absolute; inset: -6%; border-radius: 50%; pointer-events: none;
+    border: 1px solid var(--p3-border);
+}
+.jv-anel::before, .jv-anel::after {
+    content: ''; position: absolute; inset: 0; border-radius: 50%;
+    border: 1px dashed var(--p3-border);
+}
+.jv-anel::before { inset: 6%; animation: jv-girar 40s linear infinite; }
+.jv-anel::after { inset: -3%; border-style: dotted; border-color: color-mix(in srgb, var(--jv-gold) 45%, transparent); animation: jv-girar 60s linear infinite reverse; }
+.jv-nucleo.jv-recolhido .jv-anel { display: none; }
+
+.jv-scanline {
+    position: absolute; left: 6%; right: 6%; height: 2px; top: 0;
+    background: linear-gradient(90deg, transparent, var(--jv-cyan), transparent);
+    opacity: .5; filter: blur(.5px);
+    animation: jv-varrer 3.4s ease-in-out infinite;
+    pointer-events: none;
+}
+.jv-nucleo.jv-recolhido .jv-scanline { display: none; }
+
+/* ── Barra de voz/texto ─────────────────────────────────────────── */
+.jv-barra {
+    display: flex; align-items: center; gap: .6rem; width: min(560px, 92%);
+    background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 999px;
+    padding: .4rem .5rem .4rem 1rem; box-shadow: var(--p3-shadow-sm);
+    transition: width .4s ease;
+}
+/* O texto reconhecido por voz aparece DIRETO no campo (igual digitar) —
+   não existe mais um rótulo de transcrição separado acima da barra. */
+.jv-barra input {
+    flex: 1; background: transparent; border: none; outline: none; color: var(--p3-text);
+    font-family: var(--jv-font); font-size: .88rem;
+}
+.jv-barra input::placeholder { color: var(--p3-text-muted); }
+.jv-btn-mic {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--jv-cyan);
+    background: var(--p3-blue-100);
+    color: var(--jv-cyan-forte); font-size: 1.1rem; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; transition: all .15s; position: relative;
+}
+.jv-btn-mic:hover { background: color-mix(in srgb, var(--p3-blue-100) 60%, var(--jv-cyan) 15%); }
+.jv-btn-mic.jv-ativo { color: #fff; background: var(--jv-cyan-forte); animation: jv-pulsar-mic 1.2s ease-in-out infinite; }
+.jv-btn-enviar {
+    width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--p3-gradient); color: #fff;
+    font-size: 1rem; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+}
+.jv-sem-voz { font-size: .68rem; color: var(--p3-text-muted); text-align: center; max-width: 26rem; }
+
+/* ── KPIs ────────────────────────────────────────────────────────── */
+.jv-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem; overflow-y: auto; }
+.jv-kpi {
+    border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md); padding: .55rem .6rem;
+    background: var(--p3-bg);
+    display: flex; flex-direction: column; gap: .15rem;
+}
+.jv-kpi-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--p3-text-muted); }
+.jv-kpi-valor { font-size: 1.5rem; font-weight: 700; color: var(--jv-cyan-forte); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.jv-kpi-valor.jv-gold { color: var(--jv-gold); }
+.jv-kpi-sub { font-size: .62rem; color: var(--p3-text-muted); }
+
+/* ── Console/terminal com efeito typewriter ─────────────────────── */
+.jv-console {
+    flex: 1; overflow-y: auto; font-size: .82rem; line-height: 1.55; color: var(--p3-text);
+    white-space: pre-wrap; word-break: break-word;
+    /* Segurança extra pro layout empilhado do mobile (onde .jv-corpo vira
+       altura automática) — o console nunca estica a página, sempre rola
+       dentro de si mesmo. */
+    max-height: 50vh;
+}
+.jv-console .jv-linha { margin-bottom: .5rem; }
+.jv-console .jv-linha.jv-user { color: var(--jv-gold); }
+/* Respostas com HTML de verdade (cruzamento de CPF/nome/boletim etc.) —
+   normal (não pre-wrap, que é o padrão herdado de .jv-console) pra deixar
+   o fluxo normal de bloco/<br> do HTML mandar, sem espaçamento duplicado. */
+.jv-console .jv-linha-html { white-space: normal; }
+.jv-console .jv-linha-html strong { color: var(--jv-cyan-forte); }
+.jv-console .jv-linha-html small { opacity: .75; }
+.jv-console .jv-linha-html ul { margin: .3rem 0; padding-left: 1.2rem; }
+.jv-console .jv-linha-html table { width: 100%; border-collapse: collapse; margin: .4rem 0; font-size: .78rem; }
+.jv-console .jv-linha-html th, .jv-console .jv-linha-html td { padding: .3rem .4rem; border-bottom: 1px solid var(--p3-border); text-align: left; }
+.jv-console .jv-cursor { display: inline-block; width: .5em; background: var(--jv-cyan); animation: jv-blink 1s step-end infinite; margin-left: 1px; }
+
+/* ── Tabela de ranking ───────────────────────────────────────────── */
+.jv-tabela { width: 100%; border-collapse: collapse; font-size: .76rem; }
+.jv-tabela th { text-align: left; color: var(--p3-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: .62rem; padding: .3rem .4rem; border-bottom: 1px solid var(--p3-border); }
+.jv-tabela td { padding: .32rem .4rem; border-bottom: 1px solid var(--p3-border); }
+.jv-tabela tr:hover td { background: var(--p3-blue-100); }
+.jv-tabela .jv-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--jv-cyan-forte); }
+
+/* ── Overlay dinâmico (mapa, visitas, relatórios, apresentação, página
+   incorporada) — sempre fixed/tela cheia, ACIMA do header (z-index
+   1001) e abaixo só da esfera recolhida (1003), que fica clicável por
+   cima de tudo. ─────────────────────────────────────────────────── */
+.jv-overlay {
+    position: fixed; inset: 0; z-index: 1002;
+    display: none; align-items: flex-end; justify-content: center;
+    background: rgba(10, 15, 25, 0.45);
+    padding: 0 1.2rem 1.2rem;
+}
+.jv-overlay.jv-aberto, .jv-overlay.jv-fechando { display: flex; }
+.jv-overlay.jv-tela-cheia { align-items: stretch; padding: 0; }
+.jv-overlay-caixa {
+    width: min(960px, 96%); max-height: 74vh;
+    background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-lg) var(--p3-radius-lg) var(--p3-radius-md) var(--p3-radius-md);
+    box-shadow: var(--p3-shadow-lg);
+    display: flex; flex-direction: column; overflow: hidden;
+    transform: translateY(30px); opacity: 0;
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1), opacity .25s ease, width .3s ease, max-height .3s ease, border-radius .3s ease;
+}
+.jv-overlay.jv-aberto .jv-overlay-caixa { transform: translateY(0); opacity: 1; }
+.jv-overlay.jv-tela-cheia .jv-overlay-caixa { width: 100%; max-height: none; border-radius: 0; }
+.jv-overlay-topo {
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    padding: .75rem 1rem; border-bottom: 1px solid var(--p3-border); flex-shrink: 0;
+    background: var(--p3-surface);
+}
+.jv-overlay-topo strong { font-size: .82rem; letter-spacing: .03em; color: var(--jv-cyan-forte); }
+.jv-overlay-corpo { position: relative; flex: 1; overflow-y: auto; padding: .95rem 1.1rem 1.2rem; font-size: .82rem; line-height: 1.55; }
+.jv-overlay.jv-tela-cheia .jv-overlay-corpo { padding: 0; overflow: hidden; }
+
+.jv-mapa-em-overlay { height: 380px; border-radius: var(--p3-radius-md); overflow: hidden; border: 1px solid var(--p3-border); }
+.jv-overlay.jv-tela-cheia .jv-mapa-em-overlay { height: 100%; border-radius: 0; border: none; }
+.jv-mapa-vazio { display: flex; align-items: center; justify-content: center; color: var(--p3-text-muted); font-size: .78rem; text-align: center; padding: 1.4rem; }
+
+/* Painel flutuante com o resumo tático (guarnições/reforço), sobreposto
+   no canto do mapa em tela cheia. */
+.jv-mapa-legenda {
+    position: absolute; top: 1rem; left: 1rem; z-index: 10;
+    background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md);
+    box-shadow: var(--p3-shadow-lg); padding: .7rem .85rem; width: min(280px, 78vw); font-size: .74rem; line-height: 1.5;
+    max-height: calc(100% - 2rem); overflow-y: auto;
+}
+
+.jv-pagina-embutida { width: 100%; height: 100%; border: none; display: block; background: var(--p3-bg); }
+
+/* ── Apresentação/relatório em slides — camada PRÓPRIA, sempre por cima
+   de #jv-overlay (1002) e de .jv-nucleo (1003): pedido explícito do
+   usuário pra apresentação SOBREPOR a página que já estiver carregada
+   (single embed ou split) sem fechá-la — ela continua por baixo,
+   intacta, e volta a aparecer quando a apresentação é fechada. ────── */
+.jv-apresentacao-overlay {
+    position: fixed; inset: 0; z-index: 1010;
+    display: none; background: rgba(6, 10, 18, 0.92);
+}
+.jv-apresentacao-overlay.jv-aberto, .jv-apresentacao-overlay.jv-fechando { display: flex; }
+.jv-apresentacao-caixa {
+    width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden;
+    transform: translateY(16px); opacity: 0;
+    transition: transform .3s cubic-bezier(.16, 1, .3, 1), opacity .25s ease;
+}
+.jv-apresentacao-overlay.jv-aberto .jv-apresentacao-caixa { transform: translateY(0); opacity: 1; }
+.jv-apresentacao-caixa .jv-overlay-topo { background: transparent; border-bottom-color: rgba(255,255,255,.12); }
+.jv-apresentacao-caixa .jv-overlay-corpo { padding: 0; overflow: hidden; }
+
+/* ── Modo popup (.jv-apresentacao-overlay.jv-popup) — usado quando o
+   mapa/rastreamento ou a tela dividida já está aberta por baixo (ver
+   abrirRelatorioIdentificador em jarvis-dashboard.js: consultar um
+   boletim/processo/nome nesse momento não pode substituir nem esconder o
+   que já estava na tela). Cartão pequeno flutuante no canto, fundo
+   transparente e sem capturar clique fora dele — o mapa/split continua
+   visível e utilizável ao redor. ───────────────────────────────────── */
+.jv-apresentacao-overlay.jv-popup {
+    background: transparent;
+    align-items: flex-end;
+    justify-content: flex-end;
+    padding: 1.2rem;
+    pointer-events: none;
+}
+.jv-apresentacao-overlay.jv-popup .jv-apresentacao-caixa {
+    width: min(420px, 92vw);
+    height: min(66vh, 480px);
+    border-radius: var(--p3-radius-lg);
+    border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 12px 40px rgba(0,0,0,.45);
+    pointer-events: auto;
+}
+.jv-apresentacao-overlay.jv-popup .jv-carrossel-slide.jv-slide-grande {
+    padding: 1.2rem; font-size: .85rem; text-align: left; align-items: flex-start;
+}
+.jv-apresentacao-overlay.jv-popup .jv-carrossel-nav { padding: .6rem 1rem; font-size: .7rem; }
+
+/* ── Split-view (2 páginas lado a lado, 50/50 — estilo Windows Snap) ── */
+.jv-split-container { display: flex; width: 100%; height: 100%; }
+.jv-split-pane { flex: 1 1 50%; min-width: 0; display: flex; flex-direction: column; height: 100%; }
+.jv-split-divisor { width: 1px; flex-shrink: 0; background: var(--p3-border); }
+.jv-split-topo {
+    flex-shrink: 0; padding: .4rem .8rem; font-size: .72rem; font-weight: 600; letter-spacing: .02em;
+    color: var(--jv-cyan-forte); background: var(--p3-surface); border-bottom: 1px solid var(--p3-border);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.jv-pagina-embutida-split { flex: 1; width: 100%; border: none; display: block; background: var(--p3-bg); }
+.jv-split-picker { flex: 1; display: flex; flex-direction: column; gap: .7rem; padding: 1rem; overflow-y: auto; background: var(--p3-bg); }
+.jv-split-picker-msg { font-size: .78rem; color: var(--p3-text-muted); }
+.jv-split-picker-lista { display: flex; flex-wrap: wrap; gap: .4rem; align-content: flex-start; }
+.jv-split-picker-lista .jv-btn-pill { padding: .4rem .8rem; font-size: .72rem; }
+
+/* Botão genérico em pílula */
+.jv-btn-pill {
+    background: var(--p3-blue-100); border: 1px solid var(--jv-cyan); color: var(--jv-cyan-forte);
+    border-radius: 999px; padding: .5rem 1.1rem; font-family: var(--jv-font); font-size: .78rem; cursor: pointer; transition: all .15s;
+}
+.jv-btn-pill:hover { background: color-mix(in srgb, var(--p3-blue-100) 60%, var(--jv-cyan) 20%); }
+.jv-btn-pill:disabled { opacity: .5; cursor: default; }
+.jv-btn-pill.jv-gold { border-color: var(--jv-gold); color: var(--jv-gold); background: transparent; }
+.jv-btn-pill.jv-gold:hover { background: color-mix(in srgb, var(--jv-gold) 12%, transparent); }
+
+.jv-escolha-botoes { display: flex; flex-wrap: wrap; gap: .7rem; margin-top: .6rem; }
+.jv-relatorio-texto { white-space: pre-wrap; }
+.jv-relatorio-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .5rem; margin: .6rem 0; }
+
+/* ── Carrossel (visitas sugeridas / apresentação narrada) ─────────── */
+.jv-carrossel { display: flex; flex-direction: column; gap: .5rem; min-height: 260px; }
+.jv-carrossel-viewport { flex: 1; overflow: hidden; position: relative; border-radius: var(--p3-radius-md); min-height: 220px; }
+.jv-carrossel-trilho { display: flex; height: 100%; transition: transform .4s cubic-bezier(.4, 0, .2, 1); }
+.jv-carrossel-slide {
+    flex: 0 0 100%; padding: .7rem .8rem; font-size: .76rem; line-height: 1.5;
+    border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md); background: var(--p3-bg);
+    display: flex; flex-direction: column; gap: .25rem; overflow-y: auto;
+}
+.jv-carrossel-slide.jv-slide-grande { font-size: .92rem; justify-content: center; gap: .5rem; }
+.jv-carrossel-slide b { color: var(--jv-cyan-forte); }
+.jv-carrossel-nav { display: flex; align-items: center; justify-content: space-between; font-size: .68rem; color: var(--p3-text-muted); }
+.jv-carrossel-nav button { background: none; border: 1px solid var(--p3-border); color: var(--jv-cyan-forte); border-radius: var(--p3-radius-sm); padding: .15rem .5rem; cursor: pointer; }
+.jv-carrossel-nav button:disabled { opacity: .3; cursor: default; }
+
+/* ── Apresentação em tela cheia (.jv-apresentacao-overlay) — visual tipo
+   slide de verdade (Gamma/PowerPoint/Canva): mais respiro, tipografia
+   maior, fundo com gradiente sutil, conteúdo central sem esticar demais
+   em telas largas — pedido explícito do usuário. ──────────────────── */
+.jv-apresentacao-caixa .jv-carrossel { height: 100%; min-height: 0; gap: 0; }
+.jv-apresentacao-caixa .jv-carrossel-viewport { min-height: 0; border-radius: 0; }
+.jv-apresentacao-caixa .jv-carrossel-slide.jv-slide-grande {
+    padding: clamp(1.5rem, 5vw, 4rem); font-size: clamp(1rem, 1.6vw, 1.3rem); line-height: 1.6;
+    color: #eef4f7; background: radial-gradient(circle at 18% 12%, rgba(0,188,212,.12), transparent 55%), #0c1420;
+    border: none; border-radius: 0; align-items: center; text-align: center;
+}
+.jv-apresentacao-caixa .jv-carrossel-slide.jv-slide-grande > * { width: 100%; max-width: 820px; }
+.jv-apresentacao-caixa .jv-carrossel-slide.jv-slide-grande .jv-relatorio-kpis { text-align: left; }
+.jv-apresentacao-caixa .jv-carrossel-slide ul { text-align: left; }
+.jv-apresentacao-caixa .jv-carrossel-nav { padding: .9rem 1.6rem; font-size: .8rem; background: #0c1420; border-top: 1px solid rgba(255,255,255,.1); }
+.jv-apresentacao-caixa .jv-carrossel-nav button { color: #9fd8e6; border-color: rgba(255,255,255,.18); }
+.jv-slide-grafico-wrap { position: relative; width: 100%; max-width: 700px; height: min(320px, 40vh); margin: 0 auto; }
+
+/* ── Scrollbars discretas ────────────────────────────────────────── */
+.jv-dash ::-webkit-scrollbar, .jv-overlay ::-webkit-scrollbar { width: 6px; height: 6px; }
+.jv-dash ::-webkit-scrollbar-thumb, .jv-overlay ::-webkit-scrollbar-thumb { background: var(--p3-border); border-radius: 3px; }
+.jv-dash ::-webkit-scrollbar-track, .jv-overlay ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Animações ───────────────────────────────────────────────────── */
+@keyframes jv-blink { 0%, 100% { opacity: 1; } 50% { opacity: .25; } }
+@keyframes jv-girar { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes jv-varrer { 0% { top: 4%; opacity: 0; } 10% { opacity: .5; } 50% { top: 92%; opacity: .5; } 60% { opacity: 0; } 100% { top: 4%; opacity: 0; } }
+@keyframes jv-pulsar-mic { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--jv-cyan) 55%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .jv-anel::before, .jv-anel::after, .jv-scanline, .jv-status-pill .jv-dot, .jv-btn-mic.jv-ativo { animation: none; }
+    .jv-corpo, .jv-overlay-caixa, .jv-esfera-wrap, .jv-barra { transition: none; }
+}

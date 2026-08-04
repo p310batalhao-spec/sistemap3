@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/jarvis-dashboard.css">
+    <title>IA Xerife</title>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="nav-ia-xerife" data-extra='[{"id":"nav-ia-xerife","href":"page/ia_xerife.html","label":"IA Xerife","icone":"../img/xerife-logo.png","w":48,"h":48,"titulo":"IA Xerife — voz, mapa tático, apresentações","depoisDe":"chat-xerife"}]'></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>IA Xerife</h2>
+                <p>Assistente de voz e dados da unidade — pergunte, peça mapas, relatórios ou abra outras páginas do sistema por comando de voz.</p>
+            </div>
+
+            <div class="jv-dash" id="jv-dash">
+                <div class="jv-dash-topo">
+                    <span class="jv-status-pill" id="jv-status-pill" data-estado="idle"><span class="jv-dot"></span><span class="jv-status-txt">Em espera</span></span>
+                    <button type="button" class="jv-btn-icone" id="jv-mute-btn" title="Silenciar voz" aria-label="Silenciar voz">🔊</button>
+                </div>
+
+                <div class="jv-corpo" id="jv-corpo">
+                    <!-- Coluna esquerda: KPIs + ranking TCO -->
+                    <div class="jv-coluna-esq">
+                        <section class="jv-painel" id="jv-painel-kpis">
+                            <span class="jv-frame-canto tl"></span><span class="jv-frame-canto tr"></span><span class="jv-frame-canto bl"></span><span class="jv-frame-canto br"></span>
+                            <div class="jv-painel-titulo"><span class="jv-titulo-texto">Indicadores</span></div>
+                            <div class="jv-kpis">
+                                <div class="jv-kpi"><span class="jv-kpi-label">MVI</span><span class="jv-kpi-valor" id="jv-kpi-mvi">—</span></div>
+                                <div class="jv-kpi"><span class="jv-kpi-label">CVLI</span><span class="jv-kpi-valor" id="jv-kpi-cvli">—</span></div>
+                                <div class="jv-kpi"><span class="jv-kpi-label">CVP</span><span class="jv-kpi-valor" id="jv-kpi-cvp">—</span></div>
+                                <div class="jv-kpi"><span class="jv-kpi-label">TCO</span><span class="jv-kpi-valor" id="jv-kpi-tco">—</span></div>
+                                <div class="jv-kpi"><span class="jv-kpi-label">Armas</span><span class="jv-kpi-valor" id="jv-kpi-armas">—</span></div>
+                                <div class="jv-kpi"><span class="jv-kpi-label">Drogas</span><span class="jv-kpi-valor" id="jv-kpi-drogas">—</span></div>
+                            </div>
+                            <div class="jv-kpi" style="margin-top:.55rem;">
+                                <span class="jv-kpi-label">Aceitabilidade TCO</span>
+                                <span class="jv-kpi-valor jv-gold" id="jv-kpi-aceit">—</span>
+                                <span class="jv-kpi-sub" id="jv-kpi-periodo"></span>
+                            </div>
+                        </section>
+
+                        <section class="jv-painel jv-retratil jv-vazio" id="jv-painel-tco" style="flex:1;">
+                            <span class="jv-frame-canto tl"></span><span class="jv-frame-canto tr"></span><span class="jv-frame-canto bl"></span><span class="jv-frame-canto br"></span>
+                            <div class="jv-painel-titulo"><span class="jv-titulo-texto">Ranking TCO — Militares</span></div>
+                            <div style="overflow-y:auto;flex:1;">
+                                <table class="jv-tabela">
+                                    <thead><tr><th>Militar</th><th style="text-align:right;">✓ Aceit.</th><th style="text-align:right;">✗ Falha</th></tr></thead>
+                                    <tbody id="jv-tabela-tco-body"><tr><td colspan="3" style="color:var(--p3-text-muted)">Pergunte sobre TCO/militares pra ver o ranking aqui.</td></tr></tbody>
+                                </table>
+                            </div>
+                        </section>
+                    </div>
+
+                    <!-- Núcleo: esfera de partículas + voz -->
+                    <div class="jv-nucleo">
+                        <div class="jv-esfera-wrap">
+                            <div class="jv-anel"></div>
+                            <div class="jv-scanline"></div>
+                            <canvas id="jv-canvas"></canvas>
+                        </div>
+                        <form class="jv-barra" id="jv-form">
+                            <button type="button" class="jv-btn-mic" id="jv-mic-btn" title="Falar com o Xerife" aria-label="Falar com o Xerife">🎙️</button>
+                            <input type="text" id="jv-input" placeholder="Pergunte algo ao Xerife…" autocomplete="off">
+                            <button type="submit" class="jv-btn-enviar" title="Enviar" aria-label="Enviar">➤</button>
+                        </form>
+                        <button type="button" class="jv-btn-icone" id="jv-wake-toggle" style="width:auto;border-radius:16px;padding:.3rem .8rem;font-size:.68rem;">👂 Sempre ouvindo (desligado)</button>
+                        <div class="jv-sem-voz" id="jv-sem-voz" style="display:none;">Reconhecimento de voz não é suportado neste navegador — use o campo de texto acima.</div>
+                    </div>
+
+                    <!-- Console/terminal -->
+                    <section class="jv-painel" id="jv-painel-console">
+                        <span class="jv-frame-canto tl"></span><span class="jv-frame-canto tr"></span><span class="jv-frame-canto bl"></span><span class="jv-frame-canto br"></span>
+                        <div class="jv-painel-titulo"><span class="jv-titulo-texto">Console</span></div>
+                        <div class="jv-console" id="jv-console"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <!-- Overlay dinâmico: mapa tático, visitas sugeridas, relatório de
+         identificador (+ PDF), relatório/apresentação de cidade e páginas
+         do sistema abertas por voz — só aparece quando pedido, nunca fica
+         fixo na tela. Fora de <main> de propósito (sempre cobre a tela
+         inteira, inclusive por cima do header). -->
+    <div class="jv-overlay" id="jv-overlay">
+        <div class="jv-overlay-caixa">
+            <div class="jv-overlay-topo">
+                <strong id="jv-overlay-titulo">—</strong>
+                <button type="button" class="jv-btn-icone" id="jv-overlay-fechar" title="Fechar" aria-label="Fechar">✕</button>
+            </div>
+            <div class="jv-overlay-corpo" id="jv-overlay-corpo"></div>
+        </div>
+    </div>
+
+    <!-- Apresentação/relatório em slides — camada SEPARADA de #jv-overlay
+         (z-index mais alto, ver css/jarvis-dashboard.css), de propósito:
+         pedido explícito do usuário pra apresentação SOBREPOR a página
+         que já estiver carregada (single embed ou split), sem fechá-la —
+         o usuário volta pra ela do jeito que estava ao fechar a
+         apresentação. -->
+    <div class="jv-apresentacao-overlay" id="jv-apresentacao-overlay">
+        <div class="jv-apresentacao-caixa">
+            <div class="jv-overlay-topo">
+                <strong id="jv-apresentacao-titulo">—</strong>
+                <button type="button" class="jv-btn-icone" id="jv-apresentacao-fechar" title="Fechar" aria-label="Fechar">✕</button>
+            </div>
+            <div class="jv-overlay-corpo" id="jv-apresentacao-corpo"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+        <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script src="../js/xerife.js"></script>
+    <script src="../js/opo-hotspot-core.js"></script>
+    <script src="../js/components/particle-sphere.js"></script>
+    <script src="../js/components/jarvis-dashboard.js"></script>
+    <script>
+        // Reaproveita o MESMO motor de perguntas/respostas e regras de
+        // negócio de js/xerife.js (window.Xerife) — ver
+        // js/components/jarvis-dashboard.js pra orquestração de voz/widgets.
+        // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
+        // js/core/header-nav.js.
+        P3.requireAuth();
+    </script>
+</body>
+</html>

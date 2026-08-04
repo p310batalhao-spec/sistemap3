@@ -1169,7 +1169,27 @@ function toggleSidebar() {
     setTimeout(()=>_mapaL&&_mapaL.invalidateSize(),300);
 }
 function toggleTelaCheia() {
-    const w=document.getElementById('mapa-card-wrapper'), f=document.fullscreenElement||document.webkitFullscreenElement;
+    const w = document.getElementById('mapa-card-wrapper');
+    // Dentro de um iframe (single embed ou split do IA Xerife) a
+    // Fullscreen API REAL esconderia a esfera de partículas do documento
+    // PAI (ela vive FORA deste iframe) — usa position:fixed via JS puro
+    // em vez disso, sem nunca chamar requestFullscreen(), pra esfera
+    // externa nunca sumir (bug relatado pelo usuário).
+    let dentroDoXerife = false;
+    try { dentroDoXerife = window.self !== window.top; } catch (e) { dentroDoXerife = true; }
+    if (dentroDoXerife) {
+        const maximizado = w.dataset.maximizadoCss === '1';
+        if (!maximizado) {
+            w.dataset.maximizadoCss = '1';
+            Object.assign(w.style, { position: 'fixed', inset: '0', zIndex: '1300', width: '100vw', height: '100vh', background: '#000' });
+        } else {
+            w.dataset.maximizadoCss = '0';
+            Object.assign(w.style, { position: '', inset: '', zIndex: '', width: '', height: '', background: '' });
+        }
+        setTimeout(() => _mapaL && _mapaL.invalidateSize(), 200);
+        return;
+    }
+    const f = document.fullscreenElement || document.webkitFullscreenElement;
     if (!f) (w.requestFullscreen||w.webkitRequestFullscreen).call(w);
     else    (document.exitFullscreen||document.webkitExitFullscreen).call(document);
 }

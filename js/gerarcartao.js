@@ -5,9 +5,44 @@
 
 let FIREBASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 
+// Guarda o resultado da última geração (dados agregados + ocorrências cruas
+// já buscadas) pra "Salvar Cartão" não precisar refazer os fetches — também
+// serve de snapshot fiel do que foi realmente exibido/editado na tela.
+let ultimoDadosCartao = null;
+let ultimasOcorrenciasFlat = [];
+
 // Pesos de gravidade por categoria
 // cvli=5, droga=4, cvp=3, geral=1
-const PESOS = { cvli: 5, droga: 4, cvp: 3, geral: 1 };
+// sossego/violencia_domestica=4 — só ENTRAM na análise quando a RP tem
+// menos de 2 CVLI nos últimos 90 dias (ver categoriasAtivasPara) — pedido
+// explícito do usuário: ausência de crime letal não significa área
+// tranquila, então nesse caso a lógica passa a considerar também
+// perturbação do sossego e violência doméstica pra não ficar sem
+// critério de priorização.
+const PESOS = { cvli: 5, droga: 4, cvp: 3, geral: 1, sossego: 4, violencia_domestica: 4 };
+
+// Conta quantos CVLI (db.cvli) caem dentro da janela de 90 dias,
+// opcionalmente filtrado por cidade(s) — usado por categoriasAtivasPara
+// pra decidir se perturbação/violência doméstica entram no jogo.
+function contarCVLIJanela(db, cidadesAlvo) {
+    const registros = db.cvli;
+    if (!registros) return 0;
+    return Object.values(registros).filter(item => {
+        if (cidadesAlvo) {
+            const cid = (item.CIDADE || "").toString().toUpperCase().trim();
+            if (!cidadesAlvo.some(c => cid.includes(c))) return false;
+        }
+        return dentroJanela(item.DATA || item.data);
+    }).length;
+}
+
+// cidadesAlvo: null = sem filtro de cidade (usado pelo Tático Rural, que
+// segue a mancha criminal GERAL, não uma área fixa).
+function categoriasAtivasPara(db, cidadesAlvo) {
+    const base = ['geral', 'cvp', 'cvli', 'droga'];
+    if (contarCVLIJanela(db, cidadesAlvo) < 2) return base.concat(['sossego', 'violencia_domestica']);
+    return base;
+}
 
 // Cidades patrulhadas por cada RP
 const MAPA_RP_CIDADES = {
@@ -31,6 +66,509 @@ function identificarChaveRP(rp) {
         if (u.includes(k)) return k;
     }
     return null;
+}
+
+// ── Helpers puros de data/hora (sem depender de nenhuma cidade/filtro) —
+// hoisted pra fora de processarDados pra poder ser reaproveitado tanto
+// pela análise por BAIRRO (construirAnalisador, usada pelas RPs e pelo
+// Tático Urbano) quanto pela análise por CIDADE (analisarCidadeMaisCritica,
+// usada pelos táticos Rurais). ────────────────────────────────────────
+function dentroJanela(dataStr) {
+    if (!dataStr) return false;
+    const hoje = new Date();
+    const limite90 = new Date(hoje);
+    limite90.setDate(hoje.getDate() - 90);
+    const s = dataStr.toString().trim();
+    let d;
+    if (s.includes('/')) {
+        // Suporta "DD/MM/AAAA" e "DD/MM/AAAA HH:MM" (ignora a hora)
+        const soData = s.split(' ')[0];
+        const partes = soData.split('/');
+        if (partes.length < 3) return false;
+        const dia = parseInt(partes[0], 10);
+        const mes = parseInt(partes[1], 10);
+        const ano = parseInt(partes[2], 10);
+        if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return false;
+        d = new Date(ano, mes - 1, dia);
+    } else {
+        // ISO: AAAA-MM-DD ou AAAA-MM-DDTHH:MM...
+        d = new Date(s.substring(0, 10));
+    }
+    return !isNaN(d.getTime()) && d >= limite90 && d <= hoje;
+}
+
+// O Firebase tem registros onde HORA = número do boletim (ex: "46336") —
+// parseInt cairia fora do range 0-23 e é descartado como dado corrompido.
+function horaValida(horaStr) {
+    if (!horaStr) return null;
+    const s = horaStr.toString().trim();
+    const h = s.includes(':') ? parseInt(s.split(':')[0], 10) : parseInt(s, 10);
+    return (h >= 0 && h <= 23) ? h : null;
+}
+
+// Mesma fórmula de identificarHotspots (js/opo-hotspot-core.js) e do
+// fallback por coordenada de resolverAreaBairro (js/cumprimento-core.js)
+// — reaproveitada aqui de propósito (mantém os 3 lugares consistentes,
+// sem depender de nenhum dos outros módulos estar carregado).
+// ~80m — NÃO é o mesmo raio de identificarHotspots (800m, ~9x maior):
+// testado com dados reais (Palmeira dos Índios, ~3400 ocorrências
+// georreferenciadas) e 800m junta TODA a área urbana compacta num grupo
+// só (990 ocorrências, 21 bairros diferentes misturados) — grande demais
+// pra distinguir bairro dentro da mesma cidade (a OPO quer o oposto:
+// achar só os piores pontos da cidade INTEIRA, grosseiro por natureza).
+// A 80m, o maior grupo real cai pra ~150 ocorrências com só 2-3 bairros
+// vizinhos/fronteira (ambiguidade real de limite, não erro). Decisão
+// tomada com o usuário depois de reportar esse achado.
+const RAIO_AGRUPAMENTO_GRAU = 0.0008;
+function haversineKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2 +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+// Raio data-driven do agrupamento: maior distância real ao centro (+25%
+// de folga), com piso de 600m e teto de 3km — mesma regra de
+// raioDoConjunto (js/cumprimento-core.js), pra não gerar perímetro
+// apertado demais (poucos pontos bem próximos) nem exagerado.
+function raioDoAgrupamento(itens, lat, lng) {
+    if (!itens.length) return 0.6;
+    const maiorDist = itens.reduce((m, p) => Math.max(m, haversineKm(lat, lng, p.lat, p.lng)), 0);
+    return Math.min(3, Math.max(0.6, +(maiorDist * 1.25).toFixed(2)));
+}
+
+// ── Analisador de criticidade por LOCAL, filtrado por cidade(s) —──────
+// Mesma lógica de sempre (gravidade > quantidade > histórico geral),
+// extraída de dentro de processarDados pra virar uma factory reutilizável:
+// as RPs normais e o Tático Urbano (que patrulha só Palmeira, igual uma
+// RP) usam isso; só muda o filtro `cidadesAlvo` de entrada.
+//
+// LÓGICA DE PRIORIDADE (ver analisarTurno abaixo):
+//   1. GRAVIDADE tem prioridade sobre QUANTIDADE
+//   2. Sem graves mas com registros → QUANTIDADE decide
+//   3. Sem dados nos 90 dias → histórico geral (sem cor)
+//   Escala de cor: <25% branco | 25-50% laranja | >50% vermelho
+//
+// AGRUPAMENTO: ocorrências com LATITUDE/LONGITUDE válida são agrupadas
+// por PROXIMIDADE GEOGRÁFICA real (~800m, mesmo critério de
+// identificarHotspots) em vez de confiar no texto do campo BAIRRO — evita
+// que a mesma área física apareça espalhada por causa de bairro digitado
+// diferente. O NOME exibido de cada agrupamento continua vindo do
+// próprio registro (BAIRRO mais frequente entre os pontos do grupo, sem
+// geocodificação reversa externa — decisão explícita do usuário).
+// Ocorrências SEM coordenada válida caem no método antigo (por texto de
+// BAIRRO) — nenhum dado é descartado, os dois tipos de grupo concorrem
+// juntos no mesmo ranking. Pedido explícito do usuário.
+function construirAnalisador(db, cidadesAlvo) {
+    const TURNOS = ['manha', 'tarde', 'noite'];
+    const qtd   = { manha:{}, tarde:{}, noite:{} };
+    const grave = { manha:{}, tarde:{}, noite:{} };
+    const totalQtdTurno   = { manha:0, tarde:0, noite:0 };
+    const totalGraveTurno = { manha:0, tarde:0, noite:0 };
+    const qtdGeral   = {};
+    const graveGeral = {};
+    const logradourosPorChave = {}; // chave -> {LOGRADOURO: contagem}
+    const infoChave = {}; // chave -> {nome, cidade, lat, lng, raioKm} dos agrupamentos GEO
+
+    // ── Passo 1: achata as ocorrências das categorias ativas (ver
+    // categoriasAtivasPara — inclui perturbação/violência doméstica só
+    // quando a RP tem pouco CVLI), filtradas pela(s) cidade(s) desta RP ──
+    const itens = [];
+    categoriasAtivasPara(db, cidadesAlvo).forEach(categoria => {
+        const registros = db[categoria];
+        if (!registros) return;
+        Object.values(registros).forEach(item => {
+            const cid = (item.CIDADE || "").toString().toUpperCase().trim();
+            if (cidadesAlvo && !cidadesAlvo.some(c => cid.includes(c))) return;
+
+            const bairro     = (item.BAIRRO     || "").toString().toUpperCase().trim();
+            const logradouro = (item.LOGRADOURO || item.ENDERECO || "").toString().toUpperCase().trim();
+            const lat = parseFloat(String(item.LATITUDE || item.latitude || "").replace(',', '.').trim());
+            const lng = parseFloat(String(item.LONGITUDE || item.longitude || "").replace(',', '.').trim());
+            const temCoord = !isNaN(lat) && !isNaN(lng) && lat >= -11.0 && lat <= -7.0 && lng >= -38.5 && lng <= -34.5;
+            if (!bairro && !temCoord) return; // sem bairro e sem coordenada: não há como localizar
+
+            const pesoTotal  = PESOS[categoria] || 1;
+            const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
+            itens.push({ cid, bairro, logradouro, lat, lng, temCoord, pesoGravio,
+                data: item.DATA || item.data, hora: item.HORA });
+        });
+    });
+
+    // ── Passo 1.5: detecta coordenadas SUSPEITAS — a mesma coordenada
+    // exata aparecendo em muitos registros (≥8) com bairros bem
+    // diferentes entre si é indício de um pino padrão/fake da
+    // geocodificação de origem, não a localização real da ocorrência
+    // (confirmado com dados reais: uma única coordenada apareceu em 105
+    // registros de 20 bairros distintos). Esses registros caem no método
+    // antigo (por texto de BAIRRO) em vez de contaminar o agrupamento
+    // geográfico do restante — decisão tomada com o usuário depois de eu
+    // reportar esse achado durante os testes.
+    const LIMIAR_QTD_SUSPEITA = 8;
+    const LIMIAR_BAIRROS_SUSPEITA = 3;
+    const porCoordExata = new Map();
+    itens.forEach(it => {
+        if (!it.temCoord) return;
+        const chave = it.lat.toFixed(5) + ',' + it.lng.toFixed(5);
+        if (!porCoordExata.has(chave)) porCoordExata.set(chave, { n: 0, bairros: new Set() });
+        const info = porCoordExata.get(chave);
+        info.n++;
+        if (it.bairro) info.bairros.add(it.bairro);
+    });
+    const coordsSuspeitas = new Set();
+    porCoordExata.forEach((info, chave) => {
+        if (info.n >= LIMIAR_QTD_SUSPEITA && info.bairros.size >= LIMIAR_BAIRROS_SUSPEITA) coordsSuspeitas.add(chave);
+    });
+    itens.forEach(it => {
+        if (it.temCoord && coordsSuspeitas.has(it.lat.toFixed(5) + ',' + it.lng.toFixed(5))) it.temCoord = false;
+    });
+
+    // ── Passo 2: agrupamento geográfico dos itens com coordenada válida,
+    // em 2 estágios — bucket determinístico por célula de grade (não
+    // depende da ORDEM de processamento) seguido de fusão das sementes
+    // vizinhas cujo centroide real fica dentro do raio. Evita o "efeito
+    // cadeia" do agrupamento incremental puro (A perto de B, B perto de
+    // C, mas A longe de C — o centroide vai arrastando e cola pontos
+    // fisicamente distantes), que testado com dados reais colava até 20+
+    // bairros diferentes num grupo só.
+    const celulas = new Map();
+    itens.forEach(it => {
+        if (!it.temCoord) return;
+        const chaveCelula = Math.round(it.lat / RAIO_AGRUPAMENTO_GRAU) + ':' + Math.round(it.lng / RAIO_AGRUPAMENTO_GRAU);
+        if (!celulas.has(chaveCelula)) celulas.set(chaveCelula, []);
+        celulas.get(chaveCelula).push(it);
+    });
+    const sementes = Array.from(celulas.values()).map(itensCel => ({
+        lat: itensCel.reduce((s, p) => s + p.lat, 0) / itensCel.length,
+        lng: itensCel.reduce((s, p) => s + p.lng, 0) / itensCel.length,
+        itens: itensCel,
+    }));
+    const gruposGeo = [];
+    sementes.forEach(sem => {
+        let g = gruposGeo.find(g => Math.sqrt((g.lat - sem.lat) ** 2 + (g.lng - sem.lng) ** 2) < RAIO_AGRUPAMENTO_GRAU);
+        if (!g) { g = { lat: sem.lat, lng: sem.lng, itens: [] }; gruposGeo.push(g); }
+        g.itens.push(...sem.itens);
+        g.lat = g.itens.reduce((s, p) => s + p.lat, 0) / g.itens.length;
+        g.lng = g.itens.reduce((s, p) => s + p.lng, 0) / g.itens.length;
+    });
+    // Itens sem coordenada confiável (incluindo os rebaixados no Passo
+    // 1.5) caem no método antigo, por texto de BAIRRO.
+    itens.forEach(it => { if (!it.temCoord) it.chave = 'bairro:' + (it.bairro || 'NAO INFORMADO'); });
+    gruposGeo.forEach((g, i) => {
+        const chave = 'geo:' + i;
+        g.itens.forEach(it => { it.chave = chave; });
+        const freqBairro = {}, freqCidade = {};
+        g.itens.forEach(it => {
+            if (it.bairro) freqBairro[it.bairro] = (freqBairro[it.bairro] || 0) + 1;
+            if (it.cid)    freqCidade[it.cid]    = (freqCidade[it.cid]    || 0) + 1;
+        });
+        const bairroTop = Object.entries(freqBairro).sort((a, b) => b[1] - a[1])[0];
+        const cidadeTop = Object.entries(freqCidade).sort((a, b) => b[1] - a[1])[0];
+        infoChave[chave] = {
+            nome: bairroTop ? bairroTop[0] : (cidadeTop ? cidadeTop[0] : 'ÁREA GEOGRÁFICA'),
+            cidade: cidadeTop ? cidadeTop[0] : null,
+            lat: g.lat, lng: g.lng,
+            raioKm: raioDoAgrupamento(g.itens, g.lat, g.lng),
+        };
+    });
+
+    // ── Passo 3: acumula qtd/gravidade por turno e histórico geral,
+    // igual à lógica de sempre, agora chaveada pelo agrupamento (geo ou
+    // bairro-texto) em vez do texto cru de BAIRRO ─────────────────────
+    itens.forEach(it => {
+        const chave = it.chave;
+        const ehRural = it.bairro.includes("ZONA RURAL") || it.bairro.includes("RURAL");
+        if (ehRural && it.logradouro) {
+            if (!logradourosPorChave[chave]) logradourosPorChave[chave] = {};
+            logradourosPorChave[chave][it.logradouro] = (logradourosPorChave[chave][it.logradouro] || 0) + 1;
+        }
+
+        qtdGeral[chave]   = (qtdGeral[chave]   || 0) + 1;
+        graveGeral[chave] = (graveGeral[chave] || 0) + it.pesoGravio;
+
+        if (!dentroJanela(it.data)) return;
+
+        const h = horaValida(it.hora);
+        if (h === null) {
+            const frac = 1 / 3;
+            for (const t of TURNOS) {
+                qtd[t][chave]   = (qtd[t][chave]   || 0) + frac;
+                grave[t][chave] = (grave[t][chave] || 0) + (it.pesoGravio * frac);
+            }
+            return;
+        }
+
+        let turno;
+        if      (h >= 6  && h < 12) turno = 'manha';
+        else if (h >= 12 && h < 18) turno = 'tarde';
+        else                        turno = 'noite';
+
+        qtd[turno][chave]   = (qtd[turno][chave]   || 0) + 1;
+        grave[turno][chave] = (grave[turno][chave] || 0) + it.pesoGravio;
+        totalQtdTurno[turno]   += 1;
+        totalGraveTurno[turno] += it.pesoGravio;
+    });
+
+    // Resolve nome de exibição + dados geográficos de uma chave — geo:N
+    // já vem pronto de infoChave; bairro:XXXX resolve rural->logradouro
+    // igual sempre foi, sem dado geográfico real (não georreferenciável).
+    const resolverInfo = (chave) => {
+        if (infoChave[chave]) {
+            const info = infoChave[chave];
+            const lograd = logradourosPorChave[chave];
+            if (info.nome.includes('RURAL') && lograd) {
+                const top = Object.entries(lograd).sort((a, b) => b[1] - a[1])[0];
+                return top ? Object.assign({}, info, { nome: top[0] }) : info;
+            }
+            return info;
+        }
+        const bairro = chave.slice('bairro:'.length);
+        const ehRural = bairro.includes('ZONA RURAL') || bairro.includes('RURAL');
+        const lograd  = logradourosPorChave[chave];
+        const topLograd = ehRural && lograd ? Object.entries(lograd).sort((a, b) => b[1] - a[1])[0] : null;
+        return { nome: topLograd ? topLograd[0] : bairro, cidade: null, lat: null, lng: null, raioKm: null };
+    };
+    // offset: pula os `offset` locais mais críticos do ranking antes de
+    // pegar os próximos `n` — usado quando 2 guarnições da MESMA cidade
+    // patrulham no MESMO turno ao mesmo tempo (ex.: RP 01 e RP 02 de
+    // Palmeira, ambas de patrulhamento entre 20h-00h): sem isso, as duas
+    // puxam exatamente o mesmo ranking de criticidade e acabam mandadas
+    // pro MESMO ponto. Ver uso em processarDados (RP 02, bloco 20:30-00:00).
+    const topLocais = (scores, n, offset) =>
+        Object.entries(scores).sort((a, b) => b[1] - a[1]).slice(offset || 0, (offset || 0) + n).map(([chave]) => resolverInfo(chave));
+    const somaObj = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
+
+    function analisarTurno(nomeTurno, nLocais, offset) {
+        const n = nLocais || 3;
+        const somaGraveTurno = somaObj(grave[nomeTurno]);
+        const somaQtdTurno   = somaObj(qtd[nomeTurno]);
+        const totalGraveValido = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
+        const totalQtdValido   = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
+
+        if (totalGraveTurno[nomeTurno] > 0 || somaGraveTurno > 0) {
+            const pct = totalGraveValido > 0 ? (totalGraveTurno[nomeTurno] / totalGraveValido) * 100 : 0;
+            const locais = topLocais(grave[nomeTurno], n, offset);
+            const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr. c/ hora` : 'ocorrências';
+            const info = pct > 0 ? `GRAV.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
+            let miss = null, h = null;
+            if (pct > 50)       { miss = '🚨 ROTA CRÍTICA'; h = 'red'; }
+            else if (pct >= 25) { h = 'orange'; }
+            return { locais, info, miss, h };
+        }
+
+        if (totalQtdTurno[nomeTurno] > 0 || somaQtdTurno > 0) {
+            const pct = totalQtdValido > 0 ? (totalQtdTurno[nomeTurno] / totalQtdValido) * 100 : 0;
+            const locais = topLocais(qtd[nomeTurno], n, offset);
+            const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr.` : 'registros';
+            const info = pct > 0 ? `QTD.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
+            let miss = null, h = null;
+            if (pct > 50)       { miss = '🚨 ROTA CRÍTICA'; h = 'red'; }
+            else if (pct >= 25) { h = 'orange'; }
+            return { locais, info, miss, h };
+        }
+
+        const fallback = Object.values(graveGeral).some(v => v > 0) ? graveGeral : qtdGeral;
+        const locais   = topLocais(fallback, n, offset);
+        return { locais, info: 'HISTÓRICO GERAL', miss: null, h: null };
+    }
+
+    function montarLinha(ini, fim, nomeTurno, missPadrao, nLocais, offset) {
+        const { locais, info, miss, h } = analisarTurno(nomeTurno, nLocais || 3, offset);
+        const nomes = locais.map(l => l.nome);
+        const top = nomes.length > 0 ? nomes.join(" | ") : "CENTRO DA CIDADE";
+        const det = `${top}  (${info})`;
+        // areasGeo: só os locais com coordenada REAL (agrupamento
+        // georreferenciado) — guardado pra gerar o perímetro do
+        // rastreamento ao salvar (ver salvarCartaoAtual), sem precisar
+        // re-adivinhar a área a partir do texto depois.
+        const areasGeo = locais.filter(l => l.lat != null).map(l => ({ nome: l.nome, lat: l.lat, lng: l.lng, raioKm: l.raioKm }));
+        return { ini, fim, miss: miss || missPadrao, det, h, areasGeo };
+    }
+
+    return { montarLinha, analisarTurno, qtd, totalQtdTurno };
+}
+
+const fixa = (ini, fim, miss, det, h) => ({ ini, fim, miss, det, h: h || null });
+
+// Texto-resumo "📊 INTELIGÊNCIA" (distribuição por turno) — mesmo cálculo
+// de sempre, extraído pra ser reaproveitado pelas RPs e pelo Tático Urbano.
+function computarResumo(an) {
+    const somaObj2 = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
+    const totalNos90 = ['manha','tarde','noite'].reduce((s,t) => s + somaObj2(an.qtd[t]), 0);
+    const nomesTurno = { manha:'Manhã(06-12h)', tarde:'Tarde(12-18h)', noite:'Noite(18-05h)' };
+    const partes = [];
+    for (const t of ['manha','tarde','noite']) {
+        const q  = an.totalQtdTurno[t];
+        const tV = Object.values(an.totalQtdTurno).reduce((a,b)=>a+b,0);
+        const pQ = tV > 0 ? ((q / tV) * 100).toFixed(0) : 0;
+        // Reaproveita analisarTurno só pra pegar o % de gravidade já calculado
+        const info = an.analisarTurno(t, 1).info || '';
+        const mGrav = info.match(/GRAV\.(\d+)%/);
+        const pG = mGrav ? mGrav[1] : 0;
+        const sQ = Math.round(somaObj2(an.qtd[t]));
+        if (sQ > 0) partes.push(`${nomesTurno[t]}: ${sQ} reg. | Grav.${pG}% / Qtd.${pQ}%`);
+    }
+    return { resumo: partes.join(' &bull; '), totalQtd: Math.round(totalNos90) };
+}
+
+// ── Analisador de criticidade por CIDADE (não por bairro), SEM filtro de
+// cidade — usado pelos táticos RURAIS: em vez de patrulhar uma área fixa,
+// vão pra CIDADE mais crítica do turno, dentre TODAS as cidades da área do
+// batalhão. Mesma lógica de prioridade de construirAnalisador (gravidade >
+// quantidade > histórico geral), só que agrupando por CIDADE.
+function analisarCidadeMaisCritica(db, nomeTurno) {
+    const TURNOS = ['manha', 'tarde', 'noite'];
+    const qtd   = { manha:{}, tarde:{}, noite:{} };
+    const grave = { manha:{}, tarde:{}, noite:{} };
+    const totalQtdTurno   = { manha:0, tarde:0, noite:0 };
+    const totalGraveTurno = { manha:0, tarde:0, noite:0 };
+    const qtdGeral = {}, graveGeral = {};
+
+    // Sem filtro de cidade (null) — mancha criminal GERAL de toda a área
+    // do batalhão, mesmo critério de categoriasAtivasPara usado pelas RPs.
+    categoriasAtivasPara(db, null).forEach(categoria => {
+        const registros = db[categoria];
+        if (!registros) return;
+        Object.values(registros).forEach(item => {
+            const cid = (item.CIDADE || "").toString().toUpperCase().trim();
+            if (!cid) return;
+
+            const pesoTotal  = PESOS[categoria] || 1;
+            const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
+
+            qtdGeral[cid]   = (qtdGeral[cid]   || 0) + 1;
+            graveGeral[cid] = (graveGeral[cid] || 0) + pesoGravio;
+
+            if (!dentroJanela(item.DATA || item.data)) return;
+
+            const h = horaValida(item.HORA);
+            if (h === null) {
+                const frac = 1 / 3;
+                for (const t of TURNOS) {
+                    qtd[t][cid]   = (qtd[t][cid]   || 0) + frac;
+                    grave[t][cid] = (grave[t][cid]  || 0) + (pesoGravio * frac);
+                }
+                return;
+            }
+
+            let turno;
+            if      (h >= 6  && h < 12) turno = 'manha';
+            else if (h >= 12 && h < 18) turno = 'tarde';
+            else                        turno = 'noite';
+
+            qtd[turno][cid]   = (qtd[turno][cid]   || 0) + 1;
+            grave[turno][cid] = (grave[turno][cid]  || 0) + pesoGravio;
+            totalQtdTurno[turno]   += 1;
+            totalGraveTurno[turno] += pesoGravio;
+        });
+    });
+
+    const somaObj = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
+    const topCidade = (scores) => {
+        const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+        return entries.length ? entries[0][0] : null;
+    };
+
+    const somaGraveTurno = somaObj(grave[nomeTurno]);
+    const somaQtdTurno   = somaObj(qtd[nomeTurno]);
+    const totalGraveValido = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
+    const totalQtdValido   = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
+
+    if (totalGraveTurno[nomeTurno] > 0 || somaGraveTurno > 0) {
+        const cidade = topCidade(grave[nomeTurno]);
+        const pct = totalGraveValido > 0 ? (totalGraveTurno[nomeTurno] / totalGraveValido) * 100 : 0;
+        const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr. c/ hora` : 'ocorrências';
+        const info = pct > 0 ? `GRAV.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
+        let h = null;
+        if (pct > 50) h = 'red'; else if (pct >= 25) h = 'orange';
+        return { cidade: cidade || 'PALMEIRA DOS ÍNDIOS', info, h, totalQtdTurno: totalQtdTurno[nomeTurno] };
+    }
+    if (totalQtdTurno[nomeTurno] > 0 || somaQtdTurno > 0) {
+        const cidade = topCidade(qtd[nomeTurno]);
+        const pct = totalQtdValido > 0 ? (totalQtdTurno[nomeTurno] / totalQtdValido) * 100 : 0;
+        const nOcorr = totalQtdTurno[nomeTurno] > 0 ? `${totalQtdTurno[nomeTurno]} ocorr.` : 'registros';
+        const info = pct > 0 ? `QTD.${pct.toFixed(0)}% — ${nOcorr} (90 dias)` : `${nOcorr} (90 dias)`;
+        let h = null;
+        if (pct > 50) h = 'red'; else if (pct >= 25) h = 'orange';
+        return { cidade: cidade || 'PALMEIRA DOS ÍNDIOS', info, h, totalQtdTurno: totalQtdTurno[nomeTurno] };
+    }
+    const fallback = Object.values(graveGeral).some(v => v > 0) ? graveGeral : qtdGeral;
+    const cidade = topCidade(fallback);
+    return { cidade: cidade || 'PALMEIRA DOS ÍNDIOS', info: 'HISTÓRICO GERAL', h: null, totalQtdTurno: 0 };
+}
+
+// ── Cartões dos TÁTICOS — horários FIXOS (não variam por análise
+// criminal), definidos pelo 1º Tenente Calheiros. Só o CONTEÚDO de
+// alguns blocos (bairros/cidade mais crítica) vem da análise; os
+// horários e a estrutura do cronograma são sempre os mesmos:
+//
+//   TÁTICO URBANO (patrulha só Palmeira, igual uma RP):
+//     09h-13h Patrulhamento (mancha criminal DE PALMEIRA)
+//     13h-15h30 Almoço/Descanso
+//     16h-18h30 Cumprimento de OPO
+//     18h30-20h Janta/Descanso
+//     20h-21h Patrulhamento em áreas críticas (mancha criminal DE PALMEIRA)
+//     21h-00h Cumprimento de OPO
+//
+//   TÁTICO RURAL 01/02 (não tem área fixa de patrulhamento — segue a
+//   mancha criminal GERAL, ou seja, a cidade mais crítica do dia nesse
+//   horário; só o bloco de OPO é fixo numa cidade — Maribondo/Igaci):
+//     09h-13h Patrulhamento (mancha criminal GERAL — cidade mais crítica)
+//     13h-15h30 Almoço/Descanso
+//     16h-00h Cumprimento de OPO (cidade fixa)
+function processarDadosTatico(tipoTaticoUpper, db) {
+    const ehUrbano  = tipoTaticoUpper.includes('URBANO');
+    const ehRural01 = /RURAL\s*0?1\b/.test(tipoTaticoUpper);
+
+    let cronograma, cidade, cidadesPatrulhadas, nomeUnidade, resumo, totalQtd;
+
+    if (ehUrbano) {
+        nomeUnidade = 'TÁTICO URBANO';
+        cidade = 'PALMEIRA DOS ÍNDIOS';
+        cidadesPatrulhadas = [cidade];
+        const opoCidade = 'PALMEIRA DOS ÍNDIOS';
+
+        const an = construirAnalisador(db, cidadesPatrulhadas);
+        cronograma = [
+            an.montarLinha("09:00","13:00", 'manha', "Patrulhamento — Mancha Criminal de Palmeira"),
+            fixa(          "13:00","15:30",           "Almoço / Descanso",  "BASE OPERACIONAL", "green"),
+            fixa(          "16:00","18:30",           "Cumprimento de OPO", `OPO — ${opoCidade}`, null),
+            fixa(          "18:30","20:00",           "Janta / Descanso",   "BASE OPERACIONAL", "green"),
+            an.montarLinha("20:00","21:00", 'noite',  "Patrulhamento em Áreas Críticas — Mancha Criminal de Palmeira"),
+            fixa(          "21:00","00:00",           "Cumprimento de OPO", `OPO — ${opoCidade}`, null),
+        ];
+        ({ resumo, totalQtd } = computarResumo(an));
+    } else {
+        const opoCidade = ehRural01 ? 'MARIBONDO' : 'IGACI';
+        nomeUnidade = ehRural01 ? 'TÁTICO RURAL 01' : 'TÁTICO RURAL 02';
+        cidade = opoCidade;
+        cidadesPatrulhadas = [opoCidade];
+
+        // 09h-13h cai majoritariamente na janela 'manha' (06-12h) do
+        // critério de turno já usado no resto do sistema.
+        const info = analisarCidadeMaisCritica(db, 'manha');
+        const det  = `${info.cidade}  (${info.info})`;
+        const missPrefixo = info.h === 'red' ? '🚨 ' : '';
+
+        cronograma = [
+            { ini:"09:00", fim:"13:00", miss:`${missPrefixo}Patrulhamento — Cidade Mais Crítica`, det, h: info.h },
+            fixa("13:00","15:30", "Almoço / Descanso",  "BASE OPERACIONAL", "green"),
+            fixa("16:00","00:00", "Cumprimento de OPO", `OPO — ${opoCidade}`, null),
+        ];
+        totalQtd = info.totalQtdTurno || 0;
+        resumo = `Patrulhamento itinerante por mancha criminal geral (09h-13h) — OPO fixo em ${opoCidade} (16h-00h).`;
+    }
+
+    return {
+        cidade,
+        cidadesPatrulhadas,
+        rp:   nomeUnidade,
+        data: new Date().toLocaleDateString('pt-BR'),
+        cronograma,
+        resumo,
+        totalQtd,
+    };
 }
 
 // ================================================================
@@ -58,16 +596,28 @@ async function clicarBotaoGerar() {
     };
 
     try {
-        const [geral, cvp, cvli, droga] = await Promise.all([
-            fetchData('geral'), fetchData('cvp'), fetchData('cvli'), fetchData('droga')
+        // sossego/violencia_domestica são buscados sempre (custo baixo,
+        // 2 nós a mais em paralelo) — só ENTRAM de fato na análise quando
+        // a RP tem pouco CVLI (ver categoriasAtivasPara em processarDados).
+        const [geral, cvp, cvli, droga, sossego, violencia_domestica] = await Promise.all([
+            fetchData('geral'), fetchData('cvp'), fetchData('cvli'), fetchData('droga'),
+            fetchData('sossego'), fetchData('violencia_domestica'),
         ]);
-        const dados = processarDados(rpSelecionada, { geral, cvp, cvli, droga });
+        const db = { geral, cvp, cvli, droga, sossego, violencia_domestica };
+        const dados = processarDados(rpSelecionada, db);
+        ultimoDadosCartao = dados;
+        ultimoDadosCartao.rpSelecionado = rpSelecionada;
+        ultimasOcorrenciasFlat = achatarOcorrencias(db);
         const { html, linhasIniciais } = gerarTemplateHTML(dados);
         container.innerHTML = html;
         // Popula o tbody APÓS o innerHTML estar no DOM — scripts inline em innerHTML não executam
         const tbody = container.querySelector('#tbody-cartao');
         if (tbody) _renderizarTbody(tbody, linhasIniciais);
         document.getElementById('btn-imprimir').style.display = "inline-block";
+        const btnSalvar = document.getElementById('btn-salvar-cartao');
+        if (btnSalvar) btnSalvar.style.display = "inline-block";
+        const labelPerimetro = document.getElementById('label-perimetro-cartao');
+        if (labelPerimetro) labelPerimetro.style.display = "inline-block";
     } catch (err) {
         container.innerHTML = "<p style='color:red;text-align:center;'>Erro ao carregar dados.</p>";
         console.error(err);
@@ -78,6 +628,14 @@ async function clicarBotaoGerar() {
 // PROCESSAMENTO
 // ================================================================
 function processarDados(cidadeFiltro, db) {
+    const gNome = cidadeFiltro.toUpperCase();
+
+    // Táticos (Urbano/Rural) têm estrutura de cronograma diferente das RPs
+    // (horários fixos, alguns blocos por cidade mais crítica em vez de
+    // bairro) — ver processarDadosTatico() e o comentário grande acima dela.
+    if (gNome.includes('TÁTICO') || gNome.includes('TATICO')) {
+        return processarDadosTatico(gNome, db);
+    }
 
     // ── Cidades alvo desta RP ────────────────────────────────────
     const chaveRP     = identificarChaveRP(cidadeFiltro);
@@ -85,262 +643,12 @@ function processarDados(cidadeFiltro, db) {
         ? MAPA_RP_CIDADES[chaveRP].map(c => c.toUpperCase())
         : [cidadeFiltro.split('(')[0].trim().toUpperCase()];
 
-    // ── Janela dos últimos 90 dias ───────────────────────────────
-    const hoje     = new Date();
-    const limite90 = new Date(hoje);
-    limite90.setDate(hoje.getDate() - 90);
-
-    const dentroJanela = (dataStr) => {
-        if (!dataStr) return false;
-        const s = dataStr.toString().trim();
-        let d;
-        if (s.includes('/')) {
-            // Suporta "DD/MM/AAAA" e "DD/MM/AAAA HH:MM" (ignora a hora)
-            const soData = s.split(' ')[0];
-            const partes = soData.split('/');
-            if (partes.length < 3) return false;
-            const dia = parseInt(partes[0], 10);
-            const mes = parseInt(partes[1], 10);
-            const ano = parseInt(partes[2], 10);
-            if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return false;
-            d = new Date(ano, mes - 1, dia);
-        } else {
-            // ISO: AAAA-MM-DD ou AAAA-MM-DDTHH:MM...
-            d = new Date(s.substring(0, 10));
-        }
-        return !isNaN(d.getTime()) && d >= limite90 && d <= hoje;
-    };
-
-    // ── CORREÇÃO CRÍTICA: validar HORA ───────────────────────────
-    // O Firebase tem registros onde HORA = número do boletim (ex: "46336")
-    // parseInt("46336") = 46336 → cai no else → turno='noite' incorretamente
-    // Solução: só aceitar hora entre 0 e 23
-    const horaValida = (horaStr) => {
-        if (!horaStr) return null;
-        const s = horaStr.toString().trim();
-        let h;
-        if (s.includes(':')) {
-            h = parseInt(s.split(':')[0], 10);
-        } else {
-            h = parseInt(s, 10);
-        }
-        // Hora deve estar entre 0 e 23 — fora disso é dado corrompido
-        return (h >= 0 && h <= 23) ? h : null;
-    };
-
-    // ── Estruturas de acumulação ─────────────────────────────────
-    //
-    // Turnos de ANÁLISE: manhã 06-12h | tarde 12-18h | noite 18-05h
-    //
-    // Para cada turno e bairro:
-    //   qtd[t][b]   = total de registros (qualquer categoria)
-    //   grave[t][b] = soma de peso apenas de ocorrências graves (cvli+cvp+droga)
-    //                 peso=1 (geral) NÃO conta aqui
-    //
-    // Totais por turno (para percentuais relativos entre turnos):
-    //   totalQtdTurno[t]   = total de registros do turno
-    //   totalGraveTurno[t] = soma de peso grave do turno
-
-    const TURNOS = ['manha', 'tarde', 'noite'];
-    const qtd   = { manha:{}, tarde:{}, noite:{} }; // contagem por bairro
-    const grave = { manha:{}, tarde:{}, noite:{} }; // peso grave por bairro
-
-    const totalQtdTurno   = { manha:0, tarde:0, noite:0 };
-    const totalGraveTurno = { manha:0, tarde:0, noite:0 };
-
-    // Ranking GERAL de bairros (sem filtro de turno) como fallback
-    // para quando o turno específico não tiver dados suficientes
-    const qtdGeral   = {}; // bairro → contagem geral
-    const graveGeral = {}; // bairro → peso grave geral
-
-    // logradourosRurais[bairro][logradouro] = contagem
-    const logradourosRurais = {};
-
-    // ── Percorrer Firebase ───────────────────────────────────────
-    Object.keys(db).forEach(categoria => {
-        const registros = db[categoria];
-        if (!registros) return;
-
-        Object.values(registros).forEach(item => {
-            // Filtra cidade
-            const cid = (item.CIDADE || "").toString().toUpperCase().trim();
-            if (!cidadesAlvo.some(c => cid.includes(c))) return;
-
-            const bairro     = (item.BAIRRO     || "").toString().toUpperCase().trim();
-            const logradouro = (item.LOGRADOURO  || item.ENDERECO || "").toString().toUpperCase().trim();
-            if (!bairro) return;
-
-            // Logradouros rurais
-            const ehRural = bairro.includes("ZONA RURAL") || bairro.includes("RURAL");
-            if (ehRural && logradouro) {
-                if (!logradourosRurais[bairro]) logradourosRurais[bairro] = {};
-                logradourosRurais[bairro][logradouro] =
-                    (logradourosRurais[bairro][logradouro] || 0) + 1;
-            }
-
-            // Peso de gravidade deste registro
-            // Peso grave = apenas cvli(5), cvp(3), droga(4)
-            // geral tem peso=1 mas NÃO conta como ocorrência grave
-            const pesoTotal  = PESOS[categoria] || 1;
-            const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
-
-            // Ranking geral (histórico completo, sem filtro de data)
-            qtdGeral[bairro]   = (qtdGeral[bairro]   || 0) + 1;
-            graveGeral[bairro] = (graveGeral[bairro]  || 0) + pesoGravio;
-
-            // Só entra na análise de turno se estiver nos 90 dias
-            if (!dentroJanela(item.DATA || item.data)) return;
-
-            // Valida a HORA
-            const h = horaValida(item.HORA);
-
-            if (h === null) {
-                // HORA corrompida (número do boletim, etc.)
-                // Distribui o bairro nos 3 turnos (1/3 por turno) para que apareça no cartão.
-                // NÃO incrementa totalQtdTurno/totalGraveTurno — não distorce a cor.
-                const frac = 1 / 3;
-                for (const t of ['manha', 'tarde', 'noite']) {
-                    qtd[t][bairro]   = (qtd[t][bairro]   || 0) + frac;
-                    grave[t][bairro] = (grave[t][bairro]  || 0) + (pesoGravio * frac);
-                }
-                return;
-            }
-
-            let turno;
-            if      (h >= 6  && h < 12) turno = 'manha';
-            else if (h >= 12 && h < 18) turno = 'tarde';
-            else                        turno = 'noite';
-
-            qtd[turno][bairro]   = (qtd[turno][bairro]   || 0) + 1;
-            grave[turno][bairro] = (grave[turno][bairro]  || 0) + pesoGravio;
-
-            totalQtdTurno[turno]   += 1;
-            totalGraveTurno[turno] += pesoGravio;
-        });
-    });
-
-    // ── Resolver ZONA RURAL → logradouro mais frequente ─────────
-    const resolverLocal = (bairro) => {
-        const ehRural = bairro.includes("ZONA RURAL") || bairro.includes("RURAL");
-        if (ehRural && logradourosRurais[bairro]) {
-            const top = Object.entries(logradourosRurais[bairro])
-                .sort((a, b) => b[1] - a[1])[0];
-            return top ? top[0] : bairro;
-        }
-        return bairro;
-    };
-
-    // ── Top N bairros de um objeto de scores ────────────────────
-    const topBairros = (scores, n) =>
-        Object.entries(scores)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, n)
-            .map(([b]) => resolverLocal(b));
-
-    // ── Análise de criticidade por turno ─────────────────────────
-    //
-    // LÓGICA DE PRIORIDADE:
-    //
-    // 1. GRAVIDADE tem prioridade sobre QUANTIDADE
-    //    - Se o turno tem ocorrências GRAVES (cvli/cvp/droga):
-    //      → ordena bairros por pesoGrave
-    //      → cor baseada em % de gravidade DO TURNO sobre TOTAL GRAVE
-    //
-    // 2. Se NÃO há ocorrências graves no turno mas há ocorrências:
-    //    → ordena bairros por quantidade (critério de quantidade)
-    //    → cor baseada em % de quantidade DO TURNO sobre TOTAL QTD
-    //
-    // 3. Se NÃO há dados do turno nos 90 dias:
-    //    → usa ranking GERAL histórico (sem filtro de data ou turno)
-    //    → cor = branco (sem criticidade determinada)
-    //
-    // Escala de cor (baseada no percentual do turno mais pesado):
-    //   pct < 25%  → branco (distribuição normal entre turnos)
-    //   pct 25-50% → laranja (concentração moderada)
-    //   pct > 50%  → vermelho (concentração alta neste turno)
-    //
-    // Nota: pct é calculado sobre o total DE TODOS OS TURNOS,
-    // não sobre o total de registros. Isso permite comparar turnos
-    // entre si e identificar qual concentra mais crimes.
-
-    // Soma total de valores em um objeto de scores
-    const somaObj = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
-
-    const analisarTurno = (nomeTurno, nLocais) => {
-        const n = nLocais || 3;
-
-        // Soma real dos scores acumulados no turno (inclui frações de hora inválida)
-        const somaGraveTurno = somaObj(grave[nomeTurno]);
-        const somaQtdTurno   = somaObj(qtd[nomeTurno]);
-
-        // Soma total de grave e qtd com HORA VÁLIDA (para calcular cor/percentual)
-        const totalGraveValido = Object.values(totalGraveTurno).reduce((a, b) => a + b, 0);
-        const totalQtdValido   = Object.values(totalQtdTurno).reduce((a, b) => a + b, 0);
-
-        // ── CASO 1: Tem ocorrências graves no turno → GRAVIDADE decide cor ──
-        // Detecta pelo total com hora válida (totalGraveTurno) OU pelo acumulado (somaGraveTurno)
-        if (totalGraveTurno[nomeTurno] > 0 || somaGraveTurno > 0) {
-            // Cor: baseada apenas nos registros com hora válida (evita distorção)
-            const pct = totalGraveValido > 0
-                ? (totalGraveTurno[nomeTurno] / totalGraveValido) * 100
-                : 0;
-
-            // Bairros: ordenados pelo score acumulado de gravidade (inclui frações)
-            const locais = topBairros(grave[nomeTurno], n);
-            const nOcorr = totalQtdTurno[nomeTurno] > 0
-                ? `${totalQtdTurno[nomeTurno]} ocorr. c/ hora` : 'ocorrências';
-            const info = pct > 0
-                ? `GRAV.${pct.toFixed(0)}% — ${nOcorr} (90 dias)`
-                : `${nOcorr} (90 dias)`;
-
-            let miss = null, h = null;
-            if (pct > 50)       { miss = '🚨 ROTA CRÍTICA'; h = 'red'; }
-            else if (pct >= 25) { h = 'orange'; }
-            return { locais, info, miss, h };
-        }
-
-        // ── CASO 2: Sem graves, mas tem registros → QUANTIDADE decide cor ──
-        if (totalQtdTurno[nomeTurno] > 0 || somaQtdTurno > 0) {
-            const pct = totalQtdValido > 0
-                ? (totalQtdTurno[nomeTurno] / totalQtdValido) * 100
-                : 0;
-
-            const locais = topBairros(qtd[nomeTurno], n);
-            const nOcorr = totalQtdTurno[nomeTurno] > 0
-                ? `${totalQtdTurno[nomeTurno]} ocorr.` : 'registros';
-            const info = pct > 0
-                ? `QTD.${pct.toFixed(0)}% — ${nOcorr} (90 dias)`
-                : `${nOcorr} (90 dias)`;
-
-            let miss = null, h = null;
-            if (pct > 50)       { miss = '🚨 ROTA CRÍTICA'; h = 'red'; }
-            else if (pct >= 25) { h = 'orange'; }
-            return { locais, info, miss, h };
-        }
-
-        // ── CASO 3: Nenhum dado nos 90 dias → histórico geral ──
-        const fallback = Object.values(graveGeral).some(v => v > 0) ? graveGeral : qtdGeral;
-        const locais   = topBairros(fallback, n);
-        return { locais, info: 'HISTÓRICO GERAL', miss: null, h: null };
-    };
-
-    // ── Montar linha do cronograma ────────────────────────────────
-    const montarLinha = (ini, fim, nomeTurno, missPadrao, nLocais) => {
-        const { locais, info, miss, h } = analisarTurno(nomeTurno, nLocais || 3);
-        const top  = locais.length > 0 ? locais.join(" | ") : "CENTRO DA CIDADE";
-        const det  = `${top}  (${info})`;
-        return {
-            ini, fim,
-            miss: miss || missPadrao,
-            det,
-            h
-        };
-    };
-
-    const fixa = (ini, fim, miss, det, h) => ({ ini, fim, miss, det, h: h || null });
-
-    // ── Cronograma por tipo de RP ────────────────────────────────
-    const gNome = cidadeFiltro.toUpperCase();
+    // Análise de criticidade por bairro, restrita às cidades desta RP —
+    // mesma lógica de sempre (gravidade > quantidade > histórico geral),
+    // ver construirAnalisador() acima (extraída daqui pra ser reaproveitada
+    // pelo Tático Urbano também).
+    const an          = construirAnalisador(db, cidadesAlvo);
+    const montarLinha = an.montarLinha;
     let cronograma = [];
 
     if (gNome.includes("RP 01")) {
@@ -360,7 +668,14 @@ function processarDados(cidadeFiltro, db) {
             montarLinha("18:00","19:00", 'noite',   "Ronda Crítica Noturna"),
             fixa(       "19:00","20:00",            "Janta / Prontidão",        "BASE OPERACIONAL", "green"),
             fixa(       "20:00","20:30",            "OPO - POLICIAMENTO ESCOLAR","ESCOLA EST. MONSENHOR RIBEIRO - PALMEIRA DE FORA", "red"),
-            montarLinha("20:30","00:00", 'noite',   "Patrulhamento Noturno 1"),
+            // offset=3: das 20:30 às 00:00 a RP 02 patrulha ao MESMO tempo
+            // que a RP 01 (bloco 19:00-00:00 dela, logo abaixo) — sem o
+            // deslocamento, as duas puxam o mesmo ranking de criticidade
+            // ("noite") e acabam mandadas pro MESMO local. A RP 01 fica
+            // com os 3 pontos mais críticos (offset padrão); a RP 02 pega
+            // os 3 seguintes, ainda dentro da mancha criminal real, só que
+            // sem repetir. Ajuste pedido pelo usuário.
+            montarLinha("20:30","00:00", 'noite',   "Patrulhamento Noturno 1", 3, 3),
             fixa(       "00:00","03:00",            "DESCANSO / PRONTIDÃO",     "BASE OPERACIONAL", "green"),
             montarLinha("03:00","05:00", 'noite',   "Patrulhamento Noturno 2"),
             fixa(       "05:00","07:00",            "Descanso / Prontidão",     "BASE OPERACIONAL", null),
@@ -461,22 +776,7 @@ function processarDados(cidadeFiltro, db) {
     }
 
     // ── Resumo de distribuição ────────────────────────────────────
-    // Conta registros nos 90 dias: soma os valores dos objetos qtd (inclui frações)
-    const somaObj2 = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
-    const totalNos90 = ['manha','tarde','noite'].reduce((s,t) => s + somaObj2(qtd[t]), 0);
-
-    const nomesTurno = { manha:'Manhã(06-12h)', tarde:'Tarde(12-18h)', noite:'Noite(18-05h)' };
-    const partes = [];
-    for (const t of ['manha','tarde','noite']) {
-        const q  = totalQtdTurno[t];   // com hora válida
-        const g  = totalGraveTurno[t]; // com hora válida
-        const tV = Object.values(totalQtdTurno).reduce((a,b)=>a+b,0);
-        const tG = Object.values(totalGraveTurno).reduce((a,b)=>a+b,0);
-        const pQ = tV > 0 ? ((q / tV) * 100).toFixed(0) : 0;
-        const pG = tG > 0 ? ((g / tG) * 100).toFixed(0) : 0;
-        const sQ = Math.round(somaObj2(qtd[t]));
-        if (sQ > 0) partes.push(`${nomesTurno[t]}: ${sQ} reg. | Grav.${pG}% / Qtd.${pQ}%`);
-    }
+    const { resumo, totalQtd } = computarResumo(an);
 
     return {
         cidade:             cidadesAlvo[0],
@@ -484,8 +784,8 @@ function processarDados(cidadeFiltro, db) {
         rp:   cidadeFiltro.includes("(") ? cidadeFiltro.split('(')[1].replace(')', '') : "RP",
         data: new Date().toLocaleDateString('pt-BR'),
         cronograma,
-        resumo:    partes.join(' &bull; '),
-        totalQtd:  Math.round(totalNos90)
+        resumo,
+        totalQtd,
     };
 }
 
@@ -513,6 +813,10 @@ function _lerLinhasDoDOM(tbody) {
             const span = td ? td.querySelector('span:not(.lock-badge)') : null;
             return span ? span.innerText.trim() : (td ? td.innerText.trim() : '');
         };
+        let areasGeo = null;
+        if (tr.dataset.areasGeo) {
+            try { areasGeo = JSON.parse(tr.dataset.areasGeo); } catch (e) { areasGeo = null; }
+        }
         linhas.push({
             ini:     val(tds[0]),
             fim:     val(tds[1]),
@@ -520,6 +824,7 @@ function _lerLinhasDoDOM(tbody) {
             det:     val(tds[3]),
             critica,
             h:       tr.dataset.h || null,
+            areasGeo,
         });
     });
     return linhas;
@@ -546,6 +851,12 @@ function _renderizarTbody(tbody, linhas) {
         tr.dataset.idx     = idx;
         tr.dataset.critica = item.critica ? 'true' : 'false';
         tr.dataset.h       = item.h || '';
+        // Dados geográficos do agrupamento (ver construirAnalisador) —
+        // guardados no próprio <tr> pra sobreviver a reordenação/remoção
+        // de linha (_lerLinhasDoDOM os lê de volta) e serem usados direto
+        // ao salvar o cartão (ver salvarCartaoAtual), sem re-adivinhar a
+        // área a partir do texto.
+        tr.dataset.areasGeo = item.areasGeo ? JSON.stringify(item.areasGeo) : '';
 
         if (item.h === 'red')    { tr.style.backgroundColor = '#ffcccc'; tr.style.fontWeight = 'bold'; }
         if (item.h === 'orange') { tr.style.backgroundColor = '#ffe0b2'; tr.style.fontWeight = 'bold'; }
@@ -666,6 +977,7 @@ function gerarTemplateHTML(data) {
         det:     i.det  || '',
         critica: i.h === 'red',
         h:       i.h || null,
+        areasGeo: i.areasGeo || null,
     }));
 
     const resumoHTML = data.totalQtd > 0 ? `
@@ -798,4 +1110,131 @@ function gerarTemplateHTML(data) {
     </div>`;
 
     return { html, linhasIniciais };
+}
+
+// ================================================================
+// SALVAR CARTÃO (Firebase da própria unidade — /cartoes_programa)
+// ================================================================
+
+// Achata {geral:{id:{...}}, cvp:{...}, ...} num array só de registros —
+// mesmo formato que resolverAreaBairro() de js/cumprimento-core.js espera.
+function achatarOcorrencias(db) {
+    const flat = [];
+    Object.keys(db || {}).forEach(categoria => {
+        const registros = db[categoria];
+        if (!registros) return;
+        Object.values(registros).forEach(item => flat.push(item));
+    });
+    return flat;
+}
+
+// Resolve /rp_viatura_map na unidade logada; se ainda não existir, grava o
+// seed inicial de js/cumprimento-core.js (SEED_RP_VIATURA) — assim a 1ª vez
+// que alguém salva um cartão já fica com um palpite editável, sem exigir
+// nenhuma configuração manual prévia. Centralizado em
+// js/cumprimento-core.js (obterOuSemearMapaViatura) — reaproveitado aqui
+// em vez de duplicar, pra garantir que uma correção de mapeamento feita na
+// tela de Cumprimento valha em todo lugar.
+async function obterOuSemearMapaViatura(dbUrl) {
+    if (window.CumprimentoCore) return window.CumprimentoCore.obterOuSemearMapaViatura(dbUrl);
+    return {};
+}
+
+async function salvarCartaoAtual() {
+    const btnSalvar = document.getElementById('btn-salvar-cartao');
+    const container = document.getElementById('iframe-container');
+    const tbody = container ? container.querySelector('#tbody-cartao') : null;
+
+    if (!tbody || !ultimoDadosCartao) { alert('Gere o cartão antes de salvar.'); return; }
+
+    const textoOriginal = btnSalvar ? btnSalvar.textContent : '';
+    if (btnSalvar) { btnSalvar.disabled = true; btnSalvar.textContent = 'Salvando...'; }
+
+    try {
+        const cfg = await P3.loadUnidadeConfig();
+        const dbUrl = cfg.firebase.databaseURL;
+
+        const mapaViatura = await obterOuSemearMapaViatura(dbUrl);
+        const rpSelecionado = ultimoDadosCartao.rpSelecionado;
+        const viaturaResponsavel = mapaViatura[rpSelecionado] || null;
+
+        // Perímetro (km) definido pelo usuário nesta tela — sobrescreve o
+        // raio automático padrão (1.2km/4km) do cálculo de cumprimento, que
+        // se mostrou estreito demais em bairros grandes/alongados (dava
+        // 100% de falha mesmo com patrulhamento real). Ver
+        // js/cumprimento-core.js resolverAreaBairro().
+        const inputPerimetro = document.getElementById('input-perimetro-cartao');
+        const perimetroKm = inputPerimetro ? parseFloat(inputPerimetro.value) : null;
+
+        const linhasDom = _lerLinhasDoDOM(tbody);
+        const cronograma = linhasDom.map(linha => {
+            // Prioridade 1: dado geográfico REAL já calculado na geração
+            // (agrupamento georreferenciado — ver construirAnalisador em
+            // js/gerarcartao.js), preservado no <tr> e lido de volta por
+            // _lerLinhasDoDOM. O 1º item de areasGeo é o local de maior
+            // prioridade (ordenado por gravidade/quantidade) — usado como
+            // centro do perímetro; o perímetro manual (perimetroKm), se
+            // informado, sempre sobrescreve o raio calculado.
+            //
+            // Prioridade 2 (fallback): linhas sem areasGeo — administrativas
+            // (almoço/janta/OPO) ou adicionadas/editadas manualmente — ainda
+            // passam por resolverAreaBairro (re-deriva do texto), mesmo
+            // método de sempre. Passa TODAS as cidades sob responsabilidade
+            // dessa RP (não só a principal) — RPs de 2 cidades (Mar
+            // Vermelho/Paulo Jacinto, Belém/Tanque D'Arca, Minador/Estrela)
+            // analisam a mancha criminal cruzando as duas, então o bairro
+            // escolhido pode ser fisicamente da cidade "secundária".
+            const temPerimetroManual = typeof perimetroKm === 'number' && perimetroKm > 0;
+            const area = (linha.areasGeo && linha.areasGeo.length)
+                ? {
+                    lat: linha.areasGeo[0].lat,
+                    lng: linha.areasGeo[0].lng,
+                    raioKm: temPerimetroManual ? perimetroKm : linha.areasGeo[0].raioKm,
+                    origem: 'georreferenciamento',
+                }
+                : (window.CumprimentoCore
+                    ? window.CumprimentoCore.resolverAreaBairro(linha.det, ultimoDadosCartao.cidadesPatrulhadas, ultimasOcorrenciasFlat, perimetroKm)
+                    : null);
+            return Object.assign({}, linha, { area });
+        });
+
+        const sessao = window.P3 && window.P3.getSession ? window.P3.getSession() : null;
+        const criadoEm = new Date().toISOString();
+        const payload = {
+            tipo: 'cartao',
+            criadoEm,
+            // Válido por 1 mês a partir de agora (ou até um novo cartão ser
+            // salvo pra mesma RP, que passa a ser o "mais recente" nas
+            // buscas) — pedido explícito do usuário.
+            validoAte: window.CumprimentoCore ? window.CumprimentoCore.calcularValidoAte(criadoEm) : null,
+            criadoPor: sessao ? [sessao.graduacao, sessao.nomeGuerra].filter(Boolean).join(' ') : null,
+            data: ultimoDadosCartao.data,
+            cidade: ultimoDadosCartao.cidade,
+            cidadesPatrulhadas: ultimoDadosCartao.cidadesPatrulhadas,
+            rpSelecionado,
+            viaturaResponsavel,
+            perimetroKm: (typeof perimetroKm === 'number' && perimetroKm > 0) ? perimetroKm : null,
+            cronograma,
+            resumo: ultimoDadosCartao.resumo,
+            totalQtd: ultimoDadosCartao.totalQtd,
+        };
+
+        const res = await fetch(`${dbUrl}/cartoes_programa.json`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Falha ao gravar no Firebase');
+
+        if (btnSalvar) {
+            btnSalvar.textContent = viaturaResponsavel ? '✅ Salvo!' : '✅ Salvo (sem viatura mapeada)';
+        }
+        setTimeout(() => {
+            if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = textoOriginal || '💾 SALVAR CARTÃO'; }
+        }, 3000);
+    } catch (err) {
+        console.error(err);
+        alert('Não foi possível salvar o cartão. Tente novamente.');
+        if (btnSalvar) { btnSalvar.disabled = false; btnSalvar.textContent = textoOriginal || '💾 SALVAR CARTÃO'; }
+    }
 }

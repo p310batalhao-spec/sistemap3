@@ -108,34 +108,14 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
         renderTable(filtrados);
     };
 
-    function atualizarrelogio() {
-        const relogio = document.getElementById('relogio');
-        const agora = new Date();
-        const horas = String(agora.getHours()).padStart(2, '0');
-        const minutos = String(agora.getMinutes()).padStart(2, '0');
-        const segundos = String(agora.getSeconds()).padStart(2, '0');
-        relogio.innerText = `${horas}:${minutos}:${segundos}`;
-    }
-    function logout() {
-        localStorage.removeItem('usuarioLogado');
-        window.location.href = '../page/login.html';
-    }
-    function exibirUsuario() {
-        const userInfoDiv = document.getElementById('user-info');
-        const usuarioLogado = JSON.parse(localStorage.getItem('usuarioLogado'));
-
-        if (usuarioLogado) {
-            userInfoDiv.innerText = `Olá, ${usuarioLogado.nome}`;
-        } else {
-            userInfoDiv.innerText = '';
-        }
-    }
+    // Relógio, user-info e logout já são centralizados por
+    // js/core/header-nav.js — as funções que existiam aqui usavam um
+    // esquema de login legado (chave "usuarioLogado", de antes do
+    // sistema de sessão P3 atual) e sobrescreviam #user-info com texto
+    // vazio (bug real: apagava o que header-nav.js tinha acabado de
+    // preencher, já que "usuarioLogado" nunca existe no esquema atual).
 
     // Inicialização
     document.addEventListener('DOMContentLoaded', () => {
         carregarDadosFirebase();
-        atualizarrelogio();
-        setInterval(atualizarrelogio, 1000);
-        exibirUsuario();
-        document.getElementById('btn-logout').onclick = logout;
     });
