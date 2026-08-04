@@ -33,6 +33,29 @@
             background-color: #218838;
         }
 
+        #btn-salvar-cartao {
+            display: none;
+            /* Inicia escondido, o gerarcartao.js vai mostrar */
+            background-color: #003366;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-left: 8px;
+        }
+
+        #btn-salvar-cartao:hover {
+            background-color: #002244;
+        }
+
+        #btn-salvar-cartao:disabled {
+            opacity: .7;
+            cursor: default;
+        }
+
         /* LÓGICA DE IMPRESSÃO - FOCO APENAS NO CARTÃO */
         @media print {
 
@@ -73,66 +96,9 @@
 
 <body>
     <script src="../js/core/session.js"></script>
-    <header>
-        <div class="header-info-left">
-            <img class="brasao" src="../img/brasao.png" alt="brasão do 10º Batalhão">
-            <div class="cabecalhotexto">
-                <h1>SISTEMA DE GERENCIAMENTO P3</h1>
-                <h3 id="cabecalho-unidade"></h3>
-            </div>
-        </div>
-        <div class="header-info-right">
-            <button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">
-                <svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-                <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
-            </button>
-            <div class="relogio" id="relogio"></div>
-            <div class="exibirusuario" id="user-info"></div>
-        </div>
-    </header>
+    <script src="../js/core/header-nav.js" data-active="solucoesia"></script>
 
     <section class="pagecomplete">
-        <nav class="navegacao">
-            <a href="../index.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/home--v1.png"
-                    alt="home--v1" />
-                <p>Home</p>
-            </a><!--termina home-->
-            <a href="../page/dashboard-cruzado.html">
-                <img width="48" height="48" src="https://img.icons8.com/fluency-systems-regular/48/statistics.png" alt="dashboard cruzado"/>
-                <p>Dashboard Cruzado</p>
-            </a><!--termina dashboard-->
-            <a href="../page/cadastroocorrencias.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/add-file.png" alt="add-file" />
-                <p>Cadastro de Ocorrências</p>
-            </a><!--termina cadastroocorrencias-->
-            <a href="../page/materiais.html">
-                <img width="50" height="50" src="https://img.icons8.com/ios/50/box--v1.png" alt="box--v1" />
-                <p>Materiais Apreendidos</p>
-            </a><!--termina materiais apreendidos-->
-            <a href="../page/eventos.html">
-                <img width="32" height="32"
-                    src="https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png"
-                    alt="external-dance-happy-new-year-outlines-amoghdesign" />
-                <p>Eventos</p>
-            </a><!--termina eventos-->
-            <a href="../page/instrucoes.html">
-                <img width="48" height="48" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
-                <p>Instrução</p>
-            </a>
-            <a href="../page/chat-mobile.html" id="nav-chat-xerife" title="Chat com o Xerife (mobile)">
-                <img width="48" height="48" src="../img/xerife-logo.png" alt="Xerife" style="object-fit:cover;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
-                <p>Chat Xerife</p>
-            </a><!--termina chat xerife-->
-            <a href="../page/solucoesia.html" id="nav-solucoesia" style="display:none" class="active">
-                <img width="48" height="48" src="https://img.icons8.com/sf-regular/48/bot.png" alt="bot" />
-                <p>Soluções IA</p>
-            </a><!--termina solucoes ia-->
-            <button id="btn-logout" class="btn-logout">
-                <img width="48" height="48" src="https://img.icons8.com/material-outlined/48/exit.png" alt="Sair" />
-                <p>Sair</p>
-            </button><!--termina sair-->
-        </nav><!--termina navegacao-->
 
         <main class="conteudo">
             <div class="container-central">
@@ -153,6 +119,9 @@
                         <option value="ESTRELA DE ALAGOAS (RP)">ESTRELA (RP)</option>
                         <option value="IGACI (RP)">IGACI (RP)</option>
                         <option value="QUEBRANGULO (RP)">QUEBRANGULO (RP)</option>
+                        <option value="TÁTICO URBANO">TÁTICO URBANO</option>
+                        <option value="TÁTICO RURAL 01">TÁTICO RURAL 01 (Maribondo)</option>
+                        <option value="TÁTICO RURAL 02">TÁTICO RURAL 02 (Igaci)</option>
                     </select>
 
                     <button onclick="clicarBotaoGerar()" class="btn-primary"
@@ -161,6 +130,13 @@
                     </button>
 
                     <button id="btn-imprimir">IMPRIMIR CARTÃO</button>
+                    <label id="label-perimetro-cartao" for="input-perimetro-cartao" style="display:none;margin-left:10px;">
+                        Perímetro (km):
+                        <input type="number" id="input-perimetro-cartao" value="1" min="0.3" step="0.1"
+                            title="Raio de tolerância (em km) usado depois pra checar se a viatura passou perto o suficiente de cada local do cronograma — aumente se o cumprimento estiver dando 100% de falha por engano."
+                            style="width:70px;padding:6px;border-radius:6px;">
+                    </label>
+                    <button id="btn-salvar-cartao">💾 SALVAR CARTÃO</button>
                 </div>
 
                 <div id="iframe-container"
@@ -176,39 +152,22 @@
     <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
 
+    <script src="../js/cumprimento-core.js"></script>
     <script src="../js/gerarcartao.js"></script>
 
     <script>
-        // Funções de Interface (Relógio e Login)
-        function atualizarRelogio() {
-            const agora = new Date();
-            document.getElementById('relogio').innerHTML = agora.toLocaleString('pt-BR');
-        }
-
-        function checkLogin() {
-            const graduacao = localStorage.getItem('userGraduacao');
-            const nomeGuerra = localStorage.getItem('userNomeGuerra');
-            if (!graduacao || !nomeGuerra) {
-                window.location.href = '../page/login.html';
-            } else {
-                document.getElementById('user-info').innerHTML = `<p>${graduacao} ${nomeGuerra}</p>`;
-            }
-        }
-
-        function logout() {
-            localStorage.clear();
-            window.location.href = '../page/login.html';
-        }
-
+        // Relógio, user-info e logout já são centralizados por
+        // js/core/header-nav.js — aqui só falta a guarda de autenticação.
         document.addEventListener('DOMContentLoaded', function () {
-            checkLogin();
-            setInterval(atualizarRelogio, 1000);
-            const btnLogout = document.getElementById('btn-logout');
-            if (btnLogout) btnLogout.addEventListener('click', logout);
+            if (!P3.requireAuth()) return;
 
             // Adiciona função de impressão ao botão
             document.getElementById('btn-imprimir').addEventListener('click', () => {
                 window.print();
+            });
+
+            document.getElementById('btn-salvar-cartao').addEventListener('click', () => {
+                salvarCartaoAtual();
             });
         });
     </script>
