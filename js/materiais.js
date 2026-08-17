@@ -216,6 +216,12 @@ function loadTotalCounts() {
     );
     const elAnoAnterior = document.getElementById('total-ano-anterior');
     if (elAnoAnterior) elAnoAnterior.textContent = ativosAnoAnterior.length;
+
+    const devolvidos = allMateriais.filter(item =>
+        String(item.STATUS || "").toUpperCase() === 'DEVOLVIDO'
+    );
+    const elDevolvidos = document.getElementById('total-devolvidos');
+    if (elDevolvidos) elDevolvidos.textContent = devolvidos.length;
 }
 
 // ====================================================================

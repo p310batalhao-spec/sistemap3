@@ -196,6 +196,36 @@ async function atualizarContagemViolenciaDomesticaFirebase() {
 }
 
 // ====================================================================
+// Botão do Pânico — API do Sistema Íris PMAL (Hostinger, ver
+// js/core/iris-panico-client.js). Mostra o TOTAL de acionamentos da
+// unidade logada (mesmo padrão dos outros cards — MVI/CVP/TCO também
+// mostram total, não um subconjunto) — sempre já filtrado pela unidade
+// via unidade_chave (ver listarAcionamentos).
+// ====================================================================
+async function atualizarContagemPanico() {
+    const el = document.getElementById('numeropanico');
+    if (!el || typeof IrisPanico === 'undefined') return;
+    // Depende do token pessoal do Íris (login cruzado silencioso em
+    // login.html, ou autenticação manual dentro da própria página do
+    // Botão do Pânico) — sem token, mostra "entrar" em vez de tentar a
+    // API e mostrar erro (não é uma falha, é só ainda não autenticado).
+    if (!IrisPanico.temToken()) { el.innerText = '↪'; el.title = 'Entre na página pra autenticar no Íris'; return; }
+    try {
+        const lista = await IrisPanico.listarAcionamentos(300);
+        el.innerText = lista.length;
+
+        const maisRecente = lista.reduce((maior, a) => {
+            const v = a.timestamp_iso || a.data_hora_acio;
+            return (!maior || (v && v > maior)) ? v : maior;
+        }, null);
+        exibirDataAtualizacao('sync-panico', maisRecente ? new Date(maisRecente.replace(' ', 'T')).toISOString() : null);
+    } catch (error) {
+        console.error("Erro ao atualizar Botão do Pânico:", error);
+        el.innerText = "!";
+    }
+}
+
+// ====================================================================
 // Armas Apreendidas — Firebase /arma
 // ====================================================================
 async function atualizarContagemArmasFirebase() {
@@ -376,6 +406,7 @@ async function inicializar() {
     atualizarDrogas();
     atualizarContagemPerturbacaoFirebase();
     atualizarContagemVisitasFirebase();
+    atualizarContagemPanico();
 
     // Apps Script (sem import_at → usa localStorage como fallback)
     atualizarAIT();

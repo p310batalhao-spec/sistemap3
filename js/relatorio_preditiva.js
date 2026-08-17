@@ -105,6 +105,60 @@ function renderHotspot(tbodyId, mapa, total) {
     }).join('');
 }
 
+// ── Previsão de risco por local (cidade+bairro) — vem pronto no payload
+// como D.riscoLocal (calculado por MLLeve.preverRiscoPorLocal em
+// js/analisePreditiva.js, não recalculado aqui) ────────────────────
+function renderRiscoLocalRel(tbodyId, resultado) {
+    const el = document.getElementById(tbodyId);
+    if (!el) return;
+    if (!resultado || !resultado.calibrado || !resultado.ranking || !resultado.ranking.length) {
+        const motivo = (resultado && resultado.motivo) || 'Módulo de previsão não disponível no momento da geração.';
+        el.innerHTML = `<tr><td colspan="5" style="text-align:center;color:#9ea3b5;padding:1rem;font-size:.82rem;">${motivo}</td></tr>`;
+        return;
+    }
+    el.innerHTML = resultado.ranking.map((r, i) => {
+        const probFinal = r.probabilidadeAjustada != null ? r.probabilidadeAjustada : r.probabilidade;
+        const p = Math.round(probFinal * 100);
+        const cls = probFinal >= 0.5 ? 'alto' : probFinal >= 0.25 ? 'medio' : 'baixo';
+        const rede = r.fatorRede == null ? '<span style="color:#9ea3b5;">—</span>'
+            : r.ajustadoPorRede ? `<span class="badge-risco risco-alto">🕸️ ${r.fatorRede}x</span>`
+            : '<span style="color:#9ea3b5;font-size:.72rem;">sem indício</span>';
+        return `<tr>
+            <td style="color:#9ea3b5;font-size:.72rem;font-weight:bold">${i+1}</td>
+            <td>${r.cidade||'N/D'}</td>
+            <td><strong>${r.bairro||'N/D'}</strong></td>
+            <td><span class="badge-risco risco-${cls}">${p}%</span></td>
+            <td>${rede}</td>
+        </tr>`;
+    }).join('');
+}
+
+// ── Ranking de pessoas/redes (Aba 2) — vem pronto no payload como
+// D.rankingRedes (calculado por IntelCrime.rankearPessoasRede em
+// js/analisePreditiva.js). Mesmo princípio de não-decisão-automática:
+// só mostra o score + evidência, nunca uma frase de "vai cometer crime".
+function renderRankingRedesRel(tbodyId, resultado) {
+    const el = document.getElementById(tbodyId);
+    if (!el) return;
+    if (!resultado || !resultado.ranking || !resultado.ranking.length) {
+        el.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#9ea3b5;padding:1rem;font-size:.82rem;">Sem pessoas com ocorrências vinculadas suficientes no momento da geração.</td></tr>`;
+        return;
+    }
+    el.innerHTML = resultado.ranking.slice(0, 10).map((p, i) => {
+        const grupos = [].concat(p.orcrim||[], p.faccao||[]).join(', ') || '—';
+        const local = (p.cidadesFrequentes||[])[0] ? `${p.cidadesFrequentes[0][0]} (${p.cidadesFrequentes[0][1]}x)` : '—';
+        return `<tr>
+            <td style="color:#9ea3b5;font-size:.72rem;font-weight:bold">${i+1}</td>
+            <td><strong>${p.nome}</strong></td>
+            <td><strong>${p.score}</strong></td>
+            <td>${p.centralidade} vínc. / rede ${p.tamanhoRedeConectada}</td>
+            <td>${grupos}</td>
+            <td>${local}</td>
+            <td>${p.ultimaOcorrenciaData || '—'}</td>
+        </tr>`;
+    }).join('');
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // INICIALIZAÇÃO
 // ═══════════════════════════════════════════════════════════════════
@@ -118,7 +172,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     const D = JSON.parse(raw);
-    const { arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr } = D;
+    const { arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr, riscoLocal, rankingRedes } = D;
 
     // ── Metadados ─────────────────────────────────────────────────
     const agora    = new Date();
@@ -336,7 +390,35 @@ window.addEventListener('DOMContentLoaded', () => {
             Maior MVI: <strong>${topCidade(arrMVI)[0]}</strong> (${topCidade(arrMVI)[1]} casos).</span>
         </div>`;
 
-    // ── SEÇÃO 6 — HEATMAPS ────────────────────────────────────────
+    // ── SEÇÃO 6 — PREVISÃO DE RISCO POR LOCAL (PRÓXIMOS DIAS) ──────
+    renderRiscoLocalRel('tbody-risco-local', riscoLocal);
+    document.getElementById('comentario-risco-local').innerHTML = (riscoLocal && riscoLocal.calibrado && riscoLocal.ranking.length)
+        ? `<div class="insight ${riscoLocal.ranking[0].probabilidade >= 0.5 ? 'perigo' : 'alerta'}">
+            <i class="fas fa-bullseye"></i>
+            <span>Maior risco previsto: <strong>${riscoLocal.ranking[0].cidade} — ${riscoLocal.ranking[0].bairro}</strong>,
+            ${Math.round(riscoLocal.ranking[0].probabilidade*100)}% de probabilidade de CVLI/MVI nos próximos ${riscoLocal.janelaDias||7} dias.
+            Previsão automática (regressão logística leve treinada com o histórico real desta unidade) — usar como apoio ao planejamento, não como decisão isolada.</span>
+        </div>`
+        : `<div class="insight">
+            <i class="fas fa-circle-info"></i>
+            <span>${(riscoLocal && riscoLocal.motivo) || 'Histórico insuficiente pra prever risco por local com segurança no momento da geração deste relatório.'}</span>
+        </div>`;
+
+    // ── SEÇÃO 7 — PESSOAS E REDES (INTELIGÊNCIA CRIMINAL) ──────────
+    renderRankingRedesRel('tbody-redes', rankingRedes);
+    document.getElementById('comentario-redes').innerHTML = (rankingRedes && rankingRedes.ranking && rankingRedes.ranking.length)
+        ? `<div class="insight">
+            <i class="fas fa-circle-info"></i>
+            <span><strong>${rankingRedes.totalPessoasComOcorrencia}</strong> pessoa(s) cadastrada(s) no Mapa de Inteligência têm ocorrência vinculada.
+            O score combina recência de atividade, centralidade na rede de vínculos e alcance do grupo conectado — é um indicador de
+            <strong>atenção</strong>, não uma previsão de autoria; toda decisão operacional deve ser validada pelo analista com a evidência (boletins) apresentada.</span>
+        </div>`
+        : `<div class="insight">
+            <i class="fas fa-circle-info"></i>
+            <span>Dados de inteligência (Supabase) não disponíveis ou sem pessoas com ocorrência vinculada no momento da geração deste relatório.</span>
+        </div>`;
+
+    // ── SEÇÃO 8 — HEATMAPS ────────────────────────────────────────
     function horaArr(arr) {
         const c = Array(24).fill(0);
         arr.forEach(i => {
@@ -359,7 +441,7 @@ window.addEventListener('DOMContentLoaded', () => {
             Esses dados orientam o planejamento de policiamento ostensivo.</span>
         </div>`;
 
-    // ── SEÇÃO 7 — DIA DA SEMANA ───────────────────────────────────
+    // ── SEÇÃO 8 — DIA DA SEMANA ───────────────────────────────────
     const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
     function diaArr(arr) {
         const c = Array(7).fill(0);

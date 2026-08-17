@@ -65,6 +65,9 @@
           icone: 'https://img.icons8.com/ios/50/add-file.png', w: 50, h: 50 },
         { id: 'materiais', href: 'page/materiais.html', label: 'Materiais Apreendidos',
           icone: 'https://img.icons8.com/ios/50/box--v1.png', w: 50, h: 50 },
+        { id: 'autores', href: 'page/autores.html', label: 'Autores',
+          icone: 'https://img.icons8.com/ios/50/user-male-circle.png', w: 50, h: 50,
+          titulo: 'Autores — vínculo de processo E-SAJ e movimentação' },
         { id: 'eventos', href: 'page/eventos.html', label: 'Eventos',
           icone: 'https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png', w: 32, h: 32 },
         { id: 'instrucoes', href: 'page/instrucoes.html', label: 'Instrução',
@@ -167,6 +170,17 @@
         '<div class="notif-header">Notificações' +
         '<button type="button" id="notif-limpar-tudo" class="notif-limpar-tudo" style="display:none;">Limpar tudo</button>' +
         '</div>' +
+        // Mini-abas por categoria — conteúdo/contagem preenchidos por
+        // js/core/notificacoes.js (atualizarTabs), não aqui; aqui só o
+        // esqueleto dos botões. "Todas" sempre existe; as demais batem com
+        // a categoria que cada fonte marca em si mesma (ver notificacoes.js).
+        '<div class="notif-tabs" id="notif-tabs">' +
+        '<button type="button" class="notif-tab ativa" data-cat="todas">Todas</button>' +
+        '<button type="button" class="notif-tab" data-cat="tco">TCO</button>' +
+        '<button type="button" class="notif-tab" data-cat="autores">Autores</button>' +
+        '<button type="button" class="notif-tab" data-cat="eventos">Eventos</button>' +
+        '<button type="button" class="notif-tab" data-cat="outros">Outros</button>' +
+        '</div>' +
         '<div id="notif-items"><p class="empty-msg">Nenhuma notificação nova</p></div>' +
         '</div>' +
         '</div>' +
@@ -230,10 +244,28 @@
     // faz sentido incluir manualmente em cada uma. Mesmo padrão de
     // carregamento tardio já usado em outros módulos do sistema (ex.:
     // carregarCumprimentoCore em js/xerife.js).
+    //
+    // iris-panico-client.js e machineLearningLeve.js vão ANTES —
+    // notificacoes.js usa window.IrisPanico (fonte 5, botão do pânico) e
+    // window.MLLeve (fonte 6, previsão de risco por local — ver
+    // obterRiscoLocalPrevisto em notificacoes.js). async=false garante
+    // ordem de execução mesmo sendo <script> criado dinamicamente (que
+    // por padrão executa fora de ordem).
     (function () {
         var prefixo = estaEmSubpasta() ? '../' : '';
+        var sPanico = document.createElement('script');
+        sPanico.src = prefixo + 'js/core/iris-panico-client.js';
+        sPanico.async = false;
+        document.body.appendChild(sPanico);
+
+        var sML = document.createElement('script');
+        sML.src = prefixo + 'js/machineLearningLeve.js';
+        sML.async = false;
+        document.body.appendChild(sML);
+
         var s = document.createElement('script');
         s.src = prefixo + 'js/core/notificacoes.js';
+        s.async = false;
         document.body.appendChild(s);
     })();
 

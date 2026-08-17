@@ -1,9 +1,10 @@
 // Config definida em runtime a partir da unidade do usuário logado (ver js/core/session.js)
 let db = null;
+let cfgUnidade = null;
 async function _ensureFirebase() {
     if (db) return db;
-    const cfg = await P3.loadUnidadeConfig();
-    if (!firebase.apps.length) firebase.initializeApp(cfg.firebase);
+    cfgUnidade = await P3.loadUnidadeConfig();
+    if (!firebase.apps.length) firebase.initializeApp(cfgUnidade.firebase);
     db = firebase.database();
     return db;
 }
@@ -285,6 +286,7 @@ document.getElementById('btn-save-cloud').onclick = async function() {
     const btn = this;
     const tipo = document.getElementById('tipo-colecao').value;
     const updates = {};
+    const autoresParaApi = []; // tipo 'autor' no 10º BPM vai pra API PHP/MySQL, não pro objeto `updates` acima
     const agora = new Date().toISOString();
 
     btn.disabled = true;
@@ -453,14 +455,24 @@ document.getElementById('btn-save-cloud').onclick = async function() {
                         // objeto e outros: usa index como fallback (múltiplos por boletim)
                         uniqueId = `${safeId}_${index}`;
                     }
-                    updates[`/${tipo}/${uniqueId}`] = dadoFinal;
+
+                    // ── Autor no 10º BPM: vai para a API PHP/MySQL da
+                    // Hostinger, não mais para o Firebase (ver P3.Autores em
+                    // js/core/session.js e hostinger-api/). Demais unidades
+                    // e demais tipos seguem 100% Firebase, sem mudança.
+                    if (tipo === 'autor' && cfgUnidade && P3.Autores.usaApiPhp(cfgUnidade)) {
+                        autoresParaApi.push(Object.assign({ _id: uniqueId }, dadoFinal));
+                    } else {
+                        updates[`/${tipo}/${uniqueId}`] = dadoFinal;
+                    }
                 }
             });
         }
 
-        // ── ENVIO EM LOTES DE 100 ──────────────────────────────────────────────
+        // ── ENVIO EM LOTES DE 100 (Firebase) ────────────────────────────────────
         const LOTE = 100;
         const chaves = Object.keys(updates);
+        const totalGeral = chaves.length + autoresParaApi.length;
         let salvos = 0;
 
         for (let i = 0; i < chaves.length; i += LOTE) {
@@ -468,10 +480,21 @@ document.getElementById('btn-save-cloud').onclick = async function() {
             chaves.slice(i, i + LOTE).forEach(k => { lote[k] = updates[k]; });
             await db.ref().update(lote);
             salvos += Object.keys(lote).length;
-            btn.innerText = `SINCRONIZANDO… ${Math.round(salvos / chaves.length * 100)}%`;
+            btn.innerText = `SINCRONIZANDO… ${Math.round(salvos / totalGeral * 100)}%`;
         }
 
-        alert(`Sincronização concluída! ${salvos} escritas enviadas ao Firebase.`);
+        // ── ENVIO PARA A API PHP/MySQL (autores do 10º BPM) ─────────────────────
+        let salvosApi = 0;
+        if (autoresParaApi.length) {
+            btn.innerText = `SINCRONIZANDO AUTORES (HOSTINGER)…`;
+            const resultado = await P3.Autores.importarLote(cfgUnidade, autoresParaApi);
+            salvosApi = resultado.gravados || 0;
+        }
+
+        const partes = [];
+        if (salvos) partes.push(`${salvos} escrita(s) no Firebase`);
+        if (salvosApi) partes.push(`${salvosApi} autor(es) na Hostinger`);
+        alert(`Sincronização concluída! ${partes.join(' + ') || 'nada a gravar'}.`);
         location.reload();
 
     } catch (err) {

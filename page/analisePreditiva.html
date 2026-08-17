@@ -231,6 +231,29 @@
             padding:.35rem 0; border-bottom:2px solid var(--azul);
             margin-bottom:.1rem; font-family:Arial,sans-serif;
         }
+
+        /* ── Abas (Previsão por Local / Pessoas e Redes) ─────── */
+        .abas-preditiva { display:flex; gap:.5rem; margin-bottom:1rem; border-bottom:2px solid var(--borda); }
+        .aba-btn {
+            padding:.7rem 1.1rem; background:none; border:none; cursor:pointer;
+            font-size:.85rem; font-weight:bold; color:var(--sub);
+            border-bottom:3px solid transparent; margin-bottom:-2px;
+            font-family:Arial,sans-serif; transition:color .15s;
+        }
+        .aba-btn:hover { color:var(--azul); }
+        .aba-btn.ativa { color:var(--azul); border-bottom-color:var(--azul); }
+        .aba-conteudo { display:none; }
+        .aba-conteudo.ativa { display:block; }
+
+        /* ── Tabela de pessoas/redes (Aba 2) ─────────────────── */
+        .tabela-redes { width:100%; border-collapse:collapse; font-size:.8rem; }
+        .tabela-redes th { text-align:left; padding:.5rem .6rem; color:var(--sub); font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; border-bottom:2px solid var(--borda); }
+        .tabela-redes td { padding:.55rem .6rem; border-bottom:1px solid var(--borda); vertical-align:top; }
+        .rede-nome { font-weight:bold; }
+        .rede-tag { display:inline-block; padding:.1rem .5rem; border-radius:10px; font-size:.68rem; font-weight:bold; background:var(--cvli-l); color:var(--cvli); margin:1px 3px 1px 0; }
+        .rede-score { font-size:1.1rem; font-weight:bold; color:var(--azul); }
+        .rede-evidencia { font-size:.72rem; color:var(--sub); }
+        .aviso-confianca { font-size:.68rem; color:var(--warn); font-style:italic; }
     </style>
 </head>
 <body>
@@ -327,6 +350,14 @@
             </div>
             <span class="badge-ia">⚡ MODELO PREDITIVO</span>
         </div>
+
+        <!-- ══ Abas ═════════════════════════════════════════════ -->
+        <div class="abas-preditiva">
+            <button type="button" class="aba-btn ativa" id="btn-aba-local" onclick="mudarAba('local')">📍 Previsão por Local</button>
+            <button type="button" class="aba-btn" id="btn-aba-redes" onclick="mudarAba('redes')">🕸️ Pessoas e Redes</button>
+        </div>
+
+        <div class="aba-conteudo ativa" id="aba-conteudo-local">
 
         <!-- ══ Alertas ════════════════════════════════════════ -->
         <div class="alerta-bar" id="alertas-bar">
@@ -540,6 +571,19 @@
             </div>
         </div>
 
+        <!-- ══ Previsão de Risco por Local (próximos dias) ═════ -->
+        <div class="secao-titulo" id="secao-risco-local">🎯 Previsão de Risco de CVLI/MVI — Próximos Dias</div>
+        <div class="grid-3">
+            <div class="card" style="grid-column: 1 / -1;">
+                <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>Locais com maior probabilidade prevista (modelo leve, treinado com o histórico real desta unidade)</div>
+                <table class="tabela-pred">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Probabilidade</th><th>Rede conhecida</th></tr></thead>
+                    <tbody id="tbody-risco-local"></tbody>
+                </table>
+                <div class="aviso-confianca" id="aviso-risco-rede" style="display:none;margin-top:.5rem;">🕸️ Ajustado por atividade de rede conhecida (Inteligência) — carregando…</div>
+            </div>
+        </div>
+
         <!-- ══ Tipificações ══════════════════════════════════ -->
         <div class="secao-titulo">📊 Tipificações por Indicador</div>
         <div class="grid-3">
@@ -563,6 +607,35 @@
             </div>
         </div>
 
+        </div><!-- /aba-conteudo-local -->
+
+        <!-- ══════════════════════════════════════════════════════
+             ABA 2 — PESSOAS E REDES (Inteligência Criminal)
+             ══════════════════════════════════════════════════════ -->
+        <div class="aba-conteudo" id="aba-conteudo-redes">
+            <div class="secao-titulo">🕸️ Ranking de Atenção — Pessoas e Redes Criminosas</div>
+            <p style="font-size:.78rem;color:var(--sub);margin:.3rem 0 1rem;line-height:1.5;">
+                Cruza os vínculos e o histórico de ocorrências cadastrados no Mapa de Inteligência
+                (análise de vínculos / SNA) com o modus operandi (cidade, bairro, dia da semana) de cada
+                pessoa. <strong>Não é uma previsão de que a pessoa vai cometer um crime</strong> — é um
+                indicador de atenção, baseado em padrão histórico real e posição na rede, sempre com a
+                evidência (boletins) junto pra verificação do analista.
+            </p>
+            <div id="status-redes" style="font-size:.82rem;color:var(--sub);padding:1rem 0;">⏳ Carregando dados de inteligência (Supabase)…</div>
+            <div class="card" id="card-tabela-redes" style="display:none;">
+                <table class="tabela-redes">
+                    <thead>
+                        <tr>
+                            <th>#</th><th>Pessoa</th><th>Score</th><th>Rede</th>
+                            <th>ORCRIM / Facção</th><th>Cidades / Bairros frequentes</th>
+                            <th>Últ. ocorrência</th><th>Evidência</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-redes"></tbody>
+                </table>
+            </div>
+        </div>
+
     </main>
 </section>
 
@@ -573,12 +646,14 @@
 
 <!-- Botão Relatório Preditivo -->
 <div style="position:fixed;bottom:20px;right:20px;z-index:9999;">
-    <button onclick="if(window._dadosPreditiva){const d=window._dadosPreditiva;abrirRelatorioPreditivo(d.arrCVP,d.arrCVLI,d.arrMVI,d.meses12,d.labels12,d.cvpArr,d.cvliArr,d.mviArr);}else{alert('Aguarde o carregamento completo dos dados.');}"
+    <button onclick="if(window._dadosPreditiva){const d=window._dadosPreditiva;abrirRelatorioPreditivo(d.arrCVP,d.arrCVLI,d.arrMVI,d.meses12,d.labels12,d.cvpArr,d.cvliArr,d.mviArr,d.riscoLocal,d.rankingRedes);}else{alert('Aguarde o carregamento completo dos dados.');}"
         style="padding:11px 20px;background:#0a448f;color:#fff;border:none;border-radius:50px;cursor:pointer;font-weight:bold;font-size:.85rem;box-shadow:0 4px 16px rgba(10,68,143,.4);display:flex;align-items:center;gap:8px;">
         📄 Imprimir Relatório
     </button>
 </div>
 
+<script src="../js/machineLearningLeve.js"></script>
+<script src="../js/inteligenciaCriminal.js"></script>
 <script src="../js/analisePreditiva.js"></script>
 
 <!-- ══ Modal de Ocorrências ══════════════════════════════════ -->

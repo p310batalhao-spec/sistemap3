@@ -62,6 +62,23 @@ function prever(arr) {
     return Math.round(mediaPonderada(arr)*0.6 + regressaoLinear(arr)*0.4);
 }
 
+// Ensemble com js/machineLearningLeve.js (Holt + sazonalidade leve) —
+// carregado ANTES deste script em page/analisePreditiva.html. Mistura
+// 50/50 com prever() acima; cai de volta em prever() sozinho se o
+// módulo não tiver carregado ou não tiver dado suficiente (nunca quebra
+// a previsão existente, só tenta melhorá-la quando possível). Não
+// aplica impacto de Eventos aqui — essa previsão é do 10º BPM inteiro
+// (não por cidade), e calcularImpactoEvento() precisa de uma cidade
+// específica pra cruzar com a agenda; o ponto natural pra isso é
+// js/gerarcartao.js, que já trabalha por cidade.
+function preverComEnsemble(arr) {
+    const previsaoAtual = prever(arr);
+    if (!window.MLLeve) return previsaoAtual;
+    const hw = window.MLLeve.preverComSazonalidade(arr, { passos: 1 });
+    if (!hw || !hw.previsoes.length) return previsaoAtual;
+    return Math.round(previsaoAtual * 0.5 + hw.previsoes[0] * 0.5);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PARSERS
 // ═══════════════════════════════════════════════════════════════
@@ -105,6 +122,24 @@ function parseDiaSemana(item) {
     return (!d || isNaN(d)) ? null : d.getDay();
 }
 
+// Mesmo parsing de parseDiaSemana, mas devolvendo o Date inteiro (não só
+// getDay()) — usado pra montar o dataset de risco por local (ver
+// MLLeve.preverRiscoPorLocal), que precisa da data completa de cada
+// ocorrência, não só do dia da semana.
+function parseDataObj(item) {
+    const data = (item.DATA || item.data || '').toString().trim();
+    if (!data || data === '---') return null;
+    let d;
+    if (data.includes('/')) {
+        const p = data.split('/');
+        if (p.length < 3) return null;
+        d = new Date(`${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`);
+    } else if (data.includes('-')) {
+        d = new Date(data);
+    }
+    return (!d || isNaN(d)) ? null : d;
+}
+
 function topN(mapa, n=8) {
     return Object.entries(mapa).sort((a,b) => b[1]-a[1]).slice(0,n);
 }
@@ -124,7 +159,7 @@ function renderAlertas(cvpArr, cvliArr, mviArr) {
     const ultiCVP  = cvpArr.at(-1)  ?? 0, antCVP  = cvpArr.at(-2)  ?? 0;
     const ultiCVLI = cvliArr.at(-1) ?? 0, antCVLI = cvliArr.at(-2) ?? 0;
     const ultiMVI  = mviArr.at(-1)  ?? 0, antMVI  = mviArr.at(-2)  ?? 0;
-    const prevCVP  = prever(cvpArr), prevCVLI = prever(cvliArr), prevMVI = prever(mviArr);
+    const prevCVP  = preverComEnsemble(cvpArr), prevCVLI = preverComEnsemble(cvliArr), prevMVI = preverComEnsemble(mviArr);
 
     const alertas = [];
 
@@ -189,6 +224,89 @@ function renderHotspotLocalidade(tbodyId, mapa, cor, total) {
         </tr>`;
     }).join('');
 }
+
+// Previsão de risco por local (cidade+bairro) nos próximos dias — vem de
+// MLLeve.preverRiscoPorLocal (js/machineLearningLeve.js), NÃO de
+// contagem histórica como renderHotspotLocalidade acima. Se o módulo não
+// carregou ou não teve histórico suficiente pra calibrar com segurança,
+// mostra o motivo em vez de inventar um "local mais provável" sem
+// sustentação (mesmo princípio de calibrarPesos).
+function renderRiscoLocal(tbodyId, resultado) {
+    const el = document.getElementById(tbodyId);
+    if (!el) return;
+    if (!resultado || !resultado.calibrado || !resultado.ranking.length) {
+        const motivo = (resultado && resultado.motivo) || 'Módulo de previsão (js/machineLearningLeve.js) não carregado.';
+        el.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--sub);padding:1rem;font-size:.82rem;">${motivo}</td></tr>`;
+        return;
+    }
+    el.innerHTML = resultado.ranking.map((r, i) => {
+        const probFinal = r.probabilidadeAjustada != null ? r.probabilidadeAjustada : r.probabilidade;
+        const pct = Math.round(probFinal * 100);
+        const risco = probFinal >= 0.5 ? 'alto' : probFinal >= 0.25 ? 'medio' : 'baixo';
+        const rlabel = {alto:'Alto', medio:'Médio', baixo:'Baixo'}[risco];
+        const redeHtml = r.fatorRede == null ? '<span style="color:var(--sub);font-size:.72rem;">—</span>'
+            : r.ajustadoPorRede ? `<span class="risco-badge risco-alto" title="Fator ${r.fatorRede}x">🕸️ ${r.fatorRede}x</span>`
+            : `<span style="color:var(--sub);font-size:.72rem;">sem indício</span>`;
+        return `<tr>
+            <td style="color:var(--sub);font-size:.72rem;font-weight:bold">${i+1}</td>
+            <td>${r.cidade || 'N/D'}</td>
+            <td><strong>${r.bairro || 'N/D'}</strong></td>
+            <td><span class="risco-badge risco-${risco}" title="${rlabel}">${pct}%</span></td>
+            <td>${redeHtml}</td>
+        </tr>`;
+    }).join('');
+}
+
+// Ranking de pessoas/redes (Aba 2) — vem de IntelCrime.rankearPessoasRede().
+function renderRankingRedes(resultado) {
+    const status = document.getElementById('status-redes');
+    const card = document.getElementById('card-tabela-redes');
+    const tbody = document.getElementById('tbody-redes');
+    if (!status || !card || !tbody) return;
+
+    if (!resultado || !resultado.ranking.length) {
+        status.textContent = '⚠️ Sem pessoas com ocorrências vinculadas suficientes pra montar o ranking no momento.';
+        status.style.display = '';
+        card.style.display = 'none';
+        return;
+    }
+    status.style.display = 'none';
+    card.style.display = '';
+
+    const diasLabel = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    tbody.innerHTML = resultado.ranking.map((p, i) => {
+        const grupos = [].concat(
+            p.orcrim.map(n => `<span class="rede-tag">${n}</span>`),
+            p.faccao.map(n => `<span class="rede-tag">${n}</span>`)
+        ).join('') || '<span style="color:var(--sub);font-size:.72rem;">—</span>';
+        const locais = p.cidadesFrequentes.slice(0,3).map(([c,n]) => `${c} (${n})`).join(', ') || '—';
+        const diaTop = p.diasSemanaFrequentes.indexOf(Math.max(...p.diasSemanaFrequentes));
+        const diaTopTxt = Math.max(...p.diasSemanaFrequentes) > 0 ? diasLabel[diaTop] : '—';
+        const evidencia = p.evidenciaBOs.slice(0,3).map(e => `${e.numero || 'BO s/nº'} (${e.data || '—'})`).join('<br>') +
+            (p.evidenciaBOs.length > 3 ? `<br><em>+${p.evidenciaBOs.length - 3}</em>` : '');
+        return `<tr>
+            <td style="color:var(--sub);font-size:.72rem;font-weight:bold">${i+1}</td>
+            <td>
+                <div class="rede-nome">${p.nome}</div>
+                <div style="font-size:.7rem;color:var(--sub);">${p.ocorrenciasRecentes90d} ocorrência(s) nos últimos 90 dias · dia mais comum: ${diaTopTxt}</div>
+            </td>
+            <td><span class="rede-score">${p.score}</span></td>
+            <td>${p.centralidade} vínculo(s) diretos<br><span style="font-size:.7rem;color:var(--sub);">rede de ${p.tamanhoRedeConectada} pessoa(s)</span></td>
+            <td>${grupos}</td>
+            <td style="font-size:.78rem;">${locais}</td>
+            <td style="font-size:.78rem;">${p.ultimaOcorrenciaData || '—'}</td>
+            <td class="rede-evidencia">${evidencia || '—'}</td>
+        </tr>`;
+    }).join('');
+}
+
+function mudarAba(nome) {
+    ['local', 'redes'].forEach(n => {
+        document.getElementById('aba-conteudo-' + n).classList.toggle('ativa', n === nome);
+        document.getElementById('btn-aba-' + n).classList.toggle('ativa', n === nome);
+    });
+}
+window.mudarAba = mudarAba;
 
 // ═══════════════════════════════════════════════════════════════
 // GRÁFICOS (Chart.js)
@@ -494,6 +612,20 @@ async function carregar() {
         const localCVLI = mapaLocalidade(arrCVLI);
         const localMVI  = mapaLocalidade(arrMVI);
 
+        // ── Previsão de risco por CIDADE+BAIRRO nos próximos dias
+        // (js/machineLearningLeve.js) — CVLI é o "grave" que queremos
+        // prever, CVP entra só como indício de atividade recente na área
+        // (mesmo espírito de montarOcorrenciasParaCalibragem em
+        // js/gerarcartao.js, mas agrupado por local em vez de categoria).
+        let riscoLocal = { calibrado: false, ranking: [], motivo: 'Módulo de previsão não carregado.' };
+        if (window.MLLeve) {
+            const flatRisco = arrCVLI
+                .map(r => ({ cidade: r.CIDADE, bairro: r.BAIRRO, data: parseDataObj(r), grave: true }))
+                .concat(arrCVP.map(r => ({ cidade: r.CIDADE, bairro: r.BAIRRO, data: parseDataObj(r), grave: false })))
+                .filter(o => o.data);
+            riscoLocal = window.MLLeve.preverRiscoPorLocal(flatRisco, { janelaDias: 7, topN: 5 });
+        }
+
         // ══════════════════════════════════════════════════════
         // PREENCHE TELA
         // ══════════════════════════════════════════════════════
@@ -540,9 +672,9 @@ async function carregar() {
 
         // ── Previsão para o mês atual (modelo sobre os 3 meses ANTERIORES ao atual) ──
         // Exclui o último ponto (mês atual) para que o real não contamine a estimativa
-        const prevMesAtualCVP  = prever(cvpArr.slice(0, -1));
-        const prevMesAtualCVLI = prever(cvliArr.slice(0, -1));
-        const prevMesAtualMVI  = prever(mviArr.slice(0, -1));
+        const prevMesAtualCVP  = preverComEnsemble(cvpArr.slice(0, -1));
+        const prevMesAtualCVLI = preverComEnsemble(cvliArr.slice(0, -1));
+        const prevMesAtualMVI  = preverComEnsemble(mviArr.slice(0, -1));
 
         function renderPrevReal(idPrev, idReal, idDelta, previsto, real) {
             document.getElementById(idPrev).textContent = previsto;
@@ -558,9 +690,9 @@ async function carregar() {
         renderPrevReal('prevmes-mvi',  'real-mvi',  'delta-mvi-mes',  prevMesAtualMVI,  mviMes);
 
         // ── Previsão próximo mês (modelo sobre os 12 meses incluindo o atual) ──
-        document.getElementById('prev-cvp').textContent  = prever(cvpArr);
-        document.getElementById('prev-cvli').textContent = prever(cvliArr);
-        document.getElementById('prev-mvi').textContent  = prever(mviArr);
+        document.getElementById('prev-cvp').textContent  = preverComEnsemble(cvpArr);
+        document.getElementById('prev-cvli').textContent = preverComEnsemble(cvliArr);
+        document.getElementById('prev-mvi').textContent  = preverComEnsemble(mviArr);
 
         // Gráficos tendência mensal
         graficoLinha('chart-cvp-mes', labels12, [{
@@ -612,8 +744,46 @@ async function carregar() {
         renderHotspotLocalidade('tbody-cvli', localCVLI, '#6a1b9a', arrCVLI.length);
         renderHotspotLocalidade('tbody-mvi',  localMVI,  '#b71c1c', arrMVI.length);
 
+        // Previsão de risco por local (próximos dias)
+        renderRiscoLocal('tbody-risco-local', riscoLocal);
+
         // Guarda referência dos dados para o relatório (acessível pelo botão)
-        window._dadosPreditiva = { arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr };
+        window._dadosPreditiva = { arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr, riscoLocal };
+
+        // ── Inteligência Criminal (Supabase) — carregado em paralelo,
+        // NUNCA bloqueia o resto da tela (pode levar alguns segundos,
+        // 13 tabelas + Firebase /autor). Ao terminar: (1) reaplica o
+        // ranking de risco por local COM o fator de rede, (2) preenche
+        // a Aba 2 (ranking de pessoas/redes), (3) atualiza
+        // window._dadosPreditiva pro relatório impresso pegar também.
+        const avisoRede = document.getElementById('aviso-risco-rede');
+        if (avisoRede) avisoRede.style.display = '';
+        if (window.IntelCrime) {
+            window.IntelCrime.carregar(cfg).then(() => {
+                let riscoLocalComRede = riscoLocal;
+                if (riscoLocal.calibrado) {
+                    const rankingAjustado = window.IntelCrime.ajustarRiscoLocalComRede(riscoLocal.ranking);
+                    riscoLocalComRede = Object.assign({}, riscoLocal, { ranking: rankingAjustado });
+                    renderRiscoLocal('tbody-risco-local', riscoLocalComRede);
+                }
+                if (avisoRede) avisoRede.style.display = 'none';
+
+                const rankingRedes = window.IntelCrime.rankearPessoasRede({ topN: 15 });
+                renderRankingRedes(rankingRedes);
+
+                window._dadosPreditiva = Object.assign({}, window._dadosPreditiva, {
+                    riscoLocal: riscoLocalComRede,
+                    rankingRedes,
+                });
+            }).catch(err => {
+                console.error('Erro ao carregar Inteligência Criminal:', err);
+                if (avisoRede) avisoRede.style.display = 'none';
+                const status = document.getElementById('status-redes');
+                if (status) status.textContent = '⚠️ Não foi possível carregar os dados de inteligência agora.';
+            });
+        } else if (avisoRede) {
+            avisoRede.style.display = 'none';
+        }
 
     } catch(err) {
         console.error('Erro ao carregar preditiva:', err);
@@ -628,7 +798,7 @@ async function carregar() {
 // ═══════════════════════════════════════════════════════════════
 // RELATÓRIO PREDITIVO — serializa dados e abre nova aba
 // ═══════════════════════════════════════════════════════════════
-function abrirRelatorioPreditivo(arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr) {
+function abrirRelatorioPreditivo(arrCVP, arrCVLI, arrMVI, meses12, labels12, cvpArr, cvliArr, mviArr, riscoLocal, rankingRedes) {
     const grad = localStorage.getItem('userGraduacao')  || '';
     const nome = localStorage.getItem('userNomeGuerra') || '';
 
@@ -654,6 +824,8 @@ function abrirRelatorioPreditivo(arrCVP, arrCVLI, arrMVI, meses12, labels12, cvp
         cvpArr,
         cvliArr,
         mviArr,
+        riscoLocal: riscoLocal || { calibrado: false, ranking: [] },
+        rankingRedes: rankingRedes || { totalPessoasComOcorrencia: 0, ranking: [] },
     };
 
     const json = JSON.stringify(payload);

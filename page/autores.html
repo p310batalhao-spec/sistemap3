@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Autores</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* Todas as cores vêm dos tokens de css/theme.css (--p3-*), que já
+           trocam de valor sozinhos no modo escuro (atributo
+           data-p3-theme="dark" na <html>) — nenhuma regra aqui precisa
+           saber que o modo escuro existe, só não pode usar cor fixa tipo
+           #fff/#ccc/#1a3d5d direto (era o que quebrava no escuro antes). */
+        .autores-wrap { padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .autores-wrap h3 { color: var(--p3-text); }
+        .autores-wrap > div > p { color: var(--p3-text-muted); margin: 10px 0 18px; }
+        .autores-toolbar {
+            display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+            margin-bottom: 16px;
+        }
+        .autores-toolbar input[type="text"], .autores-toolbar select {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 14px;
+            background: var(--p3-surface); color: var(--p3-text);
+        }
+        .autores-toolbar input[type="text"] { min-width: 240px; }
+        .autores-toolbar button {
+            padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px; display: flex; align-items: center; gap: 6px;
+        }
+        .autores-toolbar button:hover { background: var(--p3-blue-500); }
+        .autores-toolbar button:disabled { opacity: .6; cursor: not-allowed; }
+        #autores-status-msg, #suspeitos-status-msg { font-size: 12px; opacity: .75; color: var(--p3-text-muted); }
+
+        /* Barras de progresso — backlog geral (descoberta e-SAJ) e a barra
+           "ao vivo" que acompanha o lote disparado por "Verificar agora"
+           enquanto ele roda em segundo plano no Apps Script. */
+        .p3-progress-wrap { margin: -4px 0 14px; }
+        .p3-progress-label {
+            display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+            font-size: 12px; color: var(--p3-text-muted); margin-bottom: 4px;
+        }
+        .p3-progress-track {
+            width: 100%; height: 9px; border-radius: 5px; background: var(--p3-border); overflow: hidden;
+        }
+        .p3-progress-fill {
+            height: 100%; width: 0%; border-radius: 5px; background: var(--p3-blue-500);
+            transition: width .5s ease;
+        }
+        .p3-progress-fill.andamento {
+            background-image: repeating-linear-gradient(45deg, var(--p3-blue-500), var(--p3-blue-500) 10px, var(--p3-blue-700) 10px, var(--p3-blue-700) 20px);
+            background-size: 28px 28px;
+            animation: p3-progress-stripes 1s linear infinite;
+        }
+        @keyframes p3-progress-stripes { from { background-position: 0 0; } to { background-position: 28px 0; } }
+
+        .autores-table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: var(--p3-shadow-lg); }
+        table.tabela-autores { width: 100%; border-collapse: collapse; background: var(--p3-surface); font-size: 13px; color: var(--p3-text); }
+        table.tabela-autores th, table.tabela-autores td {
+            padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--p3-border); vertical-align: top;
+        }
+        table.tabela-autores th { background: var(--p3-bg); font-weight: 600; white-space: nowrap; color: var(--p3-text); }
+        table.tabela-autores tbody tr:hover { background: rgba(127,127,127,.08); }
+
+        .status-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px;
+            font-weight: 600; white-space: nowrap;
+        }
+        .status-vinculado { background: #d7f4dd; color: #1e6b34; }
+        .status-pendente_revisao { background: #fff2cc; color: #8a6100; cursor: pointer; text-decoration: underline dotted; }
+        .status-nao_encontrado { background: #fbdada; color: #8f1f1f; }
+        .status-nao_verificado { background: #e6e6e6; color: #555; }
+
+        .linha-candidatos td { background: rgba(255,193,7,.12); padding: 10px 14px 14px 32px; }
+        .candidato-item {
+            display: flex; align-items: center; gap: 10px; padding: 6px 0;
+            border-bottom: 1px dashed var(--p3-border); font-size: 12px; color: var(--p3-text);
+        }
+        .candidato-item:last-child { border-bottom: none; }
+        .candidato-item button {
+            padding: 4px 10px; border-radius: 5px; border: 1px solid var(--p3-blue-700); background: var(--p3-surface);
+            color: var(--p3-blue-700); cursor: pointer; font-size: 11px;
+        }
+        .candidato-item button:hover { background: var(--p3-blue-700); color: #fff; }
+        .btn-nao-encontrado-manual {
+            margin-top: 6px; padding: 4px 10px; border-radius: 5px; border: 1px solid var(--p3-danger);
+            background: var(--p3-surface); color: var(--p3-danger); cursor: pointer; font-size: 11px;
+        }
+        .btn-nao-encontrado-manual:hover { background: var(--p3-danger); color: #fff; }
+
+        .empty-msg { padding: 24px; text-align: center; opacity: .6; color: var(--p3-text-muted); }
+
+        .nome-mae-valor { cursor: pointer; border-bottom: 1px dashed var(--p3-text-muted); }
+        .nome-mae-valor:hover { color: var(--p3-blue-700); }
+        .nome-mae-edit { display: flex; gap: 4px; align-items: center; }
+        .nome-mae-edit input {
+            padding: 4px 6px; border-radius: 4px; border: 1px solid var(--p3-border); font-size: 12px; width: 160px;
+            background: var(--p3-surface); color: var(--p3-text);
+        }
+        .nome-mae-edit button {
+            padding: 3px 8px; border-radius: 4px; border: 1px solid var(--p3-blue-700); background: var(--p3-blue-700);
+            color: #fff; cursor: pointer; font-size: 11px;
+        }
+        a.link-processo { color: var(--p3-blue-700); text-decoration: none; font-weight: 600; }
+        a.link-processo:hover { text-decoration: underline; }
+
+        .abas-topo { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--p3-border); }
+        .aba-btn {
+            padding: 10px 18px; border: none; background: none; cursor: pointer;
+            font-size: 14px; font-weight: 600; color: var(--p3-text-muted); border-bottom: 3px solid transparent;
+        }
+        .aba-btn.ativa { color: var(--p3-blue-700); border-bottom-color: var(--p3-blue-700); }
+        .aba-btn:hover { color: var(--p3-blue-700); }
+
+        .lista-multi { display: flex; flex-direction: column; gap: 8px; }
+        .lista-multi-item { padding: 4px 0; border-bottom: 1px dashed var(--p3-border); color: var(--p3-text); }
+        .lista-multi-item:last-child { border-bottom: none; }
+
+        .form-novo-suspeito {
+            display: none; gap: 10px; align-items: center; padding: 14px; margin-bottom: 16px;
+            background: var(--p3-bg); border: 1px solid var(--p3-border); border-radius: 8px; flex-wrap: wrap;
+        }
+        .form-novo-suspeito.aberto { display: flex; }
+        .form-novo-suspeito input[type="text"] {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 14px;
+            background: var(--p3-surface); color: var(--p3-text);
+        }
+        .form-novo-suspeito button {
+            padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px; font-weight: 600;
+        }
+        .form-novo-suspeito button:hover { background: var(--p3-blue-500); }
+        .form-novo-suspeito #btn-cancelar-novo-suspeito { background: var(--p3-text-muted); }
+        .form-novo-suspeito #btn-cancelar-novo-suspeito:hover { background: var(--p3-text); }
+
+        .btn-excluir-processo, .btn-excluir-suspeito, .btn-excluir-processo-autor {
+            border: none; background: none; color: var(--p3-danger); cursor: pointer; font-size: 13px; padding: 0 4px;
+        }
+        .btn-excluir-processo:hover, .btn-excluir-suspeito:hover, .btn-excluir-processo-autor:hover { text-decoration: underline; }
+
+        .add-processo-manual { display: flex; gap: 4px; margin-top: 6px; }
+        .add-processo-manual input {
+            padding: 4px 6px; border-radius: 4px; border: 1px solid var(--p3-border); font-size: 11px; width: 130px;
+            background: var(--p3-surface); color: var(--p3-text);
+        }
+        .add-processo-manual button {
+            padding: 3px 8px; border-radius: 4px; border: 1px solid var(--p3-blue-700); background: var(--p3-surface);
+            color: var(--p3-blue-700); cursor: pointer; font-size: 12px; font-weight: 700; line-height: 1;
+        }
+        .add-processo-manual button:hover { background: var(--p3-blue-700); color: #fff; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="autores"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="autores-wrap">
+                <div class="abas-topo">
+                    <button type="button" class="aba-btn ativa" id="aba-btn-autores" data-aba="autores">👤 Autores</button>
+                    <button type="button" class="aba-btn" id="aba-btn-suspeitos" data-aba="suspeitos">🕵️ Suspeitos</button>
+                </div>
+
+                <div id="painel-autores" class="tab-painel">
+                    <h3>👤 Autores — Acompanhamento de Processo (e-SAJ / DataJud)</h3>
+                    <p style="font-size:13px;">
+                        Vínculo automático do número do processo por nome/CPF e checagem diária de movimentação,
+                        feitos pelo Apps Script. Casos ambíguos ficam pendentes de revisão manual — nada é vinculado
+                        sem confirmação quando há mais de um resultado sem CPF batendo.
+                    </p>
+
+                    <div class="autores-toolbar">
+                        <input type="text" id="autores-filtro-texto" placeholder="Buscar por nome, CPF, nome da mãe, COP, data, tipificação ou movimentação...">
+                        <select id="autores-filtro-status">
+                            <option value="">Todos os status</option>
+                            <option value="vinculado">Vinculado</option>
+                            <option value="pendente_revisao">Pendente de revisão</option>
+                            <option value="nao_encontrado">Não encontrado</option>
+                            <option value="nao_verificado">Não verificado ainda</option>
+                        </select>
+                        <button id="btn-autores-verificar-agora" type="button">
+                            <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/refresh--v1.png" alt="">
+                            Verificar agora
+                        </button>
+                        <span id="autores-status-msg"></span>
+                        <span id="autores-atualizado-em" style="font-size:11px;opacity:.55;color:var(--p3-text-muted);"></span>
+                    </div>
+
+                    <div class="p3-progress-wrap" id="autores-progresso-geral-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Descoberta e-SAJ (backlog geral)</span>
+                            <span id="autores-progresso-geral-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill" id="autores-progresso-geral-fill"></div></div>
+                    </div>
+
+                    <div class="p3-progress-wrap" id="autores-progresso-live-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Verificação em andamento (Verificar agora)</span>
+                            <span id="autores-progresso-live-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="autores-progresso-live-fill"></div></div>
+                    </div>
+
+                    <div class="autores-table-wrap">
+                        <table class="tabela-autores">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>Nome da Mãe</th>
+                                    <th>COP</th>
+                                    <th>Data</th>
+                                    <th>Tipificação</th>
+                                    <th>E-SAJ</th>
+                                    <th>Movimentação</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="autores-tbody">
+                                <tr><td colspan="9" class="empty-msg">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div id="painel-suspeitos" class="tab-painel" style="display:none;">
+                    <h3>🕵️ Suspeitos — Cadastro e Acompanhamento (e-SAJ / DataJud)</h3>
+                    <p style="font-size:13px;">
+                        Cadastro manual — não vem de planilha de ocorrências. Uma mesma pessoa pode acumular vários
+                        processos e-SAJ ao longo do tempo; o Apps Script busca e checa movimentação automaticamente,
+                        igual em Autores, mas aqui pode vincular mais de um processo à mesma pessoa.
+                    </p>
+
+                    <div class="autores-toolbar">
+                        <input type="text" id="suspeitos-filtro-texto" placeholder="Buscar por nome ou CPF...">
+                        <button id="btn-suspeitos-novo" type="button">➕ Novo suspeito</button>
+                        <button id="btn-suspeitos-verificar-agora" type="button">
+                            <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/refresh--v1.png" alt="">
+                            Verificar agora
+                        </button>
+                        <span id="suspeitos-status-msg"></span>
+                        <span id="suspeitos-atualizado-em" style="font-size:11px;opacity:.55;color:var(--p3-text-muted);"></span>
+                    </div>
+
+                    <div class="p3-progress-wrap" id="suspeitos-progresso-live-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Verificação em andamento (Verificar agora)</span>
+                            <span id="suspeitos-progresso-live-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="suspeitos-progresso-live-fill"></div></div>
+                    </div>
+
+                    <div class="form-novo-suspeito" id="form-novo-suspeito">
+                        <input type="text" id="novo-suspeito-nome" placeholder="Nome completo">
+                        <input type="text" id="novo-suspeito-cpf" placeholder="CPF (opcional, evita duplicidade)">
+                        <button id="btn-salvar-novo-suspeito" type="button">Salvar</button>
+                        <button id="btn-cancelar-novo-suspeito" type="button">Cancelar</button>
+                    </div>
+
+                    <div class="autores-table-wrap">
+                        <table class="tabela-autores">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th>E-SAJ</th>
+                                    <th>Movimentação</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="suspeitos-tbody">
+                                <tr><td colspan="6" class="empty-msg">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="../js/autores.js"></script>
+    <script src="../js/suspeitos.js"></script>
+    <script>
+        document.querySelectorAll('.aba-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
+                btn.classList.add('ativa');
+                document.getElementById('painel-autores').style.display = btn.dataset.aba === 'autores' ? '' : 'none';
+                document.getElementById('painel-suspeitos').style.display = btn.dataset.aba === 'suspeitos' ? '' : 'none';
+            });
+        });
+    </script>
+</body>
+
+</html>

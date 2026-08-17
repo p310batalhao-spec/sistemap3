@@ -44,7 +44,19 @@
             ARMAS: 'https://script.google.com/macros/s/AKfycbwYFUIiT7n0SCjK2kUY_6a68XC_rcvWkuPOkf1uDcvfKEN-cMyHw0TcovSoBv81E3So/exec',
             MANDADOS: 'https://script.google.com/macros/s/AKfycbzpY_8r8s8gPu-yEHa4jJEONTrYZsGwOj4OA26E9y2FO0ejQQkk3-wjWcN88QDUvLNh/exec',
             EVENTOS: 'https://script.google.com/macros/s/AKfycbyTNCA2XY0YMhJHpgnIigTijA5JaVOTvCVukrOPrKNlGvryiFHdURIe3daupK8Si1qu/exec',
-            SENTENCAS: 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec'
+            SENTENCAS: 'https://script.google.com/macros/s/AKfycbzkQrf1BPlEoG5Rj07vs1umurFHPURNVmC3GPd-r3TmV5yx-8Dkjpo2r_lxPwRz-_zU/exec',
+            // Projeto Apps Script PRÓPRIO de Autores/Suspeitos (separado do
+            // de TCO acima — ver apps-script/DEPLOY.md "Separar Autores/
+            // Suspeitos do TCO"). TROQUE por essa URL depois de implantar o
+            // projeto novo como app da Web — enquanto não trocar, os botões
+            // "Verificar agora" de Autores/Suspeitos não funcionam.
+            AUTORES: 'https://script.google.com/macros/s/AKfycbxTBLYkrpTLbxk01BIb9_tuRdmIBtv6NASChQOOTR4Z82-7rG_lXhh1VJc6uEV9JOHmTw/exec'
+        },
+        // API PHP/MySQL (Hostinger) — só o nó /autor do 10º BPM migrou pra cá
+        // (o resto do sistema continua 100% Firebase). Ver hostinger-api/.
+        apiPhp: {
+            url: 'https://irispmal.io/api-p3/autores.php',
+            apiKey: '#254562mdE1804199225359818#'
         }
     };
 
@@ -80,6 +92,12 @@
     // reduzir o "flash" da troca de tema ao carregar a página.
     aplicarTema(temaSalvo());
 
+    // Níveis válidos hoje: 'operador' (default), 'supervisor' (só rótulo,
+    // sem lógica própria), 'admin' (requireAdmin), 'copom'
+    // (restringirNivelCopom, só rastreamento-guarnicao.html) e 'p2'
+    // (mesmas views do operador — a única diferença é a segmentação de
+    // notificações em js/core/notificacoes.js: só vê movimentação de
+    // autor no e-SAJ).
     function getSession() {
         const cpf = localStorage.getItem('userCpf');
         if (!cpf) return null;
@@ -221,11 +239,12 @@
     }
 
     function mergeSobreDefault(base, override) {
-        const result = { nome: base.nome, firebase: Object.assign({}, base.firebase), gas: Object.assign({}, base.gas), paginasPermitidas: null };
+        const result = { nome: base.nome, firebase: Object.assign({}, base.firebase), gas: Object.assign({}, base.gas), apiPhp: Object.assign({}, base.apiPhp), paginasPermitidas: null };
         if (override && override.nome) result.nome = override.nome;
         if (override && Array.isArray(override.paginasPermitidas)) result.paginasPermitidas = override.paginasPermitidas;
         if (override && override.firebase) Object.assign(result.firebase, override.firebase);
         if (override && override.gas) Object.assign(result.gas, override.gas);
+        if (override && override.apiPhp) Object.assign(result.apiPhp, override.apiPhp);
         return result;
     }
 
@@ -268,6 +287,210 @@
         sessionStorage.setItem(cacheKey, JSON.stringify(config));
         global.P3_CONFIG = config;
         return config;
+    }
+
+    // ====================================================================
+    // P3.Autores — abstração de fonte de dados do nó "autor"
+    // ====================================================================
+    // Só o nó /autor do 10º BPM migrou do Firebase para a API PHP/MySQL da
+    // Hostinger (ver hostinger-api/ na raiz do projeto) — as demais
+    // unidades continuam 100% Firebase. Toda página/script que lê ou
+    // escreve autor deve passar por aqui (nunca falar direto com
+    // Firebase/API PHP para esse nó específico), pra decisão "Firebase vs
+    // Hostinger" ficar concentrada num único lugar. `cfg` é sempre o
+    // retorno de loadUnidadeConfig(). O formato de retorno de listar()/
+    // buscar() é sempre um dicionário {id: {NOME, CPF, ...}}, idêntico ao
+    // que `${databaseURL}/autor.json` sempre devolveu — quem consome não
+    // precisa saber de onde veio.
+    function autoresUsaApiPhp(cfg) {
+        return !!(cfg && cfg.apiPhp && cfg.apiPhp.url);
+    }
+
+    async function autoresApiFetch(cfg, acao, opts) {
+        opts = opts || {};
+        // apiPhp.url aceita as duas formas: apontando direto pro arquivo
+        // (".../api-p3/autores.php") ou só a pasta (".../api-p3") — evita
+        // duplicar "/autores.php" quando já vem no valor configurado.
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url : `${cfg.apiPhp.url}/autores.php`;
+        const url = `${base}?action=${acao}${opts.query || ''}`;
+        const init = { method: opts.method || 'GET', headers: {} };
+        // Só manda cabeçalho em requisição COM corpo (POST) — um GET puro
+        // sem cabeçalho nenhum é "simple request" no CORS e não dispara
+        // preflight OPTIONS, então uma leitura (listar/buscar) nunca
+        // depende do servidor tratar OPTIONS corretamente.
+        if (opts.body) {
+            init.headers['Content-Type'] = 'application/json';
+            init.headers['X-Api-Key'] = cfg.apiPhp.apiKey || '';
+            init.body = JSON.stringify(opts.body);
+        }
+        const res = await fetch(url, init);
+        if (!res.ok) throw new Error(`API autores (${acao}) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    async function fbGetAutorNode(cfg) {
+        const res = await fetch(`${cfg.firebase.databaseURL}/autor.json`);
+        return (res.ok ? await res.json() : null) || {};
+    }
+
+    async function fbPatchAutor(cfg, id, dados) {
+        const res = await fetch(`${cfg.firebase.databaseURL}/autor/${encodeURIComponent(id)}.json`, {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados)
+        });
+        return await res.json();
+    }
+
+    async function autoresListar(cfg) {
+        if (autoresUsaApiPhp(cfg)) return await autoresApiFetch(cfg, 'listar');
+        return await fbGetAutorNode(cfg);
+    }
+
+    // Busca precisa por NOME + CPF + NOME DA MÃE (evita homônimos). Só faz
+    // busca server-side de fato no caminho Hostinger — no Firebase não há
+    // essa capacidade, então devolve o nó inteiro e quem chamou filtra no
+    // client, exatamente como a página de Autores já fazia antes.
+    async function autoresBuscar(cfg, filtros) {
+        filtros = filtros || {};
+        if (autoresUsaApiPhp(cfg)) {
+            const q = new URLSearchParams();
+            if (filtros.nome) q.set('nome', filtros.nome);
+            if (filtros.cpf) q.set('cpf', filtros.cpf);
+            if (filtros.nomeMae) q.set('nomeMae', filtros.nomeMae);
+            return await autoresApiFetch(cfg, 'buscar', { query: '&' + q.toString() });
+        }
+        return await fbGetAutorNode(cfg);
+    }
+
+    async function autoresVincular(cfg, id, dados) {
+        dados = dados || {};
+        if (autoresUsaApiPhp(cfg)) {
+            return await autoresApiFetch(cfg, 'vincular', { method: 'POST', body: Object.assign({ id }, dados) });
+        }
+        return await fbPatchAutor(cfg, id, {
+            statusVinculoEsaj: 'vinculado',
+            numeroProcessoEsaj: dados.numeroProcesso,
+            origemVinculo: 'manual',
+            vinculadoPor: dados.vinculadoPor || null,
+            descobertoEm: new Date().toISOString(),
+            candidatosEsaj: null
+        });
+    }
+
+    async function autoresMarcarNaoEncontrado(cfg, id) {
+        if (autoresUsaApiPhp(cfg)) {
+            return await autoresApiFetch(cfg, 'marcarNaoEncontrado', { method: 'POST', body: { id } });
+        }
+        return await fbPatchAutor(cfg, id, { statusVinculoEsaj: 'nao_encontrado', candidatosEsaj: null });
+    }
+
+    // Campo novo, só existe no caminho Hostinger — nas demais unidades o
+    // Firebase nunca teve esse campo, então não há pra onde escrever.
+    async function autoresAtualizarNomeMae(cfg, id, nomeMae) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Edição de Nome da Mãe só está disponível para o 10º BPM.');
+        return await autoresApiFetch(cfg, 'nomeMae', { method: 'POST', body: { id, nomeMae } });
+    }
+
+    // Processo(s) EXTRA(s) vinculado(s) à mão — um autor pode ter mais de
+    // um processo e-SAJ de interesse. O vínculo automático do robô
+    // continua limitado a 1 processo por autor (statusVinculoEsaj/
+    // numeroProcessoEsaj de sempre); isto aqui só adiciona/remove os
+    // extras (tabela autor_processos). Só existe no caminho Hostinger.
+    async function autoresAdicionarProcesso(cfg, id, numeroProcesso) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Vincular mais de um processo só está disponível para o 10º BPM.');
+        const sessao = getSession();
+        return await autoresApiFetch(cfg, 'adicionarProcesso', {
+            method: 'POST', body: { id, numeroProcesso, vinculadoPor: sessao ? sessao.cpf : null }
+        });
+    }
+
+    async function autoresExcluirProcesso(cfg, processoId) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Vincular mais de um processo só está disponível para o 10º BPM.');
+        return await autoresApiFetch(cfg, 'excluirProcesso', { method: 'POST', body: { processoId } });
+    }
+
+    // Usado pelo cadastro de ocorrências ao importar planilha tipo "autor".
+    // Fora do 10º BPM é no-op — quem chama continua gravando no Firebase
+    // exatamente como sempre gravou, sem passar por aqui.
+    async function autoresImportarLote(cfg, registros) {
+        if (!autoresUsaApiPhp(cfg) || !registros || !registros.length) return { ok: true, gravados: 0 };
+        const LOTE = 200;
+        let gravados = 0;
+        for (let i = 0; i < registros.length; i += LOTE) {
+            const lote = registros.slice(i, i + LOTE);
+            await autoresApiFetch(cfg, 'importar', { method: 'POST', body: { registros: lote } });
+            gravados += lote.length;
+        }
+        return { ok: true, gravados };
+    }
+
+    // ====================================================================
+    // P3.Suspeitos — cadastro manual, agrupado por pessoa (Hostinger only)
+    // ====================================================================
+    // Diferente de P3.Autores: não existe versão Firebase (recurso novo,
+    // só Hostinger) — só funciona pra quem tem apiPhp configurado (10º
+    // BPM). Uma pessoa pode ter vários processos e-SAJ vinculados; listar()
+    // já devolve agrupado: {id: {NOME, CPF, ..., processos:[...]}}.
+    async function suspeitosApiFetch(cfg, acao, opts) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Suspeitos só está disponível para o 10º BPM.');
+        opts = opts || {};
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url.replace(/autores\.php$/i, 'suspeitos.php') : `${cfg.apiPhp.url}/suspeitos.php`;
+        const url = `${base}?action=${acao}${opts.query || ''}`;
+        const init = { method: opts.method || 'GET', headers: {} };
+        // Só manda cabeçalho em requisição COM corpo (POST) — ver comentário
+        // equivalente em autoresApiFetch.
+        if (opts.body) {
+            init.headers['Content-Type'] = 'application/json';
+            init.headers['X-Api-Key'] = cfg.apiPhp.apiKey || '';
+            init.body = JSON.stringify(opts.body);
+        }
+        const res = await fetch(url, init);
+        if (!res.ok) {
+            let msg = `API suspeitos (${acao}) — HTTP ${res.status}`;
+            try { const j = await res.json(); if (j && j.erro) msg = j.erro; } catch (e) {}
+            throw new Error(msg);
+        }
+        return await res.json();
+    }
+
+    function suspeitosDisponivel(cfg) {
+        return autoresUsaApiPhp(cfg);
+    }
+
+    async function suspeitosListar(cfg) {
+        return await suspeitosApiFetch(cfg, 'listar');
+    }
+
+    async function suspeitosBuscar(cfg, filtros) {
+        filtros = filtros || {};
+        const q = new URLSearchParams();
+        if (filtros.nome) q.set('nome', filtros.nome);
+        if (filtros.cpf) q.set('cpf', filtros.cpf);
+        return await suspeitosApiFetch(cfg, 'buscar', { query: '&' + q.toString() });
+    }
+
+    async function suspeitosCriar(cfg, { nome, cpf }) {
+        const sessao = getSession();
+        return await suspeitosApiFetch(cfg, 'criar', { method: 'POST', body: { nome, cpf, criadoPor: sessao ? sessao.cpf : null } });
+    }
+
+    async function suspeitosVincularProcesso(cfg, suspeitoId, numeroProcesso, origemVinculo) {
+        const sessao = getSession();
+        return await suspeitosApiFetch(cfg, 'vincularProcesso', {
+            method: 'POST',
+            body: { suspeitoId, numeroProcesso, origemVinculo: origemVinculo || 'manual', vinculadoPor: sessao ? sessao.cpf : null }
+        });
+    }
+
+    async function suspeitosMarcarNaoEncontrado(cfg, id) {
+        return await suspeitosApiFetch(cfg, 'marcarNaoEncontrado', { method: 'POST', body: { id } });
+    }
+
+    async function suspeitosExcluirProcesso(cfg, processoId) {
+        return await suspeitosApiFetch(cfg, 'excluirProcesso', { method: 'POST', body: { processoId } });
+    }
+
+    async function suspeitosExcluirSuspeito(cfg, id) {
+        return await suspeitosApiFetch(cfg, 'excluirSuspeito', { method: 'POST', body: { id } });
     }
 
     // Mostra o item de menu "Usuários" (oculto por padrão no HTML) somente
@@ -460,7 +683,28 @@
         requireUnidade10bpm,
         logout,
         loadUnidadeConfig,
-        alternarTema
+        alternarTema,
+        Autores: {
+            usaApiPhp: autoresUsaApiPhp,
+            listar: autoresListar,
+            buscar: autoresBuscar,
+            vincular: autoresVincular,
+            marcarNaoEncontrado: autoresMarcarNaoEncontrado,
+            atualizarNomeMae: autoresAtualizarNomeMae,
+            importarLote: autoresImportarLote,
+            adicionarProcesso: autoresAdicionarProcesso,
+            excluirProcesso: autoresExcluirProcesso
+        },
+        Suspeitos: {
+            disponivel: suspeitosDisponivel,
+            listar: suspeitosListar,
+            buscar: suspeitosBuscar,
+            criar: suspeitosCriar,
+            vincularProcesso: suspeitosVincularProcesso,
+            marcarNaoEncontrado: suspeitosMarcarNaoEncontrado,
+            excluirProcesso: suspeitosExcluirProcesso,
+            excluirSuspeito: suspeitosExcluirSuspeito
+        }
     };
 
     exibirLinkAdminNoMenu();

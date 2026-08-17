@@ -4,6 +4,7 @@
 // CONFIGURAÇÃO
 // ══════════════════════════════════════════════════════════════════
 let FB_BASE            = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+let CFG_UNIDADE        = null; // config completa da unidade — usado por fbFetchComCache('autor') pra decidir Firebase vs API PHP
 const FB_DESENHOS_PATH = 'mapa_desenhos';   // nó Firebase para polígonos/marcadores
 
 // ══════════════════════════════════════════════════════════════════
@@ -147,6 +148,20 @@ const CAMADAS_CONFIG = [
 ];
 CAMADAS_CONFIG.forEach(c => _camadasAtivas.add(c.id));
 
+// Pesos de gravidade por camada — MESMOS valores de PESOS em
+// js/gerarcartao.js (cvli=5, droga=4, cvp=3, sossego/vd=4), só que
+// mapeados pro id de camada daqui ('vd' aqui = 'violencia_domestica'
+// lá). 'mvi' herda o peso de 'cvli' (é um subconjunto mais grave dela).
+// Camadas sem categoria de gravidade equivalente (arma, tco, ccp,
+// mandados, visitas) ficam de fora — construirCamadas() usa peso 1
+// (neutro, igual ao comportamento fixo de antes) pra qualquer id sem
+// entrada aqui. Usado só pra dar TEMPERATURA diferente por CAMADA no
+// heatmap (CVLI mais "quente" que Perturbação do Sossego com a mesma
+// densidade de pontos) — não diferencia ponto a ponto DENTRO da mesma
+// camada, porque cada camada já vira 1 heat layer separado (todo ponto
+// daquela camada tem o mesmo peso de categoria).
+const PESOS_HEATMAP = { cvp: 3, cvli: 5, mvi: 5, droga: 4, sossego: 4, vd: 4 };
+
 // ══════════════════════════════════════════════════════════════════
 // UTILITÁRIOS
 // ══════════════════════════════════════════════════════════════════
@@ -244,11 +259,11 @@ async function fbFetchComCache(no) {
         console.log(`[Cache ✓] /${no} — ${cached.length} registros (sem download)`);
         return cached;
     }
-    // 2. Busca do Firebase
+    // 2. Busca do Firebase (ou, no caso de "autor" no 10º BPM, da API PHP —
+    // ver P3.Autores em js/core/session.js, que decide isso em runtime)
     try {
-        setLoader(`Firebase — baixando /${no}…`);
-        const r = await fetch(`${FB_BASE}/${no}.json`);
-        const d = await r.json();
+        setLoader(`${no === 'autor' ? 'Autores' : 'Firebase'} — baixando /${no}…`);
+        const d = no === 'autor' ? await P3.Autores.listar(CFG_UNIDADE) : await (await fetch(`${FB_BASE}/${no}.json`)).json();
         if (!d) { cacheSet(no, []); return []; }
         const arr = Object.keys(d).map(id => ({ _fbId:id, ...d[id] }));
         cacheSet(no, arr);
@@ -310,6 +325,7 @@ async function fbDeletar(path) {
 // ══════════════════════════════════════════════════════════════════
 async function carregarFirebase() {
     const cfg = await P3.loadUnidadeConfig();
+    CFG_UNIDADE = cfg;
     FB_BASE = cfg.firebase.databaseURL;
     setLoader('Verificando cache…');
 
@@ -355,6 +371,45 @@ async function carregarFirebase() {
         ? `Cache local ✓ — ${total.toLocaleString('pt-BR')} registros`
         : `Firebase ✓ — ${total.toLocaleString('pt-BR')} registros baixados`);
     iniciarMapa();
+
+    // Inteligência Criminal (Supabase) — em paralelo, NUNCA bloqueia o
+    // mapa (pode levar vários segundos; o mapa já é útil sem isso).
+    carregarPainelRede(cfg);
+}
+
+async function carregarPainelRede(cfg) {
+    const el = document.getElementById('painel-rede-mapa');
+    if (!el || !window.IntelCrime) return;
+    try {
+        await window.IntelCrime.carregar(cfg);
+        // Reaproveita o mesmo ranking de risco por local (sem MLLeve
+        // aqui — só precisamos saber QUAIS cidades têm rede ativa, não
+        // recalcular a probabilidade de crime, que é responsabilidade
+        // da Análise Preditiva). Constrói uma lista de cidades a partir
+        // das próprias camadas já carregadas do Firebase.
+        const cidades = new Set();
+        Object.values(DADOS_FB).forEach(lista => (lista || []).forEach(item => {
+            const c = (item.CIDADE || '').toString().trim();
+            if (c) cidades.add(c);
+        }));
+        const rankingFake = [...cidades].map(c => ({ cidade: c, bairro: '', probabilidade: 0 }));
+        const ajustado = window.IntelCrime.ajustarRiscoLocalComRede(rankingFake);
+        const comRede = ajustado.filter(r => r.ajustadoPorRede).sort((a,b) => b.fatorRede - a.fatorRede);
+
+        if (!comRede.length) {
+            el.innerHTML = 'Nenhuma cidade com atividade de rede conhecida recente.';
+            return;
+        }
+        el.innerHTML = comRede.slice(0, 8).map(r =>
+            `<div style="display:flex;justify-content:space-between;padding:2px 0;">
+                <span style="color:rgba(255,255,255,.6);">${r.cidade}</span>
+                <span style="color:#ffb74d;font-weight:bold;">${r.fatorRede}x</span>
+            </div>`
+        ).join('') + '<div style="margin-top:4px;font-size:9px;opacity:.5;">Ver detalhes na Análise Preditiva → Pessoas e Redes</div>';
+    } catch (e) {
+        console.error('[painel-rede-mapa]', e);
+        el.innerHTML = '⚠️ Não foi possível carregar.';
+    }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -552,8 +607,14 @@ function construirCamadas() {
         if (!pontos.length) continue;
 
         try {
+            // Intensidade por GRAVIDADE da camada em vez de 1.0 fixo pra
+            // tudo (ver PESOS_HEATMAP acima) — normalizada pelo maior peso
+            // do mapa, então a camada mais grave (cvli/mvi) sempre bate no
+            // teto (1.0) e as demais ficam proporcionalmente mais frias.
+            const pesoMax = Math.max(...Object.values(PESOS_HEATMAP));
+            const intensidadeCamada = Math.min(1, (PESOS_HEATMAP[cfg.id] || 1) / pesoMax);
             _heatLayers[cfg.id] = L.heatLayer(
-                pontos.map(p => [p.lat,p.lng,1.0]),
+                pontos.map(p => [p.lat,p.lng,intensidadeCamada]),
                 { radius:22, blur:18, maxZoom:14, gradient:gradient(cfg.corHex), minOpacity:0.25 }
             );
         } catch(e) {}

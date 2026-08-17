@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Botão do Pânico</title>
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        .bp-secao {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 10px;
+            padding: 1.1rem 1.3rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .bp-cabecalho-secao {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: .6rem;
+            margin-bottom: .8rem;
+        }
+
+        .bp-cabecalho-secao h2 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .bp-badge-fonte {
+            font-size: .72rem;
+            color: var(--p3-text-muted, #777);
+            background: var(--p3-bg, #f2f2f2);
+            border-radius: 20px;
+            padding: .25rem .7rem;
+        }
+
+        input#bp-busca {
+            padding: .5rem .7rem;
+            border: 1px solid var(--p3-border, #ccc);
+            border-radius: 6px;
+            font-size: .85rem;
+            min-width: 240px;
+            background: var(--p3-surface, #fff);
+            color: var(--p3-text, #222);
+        }
+
+        table.bp-tabela {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: .85rem;
+        }
+
+        table.bp-tabela th {
+            background: var(--p3-bg, #f2f2f2);
+            text-align: left;
+            padding: .6rem .7rem;
+            position: sticky;
+            top: 0;
+            font-size: .75rem;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+            color: var(--p3-text-muted, #666);
+        }
+
+        table.bp-tabela td {
+            padding: .55rem .7rem;
+            border-bottom: 1px solid var(--p3-border, #eee);
+            vertical-align: top;
+        }
+
+        .bp-tabela-wrapper {
+            max-height: 65vh;
+            overflow-y: auto;
+            border: 1px solid var(--p3-border, #eee);
+            border-radius: 8px;
+        }
+
+        .bp-status {
+            display: inline-block;
+            padding: .2rem .6rem;
+            border-radius: 20px;
+            font-size: .72rem;
+            font-weight: 700;
+        }
+
+        .bp-status-pendente { background: #fdecea; color: #c0392b; }
+        .bp-status-atendido { background: #e8f8ee; color: #1e8449; }
+
+        .bp-cruzamento-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: .3rem;
+            font-size: .72rem;
+            font-weight: 600;
+            padding: .2rem .55rem;
+            border-radius: 20px;
+            cursor: default;
+        }
+
+        .bp-cruzamento-encontrado { background: #fff3cd; color: #856404; }
+        .bp-cruzamento-vazio { background: var(--p3-bg, #f2f2f2); color: var(--p3-text-muted, #999); }
+
+        .bp-detalhe {
+            display: none;
+            margin-top: .5rem;
+            padding: .7rem .9rem;
+            background: var(--p3-bg, #f8f8f8);
+            border-radius: 8px;
+            font-size: .8rem;
+            line-height: 1.55;
+        }
+
+        .bp-detalhe.aberto { display: block; }
+
+        .bp-detalhe strong { color: var(--p3-text, #222); }
+
+        .bp-btn-detalhe {
+            background: none;
+            border: 1px solid var(--p3-border, #ccc);
+            border-radius: 6px;
+            padding: .2rem .55rem;
+            font-size: .72rem;
+            cursor: pointer;
+            color: var(--p3-text, #333);
+        }
+
+        .bp-btn-detalhe:hover { background: var(--p3-bg, #eee); }
+
+        .bp-linha-autor {
+            padding: .2rem 0;
+            border-bottom: 1px dashed var(--p3-border, #ddd);
+        }
+        .bp-linha-autor:last-child { border-bottom: none; }
+
+        .bp-vazio {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            color: var(--p3-text-muted, #888);
+        }
+
+        .bp-gps-link {
+            font-size: .78rem;
+            color: var(--p3-blue-700, #1565c0);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js"></script>
+    <script src="../js/core/iris-panico-client.js"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>🚨 Botão do Pânico — Patrulha Maria da Penha</h2>
+                <p>Acionamentos da unidade logada, com cruzamento dos registros de violência doméstica, autor e guarnição do próprio P3.</p>
+            </div>
+
+            <section class="bp-secao">
+                <div class="bp-cabecalho-secao">
+                    <h2>Acionamentos</h2>
+                    <div style="display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;">
+                        <span class="bp-badge-fonte" title="Dados vêm da API do Sistema Íris PMAL (Hostinger), lidos aqui como app Android — nenhum dado do P3 é gravado lá.">
+                            fonte: Sistema Íris PMAL
+                        </span>
+                        <input type="text" id="bp-busca" placeholder="Buscar por nome..." onkeyup="filtrarTabelaPanico()">
+                        <button class="bp-btn-detalhe" onclick="carregarAcionamentosPanico()">↻ Atualizar</button>
+                    </div>
+                </div>
+                <div id="bp-status-carregamento" class="bp-vazio">
+                    <i class="fas fa-spinner fa-spin"></i> Carregando acionamentos...
+                </div>
+                <div id="bp-login-iris" style="display:none; max-width:360px; margin:1.5rem auto; text-align:center;">
+                    <p style="margin-bottom:.8rem;">Sua senha do P3 não confere com a do Íris — autentique separadamente pra ver os acionamentos:</p>
+                    <form onsubmit="autenticarEcarregar(); return false;" style="display:flex; flex-direction:column; gap:.6rem;">
+                        <input type="text" id="bp-login-usuario" autocomplete="username" readonly style="position:absolute; left:-9999px;" tabindex="-1" aria-hidden="true">
+                        <label style="text-align:left; font-size:.85rem;">Senha do Íris
+                            <input type="password" id="bp-login-senha" autocomplete="current-password"
+                                style="width:100%; padding:.5rem .6rem; border:1px solid var(--p3-border,#ccc); border-radius:6px; margin-top:.3rem;">
+                        </label>
+                        <button type="submit" class="bp-btn-detalhe" style="padding:.5rem;">🔑 Autenticar</button>
+                        <p id="bp-login-msg" style="color:#c0392b; font-size:.8rem; margin:0;"></p>
+                    </form>
+                </div>
+                <div class="bp-tabela-wrapper" id="bp-tabela-wrapper" style="display:none;">
+                    <table class="bp-tabela">
+                        <thead>
+                            <tr>
+                                <th>Data/hora</th>
+                                <th>Assistida</th>
+                                <th>Telefone</th>
+                                <th>Cidade / Local</th>
+                                <th>Status</th>
+                                <th>Cruzamento P3</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bp-corpo-tabela"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </section>
+
+    <script>
+        'use strict';
+
+        function escHtml(s) {
+            return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+        function normalizar(s) {
+            return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+        }
+        function apenasDigitos(s) {
+            return String(s || '').replace(/\D/g, '');
+        }
+        function toDataBR(v) {
+            if (!v) return '—';
+            const s = String(v).trim();
+            if (/^\d{2}\//.test(s)) return s;
+            const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[\sT](\d{2}:\d{2}:\d{2})/);
+            return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}` : s;
+        }
+
+        let _acionamentosAtuais = [];
+
+        // "DD/MM/AAAA..." (violência doméstica, formato do formulário/planilha)
+        function parseDataBR(str) {
+            if (!str) return null;
+            const m = String(str).trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (!m) return null;
+            const d = new Date(+m[3], +m[2] - 1, +m[1]);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        // "AAAA-MM-DD HH:MM:SS" (data_hora_acio, vem do MySQL do Íris)
+        function parseDataAcionamento(str) {
+            if (!str) return null;
+            const m = String(str).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+            if (!m) return null;
+            const d = new Date(+m[1], +m[2] - 1, +m[3]);
+            return isNaN(d.getTime()) ? null : d;
+        }
+        function dataDoRegistroVD(reg) {
+            return parseDataBR(reg.data || reg.DATA);
+        }
+
+        // ── Cruzamento com os nós próprios do P3 (/violencia_domestica,
+        // /autor, /guarnicao — ver js/cadastroocorrencias.js) — nenhuma
+        // relação de ID direta com o Íris, então o cruzamento é por NOME
+        // DA ASSISTIDA + DATA DO ACIONAMENTO (comparação de nome sempre
+        // exata, nunca parcial — atribuir autor errado a uma vítima é
+        // grave demais pra arriscar um "parece com"). A mesma vítima pode
+        // ter mais de uma ocorrência de violência doméstica registrada ao
+        // longo do tempo — entre as que batem o nome, fica com a de data
+        // mais próxima do acionamento. O boletim encontrado nessa etapa é
+        // o que valida (cruza) os autores: só entram autores do MESMO
+        // boletim e, quando têm mês/ano preenchidos, do mesmo período da
+        // ocorrência — evita herdar autor de um boletim reaproveitado.
+        async function carregarCruzamentoP3(cfg) {
+            const dbUrl = cfg.firebase.databaseURL;
+            const [vdRes, autorRes, guarnicaoRes] = await Promise.all([
+                fetch(`${dbUrl}/violencia_domestica.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+                P3.Autores.listar(cfg).catch(() => null), // Firebase vs API PHP (Hostinger, 10º BPM) — ver js/core/session.js
+                fetch(`${dbUrl}/guarnicao.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+            ]);
+
+            const porNomeVD = new Map();     // nome normalizado -> [registros]
+            const porTelefoneVD = new Map(); // só dígitos -> [registros]
+            Object.entries(vdRes || {}).forEach(([id, reg]) => {
+                const nome = normalizar(reg.SOLICITANTE);
+                const tel = apenasDigitos(reg.TELEFONE);
+                const item = Object.assign({ _id: id }, reg);
+                if (nome) { if (!porNomeVD.has(nome)) porNomeVD.set(nome, []); porNomeVD.get(nome).push(item); }
+                if (tel) { if (!porTelefoneVD.has(tel)) porTelefoneVD.set(tel, []); porTelefoneVD.get(tel).push(item); }
+            });
+
+            // /autor é keyed por "{BOLETIM}_{NOME}" — agrupa por boletim
+            // (prefixo antes do primeiro "_") pra achar todos os autores
+            // ligados àquela ocorrência.
+            const autoresPorBoletim = new Map();
+            Object.entries(autorRes || {}).forEach(([chave, reg]) => {
+                const boletim = reg.BOLETIM || chave.split('_')[0];
+                if (!autoresPorBoletim.has(boletim)) autoresPorBoletim.set(boletim, []);
+                autoresPorBoletim.get(boletim).push(reg);
+            });
+
+            return { porNomeVD, porTelefoneVD, guarnicaoPorBoletim: guarnicaoRes || {}, autoresPorBoletim };
+        }
+
+        // Entre vários registros de VD com o mesmo nome, escolhe o de data
+        // mais próxima da data do acionamento (sem data em nenhum lado,
+        // fica com o 1º como fallback — melhor que não cruzar nada).
+        function melhorCandidatoVD(candidatos, dataAcionamento) {
+            if (!candidatos || !candidatos.length) return null;
+            if (!dataAcionamento) return candidatos[0];
+            let melhor = null, menorDiffMs = Infinity;
+            candidatos.forEach(c => {
+                const d = dataDoRegistroVD(c);
+                const diff = d ? Math.abs(d - dataAcionamento) : Infinity;
+                if (diff < menorDiffMs) { menorDiffMs = diff; melhor = c; }
+            });
+            return melhor || candidatos[0];
+        }
+
+        function cruzarAcionamento(item, cruzamento) {
+            const nome = normalizar(item.nome_assistida);
+            const tel = apenasDigitos(item.telefone);
+            const dataAcio = parseDataAcionamento(item.data_hora_acio);
+
+            const candidatosNome = nome ? cruzamento.porNomeVD.get(nome) : null;
+            const candidatosTel = tel ? cruzamento.porTelefoneVD.get(tel) : null;
+            const vd = melhorCandidatoVD(candidatosNome, dataAcio) || melhorCandidatoVD(candidatosTel, dataAcio);
+            if (!vd) return null;
+
+            const boletim = vd.NUMEROOCORRENCIA || vd.BOLETIM || vd._id;
+            const dataVd = dataDoRegistroVD(vd);
+
+            // Cruza autores do mesmo boletim — se o autor tiver MES/ANO
+            // preenchido, exige que bata com a data da ocorrência de VD
+            // encontrada (verificação extra de data pedida explicitamente).
+            const autoresBrutos = cruzamento.autoresPorBoletim.get(String(boletim)) || [];
+            const autores = autoresBrutos.filter(a => {
+                if (!a.MES || !a.ANO || !dataVd) return true;
+                return String(+a.MES) === String(dataVd.getMonth() + 1) && String(+a.ANO) === String(dataVd.getFullYear());
+            });
+
+            const guarnicaoObj = cruzamento.guarnicaoPorBoletim[boletim] || null;
+            const guarnicao = guarnicaoObj ? Object.values(guarnicaoObj) : [];
+
+            const diasDeDiferenca = (dataAcio && dataVd) ? Math.round(Math.abs(dataAcio - dataVd) / 86400000) : null;
+
+            return { vd, boletim, autores, guarnicao, dataVd, diasDeDiferenca };
+        }
+
+        function renderizarDetalheCruzamento(cruz) {
+            if (!cruz) {
+                return '<p>Nenhum registro correspondente encontrado em <strong>/violencia_domestica</strong> (comparação por nome da assistida, com a data do acionamento como critério de desempate).</p>';
+            }
+            const { vd, boletim, autores, guarnicao, dataVd, diasDeDiferenca } = cruz;
+            const avisoData = diasDeDiferenca === null
+                ? ''
+                : diasDeDiferenca === 0
+                    ? ' <span style="color:#1e8449;">(mesma data do acionamento)</span>'
+                    : ` <span style="color:#856404;">(${diasDeDiferenca} dia(s) de diferença do acionamento — confira antes de usar)</span>`;
+            let html = `<p><strong>Ocorrência P3:</strong> ${escHtml(boletim || '—')}` +
+                (vd.TIPIFICAÇÃO || vd.TIPIFICACAO ? ` — ${escHtml(vd.TIPIFICAÇÃO || vd.TIPIFICACAO)}` : '') +
+                `<br><strong>Data da ocorrência:</strong> ${dataVd ? escHtml(dataVd.toLocaleDateString('pt-BR')) : '—'}${avisoData}` +
+                `<br><strong>Local:</strong> ${escHtml(vd.LOGRADOURO || '—')}${vd.BAIRRO ? ', ' + escHtml(vd.BAIRRO) : ''}${vd.CIDADE ? ' — ' + escHtml(vd.CIDADE) : ''}</p>`;
+
+            html += '<p><strong>Autor(es) identificado(s):</strong></p>';
+            if (autores.length) {
+                html += autores.map(a => `<div class="bp-linha-autor">${escHtml(a.NOME || '—')}` +
+                    (a.SITUACAO ? ` — <em>${escHtml(a.SITUACAO)}</em>` : '') +
+                    (a.CPF ? ` · CPF ${escHtml(a.CPF)}` : '') +
+                    (a.NATUREZA ? `<br><small>${escHtml(a.NATUREZA)}</small>` : '') +
+                    '</div>').join('');
+            } else {
+                html += '<p><small>Nenhum autor cadastrado para essa ocorrência.</small></p>';
+            }
+
+            html += '<p style="margin-top:.5rem;"><strong>Guarnição que atendeu essa ocorrência:</strong></p>';
+            if (guarnicao.length) {
+                html += guarnicao.map(g => `<div class="bp-linha-autor">${escHtml(g.POSTO_GRADUACAO || '')} ${escHtml(g.NOME_GUERRA || '—')}` +
+                    (g.FUNCAO_EQUIPE ? ` — ${escHtml(g.FUNCAO_EQUIPE)}` : '') + '</div>').join('');
+            } else {
+                html += '<p><small>Nenhuma guarnição registrada para essa ocorrência.</small></p>';
+            }
+            return html;
+        }
+
+        function alternarDetalhe(uid) {
+            const el = document.getElementById('bp-detalhe-' + uid);
+            if (el) el.classList.toggle('aberto');
+        }
+        window.alternarDetalhe = alternarDetalhe;
+
+        function renderizarTabelaPanico(lista, cruzamento) {
+            const tbody = document.getElementById('bp-corpo-tabela');
+            document.getElementById('bp-status-carregamento').style.display = 'none';
+            document.getElementById('bp-tabela-wrapper').style.display = 'block';
+
+            if (!lista.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="bp-vazio">Nenhum acionamento registrado para essa unidade.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = lista.map((item, idx) => {
+                const foiAtendido = item.status === 'ATENDIDO' || !!item.data_hora_resposta;
+                const cruz = cruzarAcionamento(item, cruzamento);
+                const linkGps = item.coordenada_gps
+                    ? `<br><a class="bp-gps-link" href="https://maps.google.com/maps?q=${encodeURIComponent(item.coordenada_gps)}" target="_blank">📍 ver no mapa</a>`
+                    : '';
+                return `
+                <tr data-nome="${escHtml(normalizar(item.nome_assistida))}">
+                    <td>${escHtml(toDataBR(item.data_hora_acio))}</td>
+                    <td><strong>${escHtml(item.nome_assistida || 'Não identificado')}</strong></td>
+                    <td>${escHtml(item.telefone || '—')}</td>
+                    <td>${escHtml(item.cidade || '—')}${linkGps}</td>
+                    <td>
+                        <span class="bp-status ${foiAtendido ? 'bp-status-atendido' : 'bp-status-pendente'}">
+                            ${foiAtendido ? 'ATENDIDO' : 'PENDENTE'}
+                        </span>
+                        ${foiAtendido ? `<br><small>${escHtml(toDataBR(item.data_hora_resposta))} — ${escHtml(item.operador_resposta || '')}</small>` : ''}
+                    </td>
+                    <td>
+                        <span class="bp-cruzamento-badge ${cruz ? 'bp-cruzamento-encontrado' : 'bp-cruzamento-vazio'}">
+                            ${cruz ? `⚠️ Ocorrência ${escHtml(cruz.boletim || '')}` : 'sem correspondência'}
+                        </span>
+                    </td>
+                    <td><button class="bp-btn-detalhe" onclick="alternarDetalhe(${idx})">Detalhes</button></td>
+                </tr>
+                <tr><td colspan="7" style="padding:0; border:none;">
+                    <div class="bp-detalhe" id="bp-detalhe-${idx}">${renderizarDetalheCruzamento(cruz)}</div>
+                </td></tr>`;
+            }).join('');
+        }
+
+        function filtrarTabelaPanico() {
+            const filtro = normalizar(document.getElementById('bp-busca').value);
+            document.querySelectorAll('#bp-corpo-tabela tr[data-nome]').forEach(tr => {
+                const bate = tr.dataset.nome.includes(filtro);
+                tr.style.display = bate ? '' : 'none';
+                const detalheRow = tr.nextElementSibling;
+                if (detalheRow) detalheRow.style.display = bate ? '' : 'none';
+            });
+        }
+        window.filtrarTabelaPanico = filtrarTabelaPanico;
+
+        // Login cruzado com o Íris já foi tentado (silencioso) em
+        // page/login.html com a mesma senha do P3 — se bateu, o token já
+        // está em localStorage['irisToken'] e essa tela nem mostra o
+        // formulário. Só pede senha aqui quando não bateu lá.
+        function mostrarLoginIris() {
+            const sessao = P3.getSession();
+            document.getElementById('bp-status-carregamento').style.display = 'none';
+            document.getElementById('bp-tabela-wrapper').style.display = 'none';
+            document.getElementById('bp-login-iris').style.display = 'block';
+            document.getElementById('bp-login-usuario').value = (sessao && sessao.cpf) || '';
+        }
+
+        async function autenticarEcarregar() {
+            const senha = document.getElementById('bp-login-senha').value;
+            const msg = document.getElementById('bp-login-msg');
+            const sessao = P3.getSession();
+            if (!senha) { msg.textContent = 'Digite a senha do Íris.'; return; }
+            msg.textContent = 'Autenticando...';
+            const resp = await IrisPanico.autenticar(sessao.cpf, senha);
+            if (resp.ok && resp.token) {
+                document.getElementById('bp-login-iris').style.display = 'none';
+                document.getElementById('bp-login-senha').value = '';
+                carregarAcionamentosPanico();
+            } else {
+                msg.textContent = resp.erro || 'CPF/senha não confere no Íris.';
+            }
+        }
+        window.autenticarEcarregar = autenticarEcarregar;
+
+        async function carregarAcionamentosPanico() {
+            const statusEl = document.getElementById('bp-status-carregamento');
+            statusEl.style.display = 'block';
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Carregando acionamentos...';
+            document.getElementById('bp-tabela-wrapper').style.display = 'none';
+
+            if (!IrisPanico.temToken()) { mostrarLoginIris(); return; }
+
+            try {
+                const cfg = await P3.loadUnidadeConfig();
+                const [acionamentos, cruzamento] = await Promise.all([
+                    IrisPanico.listarAcionamentos(),
+                    carregarCruzamentoP3(cfg),
+                ]);
+
+                _acionamentosAtuais = acionamentos;
+                renderizarTabelaPanico(acionamentos, cruzamento);
+            } catch (e) {
+                console.error('[Botão do Pânico]', e);
+                if (e.message === 'token-expirado' || e.message === 'sem-token') { mostrarLoginIris(); return; }
+                statusEl.innerHTML = `<p class="bp-vazio">❌ Falha ao carregar: ${escHtml(e.message)}</p>`;
+            }
+        }
+        window.carregarAcionamentosPanico = carregarAcionamentosPanico;
+
+        document.addEventListener('DOMContentLoaded', carregarAcionamentosPanico);
+    </script>
+</body>
+
+</html>

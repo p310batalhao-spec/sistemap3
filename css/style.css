@@ -154,6 +154,37 @@ header {
     background: var(--p3-blue-100);
 }
 
+.notif-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 0.0625rem solid var(--p3-border);
+}
+
+.notif-tab {
+    background: none;
+    border: 0.0625rem solid transparent;
+    color: var(--p3-text-muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--p3-radius-sm);
+    white-space: nowrap;
+}
+
+.notif-tab:hover {
+    background: var(--p3-blue-100);
+    color: var(--p3-blue-700);
+}
+
+.notif-tab.ativa {
+    background: var(--p3-blue-700);
+    border-color: var(--p3-blue-700);
+    color: #fff;
+}
+
 #notif-items {
     max-height: 18.75rem;
     overflow-y: auto;

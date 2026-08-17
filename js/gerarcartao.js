@@ -21,6 +21,80 @@ let ultimasOcorrenciasFlat = [];
 // critério de priorização.
 const PESOS = { cvli: 5, droga: 4, cvp: 3, geral: 1, sossego: 4, violencia_domestica: 4 };
 
+// PESOS_ATIVOS é o que construirAnalisador/analisarCidadeMaisCritica usam
+// de fato (nunca PESOS direto) — normalmente é uma cópia idêntica de
+// PESOS, mas processarDados() pode recalibrá-lo por reincidência real via
+// js/machineLearningLeve.js (ver calibrarPesosAtivos() logo abaixo) antes
+// de cada geração de cartão. Sem o módulo carregado, ou sem histórico
+// suficiente pra calibrar com segurança, fica idêntico a PESOS — nada
+// muda no comportamento atual.
+let PESOS_ATIVOS = PESOS;
+let ultimaCalibragemPesos = null; // guardado pra dar transparência (ver console.log em calibrarPesosAtivos)
+
+// Formato "DD/MM/AAAA" ou "DD/MM/AAAA HH:MM" ou ISO — mesma tolerância
+// de dentroJanela() acima, só que devolvendo um Date em vez de bool
+// (dentroJanela não expõe o Date, só decide dentro/fora da janela).
+function parseDataFlexivel(dataStr) {
+    if (!dataStr) return null;
+    const s = dataStr.toString().trim();
+    let d;
+    if (s.includes('/')) {
+        const partes = s.split(' ')[0].split('/');
+        if (partes.length < 3) return null;
+        const dia = parseInt(partes[0], 10), mes = parseInt(partes[1], 10), ano = parseInt(partes[2], 10);
+        if (isNaN(dia) || isNaN(mes) || isNaN(ano)) return null;
+        d = new Date(ano, mes - 1, dia);
+    } else {
+        d = new Date(s.substring(0, 10));
+    }
+    return isNaN(d.getTime()) ? null : d;
+}
+
+// Achata db (geral/cvp/cvli/droga/sossego/violencia_domestica) num único
+// array { lat, lng, data, tipo, grave } pro formato que
+// MLLeve.calibrarPesos espera — só 'cvli' marca grave:true (é a categoria
+// mais grave de PESOS, usada como "rótulo" de reincidência séria; as
+// outras alimentam as features de contagem recente, mas não definem o
+// rótulo sozinhas).
+function montarOcorrenciasParaCalibragem(db) {
+    const flat = [];
+    ['geral', 'cvp', 'cvli', 'droga', 'sossego', 'violencia_domestica'].forEach(categoria => {
+        const registros = db[categoria];
+        if (!registros) return;
+        Object.values(registros).forEach(item => {
+            const data = parseDataFlexivel(item.DATA || item.data);
+            if (!data) return;
+            flat.push({
+                LATITUDE: item.LATITUDE || item.latitude,
+                LONGITUDE: item.LONGITUDE || item.longitude,
+                BAIRRO: item.BAIRRO || item.bairro,
+                data,
+                tipo: categoria,
+                grave: categoria === 'cvli',
+            });
+        });
+    });
+    return flat;
+}
+
+// Recalibra PESOS_ATIVOS por reincidência real (regressão logística leve,
+// treinada do zero em js/machineLearningLeve.js) — chamado 1x por
+// geração de cartão (processarDados roda 1x por clique em "Gerar"), não
+// por RP. Log no console pra dar transparência de auditoria (comando
+// pode conferir se calibrou de verdade ou ficou no padrão, e por quê).
+function calibrarPesosAtivos(db) {
+    if (!window.MLLeve) { PESOS_ATIVOS = PESOS; ultimaCalibragemPesos = null; return; }
+    const ocorrencias = window.MLLeve.filtrarCoordenadasValidas(montarOcorrenciasParaCalibragem(db));
+    const resultado = window.MLLeve.calibrarPesos(ocorrencias, PESOS, { janelaDias: 30 });
+    PESOS_ATIVOS = resultado.pesos;
+    ultimaCalibragemPesos = resultado;
+    if (resultado.calibrado) {
+        console.log('[gerarcartao] Pesos calibrados por reincidência real (' + resultado.amostras + ' amostras):', PESOS_ATIVOS);
+    } else {
+        console.log('[gerarcartao] Pesos NÃO calibrados (' + resultado.motivo + ') — usando PESOS padrão:', PESOS);
+    }
+}
+
 // Conta quantos CVLI (db.cvli) caem dentro da janela de 90 dias,
 // opcionalmente filtrado por cidade(s) — usado por categoriasAtivasPara
 // pra decidir se perturbação/violência doméstica entram no jogo.
@@ -189,7 +263,7 @@ function construirAnalisador(db, cidadesAlvo) {
             const temCoord = !isNaN(lat) && !isNaN(lng) && lat >= -11.0 && lat <= -7.0 && lng >= -38.5 && lng <= -34.5;
             if (!bairro && !temCoord) return; // sem bairro e sem coordenada: não há como localizar
 
-            const pesoTotal  = PESOS[categoria] || 1;
+            const pesoTotal  = PESOS_ATIVOS[categoria] || 1;
             const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
             itens.push({ cid, bairro, logradouro, lat, lng, temCoord, pesoGravio,
                 data: item.DATA || item.data, hora: item.HORA });
@@ -434,7 +508,7 @@ function analisarCidadeMaisCritica(db, nomeTurno) {
             const cid = (item.CIDADE || "").toString().toUpperCase().trim();
             if (!cid) return;
 
-            const pesoTotal  = PESOS[categoria] || 1;
+            const pesoTotal  = PESOS_ATIVOS[categoria] || 1;
             const pesoGravio = categoria !== 'geral' ? pesoTotal : 0;
 
             qtdGeral[cid]   = (qtdGeral[cid]   || 0) + 1;
@@ -618,6 +692,33 @@ async function clicarBotaoGerar() {
         if (btnSalvar) btnSalvar.style.display = "inline-block";
         const labelPerimetro = document.getElementById('label-perimetro-cartao');
         if (labelPerimetro) labelPerimetro.style.display = "inline-block";
+
+        // Nota de Inteligência Criminal (rede conhecida) — carregada em
+        // SEGUNDO PLANO, depois do cartão já estar na tela: o Supabase
+        // (13 tabelas) pode levar vários segundos, e o cartão-programa é
+        // ferramenta de uso rápido do dia a dia — não faz sentido atrasar
+        // a geração normal por causa disso. Quando terminar, só injeta um
+        // aviso se houver atividade de rede conhecida nas cidades desta
+        // guarnição (nunca aponta pessoa específica aqui — só avisa que
+        // existe rede ativa, o detalhe fica na Análise Preditiva/Aba
+        // Pessoas e Redes).
+        if (window.IntelCrime) {
+            const notaRede = document.createElement('div');
+            notaRede.id = 'nota-rede-cartao';
+            notaRede.style.cssText = 'margin-top:10px;padding:10px 14px;border-radius:8px;background:#fff3e0;color:#7a4a00;font-size:.85rem;display:none;';
+            container.appendChild(notaRede);
+            window.IntelCrime.carregar(cfg).then(() => {
+                const cidadesDoCartao = (dados.cidadesPatrulhadas || [dados.cidade]).filter(Boolean);
+                const rankingFake = cidadesDoCartao.map(c => ({ cidade: c, bairro: '', probabilidade: 0 }));
+                const ajustado = window.IntelCrime.ajustarRiscoLocalComRede(rankingFake);
+                const comRede = ajustado.filter(r => r.ajustadoPorRede);
+                if (comRede.length) {
+                    notaRede.innerHTML = `🕸️ <strong>Inteligência Criminal:</strong> há atividade de rede conhecida (vínculos/ORCRIM) recente em
+                        ${comRede.map(r => r.cidade).join(', ')} — ver detalhes na Análise Preditiva, aba "Pessoas e Redes".`;
+                    notaRede.style.display = '';
+                }
+            }).catch(err => console.error('[gerarcartao] Inteligência Criminal:', err));
+        }
     } catch (err) {
         container.innerHTML = "<p style='color:red;text-align:center;'>Erro ao carregar dados.</p>";
         console.error(err);
@@ -629,6 +730,11 @@ async function clicarBotaoGerar() {
 // ================================================================
 function processarDados(cidadeFiltro, db) {
     const gNome = cidadeFiltro.toUpperCase();
+
+    // Recalibra PESOS_ATIVOS por reincidência real ANTES de qualquer
+    // análise (RP normal ou Tático) — processarDados roda 1x por clique
+    // em "Gerar", então isso não recalcula por RP nem fica caro.
+    calibrarPesosAtivos(db);
 
     // Táticos (Urbano/Rural) têm estrutura de cronograma diferente das RPs
     // (horários fixos, alguns blocos por cidade mais crítica em vez de

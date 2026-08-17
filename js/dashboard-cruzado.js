@@ -17,6 +17,7 @@
 
     let DATABASE_URL = null;
     let APPS_SCRIPT_TCO_URL = null;
+    let APPS_SCRIPT_MATERIAIS_URL = null;
 
     if (window.ChartDataLabels) Chart.register(ChartDataLabels);
 
@@ -84,6 +85,61 @@
         const json = await resp.json();
         const lista = Array.isArray(json) ? json : [];
         window._NODES_CACHE.__tco = lista;
+        return lista;
+    }
+
+    // Mesma normalização usada no back-end (GAS getTCO/normalizarChave) —
+    // remove tudo que não é letra/número e deixa maiúsculo, pra comparar
+    // "N° DO BOU" (materiais) contra "Nº Ocorrência" (/geral) e a chave de
+    // /guarnicao mesmo quando vêm com pontuação/espaços diferentes.
+    function normalizarChaveBoletim(valor) {
+        return String(valor || '').toUpperCase().replace(/[^A-Z0-9]/g, '').trim();
+    }
+
+    const DIAS_SEMANA_LBL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+    // Materiais Apreendidos não tem CIDADE/TIPIFICAÇÃO/GUARNIÇÃO próprios
+    // (é uma planilha à parte, só com BOU/categoria/local/ESAJ/status) —
+    // cruza pelo Nº do BOU contra /geral (cidade e tipificação da
+    // ocorrência de origem) e /guarnicao (quem atendeu aquele boletim),
+    // igual ao pedido explícito do usuário. Sem correspondência, os
+    // campos cruzados ficam vazios (agrupam em "Não identificada/o" nos
+    // gráficos) — nunca inventa dado.
+    async function fetchMateriaisCruzados() {
+        if (window._NODES_CACHE.__materiaisCruzados) return window._NODES_CACHE.__materiaisCruzados;
+
+        const [materiaisRes, geralArr, guarnicaoRes] = await Promise.all([
+            fetch(`${APPS_SCRIPT_MATERIAIS_URL}?action=read`).then(r => r.ok ? r.json() : []).catch(() => []),
+            fetchNode('geral'),
+            fetch(`${DATABASE_URL}/guarnicao.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+
+        const porBoletimGeral = new Map();
+        geralArr.forEach(g => {
+            const chave = normalizarChaveBoletim(CAMPO(g, 'Nº Ocorrência', 'BOLETIM'));
+            if (chave) porBoletimGeral.set(chave, g);
+        });
+
+        const porBoletimGuarnicao = new Map();
+        Object.entries(guarnicaoRes || {}).forEach(([bol, integrantes]) => {
+            const chave = normalizarChaveBoletim(bol);
+            if (chave) porBoletimGuarnicao.set(chave, Object.values(integrantes || {}));
+        });
+
+        const lista = (Array.isArray(materiaisRes) ? materiaisRes : []).map(item => {
+            const chaveBou = normalizarChaveBoletim(CAMPO(item, 'N° DO BOU'));
+            const geralAssoc = chaveBou ? porBoletimGeral.get(chaveBou) : null;
+            const guarnicaoAssoc = chaveBou ? (porBoletimGuarnicao.get(chaveBou) || []) : [];
+            return Object.assign({}, item, {
+                _CIDADE: geralAssoc ? CAMPO(geralAssoc, 'CIDADE') : '',
+                _TIPIFICACAO: geralAssoc ? CAMPO(geralAssoc, 'TIPIFICACAO_GERAL', 'TIPIFICACAO') : '',
+                _GUARNICAO: guarnicaoAssoc.length
+                    ? guarnicaoAssoc.map(g => CAMPO(g, 'NOME_GUERRA')).filter(Boolean).join(' + ')
+                    : '',
+            });
+        });
+
+        window._NODES_CACHE.__materiaisCruzados = lista;
         return lista;
     }
 
@@ -196,9 +252,40 @@
             campoStatus: item => CAMPO(item, 'SOLUÇÃO DA OCORRÊNCIA', 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
+        materiais: {
+            label: 'Materiais Apreendidos', icone: '📦',
+            fetch: () => fetchMateriaisCruzados(),
+            filtroBase: () => true,
+            campoData: item => CAMPO(item, 'DATA'),
+            // Cidade e tipificação não existem na planilha de materiais —
+            // vêm cruzadas de /geral pelo Nº do BOU (ver fetchMateriaisCruzados).
+            campoCidade: item => item._CIDADE || 'Não identificada',
+            campoCop: item => CAMPO(item, 'N° DO BOU'),
+            campoNome: null,
+            campoTip: item => item._TIPIFICACAO || 'Não identificada',
+            campoStatus: item => CAMPO(item, 'STATUS') || 'Não informado',
+            labelTip: 'Tipificação (ocorrência de origem)', labelStatus: 'Movimentação / Status',
+            // Dimensões extras — motor genérico de renderAba() renderiza 1
+            // gráfico de barra horizontal por item aqui, com cross-filter
+            // clicável igual cidade/tip/status (ver aplicarCross/mkEsqueletoAba).
+            extras: [
+                { chave: 'local', label: 'Local de Guarda', campo: item => CAMPO(item, 'LOCAL') || 'Não informado' },
+                { chave: 'guarnicao', label: 'Guarnição', campo: item => item._GUARNICAO || 'Não identificada' },
+                {
+                    chave: 'diasemana', label: 'Dia da Semana',
+                    campo: item => { const dt = parseData(CAMPO(item, 'DATA')); return dt ? DIAS_SEMANA_LBL[dt.getDay()] : 'Não informado'; },
+                },
+            ],
+            // Total da planilha inteira, não só do ano atual — ver flag
+            // kpiExtraTotal abaixo (respeita filtros manuais/cross-filter
+            // ativos, só não restringe por ano como os outros kpiExtra).
+            kpiExtra: lista => ({ label: 'Devolvidos', valor: lista.filter(i => NORM(CAMPO(i, 'STATUS')) === 'DEVOLVIDO').length }),
+            kpiExtraTotal: true,
+            iconeExtra: '↩️',
+        },
     };
 
-    const ORDEM_ABAS = ['mvicvli', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia'];
+    const ORDEM_ABAS = ['mvicvli', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia', 'materiais'];
 
     // ════════════════════════════════════════════════════════════════
     // ESTADO — filtros manuais e cross-filter, por aba
@@ -209,7 +296,13 @@
     window._ABAS_CARREGADAS = {};
 
     function crossDoAba(cat) {
-        if (!window._CROSS[cat]) window._CROSS[cat] = { mes: null, cidade: null, tip: null, status: null };
+        if (!window._CROSS[cat]) {
+            const base = { mes: null, cidade: null, tip: null, status: null };
+            // Dimensões extras (ex.: local de guarda/guarnição/dia da semana
+            // em Materiais) entram com a mesma chave declarada em d.extras.
+            (CATEGORIAS[cat].extras || []).forEach(ex => { base[ex.chave] = null; });
+            window._CROSS[cat] = base;
+        }
         return window._CROSS[cat];
     }
 
@@ -256,6 +349,9 @@
         if (c.cidade && exceto !== 'cidade' && d.campoCidade) r = r.filter(i => NORM(d.campoCidade(i)) === NORM(c.cidade));
         if (c.tip && exceto !== 'tip') r = r.filter(i => NORM(d.campoTip(i)) === NORM(c.tip));
         if (c.status && exceto !== 'status' && d.campoStatus) r = r.filter(i => NORM(d.campoStatus(i)) === NORM(c.status));
+        (d.extras || []).forEach(ex => {
+            if (c[ex.chave] && exceto !== ex.chave) r = r.filter(i => NORM(ex.campo(i)) === NORM(c[ex.chave]));
+        });
         return r;
     }
 
@@ -267,7 +363,8 @@
     window.toggleCross = toggleCross;
 
     function limparCross(cat) {
-        window._CROSS[cat] = { mes: null, cidade: null, tip: null, status: null };
+        delete window._CROSS[cat];
+        crossDoAba(cat); // recria já com as chaves extras da categoria (ver crossDoAba)
         renderAba(cat);
     }
     window.limparCrossDash = limparCross;
@@ -457,7 +554,14 @@
             const setaCls = variacao > 0 ? 'alta' : variacao < 0 ? 'baixa' : 'estavel';
             const setaIc = variacao > 0 ? '📈' : variacao < 0 ? '📉' : '➡️';
             h += '<div class="kpi-dc kpi-var-' + setaCls + '"><div class="ki">' + setaIc + '</div><div class="kn">' + (variacao > 0 ? '+' : '') + variacao + '%</div><div class="kl">Variação vs. ano anterior</div></div>';
-            if (d.kpiExtra) { const ex = d.kpiExtra(semCrossParaKpi.filter(i => { const dt = parseData(d.campoData(i)); return dt && dt.getFullYear() === anoAtual; })); h += mkKpi(d.iconeExtra || '⭐', ex.valor, ex.label); }
+            if (d.kpiExtra) {
+                // kpiExtraTotal (ex.: Devolvidos em Materiais) quer o total da
+                // planilha inteira — os demais (MVI, Concluídos, Peso) continuam
+                // restritos ao ano atual, igual sempre foi.
+                const listaKpiExtra = d.kpiExtraTotal ? semCrossParaKpi : semCrossParaKpi.filter(i => { const dt = parseData(d.campoData(i)); return dt && dt.getFullYear() === anoAtual; });
+                const ex = d.kpiExtra(listaKpiExtra);
+                h += mkKpi(d.iconeExtra || '⭐', ex.valor, ex.label);
+            }
             kpiEl.innerHTML = h;
         }
 
@@ -481,6 +585,14 @@
             const listaStatus = aplicarCross(base, cat, 'status');
             criarBarraHorizontal('chart-' + cat + '-status', topEntries(listaStatus, d.campoStatus, 8, d.campoPeso), cores, cat, 'status');
         }
+
+        // ── Dimensões extras da categoria (ex.: local de guarda,
+        // guarnição, dia da semana em Materiais) — mesmo padrão de
+        // barra horizontal clicável das outras dimensões. ──────────
+        (d.extras || []).forEach(ex => {
+            const listaExtra = aplicarCross(base, cat, ex.chave);
+            criarBarraHorizontal('chart-' + cat + '-' + ex.chave, topEntries(listaExtra, ex.campo, 8, d.campoPeso), cores, cat, ex.chave);
+        });
     }
     window.renderAbaDash = renderAba;
 
@@ -497,6 +609,7 @@
         if (d.campoCidade) h += mkCardGrafico('chart-' + cat + '-cidade', '📍 Top Cidades (clique filtra as demais)');
         h += mkCardGrafico('chart-' + cat + '-tip', '🏷️ ' + d.labelTip + ' (clique filtra as demais)');
         if (d.campoStatus) h += mkCardGrafico('chart-' + cat + '-status', '✅ ' + d.labelStatus + ' (clique filtra as demais)');
+        (d.extras || []).forEach(ex => { h += mkCardGrafico('chart-' + cat + '-' + ex.chave, '🔎 ' + ex.label + ' (clique filtra as demais)'); });
         h += '</div>';
         return h;
     }
@@ -516,6 +629,9 @@
         if (c.cidade) chips.push({ label: 'Cidade: ' + c.cidade, fn: () => toggleCross(cat, 'cidade', c.cidade) });
         if (c.tip) chips.push({ label: CATEGORIAS[cat].labelTip + ': ' + c.tip, fn: () => toggleCross(cat, 'tip', c.tip) });
         if (c.status) chips.push({ label: (CATEGORIAS[cat].labelStatus || 'Status') + ': ' + c.status, fn: () => toggleCross(cat, 'status', c.status) });
+        (CATEGORIAS[cat].extras || []).forEach(ex => {
+            if (c[ex.chave]) chips.push({ label: ex.label + ': ' + c[ex.chave], fn: () => toggleCross(cat, ex.chave, c[ex.chave]) });
+        });
 
         if (!chips.length && !f.ini && !f.fim && !f.cop && !f.nome && !f.cidade) { el.innerHTML = ''; return; }
 
@@ -742,6 +858,7 @@
         const cfg = await P3.loadUnidadeConfig();
         DATABASE_URL = cfg.firebase.databaseURL;
         APPS_SCRIPT_TCO_URL = cfg.gas.TCO;
+        APPS_SCRIPT_MATERIAIS_URL = cfg.gas.MATERIAIS;
 
         renderAba(ORDEM_ABAS[0]);
     });

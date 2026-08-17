@@ -283,10 +283,52 @@
         <div class="comentario" id="comentario-hotspots"></div>
     </div>
 
-    <!-- SEÇÃO 6 — HEATMAPS DE HORÁRIO -->
+    <!-- SEÇÃO 6 — PREVISÃO DE RISCO POR LOCAL (PRÓXIMOS DIAS) -->
     <div class="secao">
         <div class="secao-titulo">
             <div class="secao-numero">6</div>
+            <div>
+                <h2>Previsão de Risco de CVLI/MVI — Próximos Dias</h2>
+                <p>Cidade/bairro com maior probabilidade prevista (modelo leve, js/machineLearningLeve.js)</p>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-bullseye" style="color:#6a1b9a"></i> Ranking de risco previsto</div>
+                <table class="tabela-rel">
+                    <thead><tr><th>#</th><th>Cidade</th><th>Bairro</th><th>Probabilidade</th><th>Rede conhecida</th></tr></thead>
+                    <tbody id="tbody-risco-local"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-risco-local"></div>
+    </div>
+
+    <!-- SEÇÃO 7 — PESSOAS E REDES (INTELIGÊNCIA CRIMINAL) -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">7</div>
+            <div>
+                <h2>Ranking de Atenção — Pessoas e Redes Criminosas</h2>
+                <p>Análise de vínculos (SNA) cruzada com modus operandi — não é previsão de autoria, é indicador de atenção com evidência</p>
+            </div>
+        </div>
+        <div class="chart-row single">
+            <div class="chart-box">
+                <div class="chart-box-title"><i class="fas fa-diagram-project" style="color:#6a1b9a"></i> Pessoas com maior indicador de atenção (top 10)</div>
+                <table class="tabela-rel">
+                    <thead><tr><th>#</th><th>Pessoa</th><th>Score</th><th>Rede</th><th>ORCRIM/Facção</th><th>Local frequente</th><th>Últ. ocorr.</th></tr></thead>
+                    <tbody id="tbody-redes"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="comentario" id="comentario-redes"></div>
+    </div>
+
+    <!-- SEÇÃO 8 — HEATMAPS DE HORÁRIO -->
+    <div class="secao">
+        <div class="secao-titulo">
+            <div class="secao-numero">8</div>
             <div>
                 <h2>Concentração por Horário — CVP · CVLI · MVI</h2>
                 <p>Faixas horárias com maior incidência de cada indicador</p>
@@ -310,10 +352,10 @@
         <div class="comentario" id="comentario-horas"></div>
     </div>
 
-    <!-- SEÇÃO 7 — DIA DA SEMANA -->
+    <!-- SEÇÃO 9 — DIA DA SEMANA -->
     <div class="secao">
         <div class="secao-titulo">
-            <div class="secao-numero">7</div>
+            <div class="secao-numero">9</div>
             <div>
                 <h2>Distribuição por Dia da Semana</h2>
                 <p>CVP · CVLI · MVI — padrão semanal de ocorrências</p>

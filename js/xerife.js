@@ -17,9 +17,11 @@
     if (window.Xerife) return; // já carregado (2º clique reaproveita)
 
     let DATABASE_URL = null;
+    let cfgAtual = null; // config completa da unidade — usado por fetchNode('autor') pra decidir Firebase vs API PHP
     let APPS_SCRIPT_TCO_URL = null;
     let APPS_SCRIPT_MATERIAIS_URL = null;
     let APPS_SCRIPT_SENTENCAS_URL = null;
+    let APPS_SCRIPT_EVENTOS_URL = null;
     let configCarregada = null; // promise, evita disparar loadUnidadeConfig() em paralelo
 
     // ── Helpers de dados (mesmas convenções do resto do sistema) ──────
@@ -48,15 +50,22 @@
     }
     const TERMOS_CVP = ['ROUBO', 'FURTO', 'TENTATIVA DE ROUBO', 'TENTATIVA DE FURTO', 'ESTELIONATO', 'DANO', 'LATROCINIO', 'EXTORSAO', 'APROPRIACAO'];
     function isCVP(item) { const t = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return TERMOS_CVP.some(x => t.includes(x)); }
+    // Prefixo relativo pra linkar pra outra página de dentro de page/,
+    // relatorios/, public/ ou termos/ (que ficam 1 nível abaixo da raiz) —
+    // mesma regra de js/core/session.js, já usada em montarPainel() pro
+    // link fixo da IA Xerife.
+    function prefixoPagina() { return /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : ''; }
     function movBase(mov) { return String(mov || '').replace(/\s*\([^)]*\)\s*$/, '').trim(); }
 
     async function garantirConfig() {
         if (DATABASE_URL) return;
         if (!configCarregada) configCarregada = P3.loadUnidadeConfig().then(cfg => {
+            cfgAtual = cfg;
             DATABASE_URL = cfg.firebase.databaseURL;
             APPS_SCRIPT_TCO_URL = cfg.gas.TCO;
             APPS_SCRIPT_MATERIAIS_URL = cfg.gas.MATERIAIS;
             APPS_SCRIPT_SENTENCAS_URL = cfg.gas.SENTENCAS;
+            APPS_SCRIPT_EVENTOS_URL = cfg.gas.EVENTOS;
         });
         await configCarregada;
     }
@@ -86,8 +95,16 @@
     async function fetchNode(node) {
         await garantirConfig();
         if (NODE_CACHE[node]) return NODE_CACHE[node];
-        const resp = await fetchComTimeout(`${DATABASE_URL}/${node}.json`);
-        const dados = resp.ok ? await resp.json() : null;
+        // Nó "autor": P3.Autores decide Firebase vs API PHP (Hostinger,
+        // 10º BPM) — ver js/core/session.js. Demais nós seguem direto no
+        // Firebase, sem mudança.
+        let dados;
+        if (node === 'autor') {
+            dados = await P3.Autores.listar(cfgAtual);
+        } else {
+            const resp = await fetchComTimeout(`${DATABASE_URL}/${node}.json`);
+            dados = resp.ok ? await resp.json() : null;
+        }
         const lista = dados ? Object.values(dados) : [];
         NODE_CACHE[node] = lista;
         return lista;
@@ -129,6 +146,41 @@
         NODE_CACHE.__sentencas = lista;
         return lista;
     }
+    // Eventos (shows, festas, jogos etc.) cadastrados via ofício — mesma
+    // planilha/GAS usada em page/eventos.html e js/core/notificacoes.js
+    // (obterEventosProximos). Campos: PROTOCOLO, DATA, CIDADE, NOME DO
+    // EVENTO, LOCAL DO EVENTO, HORÁRIO DE INÍCIO, HORÁRIO DE TÉRMINO,
+    // ESTIMATIVA DE PÚBLICO, ORGANIZAÇÃO, NOME DO RESPONSÁVEL, CPF,
+    // TELEFONE, GUARNICOES, VIATURAS, OBSERVACOES.
+    async function fetchEventos() {
+        await garantirConfig();
+        if (!APPS_SCRIPT_EVENTOS_URL) return [];
+        if (NODE_CACHE.__eventos) return NODE_CACHE.__eventos;
+        // Timeout maior que o padrão (20s) — a planilha de Eventos real tem
+        // milhares de linhas (incluindo várias em branco, filtradas
+        // abaixo), e o GAS às vezes não responde a tempo com o timeout
+        // padrão, principalmente em cold-start.
+        const resp = await fetchComTimeout(`${APPS_SCRIPT_EVENTOS_URL}?action=read`, { redirect: 'follow' }, 35000);
+        const json = await resp.json();
+        // A planilha tem linhas totalmente em branco (nem nome nem data) —
+        // ruído do Sheets, não são eventos de verdade. Sem esse filtro,
+        // contagens/listagens ficavam poluídas (ex.: "1511 eventos", a
+        // maioria "sem nome").
+        const lista = (Array.isArray(json) ? json : []).filter(ev => CAMPO(ev, 'NOME DO EVENTO') || CAMPO(ev, 'DATA'));
+        NODE_CACHE.__eventos = lista;
+        return lista;
+    }
+    // Porte por estimativa de público — MESMO critério já usado em
+    // page/calendario.html (legenda "PORTE DO EVENTO") e
+    // js/core/notificacoes.js (obterEventosProximos, só notifica >1000):
+    // até 500 = pequeno, 501–1000 = médio, acima de 1000 = grande.
+    function portePorPublico(publico) {
+        if (publico > 1000) return 'grande';
+        if (publico > 500) return 'medio';
+        return 'pequeno';
+    }
+    function publicoEvento(ev) { return parseInt(CAMPO(ev, 'ESTIMATIVA DE PÚBLICO', 'ESTIMATIVA DE PUBLICO') || '0', 10) || 0; }
+
     // Guarnição por boletim — nó /guarnicao do Firebase, MESMO padrão de
     // page/qualitativo_tco.html: ao contrário dos outros nós (lista de
     // registros com push-id), aqui a própria chave do objeto já É o
@@ -439,6 +491,21 @@
         if (!anoForcado) {
             if (q.includes('hoje')) { const d = inicioDia(hoje); return { label: 'hoje', ini: d, fim: fimDia(hoje) }; }
             if (q.includes('ontem')) { const d = new Date(hoje); d.setDate(d.getDate() - 1); return { label: 'ontem', ini: inicioDia(d), fim: fimDia(d) }; }
+            // "próximos 15 dias"/"próxima semana" — janela pra FRENTE a
+            // partir de hoje (diferente de todos os outros casos abaixo,
+            // que olham pra trás). Mais relevante pra Eventos (agenda
+            // futura) do que pras categorias de ocorrência (histórico),
+            // mas não faz mal nenhuma categoria entender essa frase.
+            const proximosDias = q.match(/proxim[oa]s?\s+(\d{1,3})\s+dias?/);
+            if (proximosDias) {
+                const dias = parseInt(proximosDias[1], 10);
+                const fim = new Date(hoje); fim.setDate(hoje.getDate() + dias);
+                return { label: `nos próximos ${dias} dias`, ini: inicioDia(hoje), fim: fimDia(fim) };
+            }
+            if (q.includes('proxima semana')) {
+                const fim = new Date(hoje); fim.setDate(hoje.getDate() + 7);
+                return { label: 'nos próximos 7 dias', ini: inicioDia(hoje), fim: fimDia(fim) };
+            }
             if (q.includes('esta semana') || q.includes('essa semana')) {
                 const ini = new Date(hoje); ini.setDate(hoje.getDate() - hoje.getDay());
                 return { label: 'esta semana', ini: inicioDia(ini), fim: fimDia(hoje) };
@@ -587,6 +654,21 @@
         return q.includes('peso') || q.includes('quantidade') || q.includes('gramas') || q.includes('kg') || q.includes('quilo') || q.includes('pesou') || q.includes('apreendid');
     }
     function ehTopStatus(q) { return q.includes('status') || q.includes('andamento') || q.includes('movimentacao') || q.includes('situacao dos') || q.includes('decisoes') || q.includes('providencias'); }
+    // "Quais TCOs tiveram movimentação hoje/essa semana/recente" — pede uma
+    // LISTA de processos específicos que mudaram, não um ranking agregado
+    // de status (isso é ehTopStatus, acima). Checada ANTES de ehTopStatus
+    // no dispatch da categoria TCO (ver processarPergunta), já que
+    // "movimentacao"/"atualiza" também casam com o gatilho de ehTopStatus.
+    function ehMovimentacaoRecenteTCO(q) {
+        const mencionaMovimento = q.includes('movimenta') || q.includes('atualiza') || q.includes('mudou de status') || q.includes('mudaram de status') || q.includes('mudanca de status') || q.includes('mudanca de andamento');
+        // "quais tco de status arquivado/julgado/certidão essa semana" não
+        // diz "movimentação" em lugar nenhum, mas é exatamente o mesmo
+        // pedido (exemplo dado pelo próprio usuário) — então também conta
+        // quando cita um status FINAL específico junto de um período.
+        const mencionaStatusFinal = /\b(arquivad|julgad|certidao|baixad)/.test(q);
+        const mencionaPeriodo = q.includes('hoje') || q.includes('ontem') || q.includes('recente') || q.includes('semana') || q.includes('mes') || /\d{1,2}\/\d{1,2}/.test(q);
+        return mencionaMovimento || (mencionaStatusFinal && mencionaPeriodo);
+    }
     function ehTopPessoa(q) {
         return q.includes('qual autor') || q.includes('quais autores') || q.includes('quem mais') || q.includes('quem lavrou') ||
             q.includes('quem registrou') || q.includes('operador que mais') || q.includes('policial que mais') ||
@@ -620,8 +702,18 @@
     // isso, cair no fallback genérico de categoria ("MVI/CVLI, CVP, TCO...")
     // confundia o usuário, já que Eventos nem aparece nessa lista.
     function ehCadastroEvento(q) {
-        return q.includes('evento') && (q.includes('cadastr') || q.includes('registrar') || q.includes('registro') || q.includes('lancar') || q.includes('criar'));
+        // "cadastr(ar|e|o)" — ação (cadastrar/cadastre/cadastro de evento) —
+        // de propósito NÃO casa com "cadastrados"/"cadastrado" (particípio,
+        // descreve estado: "quais eventos cadastrados" é CONSULTA, não
+        // pedido de ação, e precisa cair em ehEventos, não aqui).
+        return q.includes('evento') && (/\bcadastr(ar|e|o)\b/.test(q) || q.includes('registrar') || q.includes('registro') || q.includes('lancar') || q.includes('criar'));
     }
+    // Consulta sobre eventos já cadastrados (porte, data, detalhes) —
+    // checada DEPOIS de ehCadastroEvento no dispatch (ver processarPergunta),
+    // então só chega aqui quem NÃO pediu pra cadastrar/registrar. Também não
+    // é uma CATEGORIA (não tem número-de-ocorrência pra contar), então
+    // precisa do mesmo tratamento especial de ehCadastroEvento.
+    function ehEventos(q) { return q.includes('evento'); }
     // Produtividade do COPOM (quem mais atendeu/despachou) — mesma lógica de
     // js/dashboard-copom.js (campo item.atendente do nó /geral).
     function ehAtendenteCopom(q) {
@@ -1189,6 +1281,54 @@
         const linhas = top.map(([tipo, v]) => `• <strong>${tipo}</strong>: ${v.qtd} ocorrência(s), ${formatarPesoDroga(v.peso)}`);
         const totalPeso = Object.values(porTipo).reduce((s, v) => s + v.peso, 0);
         return `💊 Drogas apreendidas ${periodo.label}${sufixoCidade} — por substância:<br>${linhas.join('<br>')}<br><br>Total geral: <strong>${formatarPesoDroga(totalPeso)}</strong> em <strong>${filtrada.length}</strong> ocorrência(s).`;
+    }
+
+    // "Quais TCOs tiveram movimentação essa semana", "TCO de status
+    // arquivado/julgado/certidão essa semana" — usa a coluna "Data Última
+    // Movimentação" (só existe a partir da correção no Apps Script; só é
+    // preenchida quando o STATUS muda de verdade, nunca a cada sync — ver
+    // extrairStatusPuro/COL_DATA_MOV_TCO no script). "Recente"/"recentes"
+    // sem período explícito vira "últimos 7 dias" (detectarPeriodo não
+    // reconhece essa palavra — sem esse fallback local a pergunta cairia
+    // no padrão "este ano", muito mais amplo do que "recente" sugere).
+    const STATUS_MOV_TCO = [
+        { chave: 'ARQUIVADO', gatilhos: ['arquiv'] },
+        { chave: 'JULGADO', gatilhos: ['julgad'] },
+        { chave: 'CERTIDAO', gatilhos: ['certidao'] },
+        { chave: 'BAIXADO', gatilhos: ['baixad'] },
+    ];
+    async function responderMovimentacaoRecenteTCO(base, periodo, qMin) {
+        let periodoMov = periodo;
+        if (periodo.implicito && qMin.includes('recente')) {
+            const hoje = new Date();
+            const ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 7);
+            periodoMov = { label: 'nos últimos 7 dias', ini, fim: new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999) };
+        }
+
+        const statusFiltro = STATUS_MOV_TCO.filter(s => s.gatilhos.some(g => qMin.includes(g))).map(s => s.chave);
+
+        const comData = base
+            .map(item => ({
+                item,
+                data: parseData(CAMPO(item, 'Data Última Movimentação')),
+                status: movBase(CAMPO(item, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO')) || 'sem movimentação',
+            }))
+            .filter(x => x.data);
+
+        if (!comData.length) {
+            return '⚠️ Ainda não encontrei nenhum TCO com a coluna <strong>"Data Última Movimentação"</strong> preenchida — essa coluna só é gravada a partir de agora, quando o status de um TCO mudar de verdade numa sincronização. Assim que a próxima sincronização (manual ou diária) rodar e detectar mudanças reais, volto a conseguir responder isso.';
+        }
+
+        let filtrados = comData.filter(x => x.data >= periodoMov.ini && x.data <= periodoMov.fim);
+        if (statusFiltro.length) filtrados = filtrados.filter(x => statusFiltro.some(s => NORM(x.status).includes(s)));
+
+        const sufixoStatus = statusFiltro.length ? ` de status ${statusFiltro.join('/')}` : '';
+        if (!filtrados.length) return `📋 Não encontrei nenhum TCO${sufixoStatus} com movimentação real ${periodoMov.label}.`;
+
+        filtrados.sort((a, b) => b.data - a.data);
+        const linhas = filtrados.slice(0, 25).map(x => `📄 <strong>${escHtml(CAMPO(x.item, 'Nº Ocorrência'))}</strong> — ${escHtml(x.status)} (${x.data.toLocaleDateString('pt-BR')})`);
+        const sufixoMais = filtrados.length > 25 ? `<br><em>...e mais ${filtrados.length - 25}.</em>` : '';
+        return `📋 <strong>${filtrados.length}</strong> TCO(s)${sufixoStatus} com movimentação real ${periodoMov.label}:<br><br>` + linhas.join('<br>') + sufixoMais;
     }
 
     // "Onde a maconha foi apreendida e com quem" — pergunta por REGISTRO,
@@ -2614,11 +2754,11 @@
         // Consulta por identificador (CPF/boletim/processo/nome) é busca de
         // cadastro exata — nunca deixar a IA "resumir" isso, sempre regra.
         const ehIdentificador = !!extrairIdentificador(qMin) || !!extrairNomeProvavel(textoOriginal, qMin);
-        const ehIntentoDeterministico = ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehPrevisao(qMin) || ehCadastroEvento(qMin) ||
+        const ehIntentoDeterministico = ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehPrevisao(qMin) || ehCadastroEvento(qMin) || ehEventos(qMin) || !!contextoPendenteValido() ||
             ehCriticidade(qMin) || ehCartaoPrograma(qMin) || ehAtendenteCopom(qMin) || ehComarcaArquivamentos(qMin) || ehRankingMilitaresTCO(qMin) ||
             ehAceitabilidadePorLocal(qMin) || ehVisitasSugeridas(qMin) ||
             ehLocalizacaoDroga(qMin) || ehMateriais(qMin) ||
-            ehResumo(qMin) || ehComparativo(qMin) || ehIdentificador || ehDetalheDrogas(qMin) || ehTopStatus(qMin) ||
+            ehResumo(qMin) || ehComparativo(qMin) || ehIdentificador || ehDetalheDrogas(qMin) || ehTopStatus(qMin) || ehMovimentacaoRecenteTCO(qMin) ||
             ehRankingSinistroMotorista(qMin) || ehRankingSinistroViatura(qMin) || ehRevisaoViatura(qMin) || ehDossieViatura(qMin) || ehDossieMotorista(qMin);
         const chaveCatPreliminar = detectarCategoria(q);
         const categoriasPreliminar = detectarCategoriasMultiplas(q);
@@ -2676,12 +2816,34 @@
         const q = NORM(textoOriginal);
         const qMin = q.toLowerCase();
 
+        // Confirmação de uma oferta pendente (ex.: "quer que eu monte a
+        // OPO?") — SEMPRE checado primeiro, antes de qualquer outra regra:
+        // "sim"/"ok"/"quero" não são perguntas de dado, são resposta a algo
+        // que O XERIFE perguntou antes. Expira sozinho (ver
+        // contextoPendenteValido) pra nunca disparar de forma equivocada
+        // muito tempo depois. Qualquer outra coisa digitada com uma oferta
+        // pendente CANCELA a oferta (evita um "sim" perdido lá na frente
+        // acionar algo que o usuário já nem lembra ter sido perguntado).
+        const ctxPendente = contextoPendenteValido();
+        if (ctxPendente) {
+            contextoPendente = null;
+            if (ctxPendente.tipo === 'oferta_opo') {
+                if (ehConfirmacao(qMin)) return gerarLinkOpoEvento(ctxPendente.evento);
+                if (ehNegacao(qMin)) return 'Beleza, não vou gerar a OPO agora. Se mudar de ideia, é só perguntar de novo sobre o evento.';
+            }
+        }
+
         if (ehSaudacao(qMin)) return '🤠 E aí! Sou o Xerife, pergunte sobre os números da sua unidade — MVI, CVLI, CVP, TCO, armas, drogas, perturbação, violência doméstica ou visitas orientativas. Ex.: <em>"quantos TCOs este mês?"</em> ou <em>"resumo de hoje"</em>.';
         if (ehAjuda(qMin)) return montarAjuda();
         if (ehForaDeEscopo(qMin)) return respostaForaDeEscopo();
         // Checado antes de tudo — é um pedido de AÇÃO (cadastro), não uma
         // pergunta de dado, então não deve cair no fallback de categoria.
         if (ehCadastroEvento(qMin)) return respostaCadastroEvento();
+        // Consulta sobre eventos (porte/data/detalhes) — checada logo
+        // depois do cadastro, mesmo motivo: Eventos não é uma CATEGORIA
+        // (sem número-de-ocorrência), então precisa de rota própria antes
+        // do fallback genérico de categoria.
+        if (ehEventos(qMin)) return await responderEventos(textoOriginal, q, qMin);
 
         // Consulta direta por identificador (CPF/boletim/processo/nome) —
         // checado cedo, antes de qualquer detecção de categoria/estatística,
@@ -2830,6 +2992,17 @@
             return responderDetalheDrogas(periodo, cidade, filtrada);
         }
 
+        // Lista de TCOs com movimentação REAL num período (não ranking) —
+        // usa a coluna "Data Última Movimentação" (só existe/só é
+        // preenchida a partir da correção feita no Apps Script — ver
+        // COL_DATA_MOV_TCO), nunca a data entre parênteses da própria
+        // Movimentação nem a coluna DATA (essa é a data de REGISTRO do
+        // TCO, não da movimentação). Checado ANTES de ehTopStatus, que
+        // senão venceria primeiro (mesmo gatilho "movimentacao").
+        if (chaveCat === 'tco' && ehMovimentacaoRecenteTCO(qMin)) {
+            return responderMovimentacaoRecenteTCO(base, periodo, qMin);
+        }
+
         if (ehTopStatus(qMin) && cat.campoStatus) {
             const top = topEntries(filtrada, cat.campoStatus, 8);
             if (!top.length) return `Não encontrei registros de <strong>${cat.label}</strong> ${periodo.label}${sufixoCidade} pra listar status/movimentação.`;
@@ -2879,6 +3052,198 @@
     // dados; sem anexo não tem como extrair os campos do evento.
     function respostaCadastroEvento() {
         return '🎪 Pra cadastrar um evento, anexe o ofício (clique no 📎 aqui do chat) — eu leio o documento, preencho os campos automaticamente e te mostro pra confirmar antes de gravar. Se preferir, também dá pra cadastrar manualmente na página <strong>Eventos</strong>.';
+    }
+
+    // ── Contexto pendente — "memória de curto prazo" só pra confirmação
+    // ("sim"/"ok"/"quero") de uma oferta que O XERIFE fez (ex.: montar a
+    // OPO de um evento de grande porte). Não é histórico de conversa (isso
+    // já existe, ver carregarHistorico, e só alimenta a IA) — é estado de
+    // diálogo mesmo, checado no topo de processarPergunta. Expira sozinho
+    // pra nunca acionar algo que o usuário já nem lembra ter sido
+    // perguntado se ele voltar a falar com o Xerife bem depois.
+    let contextoPendente = null;
+    const EXPIRACAO_CONTEXTO_PENDENTE_MS = 2 * 60 * 1000;
+    function definirContextoPendente(ctx) {
+        contextoPendente = Object.assign({}, ctx, { expiraEm: Date.now() + EXPIRACAO_CONTEXTO_PENDENTE_MS });
+    }
+    function contextoPendenteValido() {
+        return (contextoPendente && contextoPendente.expiraEm > Date.now()) ? contextoPendente : null;
+    }
+    function ehConfirmacao(q) {
+        return /^(sim|s|ok(ay)?|isso( mesmo)?|quero( sim)?|pode( gerar)?|confirma(do)?|manda( ver)?|bora|vamos|show|positivo|claro|com certeza)\b/.test(q.trim());
+    }
+    function ehNegacao(q) {
+        return /^(nao|n|cancela|deixa( pra la)?|esquece|negativo)\b/.test(q.trim());
+    }
+
+    // ── Eventos — cruza cfg.gas.EVENTOS pra classificar por porte (mesmo
+    // critério de page/calendario.html e js/core/notificacoes.js: até 500
+    // pequeno, 501–1000 médio, acima de 1000 grande) e responder perguntas
+    // de quantidade/detalhe/data. ──────────────────────────────────────
+    function formatarDetalheEvento(ev) {
+        const publico = publicoEvento(ev);
+        const porte = portePorPublico(publico);
+        const emoji = porte === 'grande' ? '🔴' : porte === 'medio' ? '🟡' : '🟢';
+        const nome = CAMPO(ev, 'NOME DO EVENTO') || 'Evento sem nome';
+        const linhas = [
+            `${emoji} <strong>${escHtml(nome)}</strong> — porte <strong>${porte}</strong> (~${publico} pessoas)`,
+            `📍 ${escHtml(CAMPO(ev, 'CIDADE'))}${CAMPO(ev, 'LOCAL DO EVENTO') ? ' — ' + escHtml(CAMPO(ev, 'LOCAL DO EVENTO')) : ''}`,
+            `📅 ${escHtml(CAMPO(ev, 'DATA'))}${CAMPO(ev, 'HORÁRIO DE INÍCIO') ? ', ' + escHtml(CAMPO(ev, 'HORÁRIO DE INÍCIO')) : ''}${CAMPO(ev, 'HORÁRIO DE TÉRMINO') ? ' às ' + escHtml(CAMPO(ev, 'HORÁRIO DE TÉRMINO')) : ''}`,
+        ];
+        if (CAMPO(ev, 'ORGANIZAÇÃO')) linhas.push(`🏢 Organização: ${escHtml(CAMPO(ev, 'ORGANIZAÇÃO'))}`);
+        if (CAMPO(ev, 'NOME DO RESPONSÁVEL')) linhas.push(`👤 Responsável: ${escHtml(CAMPO(ev, 'NOME DO RESPONSÁVEL'))}${CAMPO(ev, 'TELEFONE') ? ' (' + escHtml(CAMPO(ev, 'TELEFONE')) + ')' : ''}`);
+        if (CAMPO(ev, 'OBSERVACOES')) linhas.push(`📝 ${escHtml(CAMPO(ev, 'OBSERVACOES'))}`);
+        return linhas.join('<br>');
+    }
+    // "dia 15/08", "15/08/2026", "dia 15 de agosto de 2026", "15 de agosto", "dia 15"
+    function extrairDataEspecifica(q) {
+        const hoje = new Date();
+        let m = q.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/);
+        if (m) {
+            const d = new Date(m[3] ? +m[3] : hoje.getFullYear(), +m[2] - 1, +m[1]);
+            return isNaN(d) ? null : d;
+        }
+        for (let i = 0; i < MESES_NOME.length; i++) {
+            const re = new RegExp('\\b(\\d{1,2})\\s*(?:de\\s*)?' + MESES_NOME[i] + '\\b(?:\\s*de\\s*(\\d{4}))?');
+            const mm = q.match(re);
+            if (mm) {
+                const d = new Date(mm[2] ? +mm[2] : hoje.getFullYear(), i, +mm[1]);
+                return isNaN(d) ? null : d;
+            }
+        }
+        const md = q.match(/\bdia\s+(\d{1,2})\b/);
+        if (md) {
+            const d = new Date(hoje.getFullYear(), hoje.getMonth(), +md[1]);
+            return isNaN(d) ? null : d;
+        }
+        return null;
+    }
+    function mesmaData(a, b) {
+        return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    }
+    // Busca por NOME — "detalhe o evento X", "quando seria o evento Y".
+    // Nomes reais vêm bagunçados (abreviações, sem padrão), então em vez de
+    // exigir substring exata, compara por SOBREPOSIÇÃO DE PALAVRAS
+    // significativas entre a pergunta e o "NOME DO EVENTO" cadastrado —
+    // tolera palavras extras de um lado ou de outro (ex.: usuário digita
+    // "FESTA DO PADRE CÍCERO", evento está cadastrado como "FESTA PADRE
+    // CICERO- SHOW DE LICINHA MENDES...").
+    const PALAVRAS_IGNORAR_EVENTO = new Set([
+        'DE', 'DO', 'DA', 'DOS', 'DAS', 'E', 'O', 'A', 'OS', 'AS', 'EM', 'NO', 'NA', 'NOS', 'NAS',
+        'PARA', 'COM', 'QUE', 'SERA', 'SERIA', 'VAI', 'SER', 'QUANDO', 'QUAL', 'QUAIS', 'ONDE',
+        'EVENTO', 'EVENTOS', 'DETALHE', 'DETALHES', 'ME', 'FALE', 'FALA', 'SOBRE', 'MOSTRA', 'MOSTRE', 'DIA',
+    ]);
+    function normEventoTexto(s) { return NORM(s).replace(/[^A-Z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+    function detectarEventosPorNome(qMin, eventos) {
+        const qNorm = normEventoTexto(qMin);
+        const palavrasQuery = qNorm.split(' ').filter(w => w.length >= 3 && !PALAVRAS_IGNORAR_EVENTO.has(w));
+        if (!palavrasQuery.length) return [];
+        return eventos.filter(ev => {
+            const nomeNorm = normEventoTexto(CAMPO(ev, 'NOME DO EVENTO'));
+            if (!nomeNorm) return false;
+            if (qNorm.includes(nomeNorm) || nomeNorm.includes(qNorm)) return true;
+            const palavrasNome = new Set(nomeNorm.split(' ').filter(w => w.length >= 3));
+            const bateu = palavrasQuery.filter(w => palavrasNome.has(w));
+            // Limiar alto de propósito — com uma planilha de +1000 eventos
+            // reais, um limiar de 50% deixava passar coisa demais (ex.:
+            // "FESTA" sozinha aparece em dezenas de nomes diferentes, então
+            // "FESTA PADRE CICERO" só com 2 de 4 palavras batendo casava
+            // com eventos completamente diferentes). Exige quase todas as
+            // palavras da pergunta presentes no nome.
+            return bateu.length >= Math.min(palavrasQuery.length, 3) && bateu.length / palavrasQuery.length >= 0.7;
+        });
+    }
+    // Resposta pra 1 evento só — se for de GRANDE porte, oferece montar a
+    // OPO já com cidade/data/análise de área prontas (pedido explícito do
+    // usuário) e deixa a oferta pendente aguardando confirmação.
+    function respostaEventoUnico(ev) {
+        const detalhe = formatarDetalheEvento(ev);
+        if (portePorPublico(publicoEvento(ev)) !== 'grande') return detalhe;
+        definirContextoPendente({ tipo: 'oferta_opo', evento: ev });
+        return detalhe + '<br><br>🚨 Isso é um evento de <strong>grande porte</strong> — quer que eu monte a OPO já com a cidade, a data e a análise de área rodadas? Responda <strong>"sim"</strong> pra eu gerar o link.';
+    }
+    async function responderEventos(textoOriginal, q, qMin) {
+        let eventos;
+        try { eventos = await fetchEventos(); } catch (e) { return '⚠️ Não consegui buscar os eventos agora. Tente de novo em instantes.'; }
+        if (!eventos.length) return '🎪 Não encontrei nenhum evento cadastrado no sistema.';
+
+        // "qual o evento do dia X" / "evento de 15/08" — data específica
+        // sempre vence, é mais direto que qualquer outro filtro.
+        const dataAlvo = extrairDataEspecifica(qMin);
+        if (dataAlvo) {
+            const doDia = eventos.filter(ev => mesmaData(parseData(CAMPO(ev, 'DATA')), dataAlvo));
+            if (!doDia.length) return `🎪 Não encontrei nenhum evento cadastrado pra ${dataAlvo.toLocaleDateString('pt-BR')}.`;
+            if (doDia.length === 1) return respostaEventoUnico(doDia[0]);
+            return `🎪 Encontrei <strong>${doDia.length}</strong> eventos em ${dataAlvo.toLocaleDateString('pt-BR')}:<br><br>` + doDia.map(formatarDetalheEvento).join('<br><br>');
+        }
+
+        // "detalhe o evento X" / "quando seria o evento Y" — busca por
+        // nome específico, checada ANTES do filtro genérico de
+        // porte/período (nomear um evento é mais específico que qualquer
+        // filtro agregado, e sem isso a pergunta caía no fallback de
+        // "listar tudo").
+        const porNome = detectarEventosPorNome(qMin, eventos);
+        if (porNome.length === 1) return respostaEventoUnico(porNome[0]);
+        // Achou por nome mas são MUITOS (nomes comuns tipo "Festa do Padre
+        // Cícero" se repetem em várias cidades/anos) — NUNCA descarta o
+        // filtro por nome pra cair no catálogo inteiro (isso já foi
+        // reportado como bug real: pedir detalhe de 1 evento devolvia a
+        // lista inteira, +1000 itens); só trunca a exibição.
+        if (porNome.length > 1) {
+            porNome.sort((a, b) => (parseData(CAMPO(a, 'DATA')) || 0) - (parseData(CAMPO(b, 'DATA')) || 0));
+            const LIMITE_EXIBICAO = 15;
+            const mostrar = porNome.slice(0, LIMITE_EXIBICAO);
+            const sufixoMais = porNome.length > LIMITE_EXIBICAO
+                ? `<br><br><em>...e mais ${porNome.length - LIMITE_EXIBICAO}. Tente incluir a cidade ou a data pra achar só 1.</em>` : '';
+            return `🎪 Encontrei <strong>${porNome.length}</strong> eventos com esse nome:<br><br>` + mostrar.map(formatarDetalheEvento).join('<br><br>') + sufixoMais;
+        }
+        // "detalhe o evento X"/"quando seria o evento X" que não achou
+        // NADA por nome — NÃO cai no fallback de listar tudo. Avisa que
+        // não achou em vez de despejar o catálogo inteiro.
+        if (porNome.length === 0 && /\bdetalh|\bquando\b|\bhorario do evento\b/.test(qMin)) {
+            return '🎪 Não encontrei nenhum evento cadastrado com esse nome. Tente com outro trecho do nome, ou pergunte por data/porte (ex.: "evento do dia 15/08" ou "eventos de grande porte").';
+        }
+
+        let porteAlvo = null;
+        if (/\bgrande\b/.test(qMin)) porteAlvo = 'grande';
+        else if (/\bmedi[oa]\b/.test(qMin)) porteAlvo = 'medio';
+        else if (/\bpequen[oa]\b/.test(qMin)) porteAlvo = 'pequeno';
+
+        // Sem período explícito na pergunta, não filtra por data — Eventos
+        // é agenda (passado E futuro), diferente das categorias de
+        // ocorrência (histórico), então "quais eventos de grande porte"
+        // sem mais nada deve listar TODOS os cadastrados, não só os do
+        // ano corrente até hoje (que é o padrão implícito de detectarPeriodo).
+        const periodo = detectarPeriodo(qMin);
+        let filtrados = periodo.implicito ? eventos.slice() : eventos.filter(ev => { const d = parseData(CAMPO(ev, 'DATA')); return d && d >= periodo.ini && d <= periodo.fim; });
+        if (porteAlvo) filtrados = filtrados.filter(ev => portePorPublico(publicoEvento(ev)) === porteAlvo);
+
+        const sufixoPeriodo = periodo.implicito ? '' : ` ${periodo.label}`;
+        if (!filtrados.length) return `🎪 Não encontrei eventos${porteAlvo ? ' de porte ' + porteAlvo : ''}${sufixoPeriodo}.`;
+        if (filtrados.length === 1) return respostaEventoUnico(filtrados[0]);
+
+        filtrados.sort((a, b) => (parseData(CAMPO(a, 'DATA')) || 0) - (parseData(CAMPO(b, 'DATA')) || 0));
+        return `🎪 <strong>${filtrados.length}</strong> evento(s)${porteAlvo ? ' de porte ' + porteAlvo : ''}${sufixoPeriodo}:<br><br>` +
+            filtrados.map(ev => `📅 ${escHtml(CAMPO(ev, 'DATA'))} — <strong>${escHtml(CAMPO(ev, 'NOME DO EVENTO') || 'sem nome')}</strong> (${escHtml(CAMPO(ev, 'CIDADE'))}) — porte ${portePorPublico(publicoEvento(ev))}, ~${publicoEvento(ev)} pessoas`).join('<br>');
+    }
+
+    // ── Link pré-preenchido da OPO Interativa — não existe geração de
+    // documento hospedada no backend (tudo é montado no navegador), então
+    // a entrega é um LINK com cidade/data/nome já preenchidos e um sinal
+    // (?auto=1) pra opo-interativa.html rodar a análise de área sozinha ao
+    // abrir — decisão confirmada com o usuário, ver AskUserQuestion. ────
+    function gerarLinkOpoEvento(ev) {
+        const dataEvento = parseData(CAMPO(ev, 'DATA'));
+        const params = new URLSearchParams();
+        const cidade = CAMPO(ev, 'CIDADE');
+        if (cidade) params.set('cidade', cidade);
+        if (dataEvento) params.set('data', dataEvento.toISOString().slice(0, 10));
+        const nomeEvento = CAMPO(ev, 'NOME DO EVENTO');
+        params.set('nome', nomeEvento ? `OPO - ${nomeEvento}` : 'OPO');
+        params.set('auto', '1');
+        const link = `${prefixoPagina()}page/opo-interativa.html?${params.toString()}`;
+        return `✅ Prontinho! Já preparei a OPO pra <strong>${escHtml(nomeEvento || 'esse evento')}</strong>, com cidade, data e a análise de área já rodadas — só falta clicar em <strong>"Gerar OPO"</strong> pra ver o documento pronto.<br><br>` +
+            `<a href="${link}" target="_blank" style="display:inline-block;margin-top:.2rem;padding:.45rem .85rem;background:var(--p3-blue-700,#2f5fdd);color:#fff;border-radius:8px;text-decoration:none;font-weight:600;font-size:.8rem;">🔗 Abrir OPO — ${escHtml(cidade || 'unidade')}</a>`;
     }
 
     function montarAjuda() {
@@ -2946,8 +3311,7 @@
     }
 
     function montarPainel() {
-        // mesma regra de prefixo de js/core/session.js (page/, relatorios/, public/, termos/ ficam um nível abaixo da raiz)
-        const prefixo = /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
+        const prefixo = prefixoPagina();
         // cover (em vez de contain) corta a margem transparente ao redor do
         // escudo na imagem — sem isso, o logo aparece minúsculo dentro do espaço reservado.
         const iconeHTML = '<img src="' + prefixo + 'img/xerife-logo.png" alt="Xerife" ' +
