@@ -331,6 +331,7 @@
 
 <script>
     let DATABASE_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+    let CFG_UNIDADE = null; // config completa da unidade — usado pra decidir Firebase vs API PHP no nó /autor
     const NODE_NAME = "droga";
     const NODE_NAME_GERAL = "geral";
     const NODE_NAME_TCO = "tco_geral";
@@ -348,17 +349,16 @@
             const msgCarregamento = document.getElementById('mensagem-carregamento');
             if (msgCarregamento) msgCarregamento.style.display = 'block';
 
-            const [resDrogas, resGeral, resTco, resAutores] = await Promise.all([
+            const [resDrogas, resGeral, resTco, dataAutores] = await Promise.all([
                 fetch(`${DATABASE_URL}/${NODE_NAME}.json`),
                 fetch(`${DATABASE_URL}/${NODE_NAME_GERAL}.json`),
                 fetch(`${DATABASE_URL}/tco_geral.json`),
-                fetch(`${DATABASE_URL}/autor.json`)
+                P3.Autores.listar(CFG_UNIDADE) // Firebase vs API PHP (Hostinger, 10º BPM) — ver js/core/session.js
             ]);
 
             const dataDrogas = await resDrogas.json();
             const dataGeral = await resGeral.json();
             const dataTco = await resTco.json();
-            const dataAutores = await resAutores.json();
 
             const tbody = document.querySelector('#tabela-drogas tbody');
             tbody.innerHTML = "";
@@ -709,15 +709,15 @@
             if (btnBuscar) { btnBuscar.disabled = true; btnBuscar.textContent = '⏳ Buscando...'; }
 
             try {
-                const [resDrogas, resGeral, resAutores] = await Promise.all([
+                const [resDrogas, resGeral, dataAutoresBruto] = await Promise.all([
                     fetch(`${DATABASE_URL}/droga.json`),
                     fetch(`${DATABASE_URL}/geral.json`),
-                    fetch(`${DATABASE_URL}/autor.json`)
+                    P3.Autores.listar(CFG_UNIDADE) // Firebase vs API PHP (Hostinger, 10º BPM) — ver js/core/session.js
                 ]);
 
                 const dataDrogas  = await resDrogas.json()  || {};
                 const dataGeral   = await resGeral.json()   || {};
-                const dataAutores = await resAutores.json() || {};
+                const dataAutores = dataAutoresBruto || {};
 
                 const arrayGeral   = Object.values(dataGeral);
                 const arrayAutores = Object.values(dataAutores);
@@ -885,6 +885,7 @@
         if (!P3.requireAuth()) return;
 
         const cfg = await P3.loadUnidadeConfig();
+        CFG_UNIDADE = cfg;
         DATABASE_URL = cfg.firebase.databaseURL;
         atualizarCardsInterface({
             "MACONHA": 0, "CRACK": 0, "COCAÍNA": 0, "RUFINOL": 0, "LOLÓ": 0

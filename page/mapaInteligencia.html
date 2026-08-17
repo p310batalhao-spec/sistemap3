@@ -123,6 +123,36 @@
         .btn-mapa.active { background: #1565c0; border-color: #1976d2; }
         .btn-mapa.active-red { background: #b71c1c; border-color: #c62828; }
 
+        /* ── Barra de busca global (CPF/Nome/Vulgo/Nome da mãe) ──────── */
+        #mapa-busca-bar {
+            display: flex; align-items: center; gap: 8px;
+            background: rgba(0,229,255,.07); border-bottom: 1px solid rgba(0,229,255,.25);
+            padding: 8px 14px; flex-shrink: 0;
+        }
+        #mapa-busca-bar input {
+            flex: 1; max-width: 420px; padding: 7px 12px; border-radius: 6px;
+            border: 1px solid rgba(0,229,255,.4); background: rgba(255,255,255,.04);
+            color: #fff; font-size: 12px;
+        }
+        #mapa-busca-bar input::placeholder { color: rgba(255,255,255,.4); }
+        #mapa-busca-bar button {
+            padding: 7px 16px; border-radius: 6px; border: 1px solid rgba(0,229,255,.4);
+            background: rgba(0,229,255,.18); color: #00e5ff; font-weight: bold; font-size: 12px; cursor: pointer;
+        }
+        #mapa-busca-bar button:hover { background: rgba(0,229,255,.3); }
+
+        /* ── Painel flutuante (resultado da busca global por CPF/Nome) ── */
+        .painel-flutuante {
+            position: absolute; top: 96px; right: 12px; z-index: 1000;
+            background: rgba(15,20,40,.95); color: #eee;
+            padding: 12px 14px; border-radius: 10px;
+            font-family: Arial, sans-serif; font-size: 11px;
+            min-width: 220px; max-width: 280px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.6);
+            border: 1px solid rgba(0,229,255,.25);
+            backdrop-filter: blur(4px);
+        }
+
         /* ── Cards de camada ─────────────────────────────── */
         .camada-toggle {
             display: flex;
@@ -172,6 +202,22 @@
         .badge-crime   { background: #e65100; color: #fff; }
         .badge-faccao  { background: #880e4f; color: #fff; }
         .badge-bo      { background: #0277bd; color: #fff; }
+
+        /* ── Vínculos — cards redesenhados (avatar + par + tipo colorido) ── */
+        .legenda-vinculos { display: flex; flex-wrap: wrap; gap: 8px; margin: 2px 0 10px; }
+        .legenda-vinculos-item { display: flex; align-items: center; gap: 4px; font-size: 9px; color: rgba(255,255,255,.55); }
+        .legenda-vinculos-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .sb-card-vinculo { padding: 10px 11px; }
+        .vinculo-par { display: flex; align-items: center; gap: 8px; }
+        .vinculo-avatar {
+            width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+            background: rgba(255,255,255,.1); color: #fff; font-size: 10px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .vinculo-avatar:hover { background: rgba(66,165,245,.35); }
+        .vinculo-nomes { flex: 1; min-width: 0; text-align: center; }
+        .vinculo-nome { font-size: 11px; color: #fff; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .vinculo-conector { font-size: 9px; font-weight: bold; margin: 2px 0; }
 
         /* ── Rótulo de seção no painel ───────────────────── */
         .sec-label {
@@ -470,7 +516,7 @@
 
         <!-- ── Tab Camadas ─────────────────────────────────────── -->
         <div class="tab-content active" id="tab-camadas">
-            <div class="sec-label">Ocorrências — Firebase</div>
+            <div class="sec-label">Ocorrências — Firebase + CAD</div>
             <div id="lista-camadas-fb"></div>
 
             <div class="sec-label" style="margin-top:14px;">Inteligência — Supabase</div>
@@ -547,6 +593,7 @@
             <input class="busca-input" id="busca-vinculos"
                 placeholder="🔍 Buscar pessoa, tipo..."
                 oninput="filtrarLista('vinculos')">
+            <div id="legenda-vinculos" class="legenda-vinculos"></div>
             <div id="lista-vinculos">
                 <div style="color:rgba(255,255,255,.3);font-size:11px;text-align:center;padding:20px;">
                     Aguardando dados…
@@ -594,11 +641,25 @@
             </span>
         </div>
 
+        <!-- Barra de busca global — linha própria, sempre visível (não
+             disputa espaço com os botões de ferramenta) -->
+        <div id="mapa-busca-bar">
+            <span style="font-size:15px;">🔎</span>
+            <input type="text" id="busca-global-input"
+                placeholder="Buscar no mapa por nome, CPF, vulgo (apelido) ou nome da mãe..."
+                onkeydown="if(event.key==='Enter')buscarGlobal()">
+            <button onclick="buscarGlobal()">Buscar</button>
+            <span style="font-size:10px;color:rgba(0,229,255,.7);">mostra ocorrências, vínculos e ocorrências dos vínculos, tudo no mapa</span>
+        </div>
+
+        <!-- Painel flutuante do resultado da busca global (CPF/Nome) -->
+        <div id="painel-busca-global" class="painel-flutuante" style="display:none;"></div>
+
         <!-- Loader -->
         <div id="loader-overlay">
             <div class="spinner"></div>
             <div style="font-weight:bold;">Carregando dados…</div>
-            <div class="loader-msg" id="loader-msg">Conectando ao Firebase e Supabase</div>
+            <div class="loader-msg" id="loader-msg">Conectando ao Firebase, Supabase e CAD</div>
         </div>
 
         <!-- Mapa Leaflet -->
@@ -658,6 +719,7 @@
 // CONFIGURAÇÕES DE CONEXÃO
 // ─────────────────────────────────────────────────────────────────
 let FB_BASE         = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+let CFG_UNIDADE     = null; // config completa da unidade — usado por fbFetch('autor') pra decidir Firebase vs API PHP
 const SUPABASE_URL  = 'https://zxynbnnooauasmasgzxp.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4eW5ibm5vb2F1YXNtYXNnenhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4NDgxNjUsImV4cCI6MjA4ODQyNDE2NX0.2LVOegWWYaVrvQ5DzrSgyBvPaYsanitK_sdWjSHOhkw';
 
@@ -673,12 +735,34 @@ const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 const SUPABASE_KEY = SUPABASE_SERVICE_KEY || SUPABASE_ANON;
 
 // ─────────────────────────────────────────────────────────────────
+// CAD — mesma integração de js/preditivaCAD.js (Apps Script Web App,
+// proxy autenticado do CAD real). O "login" (CPF+senha) fica gravado do
+// lado do Apps Script (PropertiesService, compartilhado entre chamadas
+// — não é sessão por-aba) — esta página só CONSOME, não pede login. Se
+// o token do lado do GAS estiver vencido/ausente, a resposta vem vazia
+// e a página segue normalmente com Firebase+Supabase (best-effort,
+// nunca trava o carregamento do mapa).
+// ─────────────────────────────────────────────────────────────────
+const GAS_CAD_URL = 'https://script.google.com/macros/s/AKfycbwuyKpN4AbmV_CmQfZr2olClY1JveArwKEcJE3__DFf74xfnd3AlhXqnde7RPkXDlqx/exec';
+const CAD_DIAS_JANELA = 90; // CAD não tem endpoint "histórico completo" — só por intervalo de data
+const TOKEN_GEO_KEY = 'geo_cookie_p3';       // mesma chave de localStorage do preditivaCAD.html
+const TOKEN_GEO_TS_KEY = 'geo_cookie_ts_p3';
+const TOKEN_TTL_MS = 23 * 60 * 60 * 1000;
+
+// ─────────────────────────────────────────────────────────────────
 // ESTADO GLOBAL
 // ─────────────────────────────────────────────────────────────────
 let _mapaL         = null;
 let _heatLayers    = {};
 let _clusterGroups = {};
 let _dadosMapa     = {};
+// Contagem de marcadores Supabase REALMENTE plotados (com fallback de
+// endereço/membro já aplicado) — preenchido por construirCamadasSB(),
+// lido por renderPainelCamadas(). Sem isso, o painel recalculava só por
+// coordenada própria (sem fallback) e mostrava 0 mesmo quando o
+// marcador ia aparecer no mapa (ex.: pessoa sem GPS mas com endereço
+// válido, ou ORCRIM/Facção sem sede própria mas com membro geocodificado).
+let _dadosMapaSB = { pessoas: 0, orcrim: 0, crimes: 0, enderecos: 0, vinculos: 0 };
 let _camadasAtivas = new Set();
 let _modoVista     = 'heat';
 let _filtroIni     = null;
@@ -725,8 +809,11 @@ let _idx = {
     regOfcByNumBO: {},    // numBO → registro_oficial
     bairroById: {},       // id → bairro
     cidadeById: {},       // id → cidade
-    autorByNome: {},      // nome_norm → [registros /autor Firebase]
-    fbAutorByPessoa: {},  // pessoa_id → [registros /autor Firebase]
+    ocorrenciasPorCPF: {},     // cpf (só dígitos) → [registros de ocorrência — Hostinger/Firebase autor + CAD envolvido]
+    ocorrenciasPorNomeNorm: {},// nome_norm → [registros de ocorrência] (fallback quando não há CPF)
+    fbAutorByPessoa: {},  // pessoa_id → [registros de ocorrência, com _fonte/_matchPor]
+    membrosPorOrcrim: {}, // orcrim_id → [pessoa_ids]
+    membrosPorFaccao: {}, // faccao_id → [pessoa_ids]
 };
 
 // Camadas Supabase no mapa
@@ -751,6 +838,7 @@ let _polyPontos        = [];
 // Flags de carregamento
 let _fbPronto = false;
 let _sbPronto = false;
+let _cadPronto = false;
 
 // ─────────────────────────────────────────────────────────────────
 // CONFIGURAÇÃO DAS CAMADAS FIREBASE
@@ -785,6 +873,27 @@ function coordValida(lat, lng) {
         && lat >= -11.0 && lat <= -7.0
         && lng >= -38.5 && lng <= -34.5;
 }
+// Compara número de boletim tolerando formatos diferentes entre Supabase
+// e Firebase/CAD (zero à esquerda, pontuação) — comparação exata primeiro,
+// cai pra só-dígitos se não bater. Sem isso, um "01427081" (Supabase) x
+// "1427081" (Firebase/CAD) nunca cruzava, e o fallback de GPS por BO
+// (registros sem coordenada própria) ficava sempre vazio.
+function _normBODigits(v) {
+    const d = String(v || '').replace(/\D/g, '');
+    return d.replace(/^0+/, '') || d;
+}
+function _boletinsIguais(a, b) {
+    const A = String(a || '').trim().toUpperCase(), B = String(b || '').trim().toUpperCase();
+    if (!A || !B) return false;
+    if (A === B) return true;
+    const dA = _normBODigits(A), dB = _normBODigits(B);
+    return !!dA && dA === dB;
+}
+function _buscarOcorrenciaPorBO(numBO) {
+    if (!numBO) return null;
+    return DADOS_FB.geral.find(g => _boletinsIguais(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO, numBO)) || null;
+}
+
 function parseDateStr(s) {
     if (!s || s === '---') return null;
     s = String(s).trim().substring(0,10);
@@ -867,6 +976,12 @@ function extrairPontos(registros) {
 // ═════════════════════════════════════════════════════════════════
 async function fbFetch(no) {
     try {
+        // Nó "autor": P3.Autores decide Firebase vs API PHP (Hostinger,
+        // 10º BPM) — ver js/core/session.js. Demais nós seguem no Firebase.
+        if (no === 'autor') {
+            const d = await P3.Autores.listar(CFG_UNIDADE);
+            return d ? Object.keys(d).map(id => ({ id, ...d[id] })) : [];
+        }
         const r = await fetch(`${FB_BASE}/${no}.json`);
         const d = await r.json();
         if (!d) return [];
@@ -877,8 +992,15 @@ async function fbFetch(no) {
     }
 }
 
+// Guarda o /geral do Firebase só como FALLBACK — a camada de ocorrência
+// geral (CCP/visitas + fallback de GPS por boletim) passa a vir do CAD
+// (ver carregarCAD/finalizarDadosGerais); se o CAD falhar/não estiver
+// configurado, cai de volta pra este array em vez de ficar vazio.
+let _geralFirebaseFallback = [];
+
 async function carregarFirebase() {
     const cfg = await P3.loadUnidadeConfig();
+    CFG_UNIDADE = cfg;
     FB_BASE = cfg.firebase.databaseURL;
     setLoader('Conectando ao Firebase…');
     try {
@@ -887,10 +1009,10 @@ async function carregarFirebase() {
             fbFetch('tco'), fbFetch('violencia_domestica'), fbFetch('sossego'), fbFetch('mandados'),
             fbFetch('autor'),
         ]);
-        const visitas = geral.filter(i => norm(i.TIPIFICACAO || i.TIPIFICACAO_GERAL || '').includes('VISITA'));
-        DADOS_FB = { geral, cvp, cvli, arma, droga, tco, vd, sossego, mandados, visitas, autores };
+        _geralFirebaseFallback = geral;
+        DADOS_FB = { geral: [], cvp, cvli, arma, droga, tco, vd, sossego, mandados, visitas: [], autores };
         const total = Object.values(DADOS_FB).reduce((s,a) => s + a.length, 0);
-        console.log(`[Firebase] ${total} registros carregados.`);
+        console.log(`[Firebase] ${total} registros carregados (geral fica de reserva — ver CAD).`);
         setLoader('Firebase ✓ — Conectando ao Supabase…');
     } catch(e) {
         console.error('[Firebase]', e);
@@ -898,6 +1020,86 @@ async function carregarFirebase() {
     }
     _fbPronto = true;
     verificarTudoPronto();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CARREGAMENTO CAD — ocorrências gerais + envolvidos, últimos
+// CAD_DIAS_JANELA dias (CAD não tem endpoint de histórico completo).
+// Mesma função fetchCAD de js/preditivaCAD.js — copiada aqui (arquivo
+// pequeno, não compensa extrair módulo compartilhado só por isso).
+// ═════════════════════════════════════════════════════════════════
+async function fetchCAD(acao, params) {
+    const qs = new URLSearchParams(Object.assign({ acao: acao }, params || {})).toString();
+    const resp = await fetch(GAS_CAD_URL + '?' + qs, { redirect: 'follow' });
+    const texto = await resp.text();
+    let data;
+    try { data = JSON.parse(texto); }
+    catch (e) { throw new Error('Resposta do CAD não é JSON válido: ' + texto.substring(0, 200)); }
+    return data;
+}
+
+function _cadTokenProvavelValido() {
+    const token = localStorage.getItem(TOKEN_GEO_KEY);
+    if (!token) return false;
+    const ts = parseInt(localStorage.getItem(TOKEN_GEO_TS_KEY) || '0', 10);
+    return (Date.now() - ts) <= TOKEN_TTL_MS;
+}
+
+// 'ocorrencias' pode vir truncado (limite de tempo de execução do Apps
+// Script) — mesma lógica de retomada de js/preditivaCAD.js
+// (buscarOcorrenciasComRetomada_), condensada aqui.
+const CAD_MAX_PARTES_RETOMADA = 6;
+async function _buscarOcorrenciasCADComRetomada(dataIni, dataFim) {
+    let parte = 1;
+    let resp = await fetchCAD('ocorrencias', { dataIni, dataFim });
+    if (resp.ok === false) return [];
+    let acumulado = resp.dados || [];
+    while (resp.truncado && resp.proximoOffset && parte < CAD_MAX_PARTES_RETOMADA) {
+        parte++;
+        resp = await fetchCAD('ocorrencias', {
+            dataIni, dataFim,
+            offsetInicial: String(resp.proximoOffset),
+            totalConhecido: String(resp.totalRelatadoPeloCAD || ''),
+            parte: String(parte),
+        });
+        if (resp.ok === false) break;
+        acumulado = acumulado.concat(resp.dados || []);
+    }
+    return acumulado;
+}
+
+async function carregarCAD() {
+    window._cadOcorrencias = [];
+    window._cadEnvolvidos  = [];
+    try {
+        if (!_cadTokenProvavelValido()) {
+            console.warn('[CAD] Token local ausente/vencido — pulando (best-effort). Configure em Análise Preditiva CAD para dados mais completos.');
+        } else {
+            const fim = new Date();
+            const ini = new Date(fim.getTime() - CAD_DIAS_JANELA * 24 * 60 * 60 * 1000);
+            const fmt = d => d.toISOString().substring(0, 10);
+            const dataIni = fmt(ini), dataFim = fmt(fim);
+            const [ocorrencias, envResp] = await Promise.all([
+                _buscarOcorrenciasCADComRetomada(dataIni, dataFim),
+                fetchCAD('envolvidos', { dataIni, dataFim }),
+            ]);
+            window._cadOcorrencias = ocorrencias;
+            window._cadEnvolvidos  = (envResp && envResp.ok !== false) ? (envResp.dados || []) : [];
+            console.log(`[CAD] ${window._cadOcorrencias.length} ocorrências, ${window._cadEnvolvidos.length} envolvidos (últimos ${CAD_DIAS_JANELA} dias).`);
+        }
+    } catch (e) {
+        console.warn('[CAD] Falha ao carregar — seguindo sem CAD (best-effort):', e.message);
+    }
+    _cadPronto = true;
+    verificarTudoPronto();
+}
+
+// Resolve DADOS_FB.geral/visitas depois que Firebase E CAD terminaram —
+// prefere CAD (mais atual), cai pro Firebase só se o CAD não trouxe nada.
+function finalizarDadosGerais() {
+    DADOS_FB.geral = (window._cadOcorrencias && window._cadOcorrencias.length) ? window._cadOcorrencias : _geralFirebaseFallback;
+    DADOS_FB.visitas = DADOS_FB.geral.filter(ehVisita);
+    console.log(`[Dados gerais] ${DADOS_FB.geral.length} ocorrências (${(window._cadOcorrencias||[]).length ? 'CAD' : 'Firebase, fallback'}).`);
 }
 
 // ═════════════════════════════════════════════════════════════════
@@ -990,9 +1192,10 @@ async function carregarSupabase() {
         console.error('3. Os nomes das tabelas devem ser exatos (sensível a maiúsculas)');
     }
 
-    // Construir índices cruzados
-    construirIndices();
-
+    // Índices cruzados são construídos em verificarTudoPronto() — só
+    // depois que Firebase E CAD também tiverem terminado (senão
+    // DADOS_FB.autores/CAD envolvidos podem ainda estar vazios aqui,
+    // dependendo de qual fonte responde mais rápido).
     setLoader('Supabase ✓ — Iniciando mapa…');
     _sbPronto = true;
     verificarTudoPronto();
@@ -1242,14 +1445,44 @@ function construirIndices() {
         // Busca FK de registro: qualquer coluna com "registro"
         _endFKRegistro = cols.find(c => /registro/i.test(c) && c !== 'id')
                       || cols.find(c => /^registro_id$|^id_registro$|^registros_oficiais_id$/i.test(c));
-        console.log('[Endereços] FK pessoa =>', _endFKPessoa || 'NENHUMA');
-        console.log('[Endereços] FK registro =>', _endFKRegistro || 'NENHUMA');
-        // Se ainda não achou: mostra todas as colunas UUID para diagnóstico
-        if (!_endFKPessoa) {
-            const uuidCols = cols.filter(c => c !== 'id' && (typeof e0[c] === 'string') &&
-                /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(e0[c]||''));
-            console.warn('[Endereços] Colunas UUID encontradas (candidatas a FK):', uuidCols);
+
+        // Fallback por VALOR — quando o NOME da coluna não segue o padrão
+        // esperado (ex.: "titular_id"/"alvo_id" em vez de "pessoa_id"), a
+        // detecção por nome nunca acha nada. Testa cada coluna UUID
+        // candidata contra os ids REAIS já indexados de pessoas/registros
+        // e usa a que bater — muito mais confiável que confiar no nome.
+        //
+        // IMPORTANTE: a lista de colunas UUID candidatas precisa varrer
+        // VÁRIAS linhas, não só a primeira (e0) — esse era o bug real:
+        // se o 1º endereço da tabela for de um REGISTRO (sem pessoa_id
+        // preenchido), a coluna de pessoa nunca aparecia como "UUID" só
+        // olhando a linha 0, mesmo tendo valor válido em outras linhas.
+        if (!_endFKPessoa || !_endFKRegistro) {
+            const uuidCols = new Set();
+            for (const e of _sb.enderecos.slice(0, 80)) {
+                cols.forEach(c => {
+                    if (c === 'id' || uuidCols.has(c)) return;
+                    if (typeof e[c] === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(e[c])) uuidCols.add(c);
+                });
+            }
+            console.log('[Endereços] Colunas UUID candidatas (varredura de até 80 linhas):', [...uuidCols]);
+            uuidCols.forEach(col => {
+                if (_endFKPessoa === col || _endFKRegistro === col) return;
+                let acertosPessoa = 0, acertosRegistro = 0, testados = 0;
+                for (const e of _sb.enderecos) {
+                    const v = e[col];
+                    if (!v) continue;
+                    testados++;
+                    if (_idx.pessoaById[v]) acertosPessoa++;
+                    if (_idx.regOfcById[v]) acertosRegistro++;
+                }
+                console.log(`[Endereços] Coluna "${col}": ${acertosPessoa} bateram com pessoa, ${acertosRegistro} com registro (de ${testados} valores não nulos)`);
+                if (!_endFKPessoa && acertosPessoa > 0 && acertosPessoa >= acertosRegistro) _endFKPessoa = col;
+                else if (!_endFKRegistro && acertosRegistro > 0 && acertosRegistro > acertosPessoa) _endFKRegistro = col;
+            });
         }
+        console.log('[Endereços] FK pessoa =>', _endFKPessoa || 'NENHUMA (nem por nome, nem por valor)');
+        console.log('[Endereços] FK registro =>', _endFKRegistro || 'NENHUMA (nem por nome, nem por valor)');
     }
     _sb.enderecos.forEach(e => {
         // FK pessoa: campo detectado OU todos os campos UUID que não são "id"
@@ -1307,48 +1540,103 @@ function construirIndices() {
     const nEndReg    = Object.keys(_idx.endByRegistro||{}).length;
     const nCrimeReg  = Object.keys(_idx.crimesByRegOfc).length;
     const nPessReg   = Object.keys(_idx.pessByRegOfc).length;
-    // ── Índice de AUTORES do Firebase ────────────────────────────────
-    // Mapeia nome normalizado → lista de registros do nó /autor
-    _idx.autorByNome = {};
-    (DADOS_FB.autores || []).forEach(a => {
-        const nomeNorm = norm(a.NOME || a.nome || a.AUTOR || a.autor || a.NAME || '').trim();
+    // ── Índice unificado de OCORRÊNCIA POR PESSOA ────────────────────
+    // Duas fontes: Hostinger/Firebase (nó /autor, via P3.Autores — já
+    // decide a fonte certa pela unidade) + CAD (ocorrencias × envolvidos,
+    // join por BOLETIM, que o CAD não entrega pronto). CPF é a chave
+    // preferencial (evita homônimo, mesmo princípio de Autores/Suspeitos);
+    // nome normalizado só entra como fallback pra quem não tem CPF.
+    _idx.ocorrenciasPorCPF = {};
+    _idx.ocorrenciasPorNomeNorm = {};
+    _idx.ocorrenciasPorNomeMaeNorm = {}; // só existe no lado Hostinger (campo NOME_MAE) — CAD/Firebase não têm esse campo
+    function _registrarOcorrenciaPessoa(item, fonte) {
+        const nomeNorm = norm(item.NOME || item.nome || item.AUTOR || item.autor || item.NAME || '').trim();
         if (!nomeNorm) return;
-        if (!_idx.autorByNome[nomeNorm]) _idx.autorByNome[nomeNorm] = [];
-        _idx.autorByNome[nomeNorm].push(a);
-    });
-    console.log(`[Índices] autorByNome: ${Object.keys(_idx.autorByNome).length} autores indexados do Firebase`);
+        const cpf = String(item.CPF || item.cpf || '').replace(/\D/g, '');
+        const registro = Object.assign({}, item, { _fonte: fonte });
+        if (cpf.length >= 8) {
+            if (!_idx.ocorrenciasPorCPF[cpf]) _idx.ocorrenciasPorCPF[cpf] = [];
+            _idx.ocorrenciasPorCPF[cpf].push(registro);
+        }
+        if (!_idx.ocorrenciasPorNomeNorm[nomeNorm]) _idx.ocorrenciasPorNomeNorm[nomeNorm] = [];
+        _idx.ocorrenciasPorNomeNorm[nomeNorm].push(registro);
 
-    // ── Vincula pessoas do Supabase → autores do Firebase ────────────
-    // Para cada pessoa, tenta encontrar correspondência por nome (e apelidos)
-    _idx.fbAutorByPessoa = {};   // pessoa_id → [registros autor Firebase]
+        const nomeMaeNorm = norm(item.NOME_MAE || item.nomeMae || '').trim();
+        if (nomeMaeNorm) {
+            if (!_idx.ocorrenciasPorNomeMaeNorm[nomeMaeNorm]) _idx.ocorrenciasPorNomeMaeNorm[nomeMaeNorm] = [];
+            _idx.ocorrenciasPorNomeMaeNorm[nomeMaeNorm].push(registro);
+        }
+    }
+    (DADOS_FB.autores || []).forEach(a => _registrarOcorrenciaPessoa(a, 'hostinger'));
+
+    // CAD: 'envolvidos' e 'ocorrencias' são endpoints separados, ligados
+    // só por BOLETIM (string) — monta o join aqui (não existe pronto).
+    const _cadOcorrPorBoletim = {};
+    (window._cadOcorrencias || []).forEach(o => {
+        const b = String(o.BOLETIM || '').trim();
+        if (b) _cadOcorrPorBoletim[b] = o;
+    });
+    (window._cadEnvolvidos || []).forEach(env => {
+        const oc = _cadOcorrPorBoletim[String(env.BOLETIM || '').trim()] || {};
+        // env sobrescreve NOME/CPF/ENVOLVIMENTO/SITUACAO/NATUREZA; oc contribui TIPIFICACAO/DATA/GEO.
+        _registrarOcorrenciaPessoa(Object.assign({}, oc, env), 'cad');
+    });
+    console.log(`[Índices] ocorrenciasPorCPF: ${Object.keys(_idx.ocorrenciasPorCPF).length} CPFs | ocorrenciasPorNomeNorm: ${Object.keys(_idx.ocorrenciasPorNomeNorm).length} nomes (Hostinger/Firebase + CAD)`);
+
+    // ── Vincula pessoas do Supabase → ocorrências (Hostinger + CAD) ──
+    // CPF primeiro (cruzamento confirmado); nome (exato + substring)
+    // só pra quem não bateu por CPF. Cada match ganha _matchPor pra UI
+    // distinguir "CPF confirmado" de "nome aproximado".
+    _idx.fbAutorByPessoa = {};   // pessoa_id → [registros de ocorrência]
     _sb.pessoas.forEach(p => {
-        const pid   = String(p.id);
+        const pid = String(p.id);
+        const cpfPessoa = String(p.cpf || '').replace(/\D/g, '');
         const nomes = [
             norm(p.nome || p.nome_completo || ''),
             ...(_idx.apelidosByPessoa[pid] || []).map(a => norm(a)),
         ].filter(Boolean);
+
+        const seen = new Set();
         const matches = [];
+        function add(lista, matchPor) {
+            (lista || []).forEach(m => {
+                const key = (m._fonte || '') + '|' + (m.BOLETIM || '') + '|' + (m.NOME || '');
+                if (seen.has(key)) return;
+                seen.add(key);
+                matches.push(Object.assign({}, m, { _matchPor: matchPor }));
+            });
+        }
+        if (cpfPessoa.length >= 8) add(_idx.ocorrenciasPorCPF[cpfPessoa], 'cpf');
         nomes.forEach(n => {
-            if (_idx.autorByNome[n]) matches.push(..._idx.autorByNome[n]);
-            // Busca parcial: nome do Firebase contém o nome da pessoa (ou vice-versa)
-            Object.keys(_idx.autorByNome).forEach(k => {
+            add(_idx.ocorrenciasPorNomeNorm[n], 'nome');
+            Object.keys(_idx.ocorrenciasPorNomeNorm).forEach(k => {
                 if (k !== n && (k.includes(n) || n.includes(k)) && n.length > 5) {
-                    matches.push(..._idx.autorByNome[k]);
+                    add(_idx.ocorrenciasPorNomeNorm[k], 'nome');
                 }
             });
         });
-        if (matches.length) {
-            // Deduplica por id do registro Firebase
-            const seen = new Set();
-            _idx.fbAutorByPessoa[pid] = matches.filter(m => {
-                const key = m.id || JSON.stringify(m);
-                if (seen.has(key)) return false;
-                seen.add(key); return true;
-            });
-        }
+
+        if (matches.length) _idx.fbAutorByPessoa[pid] = matches;
     });
     const nAutorCross = Object.keys(_idx.fbAutorByPessoa).length;
-    console.log(`[Índices] fbAutorByPessoa: ${nAutorCross} pessoas cruzadas com o nó /autor do Firebase`);
+    console.log(`[Índices] fbAutorByPessoa: ${nAutorCross} pessoas cruzadas (Hostinger/Firebase + CAD, CPF prioritário)`);
+
+    // ── ORCRIM/Facção: índice reverso (membros por grupo) — usado no
+    // botão "Expandir no mapa" E no fallback de coordenada (grupo em si
+    // raramente tem lat/lng próprio — usa a de um membro, ver
+    // construirCamadasSB) ────────────────────────────────────────────
+    _idx.membrosPorOrcrim = {};
+    _sb.orcrim_pessoas.forEach(op => {
+        const pid = op.pessoa_id || op.id_pessoa;
+        const oid = op.orcrim_id || op.id_orcrim;
+        if (oid && pid) idxArr(_idx.membrosPorOrcrim, oid, pid);
+    });
+    _idx.membrosPorFaccao = {};
+    _sb.faccao_pessoas.forEach(fp => {
+        const pid = fp.pessoa_id || fp.id_pessoa;
+        const fid = fp.faccao_id || fp.id_faccao;
+        if (fid && pid) idxArr(_idx.membrosPorFaccao, fid, pid);
+    });
 
     console.log(`[Índices] Construídos com sucesso.`);
     console.log(`[Índices] endByPessoa: ${nEndPessoa} pessoas com endereço | endByRegistro: ${nEndReg} registros com endereço`);
@@ -1359,6 +1647,34 @@ function construirIndices() {
 function nomePessoa(p) {
     if (!p) return 'Desconhecido';
     return p.nome || p.nome_completo || p.name || 'Sem nome';
+}
+
+// Cor por categoria de vínculo — dá hierarquia visual em vez do
+// vermelho único usado antes em toda linha/card/aresta de vínculo.
+const CORES_TIPO_VINCULO = [
+    { re: /FAMIL|PAI\b|MAE\b|IRMA|FILH|CONJUGE|ESPOS|PARENTE|NAMORAD|COMPANHEIR/, cor: '#42a5f5', label: 'Familiar' },
+    { re: /CRIM|ASSOCIA|FACC|ORCRIM|COMPARSA|COAUTOR|TRAFIC/,                     cor: '#e53935', label: 'Criminal/associação' },
+    { re: /COMERC|NEGOCIO|SOCIO|EMPRESA|TRABALH/,                                 cor: '#43a047', label: 'Comercial/trabalho' },
+    { re: /AMIZADE|AMIGO|CONHECID|VIZINH/,                                        cor: '#ffb300', label: 'Amizade/vizinhança' },
+];
+function corTipoVinculo(tipo) {
+    const t = norm(tipo || '');
+    const achado = CORES_TIPO_VINCULO.find(c => c.re.test(t));
+    return achado ? achado.cor : '#9e9e9e';
+}
+function iniciais(nome) {
+    const partes = String(nome || '').trim().split(/\s+/).filter(Boolean);
+    if (!partes.length) return '?';
+    return (partes[0][0] + (partes.length > 1 ? partes[partes.length - 1][0] : '')).toUpperCase();
+}
+function montarLegendaVinculos() {
+    const el = document.getElementById('legenda-vinculos');
+    if (!el) return;
+    const itens = CORES_TIPO_VINCULO.map(c => c.label + '|' + c.cor).concat(['Outro|#9e9e9e']);
+    el.innerHTML = itens.map(par => {
+        const [label, cor] = par.split('|');
+        return `<span class="legenda-vinculos-item"><span class="legenda-vinculos-dot" style="background:${cor};"></span>${esc(label)}</span>`;
+    }).join('');
 }
 
 // Helper: apelidos formatados
@@ -1470,7 +1786,7 @@ function popupPessoa(p) {
             return `<div style="margin-top:8px;padding:6px 8px;
                 background:rgba(239,83,80,.12);border:1px solid rgba(239,83,80,.25);border-radius:6px;">
                 <div style="color:#ef9a9a;font-weight:bold;font-size:11px;margin-bottom:4px;">
-                    🔥 Firebase /autor — ${fbA.length} registro(s)
+                    🔥 ${fbA.length} registro(s) como autor/envolvido (Hostinger/Firebase + CAD)
                 </div>
                 ${tipifs.map(t => `<span style="display:inline-block;background:rgba(239,154,154,.2);
                     color:#ffcdd2;border-radius:4px;padding:1px 6px;margin:1px;font-size:9px;">${esc(t.substring(0,30))}</span>`).join('')}
@@ -1537,17 +1853,14 @@ function popupCrime(r) {
     const numBOstr = numBO ? String(numBO).trim() : String(rid);
     const tiposCrime = crimes.map(c => c.tipo || c.tipificacao || c.descricao || '').filter(Boolean);
 
-    // Cruzamento com Firebase pelo número do BO
-    const fbReg = DADOS_FB.geral.find(g => {
-        const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
-        return gbNum && gbNum === numBOstr.toUpperCase();
-    });
+    // Cruzamento com CAD/Firebase pelo número do BO
+    const fbReg = _buscarOcorrenciaPorBO(numBOstr);
 
     let fbHtml = '';
     if (fbReg) {
         fbHtml = `<div style="margin-top:8px;padding:6px 8px;background:rgba(21,101,192,.15);
             border:1px solid rgba(66,165,245,.2);border-radius:6px;font-size:10px;color:#cde;">
-            <div style="color:#42a5f5;font-weight:bold;margin-bottom:3px;">🔗 Firebase — Dados do Registro</div>
+            <div style="color:#42a5f5;font-weight:bold;margin-bottom:3px;">🔗 CAD/Firebase — Dados do Registro</div>
             ${fbReg.DATA        ? `<b>Data:</b> ${esc(fbReg.DATA)}<br>` : ''}
             ${fbReg.TIPIFICACAO_GERAL||fbReg.TIPIFICACAO ? `<b>Tipo:</b> ${esc(fbReg.TIPIFICACAO_GERAL||fbReg.TIPIFICACAO)}<br>` : ''}
             ${fbReg.LOGRADOURO  ? `<b>Logradouro:</b> ${esc(fbReg.LOGRADOURO)}<br>` : ''}
@@ -1574,7 +1887,7 @@ function popupCrime(r) {
                 <b style="color:#fff;">${esc(nomePessoa(p))}</b>
                 ${apelidosPessoa(p.id)!='—' ? `<span style="color:#42a5f5;font-size:10px;"> (${esc(apelidosPessoa(p.id))})</span>` : ''}
                 ${orgnomes ? `<br><span style="color:#ce93d8;font-size:10px;">🦹 ${esc(orgnomes)}</span>` : ''}
-                ${fbA.length ? `<br><span style="color:#ef9a9a;font-size:10px;">🔥 ${fbA.length} reg. Firebase como autor</span>` : ''}
+                ${fbA.length ? `<br><span style="color:#ef9a9a;font-size:10px;">🔥 ${fbA.length} reg. como autor/envolvido</span>` : ''}
             </div>
         </div>`;
     }).join('') || '<span style="color:rgba(255,255,255,.3);font-size:11px;">Nenhum envolvido cadastrado</span>';
@@ -1723,7 +2036,9 @@ function popupEndereco(e) {
 // INICIAR MAPA
 // ═════════════════════════════════════════════════════════════════
 function verificarTudoPronto() {
-    if (!_fbPronto || !_sbPronto) return;
+    if (!_fbPronto || !_sbPronto || !_cadPronto) return;
+    finalizarDadosGerais();
+    construirIndices();
     carregarLeafletEIniciar();
 }
 
@@ -1996,23 +2311,39 @@ function construirCamadasSB() {
         grpPessoas.addLayer(mk);
     });
     _sbLayers.pessoas = grpPessoas;
+    _dadosMapaSB.pessoas = cntP;
     if (_sbAtivas.has('pessoas') && cntP > 0) grpPessoas.addTo(_mapaL);
 
     // ── ORCRIM ───────────────────────────────────────────────────
+    // ORCRIM raramente tem sede geocodificada própria — sem fallback,
+    // ficava sempre em 0 no mapa mesmo com membros/dados reais. Cai pra
+    // coordenada do 1º membro com endereço/GPS válido (_coordPessoa, o
+    // mesmo fallback já usado nas linhas de vínculo).
     const grpOrcrim = _criarClusterGroup('#9c27b0');
     let cntO = 0;
     _sb.orcrim.forEach(o => {
-        const lat = parseDec(o.latitude || o.lat || o.lat_sede);
-        const lng = parseDec(o.longitude || o.lng || o.lon || o.lng_sede);
+        let lat = parseDec(o.latitude || o.lat || o.lat_sede);
+        let lng = parseDec(o.longitude || o.lng || o.lon || o.lng_sede);
+        let aproximado = false;
+        if (!coordValida(lat, lng)) {
+            const membroIds = _idx.membrosPorOrcrim[o.id] || _idx.membrosPorOrcrim[String(o.id)] || [];
+            for (const pid of membroIds) {
+                const p = _idx.pessoaById[pid];
+                const coord = p && _coordPessoa(p);
+                if (coord) { lat = coord.lat; lng = coord.lng; aproximado = true; break; }
+            }
+        }
         if (!coordValida(lat, lng)) return;
         cntO++;
         const mk = L.circleMarker([lat, lng], {
-            radius:11, fillColor:'#9c27b0', color:'#fff', weight:2, fillOpacity:.9
+            radius:11, fillColor:'#9c27b0', color:'#fff', weight:2, fillOpacity:.9,
+            dashArray: aproximado ? '3,3' : null
         });
-        mk.bindPopup(popupOrcrim(o), { maxWidth:360 });
+        mk.bindPopup(popupOrcrim(o) + (aproximado ? '<div style="font-size:9px;color:rgba(255,255,255,.4);margin-top:4px;">📍 posição aproximada — endereço de um dos membros, sem sede própria cadastrada</div>' : ''), { maxWidth:360 });
         grpOrcrim.addLayer(mk);
     });
     _sbLayers.orcrim = grpOrcrim;
+    _dadosMapaSB.orcrim = cntO;
     if (_sbAtivas.has('orcrim') && cntO > 0) grpOrcrim.addTo(_mapaL);
 
     // ── CRIMES / BOs ─────────────────────────────────────────────
@@ -2023,18 +2354,13 @@ function construirCamadasSB() {
         let lat = parseDec(r.latitude || r.lat);
         let lng = parseDec(r.longitude || r.lng);
 
-        // Se não tem coords no Supabase, busca no Firebase pelo número do BO
+        // Se não tem coords no Supabase, busca no CAD/Firebase pelo número do BO
         if (!coordValida(lat, lng)) {
-            const numBO = String(r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '').trim().toUpperCase();
-            if (numBO) {
-                const fbReg = DADOS_FB.geral.find(g => {
-                    const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
-                    return gbNum && gbNum === numBO;
-                });
-                if (fbReg) {
-                    lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
-                    lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
-                }
+            const numBO = r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '';
+            const fbReg = _buscarOcorrenciaPorBO(numBO);
+            if (fbReg) {
+                lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
+                lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
             }
         }
         if (!coordValida(lat, lng)) return;
@@ -2046,6 +2372,7 @@ function construirCamadasSB() {
         grpCrimes.addLayer(mk);
     });
     _sbLayers.crimes = grpCrimes;
+    _dadosMapaSB.crimes = cntC;
     if (_sbAtivas.has('crimes') && cntC > 0) grpCrimes.addTo(_mapaL);
 
     // ── ENDEREÇOS ────────────────────────────────────────────────
@@ -2077,18 +2404,31 @@ function construirCamadasSB() {
         grpEnds.addLayer(mk);
     });
     _sbLayers.enderecos = grpEnds;
+    _dadosMapaSB.enderecos = cntE;
     if (_sbAtivas.has('enderecos') && cntE > 0) grpEnds.addTo(_mapaL);
 
     // ── FACÇÕES (como camada separada) ───────────────────────────
+    // Mesma lógica de fallback do ORCRIM: sem sede geocodificada própria,
+    // usa a coordenada do 1º membro com endereço/GPS válido.
     const grpFacc = _criarClusterGroup('#880e4f');
     let cntF = 0;
     _sb.faccoes.forEach(f => {
-        const lat = parseDec(f.latitude || f.lat);
-        const lng = parseDec(f.longitude || f.lng);
+        let lat = parseDec(f.latitude || f.lat);
+        let lng = parseDec(f.longitude || f.lng);
+        let aproximado = false;
+        if (!coordValida(lat, lng)) {
+            const membroIds = _idx.membrosPorFaccao[f.id] || _idx.membrosPorFaccao[String(f.id)] || [];
+            for (const pid of membroIds) {
+                const p = _idx.pessoaById[pid];
+                const coord = p && _coordPessoa(p);
+                if (coord) { lat = coord.lat; lng = coord.lng; aproximado = true; break; }
+            }
+        }
         if (!coordValida(lat, lng)) return;
         cntF++;
         const mk = L.circleMarker([lat, lng], {
-            radius:10, fillColor:'#880e4f', color:'#fff', weight:2, fillOpacity:.9
+            radius:10, fillColor:'#880e4f', color:'#fff', weight:2, fillOpacity:.9,
+            dashArray: aproximado ? '3,3' : null
         });
         const orcrim = _idx.orcrimById[f.orcrim_id || f.id_orcrim];
         mk.bindPopup(`<div style="min-width:200px;">
@@ -2102,15 +2442,21 @@ function construirCamadasSB() {
                 ${orcrim       ? `<b>ORCRIM:</b> ${esc(nomePessoa(orcrim)||orcrim.nome||'')}<br>` : ''}
                 ${f.observacao ? `<b>Obs:</b> ${esc(f.observacao)}<br>` : ''}
             </div>
+            ${aproximado ? '<div style="font-size:9px;color:rgba(255,255,255,.4);">📍 posição aproximada — endereço de um dos membros</div>' : ''}
         </div>`, { maxWidth:300 });
         grpFacc.addLayer(mk);
     });
     _sbLayers.vinculos = grpFacc; // reutilizando slot
+    _dadosMapaSB.vinculos = cntF;
     if (_sbAtivas.has('vinculos') && cntF > 0) grpFacc.addTo(_mapaL);
 
     // ── LINHAS DE VÍNCULO ─────────────────────────────────────────
     // Construir mas não adicionar ainda
     _construirLinhasVinculos();
+
+    console.log(`[Camadas Supabase] plotados no mapa — pessoas:${cntP}/${_sb.pessoas.length} · orcrim:${cntO}/${_sb.orcrim.length} · registros:${cntC}/${_sb.registros.length} · endereços:${cntE}/${_sb.enderecos.length} · facções:${cntF}/${_sb.faccoes.length}`);
+    if (cntP === 0 && _sb.pessoas.length > 0) console.warn('[Camadas Supabase] Pessoas: nenhuma tem GPS próprio nem endereço válido (_endFKPessoa=' + (_endFKPessoa||'nenhuma') + ', endByPessoa tem ' + Object.keys(_idx.endByPessoa||{}).length + ' pessoa(s)).');
+    if (cntC === 0 && _sb.registros.length > 0) console.warn('[Camadas Supabase] Registros: nenhum bateu por GPS próprio nem por número de BO no CAD/Firebase (DADOS_FB.geral tem ' + DADOS_FB.geral.length + ' ocorrência(s)).');
 }
 
 function _criarClusterGroup(cor) {
@@ -2132,6 +2478,24 @@ function _criarClusterGroup(cor) {
 // ─────────────────────────────────────────────────────────────────
 // LINHAS DE VÍNCULO NO MAPA (dinâmico)
 // ─────────────────────────────────────────────────────────────────
+// Coordenada da pessoa: própria (latitude/longitude na tb_pessoas) OU,
+// se não tiver, o 1º endereço vinculado (_idx.endByPessoa) — mesmo
+// fallback que construirCamadasSB() já usa pra plotar pessoas. Sem
+// isso, a maioria das pessoas sem GPS próprio nunca gerava linha, mesmo
+// tendo endereço cadastrado (é o "bug" apontado no pedido de redesenho).
+function _coordPessoa(p) {
+    let lat = parseDec(p.latitude || p.lat);
+    let lng = parseDec(p.longitude || p.lng);
+    if (coordValida(lat, lng)) return { lat, lng };
+    const ends = _idx.endByPessoa[String(p.id)] || [];
+    for (const e of ends) {
+        lat = parseDec(e.latitude || e.lat);
+        lng = parseDec(e.longitude || e.lng);
+        if (coordValida(lat, lng)) return { lat, lng };
+    }
+    return null;
+}
+
 function _construirLinhasVinculos() {
     if (_linhasVinculoLayer) { _mapaL.removeLayer(_linhasVinculoLayer); }
     const grupo = L.layerGroup();
@@ -2143,18 +2507,17 @@ function _construirLinhasVinculos() {
         const pB  = _idx.pessoaById[idB];
         if (!pA || !pB) return;
 
-        const latA = parseDec(pA.latitude || pA.lat);
-        const lngA = parseDec(pA.longitude || pA.lng);
-        const latB = parseDec(pB.latitude || pB.lat);
-        const lngB = parseDec(pB.longitude || pB.lng);
-        if (!coordValida(latA, lngA) || !coordValida(latB, lngB)) return;
+        const coordA = _coordPessoa(pA);
+        const coordB = _coordPessoa(pB);
+        if (!coordA || !coordB) return;
 
         const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
-        const line = L.polyline([[latA, lngA], [latB, lngB]], {
-            color: '#ff7043', weight: 2, opacity: 0.7, dashArray: '6,4'
+        const cor = corTipoVinculo(tipo);
+        const line = L.polyline([[coordA.lat, coordA.lng], [coordB.lat, coordB.lng]], {
+            color: cor, weight: 2, opacity: 0.7, dashArray: '6,4'
         });
         line.bindPopup(`<div style="font-size:11px;color:#cde;">
-            <b style="color:#ff7043;">🔗 ${esc(tipo)}</b><br>
+            <b style="color:${cor};">🔗 ${esc(tipo)}</b><br>
             <b>${esc(nomePessoa(pA))}</b><br>
             <span style="opacity:.5;">↔</span><br>
             <b>${esc(nomePessoa(pB))}</b>
@@ -2177,6 +2540,305 @@ function toggleLinhasVinculos() {
         _linhasVinculoAtivas = true;
         btn.classList.add('active-red');
         btn.style.background = 'rgba(183,28,28,.4)';
+    }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// BUSCA GLOBAL NO MAPA — por CPF ou Nome (campo na barra de
+// ferramentas). Consulta o índice unificado (Hostinger/Firebase +
+// CAD, ver construirIndices) e plota TODAS as ocorrências da pessoa,
+// cadastrada no Supabase ou não. Botão "Vínculos" plota também as
+// ocorrências de quem tem vínculo registrado com ela.
+// ═════════════════════════════════════════════════════════════════
+let _buscaLayer = null;
+let _buscaVinculosLayer = null;
+
+function _regsDaOcorrenciaTemGeo(r) {
+    return coordValida(parseDec(r.LATITUDE || r.latitude), parseDec(r.LONGITUDE || r.longitude));
+}
+
+// Busca por CPF, nome, vulgo/apelido OU nome da mãe — qualquer um dos
+// quatro, digitado no mesmo campo. CPF é tratado à parte (só dígitos,
+// ≥8 caracteres); os outros três são tratados como texto normalizado e
+// combinados (nome próprio + nome da mãe no índice Hostinger/CAD, mais
+// apelido/nome da mãe cadastrados no Supabase, que apontam de volta pra
+// pessoa e puxam TODAS as ocorrências dela).
+function buscarGlobal() {
+    const input = document.getElementById('busca-global-input');
+    const val = (input && input.value || '').trim();
+    if (!val) { fecharPainelBusca(); return; }
+
+    const digits = val.replace(/\D/g, '');
+    const nomeNorm = norm(val);
+    const registros = [];
+    const vistosReg = new Set();
+    function addRegs(lista) {
+        (lista || []).forEach(r => {
+            const key = (r._fonte || '') + '|' + (r.BOLETIM || '') + '|' + (r.NOME || '');
+            if (vistosReg.has(key)) return;
+            vistosReg.add(key);
+            registros.push(r);
+        });
+    }
+    function bateTexto(chave) {
+        return chave === nomeNorm || (nomeNorm.length > 4 && (chave.includes(nomeNorm) || nomeNorm.includes(chave)));
+    }
+
+    if (digits.length >= 8) {
+        addRegs(_idx.ocorrenciasPorCPF[digits]);
+    }
+    // Nome da própria pessoa (Hostinger/Firebase + CAD)
+    Object.keys(_idx.ocorrenciasPorNomeNorm).forEach(k => { if (bateTexto(k)) addRegs(_idx.ocorrenciasPorNomeNorm[k]); });
+    // Nome da mãe (só existe no lado Hostinger)
+    Object.keys(_idx.ocorrenciasPorNomeMaeNorm || {}).forEach(k => { if (bateTexto(k)) addRegs(_idx.ocorrenciasPorNomeMaeNorm[k]); });
+
+    // Resolve pessoa cadastrada no Supabase — CPF, nome, apelido (vulgo)
+    // ou nome da mãe (campo pode não existir na tabela; tenta os nomes
+    // mais comuns). Achando, usa o cruzamento já pronto de fbAutorByPessoa
+    // (mais completo — cobre nome+apelidos+CPF de uma vez).
+    let pessoa = null;
+    if (digits.length >= 8) {
+        pessoa = _sb.pessoas.find(p => String(p.cpf || '').replace(/\D/g, '') === digits) || null;
+    }
+    if (!pessoa) {
+        pessoa = _sb.pessoas.find(p => norm(p.nome || p.nome_completo || '') === nomeNorm)
+              || (nomeNorm.length > 4 && _sb.pessoas.find(p => norm(p.nome || p.nome_completo || '').includes(nomeNorm)))
+              || (nomeNorm.length > 2 && _sb.pessoas.find(p => (_idx.apelidosByPessoa[String(p.id)] || []).some(a => norm(a).includes(nomeNorm))))
+              || (nomeNorm.length > 4 && _sb.pessoas.find(p => norm(p.nome_mae || p.mae || p.nome_da_mae || '').includes(nomeNorm)))
+              || null;
+    }
+    if (pessoa) addRegs(_idx.fbAutorByPessoa[String(pessoa.id)]);
+
+    _plotarBuscaNoMapa(registros);
+    _renderPainelBusca(val, registros, pessoa);
+}
+
+function _plotarBuscaNoMapa(registros) {
+    if (_buscaLayer) { _mapaL.removeLayer(_buscaLayer); _buscaLayer = null; }
+    if (_buscaVinculosLayer) { _mapaL.removeLayer(_buscaVinculosLayer); _buscaVinculosLayer = null; }
+
+    const grupo = L.layerGroup();
+    const pontos = [];
+    registros.forEach(r => {
+        const lat = parseDec(r.LATITUDE || r.latitude), lng = parseDec(r.LONGITUDE || r.longitude);
+        if (!coordValida(lat, lng)) return;
+        const mk = L.circleMarker([lat, lng], { radius: 11, fillColor: '#00e5ff', color: '#fff', weight: 2, fillOpacity: .95 });
+        mk.bindPopup(`<div style="font-size:11px;color:#cde;min-width:190px;">
+            <b style="color:#00e5ff;">🎯 ${esc(r.NOME || '')}</b><br>
+            ${r.BOLETIM ? `BO: ${esc(r.BOLETIM)}<br>` : ''}
+            ${r.DATA ? `Data: ${esc(r.DATA)}<br>` : ''}
+            ${(r.TIPIFICACAO_GERAL || r.TIPIFICACAO) ? `Tipificação: ${esc(r.TIPIFICACAO_GERAL || r.TIPIFICACAO)}<br>` : ''}
+            ${r.BAIRRO || r.CIDADE ? `${esc(r.BAIRRO || '')} — ${esc(r.CIDADE || '')}<br>` : ''}
+            <span style="opacity:.6;">Fonte: ${r._fonte === 'cad' ? 'CAD' : 'Hostinger/Firebase'}${r._matchPor ? ' · ' + (r._matchPor === 'cpf' ? '✓ CPF confirmado' : 'nome aproximado') : ''}</span>
+        </div>`, { maxWidth: 270 });
+        grupo.addLayer(mk);
+        pontos.push([lat, lng]);
+    });
+    grupo.addTo(_mapaL);
+    _buscaLayer = grupo;
+    if (pontos.length) _mapaL.fitBounds(pontos, { padding: [40, 40], maxZoom: 16 });
+}
+
+function _renderPainelBusca(termo, registros, pessoa) {
+    const painel = document.getElementById('painel-busca-global');
+    if (!painel) return;
+    painel.style.display = '';
+    const n = registros.length;
+    const comGeo = registros.filter(_regsDaOcorrenciaTemGeo).length;
+    let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <b style="color:#00e5ff;font-size:12px;">🔎 ${esc(termo)}</b>
+        <span onclick="fecharPainelBusca()" style="cursor:pointer;opacity:.6;font-size:14px;">✕</span>
+    </div>`;
+    if (!n) {
+        html += `<div style="font-size:11px;color:rgba(255,255,255,.5);">Nenhuma ocorrência encontrada (Hostinger/Firebase + CAD).</div>`;
+        painel.innerHTML = html;
+        return;
+    }
+    html += `<div style="font-size:11px;color:#cde;margin-bottom:8px;">${n} ocorrência${n===1?'':'s'} encontrada${n===1?'':'s'} — ${comGeo} no mapa</div>`;
+    if (pessoa) {
+        html += `<div style="font-size:11px;color:#4caf50;margin-bottom:8px;">✓ Cadastrado no Supabase: <b>${esc(nomePessoa(pessoa))}</b></div>
+        <div style="display:flex;gap:6px;">
+            <button class="btn-mapa" style="flex:1;" onclick="abrirDetalhe('${esc(String(pessoa.id))}')">📄 Ficha</button>
+            <button class="btn-mapa" style="flex:1;" onclick="buscarVinculosNoMapa('${esc(String(pessoa.id))}')">🔗 Vínculos</button>
+        </div>`;
+    } else {
+        html += `<div style="font-size:10px;color:rgba(255,255,255,.4);">Não cadastrado no Supabase — dado só de ocorrência (Hostinger/CAD), sem ficha nem vínculos pra mostrar.</div>`;
+    }
+    painel.innerHTML = html;
+}
+
+function fecharPainelBusca() {
+    const painel = document.getElementById('painel-busca-global');
+    if (painel) painel.style.display = 'none';
+    if (_buscaLayer) { _mapaL.removeLayer(_buscaLayer); _buscaLayer = null; }
+    if (_buscaVinculosLayer) { _mapaL.removeLayer(_buscaVinculosLayer); _buscaVinculosLayer = null; }
+}
+
+// Ocorrências (Hostinger/Firebase + CAD) de uma pessoa CADASTRADA no
+// Supabase — por CPF (preferencial) senão por nome normalizado. Mesma
+// lógica usada na busca global, reaproveitada aqui pra pessoa já
+// resolvida (ficha, marcador, etc.).
+function _ocorrenciasDaPessoa(pessoa) {
+    if (!pessoa) return [];
+    const cpf = String(pessoa.cpf || '').replace(/\D/g, '');
+    const nomeNorm = norm(nomePessoa(pessoa));
+    return (cpf.length >= 8 ? _idx.ocorrenciasPorCPF[cpf] : null) || _idx.ocorrenciasPorNomeNorm[nomeNorm] || [];
+}
+
+// Expande UMA pessoa no mapa: suas PRÓPRIAS ocorrências (ciano) + as
+// ocorrências de cada pessoa VINCULADA a ela (amarelo) + uma LINHA
+// conectando a pessoa a cada vinculado (cor por tipo de vínculo) — tudo
+// junto, interligado, no mesmo layer. Funciona sozinha (não depende de
+// ter vindo de uma busca prévia) — chamada tanto pelo botão "Ver todos
+// no mapa" da ficha quanto pelo painel da busca global por CPF/Nome,
+// quanto por qualquer item de ocorrência-como-autor dentro da ficha.
+function expandirPessoaNoMapa(pid) {
+    verVinculosDePessoa(pid);
+
+    if (_buscaVinculosLayer) { _mapaL.removeLayer(_buscaVinculosLayer); _buscaVinculosLayer = null; }
+    const p = _idx.pessoaById[pid] || _idx.pessoaById[String(pid)];
+    const grupo = L.layerGroup();
+    const pontos = [];
+    const vistos = new Set();
+
+    function plotarOcorrencias(pessoa, cor, raio, rotulo) {
+        _ocorrenciasDaPessoa(pessoa).forEach(r => {
+            const key = (r._fonte || '') + '|' + (r.BOLETIM || '') + '|' + String(pessoa.id);
+            if (vistos.has(key)) return;
+            vistos.add(key);
+            const lat = parseDec(r.LATITUDE || r.latitude), lng = parseDec(r.LONGITUDE || r.longitude);
+            if (!coordValida(lat, lng)) return;
+            const mk = L.circleMarker([lat, lng], { radius: raio, fillColor: cor, color: '#fff', weight: 1.5, fillOpacity: .92 });
+            mk.bindPopup(`<div style="font-size:11px;color:#cde;min-width:190px;">
+                <b style="color:${cor};">${rotulo} ${esc(nomePessoa(pessoa))}</b><br>
+                ${r.BOLETIM ? `BO: ${esc(r.BOLETIM)}<br>` : ''}
+                ${r.DATA ? `Data: ${esc(r.DATA)}<br>` : ''}
+                ${(r.TIPIFICACAO_GERAL || r.TIPIFICACAO) ? `Tipificação: ${esc(r.TIPIFICACAO_GERAL || r.TIPIFICACAO)}` : ''}
+            </div>`, { maxWidth: 270 });
+            grupo.addLayer(mk);
+            pontos.push([lat, lng]);
+        });
+    }
+
+    if (p) plotarOcorrencias(p, '#00e5ff', 10, '🎯');
+
+    const vinculos = _idx.vinculosByPessoa[String(pid)] || [];
+    vinculos.forEach(v => {
+        const idA = (_vincFKa && v[_vincFKa]) || v.pessoa_origem_id || v.pessoa_id_a || v.id_pessoa_a;
+        const idB = (_vincFKb && v[_vincFKb]) || v.pessoa_destino_id || v.pessoa_id_b || v.id_pessoa_b;
+        const outroId = String(idA) === String(pid) ? idB : idA;
+        const outro = _idx.pessoaById[outroId];
+        if (!outro) return;
+
+        plotarOcorrencias(outro, '#ffb300', 8, '🔗');
+
+        // Linha conectando a pessoa ao vinculado — o "interligado" pedido.
+        if (p) {
+            const coordP = _coordPessoa(p), coordO = _coordPessoa(outro);
+            if (coordP && coordO) {
+                const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+                const cor = corTipoVinculo(tipo);
+                const line = L.polyline([[coordP.lat, coordP.lng], [coordO.lat, coordO.lng]], { color: cor, weight: 2, opacity: .75, dashArray: '6,4' });
+                line.bindPopup(`<div style="font-size:11px;color:#cde;"><b style="color:${cor};">🔗 ${esc(tipo)}</b><br>${esc(nomePessoa(p))} ↔ ${esc(nomePessoa(outro))}</div>`, { maxWidth: 260 });
+                grupo.addLayer(line);
+                pontos.push([coordP.lat, coordP.lng], [coordO.lat, coordO.lng]);
+            }
+        }
+    });
+
+    grupo.addTo(_mapaL);
+    _buscaVinculosLayer = grupo;
+    if (_buscaLayer) _buscaLayer.eachLayer(l => { if (l.getLatLng) { const ll = l.getLatLng(); pontos.push([ll.lat, ll.lng]); } });
+    if (pontos.length) {
+        _mapaL.fitBounds(pontos, { padding: [40, 40], maxZoom: 15 });
+    } else {
+        alert('Nenhum ponto com coordenada válida pra mostrar (nem da pessoa, nem dos vínculos).');
+    }
+}
+
+// Nome antigo mantido como alias — usado pelo painel da busca global e
+// por qualquer código externo que já chamava buscarVinculosNoMapa().
+function buscarVinculosNoMapa(pid) { expandirPessoaNoMapa(pid); }
+
+// ═════════════════════════════════════════════════════════════════
+// ORCRIM — "Expandir no mapa": endereços, ocorrências (Hostinger/CAD)
+// e vínculos ENTRE OS PRÓPRIOS MEMBROS do grupo, num layer dedicado.
+// ═════════════════════════════════════════════════════════════════
+let _orcrimExpandidoLayer = null;
+
+function expandirOrcrimNoMapa(orcrimId) {
+    if (_orcrimExpandidoLayer) { _mapaL.removeLayer(_orcrimExpandidoLayer); _orcrimExpandidoLayer = null; }
+    const membroIds = (_idx.membrosPorOrcrim[orcrimId] || _idx.membrosPorOrcrim[String(orcrimId)] || []).map(String);
+    if (!membroIds.length) return;
+
+    const orcrim = _idx.orcrimById[orcrimId] || _idx.orcrimById[String(orcrimId)];
+    const nomeGrupo = orcrim ? (orcrim.nome || orcrim.nome_organizacao || 'ORCRIM') : 'ORCRIM';
+    const grupo = L.layerGroup();
+    const pontos = [];
+    const vistosOcorrencia = new Set();
+
+    function addPonto(lat, lng, html, cor, raio) {
+        if (!coordValida(lat, lng)) return;
+        const mk = L.circleMarker([lat, lng], { radius: raio, fillColor: cor, color: '#fff', weight: 1.5, fillOpacity: .9 });
+        mk.bindPopup(html, { maxWidth: 270 });
+        grupo.addLayer(mk);
+        pontos.push([lat, lng]);
+    }
+
+    membroIds.forEach(pid => {
+        const p = _idx.pessoaById[pid];
+        if (!p) return;
+        const nome = nomePessoa(p);
+
+        (_idx.endByPessoa[pid] || []).forEach(end => {
+            addPonto(parseDec(end.latitude || end.lat), parseDec(end.longitude || end.lng),
+                `<div style="font-size:11px;color:#cde;min-width:180px;">
+                    <b style="color:#ce93d8;">🏠 ${esc(nome)}</b> <span style="opacity:.6;">(${esc(nomeGrupo)})</span><br>
+                    ${esc(end.logradouro || end.endereco || '')}<br>
+                    <span style="opacity:.6;">${esc(end.bairro || '')} — ${esc(end.cidade || '')}</span>
+                </div>`, '#ce93d8', 9);
+        });
+
+        const cpf = String(p.cpf || '').replace(/\D/g, '');
+        const nomeNorm = norm(nome);
+        const regs = (cpf.length >= 8 ? _idx.ocorrenciasPorCPF[cpf] : null) || _idx.ocorrenciasPorNomeNorm[nomeNorm] || [];
+        regs.forEach(r => {
+            const key = (r._fonte || '') + '|' + (r.BOLETIM || '') + '|' + pid;
+            if (vistosOcorrencia.has(key)) return;
+            vistosOcorrencia.add(key);
+            addPonto(parseDec(r.LATITUDE || r.latitude), parseDec(r.LONGITUDE || r.longitude),
+                `<div style="font-size:11px;color:#cde;min-width:180px;">
+                    <b style="color:#9c27b0;">🦹 ${esc(nome)}</b> <span style="opacity:.6;">(${esc(nomeGrupo)})</span><br>
+                    ${r.BOLETIM ? `BO: ${esc(r.BOLETIM)}<br>` : ''}
+                    ${r.DATA ? `Data: ${esc(r.DATA)}<br>` : ''}
+                    ${(r.TIPIFICACAO_GERAL || r.TIPIFICACAO) ? `Tipificação: ${esc(r.TIPIFICACAO_GERAL || r.TIPIFICACAO)}` : ''}
+                </div>`, '#9c27b0', 9);
+        });
+    });
+
+    // Vínculos ENTRE os próprios membros do grupo (não com gente de fora)
+    const idsSet = new Set(membroIds);
+    _sb.vinculos.forEach(v => {
+        const idA = String((_vincFKa && v[_vincFKa]) || v.pessoa_origem_id || v.pessoa_id_a || v.id_pessoa_a || '');
+        const idB = String((_vincFKb && v[_vincFKb]) || v.pessoa_destino_id || v.pessoa_id_b || v.id_pessoa_b || '');
+        if (!idsSet.has(idA) || !idsSet.has(idB)) return;
+        const pA = _idx.pessoaById[idA], pB = _idx.pessoaById[idB];
+        if (!pA || !pB) return;
+        const coordA = _coordPessoa(pA), coordB = _coordPessoa(pB);
+        if (!coordA || !coordB) return;
+        const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+        const cor = corTipoVinculo(tipo);
+        const line = L.polyline([[coordA.lat, coordA.lng], [coordB.lat, coordB.lng]], { color: cor, weight: 2, opacity: .75, dashArray: '6,4' });
+        line.bindPopup(`<div style="font-size:11px;color:#cde;"><b style="color:${cor};">🔗 ${esc(tipo)}</b><br>${esc(nomePessoa(pA))} ↔ ${esc(nomePessoa(pB))}</div>`, { maxWidth: 260 });
+        grupo.addLayer(line);
+    });
+
+    grupo.addTo(_mapaL);
+    _orcrimExpandidoLayer = grupo;
+    if (pontos.length) {
+        _mapaL.fitBounds(pontos, { padding: [50, 50], maxZoom: 15 });
+    } else {
+        alert(`Nenhum membro de "${nomeGrupo}" tem endereço ou ocorrência com coordenada válida pra mostrar no mapa.`);
     }
 }
 
@@ -2324,13 +2986,14 @@ function _desenharGrafo() {
     ctx.translate(_grafoTransform.x, _grafoTransform.y);
     ctx.scale(_grafoTransform.scale, _grafoTransform.scale);
 
-    // Arestas
+    // Arestas — cor por categoria do tipo de vínculo (mesmo mapa de
+    // cores da lista lateral e das linhas no mapa real)
     _grafoEdges.forEach(e => {
         const na = _grafoNodes[e.a], nb = _grafoNodes[e.b];
         ctx.beginPath();
         ctx.moveTo(na.x, na.y);
         ctx.lineTo(nb.x, nb.y);
-        ctx.strokeStyle = 'rgba(255,112,67,0.45)';
+        ctx.strokeStyle = corTipoVinculo(e.tipo) + '73'; // ~45% opacidade
         ctx.lineWidth   = 1.5;
         ctx.setLineDash([5,4]);
         ctx.stroke();
@@ -2572,18 +3235,26 @@ function _htmlFichaPessoa(p) {
     // ── Vínculos
     if (vinculos.length) {
         html += `<div class="pessoa-section">
-            <div class="pessoa-section-title">Vínculos (${vinculos.length})</div>
+            <div class="pessoa-section-title" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Vínculos (${vinculos.length})</span>
+                <button type="button" style="background:rgba(255,112,67,.15);border:1px solid rgba(255,112,67,.4);
+                    color:#ff7043;border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer;"
+                    onclick="fecharModalPessoa();buscarVinculosNoMapa('${esc(String(pid))}');">
+                    🗺️ Ver todos no mapa
+                </button>
+            </div>
             ${vinculos.map(v => {
                 const outraId = (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a) == pid
                     ? (v.pessoa_destino_id||v.pessoa_id_b||v.id_pessoa_b)
                     : (v.pessoa_origem_id||v.pessoa_id_a||v.id_pessoa_a);
                 const outra = _idx.pessoaById[outraId];
                 const tipo  = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
-                return `<div class="pessoa-vinculo-item">
-                    <span style="color:#ff7043;font-size:16px;">↔</span>
+                const cor   = corTipoVinculo(tipo);
+                return `<div class="pessoa-vinculo-item" style="cursor:pointer;" onclick="fecharModalPessoa();setTimeout(()=>abrirDetalhe('${esc(String(outraId||''))}'),150);">
+                    <span style="color:${cor};font-size:16px;">↔</span>
                     <div>
                         <b>${esc(nomePessoa(outra))}</b>
-                        <div style="color:rgba(255,255,255,.45);font-size:10px;">${esc(tipo)}</div>
+                        <div style="color:${cor};font-size:10px;">${esc(tipo)}</div>
                     </div>
                 </div>`;
             }).join('')}
@@ -2616,15 +3287,16 @@ function _htmlFichaPessoa(p) {
         </div>`;
     }
 
-    // ── Cruzamento com nó /autor do Firebase ─────────────────────────
+    // ── Cruzamento com ocorrências (Hostinger/Firebase + CAD) ────────
     const fbAutores = _idx.fbAutorByPessoa[String(pid)] || [];
     if (fbAutores.length) {
+        const nCpf = fbAutores.filter(a => a._matchPor === 'cpf').length;
         html += `<div class="pessoa-section">
             <div class="pessoa-section-title" style="color:#ef9a9a;">
-                🔥 Firebase — Registros como Autor (${fbAutores.length})
+                🔥 Ocorrências como Autor/Envolvido (${fbAutores.length})
             </div>
             <div style="font-size:10px;color:rgba(255,255,255,.35);margin-bottom:8px;">
-                Ocorrências do Firebase onde esta pessoa aparece como autor/suspeito
+                Hostinger/Firebase (nó autor) + CAD — ${nCpf ? `${nCpf} confirmada${nCpf===1?'':'s'} por CPF` : 'cruzado por nome (sem CPF pra confirmar)'}
             </div>
             ${fbAutores.slice(0,10).map(a => {
                 const tipif   = a.TIPIFICACAO_GERAL || a.TIPIFICACAO || a.TIPO || '';
@@ -2637,13 +3309,18 @@ function _htmlFichaPessoa(p) {
                 const obito   = a.OBITO === 'S' || norm(a.OBITO||'') === 'SIM';
                 const lat     = parseDec(a.LATITUDE  || a.latitude);
                 const lng     = parseDec(a.LONGITUDE || a.longitude);
-                return `<div class="pessoa-bo-item" style="border-color:rgba(239,154,154,.2);${coordValida(lat,lng)?'cursor:pointer;':''}"
-                    ${coordValida(lat,lng) ? `onclick="fecharModalPessoa();_mapaL.setView([${lat},${lng}],17,{animate:true});"` : ''}>
+                const fonteLabel = a._fonte === 'cad' ? 'CAD' : 'Hostinger/Firebase';
+                const matchLabel = a._matchPor === 'cpf' ? '✓ CPF confirmado' : 'nome aproximado';
+                const matchCor   = a._matchPor === 'cpf' ? '#66bb6a' : '#ffb300';
+                return `<div class="pessoa-bo-item" style="border-color:rgba(239,154,154,.2);cursor:pointer;"
+                    onclick="fecharModalPessoa();expandirPessoaNoMapa('${esc(String(pid))}');">
                     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
                         ${boletim ? `<span class="sb-badge badge-bo">BO ${esc(String(boletim))}</span>` : ''}
+                        <span style="color:rgba(255,255,255,.4);font-size:9px;">${esc(fonteLabel)}</span>
+                        <span style="color:${matchCor};font-size:9px;">${matchLabel}</span>
                         ${data    ? `<span style="color:rgba(255,255,255,.5);font-size:10px;">${esc(data)}</span>` : ''}
                         ${obito   ? `<span style="background:#c62828;color:#fff;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:bold;">ÓBITO</span>` : ''}
-                        ${coordValida(lat,lng) ? `<span style="color:#4fc3f7;font-size:10px;">📍 ir ao mapa</span>` : ''}
+                        <span style="color:#4fc3f7;font-size:10px;">📍 ver no mapa + vínculos</span>
                     </div>
                     ${tipif  ? `<div style="color:#ffcc80;font-size:11px;">🔴 ${esc(tipif)}</div>` : ''}
                     ${local  ? `<div style="color:#a5d6a7;font-size:10px;margin-top:2px;">📌 ${esc(local)}${bairro?' — '+esc(bairro):''}${cidade?', '+esc(cidade):''}</div>` : ''}
@@ -2654,14 +3331,16 @@ function _htmlFichaPessoa(p) {
         </div>`;
     }
 
-    // Botão "Ver no mapa"
-    const lat = parseDec(p.latitude || p.lat);
-    const lng = parseDec(p.longitude || p.lng);
-    if (coordValida(lat, lng)) {
+    // Botão "Ver no mapa" — expande ocorrências + vínculos + ocorrências
+    // dos vínculos, tudo interligado (não só centraliza mais). Usa o
+    // mesmo fallback de coordenada (própria ou endereço) que o resto da
+    // página já usa, então aparece sempre que há QUALQUER coordenada
+    // disponível, não só quando a pessoa tem lat/lng própria.
+    if (_coordPessoa(p)) {
         html += `<div class="pessoa-section" style="text-align:center;">
-            <button onclick="fecharModalPessoa();_mapaL.setView([${lat},${lng}],17,{animate:true});"
+            <button onclick="fecharModalPessoa();expandirPessoaNoMapa('${esc(String(pid))}');"
                 style="background:#1565c0;border:none;color:#fff;padding:7px 20px;
-                border-radius:8px;cursor:pointer;font-size:12px;">🗺 Ver no mapa
+                border-radius:8px;cursor:pointer;font-size:12px;">🗺 Ver no mapa (ocorrências + vínculos)
             </button>
         </div>`;
     }
@@ -2689,12 +3368,17 @@ function renderPainelCamadas() {
 
     const elSB = document.getElementById('lista-camadas-sb');
     if (elSB) {
+        // Conta os mesmos marcadores que construirCamadasSB() de fato
+        // plotou (com fallback de endereço/membro) — NÃO recalcula só por
+        // coordenada própria, senão diverge do que aparece no mapa ao
+        // ligar a camada (era exatamente esse o bug: painel mostrava 0
+        // pra Pessoas/ORCRIM/Registros/Facções mesmo quando iam aparecer).
         const entries = [
-            { id:'pessoas',   label:'Pessoas',    icon:'👤', cor:'#42a5f5', n: _sb.pessoas.filter(r   => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
-            { id:'orcrim',    label:'ORCRIM',     icon:'🦹', cor:'#9c27b0', n: _sb.orcrim.filter(r    => coordValida(parseDec(r.latitude||r.lat||r.lat_sede), parseDec(r.longitude||r.lng||r.lng_sede))).length },
-            { id:'crimes',    label:'Registros',  icon:'📋', cor:'#e65100', n: _sb.registros.filter(r => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
-            { id:'enderecos', label:'Endereços',  icon:'📍', cor:'#4caf50', n: _sb.enderecos.filter(r => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
-            { id:'vinculos',  label:'Facções',    icon:'⚔️', cor:'#880e4f', n: _sb.faccoes.filter(r   => coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng))).length },
+            { id:'pessoas',   label:'Pessoas',    icon:'👤', cor:'#42a5f5', n: _dadosMapaSB.pessoas },
+            { id:'orcrim',    label:'ORCRIM',     icon:'🦹', cor:'#9c27b0', n: _dadosMapaSB.orcrim },
+            { id:'crimes',    label:'Registros',  icon:'📋', cor:'#e65100', n: _dadosMapaSB.crimes },
+            { id:'enderecos', label:'Endereços',  icon:'📍', cor:'#4caf50', n: _dadosMapaSB.enderecos },
+            { id:'vinculos',  label:'Facções',    icon:'⚔️', cor:'#880e4f', n: _dadosMapaSB.vinculos },
         ];
         elSB.innerHTML = entries.map(e => {
             const ativa = _sbAtivas.has(e.id);
@@ -2792,11 +3476,21 @@ function renderListaOrcrim(filtro='') {
                 <span style="font-size:10px;color:rgba(255,255,255,.4);">👥 ${membros} membro(s)</span>
             </div>
             ${membrosHtml}
+            ${ehOrc && membros ? `<button type="button" class="btn-mapa btn-expandir-orcrim" data-oid="${esc(String(r.id))}"
+                style="margin-top:8px;width:100%;background:rgba(106,27,154,.18);border-color:rgba(106,27,154,.4);color:#ce93d8;">
+                🗺️ Expandir no mapa — endereços, ocorrências e vínculos dos membros
+            </button>` : ''}
         </div>`;
     }).join('');
     // Delegação de eventos para cards ORCRIM/Facção
     el.querySelectorAll('.sb-card-orcrim').forEach(card => {
-        card.addEventListener('click', () => _abrirDetalheOrcrim(card.dataset.oid, card.dataset.tipo));
+        card.addEventListener('click', (e) => {
+            if (e.target.closest('.btn-expandir-orcrim')) return; // tratado abaixo
+            _abrirDetalheOrcrim(card.dataset.oid, card.dataset.tipo);
+        });
+    });
+    el.querySelectorAll('.btn-expandir-orcrim').forEach(btn => {
+        btn.addEventListener('click', (e) => { e.stopPropagation(); expandirOrcrimNoMapa(btn.dataset.oid); });
     });
 }
 
@@ -2826,7 +3520,7 @@ function renderListaCrimes(filtro='') {
         // Verifica se tem GPS (Supabase ou Firebase)
         let temGPS = coordValida(parseDec(r.latitude||r.lat), parseDec(r.longitude||r.lng));
         if (!temGPS && numBO) {
-            const fbReg = DADOS_FB.geral.find(g => String(g.BOLETIM||g.boletim||g.NUM_BO||'').trim().toUpperCase() === String(numBO).trim().toUpperCase());
+            const fbReg = _buscarOcorrenciaPorBO(numBO);
             if (fbReg) temGPS = coordValida(parseDec(fbReg.LATITUDE||fbReg.latitude), parseDec(fbReg.LONGITUDE||fbReg.longitude));
         }
         return `<div class="sb-card sb-card-crime" data-rid="${esc(String(r.id))}">
@@ -2855,18 +3549,13 @@ function _focarRegistro(rid) {
     let lat = parseDec(r.latitude||r.lat);
     let lng = parseDec(r.longitude||r.lng);
 
-    // Se não tem GPS, tenta pelo número do BO no Firebase
+    // Se não tem GPS, tenta pelo número do BO no CAD/Firebase
     if (!coordValida(lat, lng)) {
-        const numBO = String(r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '').trim().toUpperCase();
-        if (numBO) {
-            const fbReg = DADOS_FB.geral.find(g => {
-                const gbNum = String(g.BOLETIM || g.boletim || g.NUM_BO || g.NUMERO || '').trim().toUpperCase();
-                return gbNum && gbNum === numBO;
-            });
-            if (fbReg) {
-                lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
-                lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
-            }
+        const numBO = r.numero_bo || r.num_bo || r.boletim || r.numero || r.cop || '';
+        const fbReg = _buscarOcorrenciaPorBO(numBO);
+        if (fbReg) {
+            lat = parseDec(fbReg.LATITUDE || fbReg.latitude);
+            lng = parseDec(fbReg.LONGITUDE || fbReg.longitude);
         }
     }
 
@@ -2881,6 +3570,7 @@ function _focarRegistro(rid) {
 }
 
 function renderListaVinculos(filtro='') {
+    montarLegendaVinculos();
     const f = norm(filtro);
     const lista = _sb.vinculos.filter(r => {
         if (!f) return true;
@@ -2902,19 +3592,41 @@ function renderListaVinculos(filtro='') {
         const pA  = _idx.pessoaById[idA];
         const pB  = _idx.pessoaById[idB];
         const tipo = v.tipo_vinculo || v.subtipo_vinculo || v.tipo || 'Vínculo';
+        const cor = corTipoVinculo(tipo);
         const alvo = String(idA||idB||'');
-        return `<div class="sb-card sb-card-vinculo" data-pid="${esc(alvo)}">
-            <div class="sb-nome" style="font-size:11px;">
-                ${esc(nomePessoa(pA))} <span style="color:#ff7043;">↔</span> ${esc(nomePessoa(pB))}
-            </div>
-            <div>
-                <span class="sb-badge badge-vinculo">${esc(tipo)}</span>
+        return `<div class="sb-card sb-card-vinculo" data-pid="${esc(alvo)}" style="border-left:3px solid ${cor};">
+            <div class="vinculo-par">
+                <div class="vinculo-avatar" data-pid-avatar="${esc(String(idA||''))}" title="${esc(nomePessoa(pA))}">${esc(iniciais(nomePessoa(pA)))}</div>
+                <div class="vinculo-nomes">
+                    <div class="vinculo-nome">${esc(nomePessoa(pA))}</div>
+                    <div class="vinculo-conector" style="color:${cor};">↔ ${esc(tipo)}</div>
+                    <div class="vinculo-nome">${esc(nomePessoa(pB))}</div>
+                </div>
+                <div class="vinculo-avatar" data-pid-avatar="${esc(String(idB||''))}" title="${esc(nomePessoa(pB))}">${esc(iniciais(nomePessoa(pB)))}</div>
             </div>
         </div>`;
     }).join('');
+    el.querySelectorAll('.vinculo-avatar').forEach(av => {
+        av.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (av.dataset.pidAvatar) abrirDetalhe(av.dataset.pidAvatar);
+        });
+    });
     el.querySelectorAll('.sb-card-vinculo').forEach(card => {
         card.addEventListener('click', () => { if (card.dataset.pid) abrirDetalhe(card.dataset.pid); });
     });
+}
+
+// Filtra e mostra só os vínculos de UMA pessoa (usado pelo botão "Ver
+// vínculos" da busca global no mapa) — troca pra aba Vínculos e já
+// preenche o campo de busca com o nome dela.
+function verVinculosDePessoa(pid) {
+    const p = _idx.pessoaById[pid] || _idx.pessoaById[String(pid)];
+    if (!p) return;
+    abrirTab('tab-vinculos');
+    const input = document.getElementById('busca-vinculos');
+    if (input) { input.value = nomePessoa(p); }
+    renderListaVinculos(nomePessoa(p));
 }
 
 function filtrarLista(tipo) {
@@ -2959,14 +3671,15 @@ function atualizarLegenda() {
             <span style="color:rgba(255,255,255,.4);font-size:9px;">${n}</span>
         </div>`;
     });
-    // Supabase
+    // Supabase — contagem de marcadores REALMENTE plotados (mesma fonte
+    // do painel lateral, _dadosMapaSB, já com fallback de endereço/membro)
     const sbEntries = [
-        { cor:'#42a5f5', icon:'👤', label:'Pessoas [SB]',   n:_sb.pessoas.length },
-        { cor:'#9c27b0', icon:'🦹', label:'ORCRIM [SB]',    n:_sb.orcrim.length },
-        { cor:'#e65100', icon:'📋', label:'Registros [SB]', n:_sb.registros.length },
+        { cor:'#42a5f5', icon:'👤', label:'Pessoas [SB]',   n:_dadosMapaSB.pessoas },
+        { cor:'#9c27b0', icon:'🦹', label:'ORCRIM [SB]',    n:_dadosMapaSB.orcrim },
+        { cor:'#e65100', icon:'📋', label:'Registros [SB]', n:_dadosMapaSB.crimes },
         { cor:'#2e7d32', icon:'🏠', label:'End. de Pessoas [SB]',     n:_sb.enderecos.filter(e=>e.pessoa_id||e.id_pessoa||e.pessoas_id||e.fk_pessoa).length },
         { cor:'#66bb6a', icon:'📍', label:'End. de Ocorrências [SB]', n:_sb.enderecos.filter(e=>!(e.pessoa_id||e.id_pessoa||e.pessoas_id||e.fk_pessoa)&&(e.registro_id||e.id_registro||e.registros_oficiais_id||e.fk_registro)).length },
-        { cor:'#880e4f', icon:'⚔️', label:'Facções [SB]',  n:_sb.faccoes.length },
+        { cor:'#880e4f', icon:'⚔️', label:'Facções [SB]',  n:_dadosMapaSB.vinculos },
     ].filter(e => e.n > 0);
     if (sbEntries.length) {
         html += `<div style="height:1px;background:rgba(255,255,255,.1);margin:6px 0;"></div>`;
@@ -3203,6 +3916,7 @@ function importarGeojson(event) {
 // ═════════════════════════════════════════════════════════════════
 carregarFirebase();
 carregarSupabase();
+carregarCAD();
 
 </script>
 </body>

@@ -12,6 +12,11 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <style>
         html, body { height: 100%; overflow: hidden; }
@@ -23,7 +28,7 @@
 
         /* ── Painel esquerdo ── */
         .oi-painel {
-            width: 21.25rem;
+            width: 22.5rem;
             flex-shrink: 0;
             background: var(--p3-surface, #fff);
             border-right: 1px solid var(--p3-border, #ddd);
@@ -70,12 +75,95 @@
         .oi-campo-linha { display: flex; gap: .5rem; }
         .oi-campo-linha .oi-campo { flex: 1; }
 
+        /* ── Análise de área (portado da OPO Inteligente) ── */
+        .oi-toggle-2 { display: flex; gap: .4rem; margin-bottom: .6rem; }
+        .oi-toggle-2 button, .oi-turno-grid button {
+            flex: 1;
+            padding: .45rem .3rem;
+            border: 1.5px solid var(--p3-border, #ccc);
+            border-radius: 8px;
+            background: var(--p3-surface, #fff);
+            color: var(--p3-text-muted, #666);
+            font-size: .72rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            line-height: 1.3;
+        }
+        .oi-toggle-2 button.ativo, .oi-turno-grid button.ativo {
+            border-color: var(--p3-blue-700, #1565c0);
+            background: var(--p3-blue-100, #e3f2fd);
+            color: var(--p3-blue-700, #1565c0);
+        }
+        .oi-turno-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .3rem; margin-bottom: .6rem; }
+        .oi-turno-grid button { font-size: .62rem; padding: .4rem .15rem; }
+
+        .oi-chk-linha { display: flex; gap: 1rem; margin-bottom: .7rem; }
+        .oi-chk-linha label { display: flex; align-items: center; gap: .3rem; font-size: .78rem; cursor: pointer; }
+
+        .oi-btn-analisar {
+            width: 100%;
+            padding: .6rem;
+            background: var(--p3-blue-700, #1565c0);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: .82rem;
+            cursor: pointer;
+        }
+        .oi-btn-analisar:disabled { opacity: .6; cursor: wait; }
+
+        .oi-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; margin-top: .8rem; }
+        .oi-stat-card {
+            background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #ddd);
+            border-radius: 8px;
+            padding: .4rem .2rem;
+            text-align: center;
+        }
+        .oi-stat-card .num { font-size: 1.1rem; font-weight: 800; color: var(--p3-blue-700, #1565c0); }
+        .oi-stat-card .desc { font-size: .6rem; color: var(--p3-text-muted, #888); text-transform: uppercase; }
+
+        /* ── Hotspots ── */
+        .oi-switch-linha {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: .6rem; font-size: .8rem; font-weight: 600;
+        }
+        .oi-switch { position: relative; width: 2.4rem; height: 1.35rem; flex-shrink: 0; }
+        .oi-switch input { opacity: 0; width: 0; height: 0; }
+        .oi-switch .trilho {
+            position: absolute; inset: 0; background: var(--p3-border, #ccc);
+            border-radius: 20px; cursor: pointer; transition: background .2s;
+        }
+        .oi-switch .trilho::before {
+            content: ''; position: absolute; width: 1.05rem; height: 1.05rem; left: .15rem; top: .15rem;
+            background: #fff; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+        }
+        .oi-switch input:checked + .trilho { background: var(--p3-blue-700, #1565c0); }
+        .oi-switch input:checked + .trilho::before { transform: translateX(1.05rem); }
+
+        .oi-hotspot-item {
+            display: flex; justify-content: space-between; align-items: center; gap: .4rem;
+            padding: .45rem .5rem; border-radius: 6px; background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #eee); margin-bottom: .35rem; font-size: .74rem;
+        }
+        .oi-badge-nivel {
+            font-size: .62rem; font-weight: 700; padding: .12rem .45rem; border-radius: 10px;
+            color: #fff; white-space: nowrap;
+        }
+        .oi-badge-CRITICO { background: #c0392b; }
+        .oi-badge-ALTO { background: #e67e22; }
+        .oi-badge-MEDIO { background: #d4ac0d; }
+        .oi-badge-BAIXO { background: #27ae60; }
+
         /* ── Paleta de unidades (arrastáveis) ── */
         .oi-paleta {
             display: flex;
             flex-wrap: wrap;
             gap: .4rem;
         }
+        .oi-paleta + .oi-paleta { margin-top: .5rem; padding-top: .5rem; border-top: 1px dashed var(--p3-border, #ddd); }
 
         .oi-card-unidade {
             display: flex;
@@ -170,7 +258,35 @@
             align-items: center;
             gap: .4rem;
             font-size: .8rem;
+            margin-bottom: .5rem;
         }
+
+        /* ── Perímetros / polígonos ── */
+        .oi-btn-desenhar {
+            width: 100%;
+            padding: .5rem;
+            border: 1.5px dashed var(--p3-blue-700, #1565c0);
+            border-radius: 8px;
+            background: var(--p3-surface, #fff);
+            color: var(--p3-blue-700, #1565c0);
+            font-weight: 700;
+            font-size: .78rem;
+            cursor: pointer;
+            margin-bottom: .5rem;
+        }
+        .oi-btn-desenhar.ativo { background: var(--p3-blue-700, #1565c0); color: #fff; }
+
+        .oi-poligono-item {
+            display: flex; align-items: center; gap: .4rem;
+            padding: .4rem .5rem; border-radius: 6px; background: var(--p3-surface, #fff);
+            border: 1px solid var(--p3-border, #eee); margin-bottom: .35rem;
+        }
+        .oi-poligono-item input[type="text"] {
+            flex: 1; padding: .25rem .35rem; font-size: .74rem;
+            border: 1px solid var(--p3-border, #ccc); border-radius: 5px;
+            background: var(--p3-surface, #fff); color: var(--p3-text, #222);
+        }
+        .oi-poligono-item label { display: flex; align-items: center; gap: .2rem; font-size: .68rem; white-space: nowrap; color: var(--p3-text-muted, #666); }
 
         /* ── Área do mapa ── */
         .oi-mapa-area {
@@ -215,9 +331,14 @@
             max-width: 210mm;
             margin: 0 auto 12px;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             gap: .5rem;
         }
+
+        .oi-doc-hint { color: #fff; font-size: .78rem; opacity: .9; }
+
+        .oi-doc-barra .oi-doc-botoes { display: flex; gap: .5rem; }
 
         .oi-doc-barra button {
             padding: .45rem .9rem;
@@ -242,6 +363,7 @@
             color: #000;
             line-height: 1.35;
         }
+        .folha-a4:focus { outline: none; }
 
         .opo-cabecalho {
             text-align: center;
@@ -295,6 +417,13 @@
         .tab-efetivo th { background: #e0e0e0; border: 1px solid #000; padding: 4px 6px; text-align: center; font-size: 10pt; }
         .tab-efetivo td { border: 1px solid #000; padding: 3px 6px; }
 
+        .opo-mapa-embed, .opo-clusters-embed {
+            width: 100%; height: 260px; border: 1px solid #000; margin-top: 6px; border-radius: 3px;
+        }
+        .opo-mapa-legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 9pt; margin-top: 6px; }
+        .opo-mapa-legenda span { display: inline-flex; align-items: center; gap: 5px; }
+        .opo-mapa-legenda .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
         .assinatura { margin-top: 50px; text-align: center; font-size: 11pt; }
         .assinatura .linha { margin-bottom: 4px; }
 
@@ -311,6 +440,7 @@
 <body>
     <script src="../js/core/session.js"></script>
     <script src="../js/cumprimento-core.js"></script>
+    <script src="../js/opo-hotspot-core.js"></script>
 
     <!-- ═══════ CABEÇALHO ═══════ -->
     <header>
@@ -327,7 +457,7 @@
                 <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
             </button>
             <a href="../page/dashboard-mapa.html" class="btn-imprimir">Voltar</a>
-            <button class="btn-imprimir" onclick="gerarDocumentoOPO()">📄 GERAR OPO</button>
+            <button class="btn-imprimir" id="btn-gerar-opo" onclick="gerarDocumentoOPO()">📄 GERAR OPO</button>
             <button class="btn-imprimir" id="btn-salvar-opo" onclick="salvarOpoAtual()">💾 SALVAR OPO</button>
         </div>
     </header>
@@ -335,6 +465,61 @@
     <div class="opo-layout">
         <!-- ═══════ PAINEL ESQUERDO ═══════ -->
         <aside class="oi-painel">
+
+            <!-- ── 1) Parâmetros de Análise ── -->
+            <div class="oi-secao">
+                <h3>Parâmetros de Análise</h3>
+                <div class="oi-toggle-2">
+                    <button id="oi-btn-escopo-cidade" class="ativo" onclick="setEscopo('cidade')">🏙 Cidade</button>
+                    <button id="oi-btn-escopo-bpm" onclick="setEscopo('bpm')">🗺 10º BPM completo</button>
+                </div>
+                <div class="oi-campo" id="oi-bloco-cidade">
+                    <label for="oi-sel-cidade">Cidade</label>
+                    <select id="oi-sel-cidade"></select>
+                </div>
+                <div class="oi-campo">
+                    <label for="oi-sel-periodo">Período de análise</label>
+                    <select id="oi-sel-periodo">
+                        <option value="7">Últimos 7 dias</option>
+                        <option value="15">Últimos 15 dias</option>
+                        <option value="30" selected>Últimos 30 dias</option>
+                        <option value="60">Últimos 60 dias</option>
+                        <option value="90">Últimos 90 dias</option>
+                    </select>
+                </div>
+                <div class="oi-turno-grid">
+                    <button class="ativo" id="oi-btn-turno-" onclick="setTurno('')">Todos</button>
+                    <button id="oi-btn-turno-manha" onclick="setTurno('manha')">Manhã</button>
+                    <button id="oi-btn-turno-tarde" onclick="setTurno('tarde')">Tarde</button>
+                    <button id="oi-btn-turno-noite" onclick="setTurno('noite')">Noite</button>
+                </div>
+                <div class="oi-chk-linha">
+                    <label><input type="checkbox" id="oi-chk-cvp" checked> CVP</label>
+                    <label><input type="checkbox" id="oi-chk-cvli" checked> CVLI</label>
+                </div>
+                <button class="oi-btn-analisar" id="oi-btn-analisar" onclick="executarAnalise()">🔍 Analisar Área</button>
+                <div class="oi-stats-grid" id="oi-stats-grid" style="display:none;">
+                    <div class="oi-stat-card"><div class="num" id="oi-stat-cvp">0</div><div class="desc">CVP</div></div>
+                    <div class="oi-stat-card"><div class="num" id="oi-stat-cvli">0</div><div class="desc">CVLI</div></div>
+                    <div class="oi-stat-card"><div class="num" id="oi-stat-hot">0</div><div class="desc">Hotspots</div></div>
+                    <div class="oi-stat-card"><div class="num" id="oi-stat-tot">0</div><div class="desc">Total</div></div>
+                </div>
+            </div>
+
+            <!-- ── 2) Hotspots identificados ── -->
+            <div class="oi-secao" id="oi-secao-hotspots" style="display:none;">
+                <h3>Hotspots identificados</h3>
+                <div class="oi-switch-linha">
+                    <span>Incluir hotspots na OPO</span>
+                    <label class="oi-switch">
+                        <input type="checkbox" id="oi-switch-hotspots" onchange="toggleHotspotsNaOpo()">
+                        <span class="trilho"></span>
+                    </label>
+                </div>
+                <div id="oi-lista-hotspots"></div>
+            </div>
+
+            <!-- ── 3) Dados da Operação ── -->
             <div class="oi-secao">
                 <h3>Dados da Operação</h3>
                 <div class="oi-campo">
@@ -365,36 +550,51 @@
                         <input type="time" id="oi-fim-padrao" value="18:00">
                     </div>
                 </div>
-                <label class="oi-check">
-                    <input type="checkbox" id="oi-check-perimetros" checked onchange="alternarPerimetrosCartao()">
-                    Mostrar perímetros do cartão-programa no mapa
-                </label>
             </div>
 
+            <!-- ── 4) Unidades disponíveis ── -->
             <div class="oi-secao">
                 <h3>Unidades disponíveis</h3>
                 <div class="oi-paleta" id="oi-paleta"></div>
-                <p class="oi-ajuda">Clique e arraste uma unidade para o ponto do mapa onde ela deve atuar. O endereço (rua/bairro) é identificado automaticamente.</p>
+                <div class="oi-paleta" id="oi-paleta-policiais"></div>
+                <p class="oi-ajuda">Clique e arraste pro mapa. Depois de posicionada, você pode arrastar de novo pra mudar de lugar quantas vezes quiser — o endereço só é identificado quando você gerar a OPO.</p>
             </div>
 
+            <!-- ── 5) Unidades posicionadas ── -->
             <div class="oi-secao">
                 <h3>Unidades posicionadas</h3>
                 <div id="oi-lista-posicionadas"><p class="oi-vazio">Nenhuma unidade posicionada ainda.</p></div>
+            </div>
+
+            <!-- ── 6) Perímetros ── -->
+            <div class="oi-secao">
+                <h3>Perímetros</h3>
+                <div class="oi-campo">
+                    <label for="oi-sel-cartao-programa">Cartão-programa salvo (mostrar no mapa)</label>
+                    <select id="oi-sel-cartao-programa" onchange="selecionarCartaoPrograma()">
+                        <option value="">— Nenhum —</option>
+                    </select>
+                </div>
+                <button class="oi-btn-desenhar" id="oi-btn-desenhar" onclick="alternarDesenhoPoligono()">✏️ Desenhar perímetro</button>
+                <div id="oi-lista-poligonos"></div>
             </div>
         </aside>
 
         <!-- ═══════ MAPA ═══════ -->
         <main class="oi-mapa-area">
             <div id="oi-mapa"></div>
-            <div class="oi-drop-hint" id="oi-drop-hint">Solte para posicionar a guarnição</div>
+            <div class="oi-drop-hint" id="oi-drop-hint">Solte para posicionar</div>
         </main>
     </div>
 
     <!-- ═══════ DOCUMENTO GERADO ═══════ -->
     <div id="oi-overlay-doc">
         <div class="oi-doc-barra no-print">
-            <button onclick="window.print()">🖨 Imprimir</button>
-            <button onclick="fecharDocumentoOPO()">✕ Fechar</button>
+            <span class="oi-doc-hint">✏️ Clique em qualquer texto do documento pra editar antes de imprimir/salvar.</span>
+            <div class="oi-doc-botoes">
+                <button onclick="window.print()">🖨 Imprimir</button>
+                <button onclick="fecharDocumentoOPO()">✕ Fechar</button>
+            </div>
         </div>
         <div id="oi-conteudo-doc"></div>
     </div>
@@ -419,12 +619,19 @@
             { id: 'tatico-rural-01', label: 'TÁTICO RURAL 01' },
             { id: 'tatico-rural-02', label: 'TÁTICO RURAL 02' },
         ];
+        // "Efetivo a pé" — pra uso em eventos (item pedido à parte): um
+        // token genérico "Policial", arrastado quantas vezes precisar;
+        // cada cópia vira uma unidade numerada (Policial 01, 02...).
+        const ROSTER_POLICIAIS = [{ id: 'policial', label: 'Policial' }];
+        let contadorPolicial = 0;
 
         // Mesmo critério de cor por tipo de guarnição usado em
         // rastreamento-guarnicao.html (corPorGuarnicao) — mantém a
-        // identidade visual igual em todo o sistema.
+        // identidade visual igual em todo o sistema. "Policial" (efetivo a
+        // pé) ganha cor própria, não entra nas regras de viatura.
         function corPorGuarnicao(nome) {
             const n = (nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+            if (n.includes('POLICIAL')) return '#00838f';
             if (n.includes('PELOPES') || n.includes('TATICO')) return '#111111';
             if (n.includes('FT')) return '#e65100';
             if (n.includes('RP')) return '#1565c0';
@@ -436,6 +643,7 @@
         // mesma identidade visual dos marcadores no mapa de rastreamento.
         function iconePorGuarnicao(nome) {
             const cor = corPorGuarnicao(nome);
+            if ((nome || '').toUpperCase().includes('POLICIAL')) return iconePolicial(cor);
             const svg = `
                 <svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
                     <path d="M17 0C7.611 0 0 7.611 0 17c0 11.75 17 25 17 25s17-13.25 17-25C34 7.611 26.389 0 17 0z"
@@ -448,6 +656,26 @@
                         <circle cx="21.8" cy="18.4" r="1.35" fill="#fff"/>
                         <rect x="12.5" y="10.6" width="9" height="2" rx="1"/>
                         <path d="M13.5 10.4l-1.6-2.1M17 10.2V8M20.5 10.4l1.6-2.1" stroke="#111111" stroke-width="1.1" stroke-linecap="round"/>
+                    </g>
+                </svg>`;
+            return L.divIcon({
+                className: '',
+                html: `<div style="filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));">${svg}</div>`,
+                iconSize: [34, 42], iconAnchor: [17, 42], popupAnchor: [0, -38]
+            });
+        }
+
+        // Pin de "boneco de policial" (efetivo a pé) — mesmo formato de
+        // gota, pictograma de pessoa em vez de viatura.
+        function iconePolicial(cor) {
+            const svg = `
+                <svg width="34" height="42" viewBox="0 0 34 42" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M17 0C7.611 0 0 7.611 0 17c0 11.75 17 25 17 25s17-13.25 17-25C34 7.611 26.389 0 17 0z"
+                          fill="${cor}" stroke="#fff" stroke-width="1.5"/>
+                    <circle cx="17" cy="17" r="12" fill="#fff"/>
+                    <g fill="#111111">
+                        <circle cx="17" cy="11.7" r="3.1"/>
+                        <path d="M9.8 24.2c0-4.6 3.3-7.3 7.2-7.3s7.2 2.7 7.2 7.3v1h-14.4v-1z"/>
                     </g>
                 </svg>`;
             return L.divIcon({
@@ -497,28 +725,144 @@
             });
         }
 
-        let mostrarPerimetros = true;
-        async function carregarPerimetrosCartaoPrograma() {
+        // Não desenha mais TODOS os cartões automaticamente (poluía o mapa)
+        // — só busca a lista e deixa o usuário ESCOLHER qual quer ver, via
+        // o select #oi-sel-cartao-programa.
+        let cartoesProgramaCache = [];
+        function labelCartaoPrograma(c) {
+            const tipo = c.tipo === 'opo' ? 'OPO' : 'Cartão';
+            const nome = c.nomeOperacao || c.cidade || c.rpSelecionado || 'Sem nome';
+            return `${tipo} — ${nome}${c.data ? ' (' + c.data + ')' : ''}`;
+        }
+        async function carregarListaCartoesPrograma() {
+            const sel = document.getElementById('oi-sel-cartao-programa');
             try {
                 const cfg = await P3.loadUnidadeConfig();
                 const dbUrl = cfg.firebase.databaseURL;
                 const res = await fetch(`${dbUrl}/cartoes_programa.json`);
                 const dados = res.ok ? await res.json() : {};
                 const todos = Object.entries(dados || {}).map(([id, v]) => Object.assign({ id }, v));
-                const validos = todos.filter(c => !window.CumprimentoCore || window.CumprimentoCore.ehCartaoValido(c));
-                if (mostrarPerimetros) desenharPerimetrosCartaoPrograma(validos);
+                cartoesProgramaCache = todos
+                    .filter(c => !window.CumprimentoCore || window.CumprimentoCore.ehCartaoValido(c))
+                    .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
+                sel.innerHTML = '<option value="">— Nenhum —</option>' +
+                    cartoesProgramaCache.map(c => `<option value="${escHtml(c.id)}">${escHtml(labelCartaoPrograma(c))}</option>`).join('');
             } catch (e) { console.error('[OPO Interativa] Falha ao carregar cartões-programa', e); }
         }
-        function alternarPerimetrosCartao() {
-            mostrarPerimetros = document.getElementById('oi-check-perimetros').checked;
-            if (mostrarPerimetros) carregarPerimetrosCartaoPrograma();
-            else { circulosCartaoPrograma.forEach(c => mapa.removeLayer(c)); circulosCartaoPrograma = []; }
+        function selecionarCartaoPrograma() {
+            const id = document.getElementById('oi-sel-cartao-programa').value;
+            if (!id) { circulosCartaoPrograma.forEach(c => mapa.removeLayer(c)); circulosCartaoPrograma = []; return; }
+            const cartao = cartoesProgramaCache.find(c => c.id === id);
+            if (cartao) desenharPerimetrosCartaoPrograma([cartao]);
+        }
+        window.selecionarCartaoPrograma = selecionarCartaoPrograma;
+
+        // ══════════════════════════════════════════════════════════════
+        // ANÁLISE DE ÁREA — portada da OPO Inteligente via OpoHotspotCore
+        // (js/opo-hotspot-core.js), que já é a MESMA lógica extraída em
+        // funções puras. Não recalcula nada aqui, só chama e desenha.
+        // ══════════════════════════════════════════════════════════════
+        let escopoAtual = 'cidade';
+        let turnoAtual = '';
+        let analiseAtual = null;
+        let hotspotsIncluidosNaOpo = false;
+        let circulosHotspot = [];
+
+        const CORES_NIVEL = { 'CRÍTICO': '#c0392b', 'ALTO': '#e67e22', 'MÉDIO': '#d4ac0d', 'BAIXO': '#27ae60' };
+        function classeNivel(nivel) {
+            return 'oi-badge-' + (nivel || 'BAIXO').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
         }
 
-        // ── Geocodificação reversa (Nominatim) — só dispara no DROP, nunca
-        // durante o arrasto; cache por coordenada arredondada e uma fila
-        // com espaçamento mínimo de 1.1s entre chamadas (política de uso
-        // do Nominatim: no máx. 1 req/s).
+        function popularCidades() {
+            const sel = document.getElementById('oi-sel-cidade');
+            const cidades = (window.OpoHotspotCore && window.OpoHotspotCore.CIDADES_10BPM) || [];
+            sel.innerHTML = cidades.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+        }
+
+        function setEscopo(tipo) {
+            escopoAtual = tipo;
+            document.getElementById('oi-btn-escopo-cidade').classList.toggle('ativo', tipo === 'cidade');
+            document.getElementById('oi-btn-escopo-bpm').classList.toggle('ativo', tipo === 'bpm');
+            document.getElementById('oi-bloco-cidade').style.display = tipo === 'cidade' ? '' : 'none';
+        }
+        window.setEscopo = setEscopo;
+
+        function setTurno(turno) {
+            turnoAtual = turno;
+            ['', 'manha', 'tarde', 'noite'].forEach(t => {
+                document.getElementById('oi-btn-turno-' + t).classList.toggle('ativo', t === turno);
+            });
+        }
+        window.setTurno = setTurno;
+
+        function desenharHotspotsNoMapa(hotspots) {
+            circulosHotspot.forEach(c => mapa.removeLayer(c));
+            circulosHotspot = [];
+            hotspots.forEach((h, idx) => {
+                const cor = CORES_NIVEL[h.nivel] || '#888';
+                const circulo = L.circle([h.lat, h.lng], {
+                    radius: 350, color: cor, weight: 2, opacity: .85, fillOpacity: .18,
+                }).addTo(mapa);
+                circulo.bindPopup(`<strong>Hotspot #${idx + 1} — ${escHtml(h.nivel)}</strong><br>
+                    <small>${escHtml(h.local || h.cidade || '')}</small><br>
+                    CVP: ${h.cvp} · CVLI: ${h.cvli} · Total: ${h.total}`);
+                circulosHotspot.push(circulo);
+            });
+        }
+
+        function renderizarHotspots(hotspots) {
+            const cont = document.getElementById('oi-lista-hotspots');
+            if (!hotspots.length) { cont.innerHTML = '<p class="oi-vazio">Nenhum hotspot identificado no período.</p>'; return; }
+            cont.innerHTML = hotspots.map((h, idx) => `
+                <div class="oi-hotspot-item">
+                    <span>#${idx + 1} — ${escHtml(h.local || h.cidade || 'Local não identificado')} (${h.total})</span>
+                    <span class="oi-badge-nivel ${classeNivel(h.nivel)}">${escHtml(h.nivel)}</span>
+                </div>`).join('');
+        }
+
+        function toggleHotspotsNaOpo() {
+            hotspotsIncluidosNaOpo = document.getElementById('oi-switch-hotspots').checked;
+        }
+        window.toggleHotspotsNaOpo = toggleHotspotsNaOpo;
+
+        async function executarAnalise() {
+            const btn = document.getElementById('oi-btn-analisar');
+            btn.disabled = true; btn.textContent = '⏳ Analisando...';
+            try {
+                const periodo = parseInt(document.getElementById('oi-sel-periodo').value, 10) || 30;
+                const opts = {
+                    turno: turnoAtual,
+                    comCVP: document.getElementById('oi-chk-cvp').checked,
+                    comCVLI: document.getElementById('oi-chk-cvli').checked,
+                };
+                analiseAtual = escopoAtual === 'bpm'
+                    ? await OpoHotspotCore.analisarArea(periodo, opts)
+                    : await OpoHotspotCore.analisarCidade(document.getElementById('oi-sel-cidade').value, periodo, opts);
+
+                document.getElementById('oi-stats-grid').style.display = '';
+                document.getElementById('oi-stat-cvp').textContent = analiseAtual.tatica.cvpTotal;
+                document.getElementById('oi-stat-cvli').textContent = analiseAtual.tatica.cvliTotal;
+                document.getElementById('oi-stat-hot').textContent = analiseAtual.hotspots.length;
+                document.getElementById('oi-stat-tot').textContent = analiseAtual.ocorrencias.length;
+
+                document.getElementById('oi-secao-hotspots').style.display = '';
+                renderizarHotspots(analiseAtual.hotspots);
+                desenharHotspotsNoMapa(analiseAtual.hotspots);
+
+                if (analiseAtual.geo) mapa.setView([analiseAtual.geo.lat, analiseAtual.geo.lng], analiseAtual.geo.zoom || 12);
+            } catch (e) {
+                console.error('[OPO Interativa] Falha na análise', e);
+                alert('Não foi possível concluir a análise. Tente novamente.');
+            } finally {
+                btn.disabled = false; btn.textContent = '🔍 Analisar Área';
+            }
+        }
+        window.executarAnalise = executarAnalise;
+
+        // ── Geocodificação reversa (Nominatim) — só dispara na GERAÇÃO da
+        // OPO, nunca durante o arrasto (pedido explícito do usuário); cache
+        // por coordenada arredondada e fila com espaçamento mínimo de 1.1s
+        // entre chamadas (política de uso do Nominatim: no máx. 1 req/s).
         const cacheGeocodificacao = new Map();
         let filaGeocodificacao = Promise.resolve();
         function geocodificarReverso(lat, lng) {
@@ -558,7 +902,16 @@
                     <span class="bolinha"></span>${escHtml(u.label)}
                 </div>`;
             }).join('');
-            cont.querySelectorAll('.oi-card-unidade').forEach(card => {
+
+            const contPol = document.getElementById('oi-paleta-policiais');
+            contPol.innerHTML = ROSTER_POLICIAIS.map(u => {
+                const cor = corPorGuarnicao(u.label);
+                return `<div class="oi-card-unidade" draggable="true" data-id="${u.id}" data-label="${escHtml(u.label)}" style="--cor:${cor};">
+                    <span class="bolinha"></span>👮 ${escHtml(u.label)} (efetivo a pé)
+                </div>`;
+            }).join('');
+
+            [...cont.querySelectorAll('.oi-card-unidade'), ...contPol.querySelectorAll('.oi-card-unidade')].forEach(card => {
                 card.addEventListener('dragstart', e => {
                     e.dataTransfer.setData('text/plain', card.dataset.label);
                     e.dataTransfer.effectAllowed = 'copy';
@@ -574,6 +927,10 @@
             }).addTo(mapa);
         }
 
+        function popupSemEndereco(guarnicao) {
+            return `<strong>${escHtml(guarnicao)}</strong><br><small>Arraste para reposicionar • endereço só na geração da OPO</small>`;
+        }
+
         function renderizarListaPosicionadas() {
             const cont = document.getElementById('oi-lista-posicionadas');
             if (!unidadesPosicionadas.length) {
@@ -586,7 +943,7 @@
                         <span style="color:${corPorGuarnicao(item.guarnicao)};">● ${escHtml(item.guarnicao)}</span>
                         <button class="oi-btn-remover" onclick="removerUnidade(${item.uid})" title="Remover">✕</button>
                     </div>
-                    <div class="endereco">${escHtml(item.endereco || 'Identificando endereço...')}</div>
+                    <div class="endereco">${escHtml(item.endereco || 'Endereço só na geração da OPO')}</div>
                     <div class="linha-mini">
                         <input type="time" value="${item.ini}" onchange="atualizarCampoUnidade(${item.uid}, 'ini', this.value)" title="Início">
                         <input type="time" value="${item.fim}" onchange="atualizarCampoUnidade(${item.uid}, 'fim', this.value)" title="Fim">
@@ -613,23 +970,48 @@
         window.removerUnidade = removerUnidade;
         window.atualizarCampoUnidade = atualizarCampoUnidade;
 
-        async function adicionarUnidade(guarnicao, lat, lng) {
+        // Cria a unidade já ARRASTÁVEL no mapa (draggable:true) — pode ser
+        // reposicionada quantas vezes precisar depois de solta; a
+        // geocodificação NÃO roda aqui (só quando a OPO for gerada, ver
+        // resolverEnderecosPendentes()), então mover não gasta nada.
+        function adicionarUnidade(guarnicao, lat, lng) {
             const uid = ++contadorUid;
             const iniPadrao = document.getElementById('oi-ini-padrao').value || '06:00';
             const fimPadrao = document.getElementById('oi-fim-padrao').value || '18:00';
             const item = {
                 uid, guarnicao, lat, lng, ini: iniPadrao, fim: fimPadrao, raioKm: 1,
-                endereco: '', marker: null, circulo: null,
+                endereco: null, marker: null, circulo: null,
             };
-            item.marker = L.marker([lat, lng], { icon: iconePorGuarnicao(guarnicao) }).addTo(mapa)
-                .bindPopup(`<strong>${escHtml(guarnicao)}</strong><br><small>Identificando endereço...</small>`);
+            item.marker = L.marker([lat, lng], { icon: iconePorGuarnicao(guarnicao), draggable: true }).addTo(mapa)
+                .bindPopup(popupSemEndereco(guarnicao));
+            item.marker.on('dragend', e => {
+                const p = e.target.getLatLng();
+                item.lat = p.lat; item.lng = p.lng; item.endereco = null;
+                atualizarCirculo(item);
+                item.marker.setPopupContent(popupSemEndereco(item.guarnicao));
+                renderizarListaPosicionadas();
+            });
             atualizarCirculo(item);
             unidadesPosicionadas.push(item);
             renderizarListaPosicionadas();
+        }
 
-            const geo = await geocodificarReverso(lat, lng);
-            item.endereco = geo.texto;
-            item.marker.setPopupContent(`<strong>${escHtml(guarnicao)}</strong><br><small>${escHtml(geo.texto)}</small>`);
+        // Resolve os endereços pendentes (unidades sem `endereco`, seja por
+        // terem acabado de ser criadas ou movidas depois) — chamado só na
+        // hora de gerar a OPO, nunca a cada drop/drag.
+        async function resolverEnderecosPendentes() {
+            const pendentes = unidadesPosicionadas.filter(i => !i.endereco);
+            if (!pendentes.length) return;
+            const btn = document.getElementById('btn-gerar-opo');
+            const textoOriginal = btn.textContent;
+            for (let idx = 0; idx < pendentes.length; idx++) {
+                const item = pendentes[idx];
+                btn.textContent = `⏳ Identificando endereços... (${idx + 1}/${pendentes.length})`;
+                const geo = await geocodificarReverso(item.lat, item.lng);
+                item.endereco = geo.texto;
+                if (item.marker) item.marker.setPopupContent(`<strong>${escHtml(item.guarnicao)}</strong><br><small>${escHtml(geo.texto)}</small>`);
+            }
+            btn.textContent = textoOriginal;
             renderizarListaPosicionadas();
         }
 
@@ -645,17 +1027,97 @@
         containerMapa.addEventListener('drop', e => {
             e.preventDefault();
             dicaDrop.classList.remove('ativo');
-            const guarnicao = e.dataTransfer.getData('text/plain');
-            if (!guarnicao) return;
+            const labelBase = e.dataTransfer.getData('text/plain');
+            if (!labelBase) return;
+            // Token genérico "Policial" — cada cópia solta vira uma unidade
+            // numerada independente (Policial 01, 02...).
+            const guarnicao = labelBase === 'Policial' ? `Policial ${String(++contadorPolicial).padStart(2, '0')}` : labelBase;
             const ponto = mapa.mouseEventToLatLng(e);
             adicionarUnidade(guarnicao, ponto.lat, ponto.lng);
         });
 
-        // ── Geração do documento (mesmo modelo visual da OPO Inteligente:
-        // cabeçalho PMAL/10ºBPM, protocolo, tabela de identificação,
-        // efetivo empenhado, orientações, prescrições, assinatura) ──
-        function gerarDocumentoOPO() {
+        // ══════════════════════════════════════════════════════════════
+        // PERÍMETROS DESENHADOS (polígonos) — Leaflet.draw, acionado por
+        // botão próprio (sem a barra de ferramentas padrão do plugin, pra
+        // não destoar visualmente do resto da página).
+        // ══════════════════════════════════════════════════════════════
+        let poligonos = []; // { id, nome, layer, incluirNaOpo }
+        let contadorPoligono = 0;
+        let desenhoAtivo = null;
+
+        function alternarDesenhoPoligono() {
+            const btn = document.getElementById('oi-btn-desenhar');
+            if (desenhoAtivo) { desenhoAtivo.disable(); desenhoAtivo = null; btn.classList.remove('ativo'); btn.textContent = '✏️ Desenhar perímetro'; return; }
+            desenhoAtivo = new L.Draw.Polygon(mapa, { shapeOptions: { color: '#8e24aa', weight: 2, fillOpacity: .12 } });
+            desenhoAtivo.enable();
+            btn.classList.add('ativo');
+            btn.textContent = '✕ Cancelar desenho';
+        }
+        window.alternarDesenhoPoligono = alternarDesenhoPoligono;
+
+        mapa.on(L.Draw.Event.CREATED, e => {
+            const layer = e.layer.addTo(mapa);
+            const id = ++contadorPoligono;
+            const nome = `Perímetro ${id}`;
+            layer.bindPopup(nome);
+            poligonos.push({ id, nome, layer, incluirNaOpo: true });
+            renderizarListaPoligonos();
+            const btn = document.getElementById('oi-btn-desenhar');
+            desenhoAtivo = null; btn.classList.remove('ativo'); btn.textContent = '✏️ Desenhar perímetro';
+        });
+
+        function renderizarListaPoligonos() {
+            const cont = document.getElementById('oi-lista-poligonos');
+            if (!poligonos.length) { cont.innerHTML = ''; return; }
+            cont.innerHTML = poligonos.map(p => `
+                <div class="oi-poligono-item" data-id="${p.id}">
+                    <input type="text" value="${escHtml(p.nome)}" onchange="renomearPoligono(${p.id}, this.value)">
+                    <label><input type="checkbox" ${p.incluirNaOpo ? 'checked' : ''} onchange="togglePoligonoNaOpo(${p.id}, this.checked)"> OPO</label>
+                    <button class="oi-btn-remover" onclick="removerPoligono(${p.id})" title="Remover">✕</button>
+                </div>`).join('');
+        }
+        function renomearPoligono(id, nome) {
+            const p = poligonos.find(x => x.id === id);
+            if (!p) return;
+            p.nome = nome || p.nome;
+            p.layer.setPopupContent(p.nome);
+        }
+        function togglePoligonoNaOpo(id, valor) {
+            const p = poligonos.find(x => x.id === id);
+            if (p) p.incluirNaOpo = valor;
+        }
+        function removerPoligono(id) {
+            const p = poligonos.find(x => x.id === id);
+            if (!p) return;
+            mapa.removeLayer(p.layer);
+            poligonos = poligonos.filter(x => x.id !== id);
+            renderizarListaPoligonos();
+        }
+        window.renomearPoligono = renomearPoligono;
+        window.togglePoligonoNaOpo = togglePoligonoNaOpo;
+        window.removerPoligono = removerPoligono;
+
+        // ══════════════════════════════════════════════════════════════
+        // GERAÇÃO DO DOCUMENTO — mesmo modelo visual da OPO Inteligente
+        // (cabeçalho PMAL/10ºBPM, protocolo, tabela de identificação,
+        // efetivo empenhado, orientações, prescrições, assinatura), com o
+        // texto legal fixo no início, mapa embutido (pins + hotspots/
+        // polígonos se incluídos) e a seção de clusters dinâmicos.
+        // ══════════════════════════════════════════════════════════════
+        let mapaDocPosicoes = null;
+        let mapaDocClusters = null;
+
+        function destruirMapasDoDocumento() {
+            if (mapaDocPosicoes) { try { mapaDocPosicoes.remove(); } catch (e) {} mapaDocPosicoes = null; }
+            if (mapaDocClusters) { try { mapaDocClusters.remove(); } catch (e) {} mapaDocClusters = null; }
+        }
+
+        function corOcorrencia(tipo) { return tipo === 'CVLI' ? '#d63031' : '#e8a020'; }
+
+        async function gerarDocumentoOPO() {
             if (!unidadesPosicionadas.length) { alert('Posicione ao menos 1 unidade no mapa antes de gerar a OPO.'); return; }
+
+            await resolverEnderecosPendentes();
 
             const nomeOP = (document.getElementById('oi-nome-op').value || 'OPERAÇÃO SEM NOME').toUpperCase();
             const dataInput = document.getElementById('oi-data-op').value;
@@ -672,8 +1134,11 @@
                     <td>${item.raioKm} km</td>
                 </tr>`).join('');
 
+            const poligonosIncluidos = poligonos.filter(p => p.incluirNaOpo);
+            const temMapaEmbutido = unidadesPosicionadas.length > 0;
+
             const html = `
-    <div class="folha-a4">
+    <div class="folha-a4" id="oi-folha-a4">
         <div class="opo-cabecalho">
             <div class="orgao">ESTADO DE ALAGOAS — POLÍCIA MILITAR DE ALAGOAS</div>
             <div class="orgao">10° BATALHÃO DE POLÍCIA MILITAR</div>
@@ -684,9 +1149,9 @@
 
         <div class="opo-protocolo">${protocolo}</div>
 
-        <p class="opo-texto">O Comandante do 10º BPM, no uso de suas atribuições legais, determina a
-        execução da seguinte Ordem de Policiamento Ostensivo, com emprego das guarnições e pontos de
-        atuação abaixo definidos:</p>
+        <p class="opo-texto">O Comandante do 10º BPM, no uso de suas atribuições que lhe são conferidas
+        pelo art. 347 do Decreto Estadual nº 63.446/2023, determina a execução da seguinte Ordem de
+        Policiamento Ostensivo:</p>
 
         <table class="tab-info">
             <tr><td colspan="2" class="titulo-tab">IDENTIFICAÇÃO DA OPERAÇÃO</td></tr>
@@ -704,6 +1169,26 @@
             <thead><tr><th>Guarnição</th><th>Local (rua / bairro)</th><th>Horário</th><th>Raio de atuação</th></tr></thead>
             <tbody>${linhasEfetivo}</tbody>
         </table>
+
+        ${temMapaEmbutido ? `
+        <div class="opo-secao">MAPA DA OPERAÇÃO</div>
+        <div class="opo-mapa-embed" id="oi-doc-mapa" contenteditable="false"></div>
+        <div class="opo-mapa-legenda">
+            <span><span class="dot" style="background:#1565c0;"></span> Guarnição</span>
+            <span><span class="dot" style="background:#00838f;"></span> Efetivo a pé</span>
+            ${hotspotsIncluidosNaOpo ? '<span><span class="dot" style="background:#c0392b;"></span> Hotspot</span>' : ''}
+            ${poligonosIncluidos.length ? '<span><span class="dot" style="background:#8e24aa;"></span> Perímetro desenhado</span>' : ''}
+        </div>` : ''}
+
+        ${analiseAtual ? `
+        <div class="opo-secao">PANORAMA DE OCORRÊNCIAS — CLUSTERS DINÂMICOS</div>
+        <p class="opo-texto">Distribuição geoespacial das ${analiseAtual.ocorrencias.length} ocorrências (CVP/CVLI)
+        consideradas na análise (${analiseAtual.periodo} dias), agrupadas dinamicamente por proximidade:</p>
+        <div class="opo-clusters-embed" id="oi-doc-clusters" contenteditable="false"></div>
+        <div class="opo-mapa-legenda">
+            <span><span class="dot" style="background:#d63031;"></span> CVLI</span>
+            <span><span class="dot" style="background:#e8a020;"></span> CVP</span>
+        </div>` : ''}
 
         <div class="opo-secao">1. ORIENTAÇÕES OPERACIONAIS</div>
         <p class="opo-texto">a) O policiamento se destina ao cumprimento do artigo 144 da Constituição Federal
@@ -732,19 +1217,97 @@
         </div>
     </div>`;
 
-            document.getElementById('oi-conteudo-doc').innerHTML = html;
+            destruirMapasDoDocumento();
+            const conteudo = document.getElementById('oi-conteudo-doc');
+            conteudo.innerHTML = html;
+            conteudo.contentEditable = 'true'; // documento inteiro editável (item pedido)
             document.getElementById('oi-overlay-doc').classList.add('aberto');
-        }
-        function fecharDocumentoOPO() {
-            document.getElementById('oi-overlay-doc').classList.remove('aberto');
+
+            // Mapas embutidos só podem ser criados depois do container
+            // estar de fato no DOM — mesma técnica já usada na OPO
+            // Inteligente (_criarBlocoMapa) pros mini-mapas de hotspot.
+            requestAnimationFrame(() => {
+                if (temMapaEmbutido) montarMapaDocPosicoes(poligonosIncluidos);
+                if (analiseAtual) montarMapaDocClusters();
+            });
         }
         window.gerarDocumentoOPO = gerarDocumentoOPO;
+
+        function montarMapaDocPosicoes(poligonosIncluidos) {
+            const el = document.getElementById('oi-doc-mapa');
+            if (!el) return;
+            mapaDocPosicoes = L.map(el, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false }).setView([-9.4500, -36.6200], 11);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaDocPosicoes);
+            const bounds = [];
+
+            unidadesPosicionadas.forEach(item => {
+                L.marker([item.lat, item.lng], { icon: iconePorGuarnicao(item.guarnicao) }).addTo(mapaDocPosicoes);
+                bounds.push([item.lat, item.lng]);
+            });
+            if (hotspotsIncluidosNaOpo && analiseAtual) {
+                analiseAtual.hotspots.forEach(h => {
+                    L.circle([h.lat, h.lng], { radius: 350, color: CORES_NIVEL[h.nivel] || '#888', weight: 2, fillOpacity: .2 }).addTo(mapaDocPosicoes);
+                    bounds.push([h.lat, h.lng]);
+                });
+            }
+            poligonosIncluidos.forEach(p => {
+                const latlngs = p.layer.getLatLngs()[0];
+                L.polygon(latlngs, { color: '#8e24aa', weight: 2, fillOpacity: .12 }).addTo(mapaDocPosicoes);
+                latlngs.forEach(ll => bounds.push([ll.lat, ll.lng]));
+            });
+
+            if (bounds.length) mapaDocPosicoes.fitBounds(bounds, { padding: [20, 20] });
+            setTimeout(() => mapaDocPosicoes && mapaDocPosicoes.invalidateSize(), 80);
+        }
+
+        // Mesma técnica de agrupamento visual de js/dashboard-mapa.js
+        // (L.markerClusterGroup + iconCreateFunction com contagem) — só
+        // reaproveita as ocorrências já buscadas pela análise, sem novo fetch.
+        function montarMapaDocClusters() {
+            const el = document.getElementById('oi-doc-clusters');
+            if (!el || !analiseAtual) return;
+            mapaDocClusters = L.map(el, { zoomControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false }).setView([-9.4500, -36.6200], 10);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap', maxZoom: 19 }).addTo(mapaDocClusters);
+
+            const grupo = L.markerClusterGroup({
+                showCoverageOnHover: false, zoomToBoundsOnClick: true, maxClusterRadius: 45,
+                iconCreateFunction: cluster => {
+                    const count = cluster.getChildCount();
+                    const size = count > 50 ? 44 : count > 15 ? 36 : 28;
+                    return L.divIcon({
+                        className: '',
+                        html: `<div style="background:#12719c;color:#fff;border-radius:50%;width:${size}px;height:${size}px;
+                            display:flex;align-items:center;justify-content:center;font-weight:bold;
+                            font-size:${size > 36 ? 12 : 10}px;border:3px solid rgba(255,255,255,.7);
+                            box-shadow:0 2px 8px rgba(0,0,0,.4);">${count}</div>`,
+                        iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+                    });
+                },
+            });
+            const bounds = [];
+            analiseAtual.ocorrencias.forEach(oc => {
+                const marker = L.circleMarker([oc.lat, oc.lng], { radius: 6, fillColor: corOcorrencia(oc.tipo), color: '#fff', weight: 1.5, opacity: 1, fillOpacity: .85 });
+                marker.bindPopup(`<strong>${escHtml(oc.tipo)}</strong> — ${escHtml(oc.natureza || '')}<br><small>${escHtml(oc.local || '')}<br>${escHtml(oc.data || '')} ${escHtml(oc.hora || '')}</small>`);
+                grupo.addLayer(marker);
+                bounds.push([oc.lat, oc.lng]);
+            });
+            mapaDocClusters.addLayer(grupo);
+            if (bounds.length) mapaDocClusters.fitBounds(bounds, { padding: [20, 20] });
+            setTimeout(() => mapaDocClusters && mapaDocClusters.invalidateSize(), 80);
+        }
+
+        function fecharDocumentoOPO() {
+            document.getElementById('oi-overlay-doc').classList.remove('aberto');
+            destruirMapasDoDocumento();
+        }
         window.fecharDocumentoOPO = fecharDocumentoOPO;
 
         // ── Salvar — mesmo formato {tipo:'opo', alocacoes:[...]} já lido
         // por rastreamento-guarnicao.html (desenharPerimetroCartao), sem
-        // precisar alterar nada lá: cada unidade posicionada vira 1 linha
-        // de alocacoes com área = círculo desenhado no mapa.
+        // precisar alterar nada lá: cada unidade posicionada (viatura ou
+        // policial a pé) vira 1 linha de alocacoes. hotspots/polígonos
+        // entram como campos NOVOS, adicionais — quem já lê esse nó ignora
+        // o que não conhece, então não quebra nada existente.
         async function salvarOpoAtual() {
             if (!unidadesPosicionadas.length) { alert('Posicione ao menos 1 unidade no mapa antes de salvar.'); return; }
             const btn = document.getElementById('btn-salvar-opo');
@@ -752,6 +1315,8 @@
             btn.disabled = true; btn.textContent = '⏳ Salvando...';
 
             try {
+                await resolverEnderecosPendentes();
+
                 const cfg = await P3.loadUnidadeConfig();
                 const dbUrl = cfg.firebase.databaseURL;
                 const sessao = window.P3 && window.P3.getSession ? window.P3.getSession() : null;
@@ -773,6 +1338,11 @@
                     viaturaResponsavel: item.guarnicao,
                 }));
 
+                const poligonosIncluidos = poligonos.filter(p => p.incluirNaOpo).map(p => ({
+                    nome: p.nome,
+                    latlngs: p.layer.getLatLngs()[0].map(ll => [ll.lat, ll.lng]),
+                }));
+
                 const payload = {
                     tipo: 'opo',
                     criadoEm,
@@ -784,6 +1354,11 @@
                     nomeOperacao: nomeOP,
                     turno,
                     alocacoes,
+                    hotspotsIncluidos: hotspotsIncluidosNaOpo,
+                    hotspots: (hotspotsIncluidosNaOpo && analiseAtual)
+                        ? analiseAtual.hotspots.map(h => ({ lat: h.lat, lng: h.lng, total: h.total, cvp: h.cvp, cvli: h.cvli, nivel: h.nivel, local: h.local, cidade: h.cidade }))
+                        : [],
+                    perimetrosPoligonos: poligonosIncluidos,
                 };
 
                 const res = await fetch(`${dbUrl}/cartoes_programa.json`, {
@@ -793,7 +1368,7 @@
 
                 btn.textContent = '✅ Salvo!';
                 setTimeout(() => { btn.disabled = false; btn.textContent = textoOriginal; }, 3000);
-                if (mostrarPerimetros) carregarPerimetrosCartaoPrograma();
+                carregarListaCartoesPrograma(); // atualiza a lista pra a OPO recém-salva já aparecer como opção
             } catch (err) {
                 console.error(err);
                 alert('Não foi possível salvar a OPO. Tente novamente.');
@@ -801,13 +1376,34 @@
             }
         }
         window.salvarOpoAtual = salvarOpoAtual;
-        window.alternarPerimetrosCartao = alternarPerimetrosCartao;
 
-        // ── Inicialização ──
-        (function iniciar() {
-            document.getElementById('oi-data-op').value = new Date().toISOString().slice(0, 10);
+        // ── Inicialização ── Suporta abertura via link pré-preenchido (ver
+        // gerarLinkOpoEvento em js/xerife.js): ?cidade=X&data=AAAA-MM-DD&
+        // nome=Y&auto=1 preenche os campos e já dispara a análise de área,
+        // deixando só faltar o clique em "Gerar OPO".
+        (async function iniciar() {
+            const params = new URLSearchParams(location.search);
+            const cidadeParam = params.get('cidade');
+            const dataParam = params.get('data');
+            const nomeParam = params.get('nome');
+            const autoAnalisar = params.get('auto') === '1';
+
+            document.getElementById('oi-data-op').value = dataParam || new Date().toISOString().slice(0, 10);
+            if (nomeParam) document.getElementById('oi-nome-op').value = nomeParam;
+            popularCidades();
             renderizarPaleta();
-            carregarPerimetrosCartaoPrograma();
+            carregarListaCartoesPrograma();
+
+            if (cidadeParam) {
+                const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+                const selCidade = document.getElementById('oi-sel-cidade');
+                const opcao = [...selCidade.options].find(o => norm(o.value) === norm(cidadeParam));
+                if (opcao) {
+                    setEscopo('cidade');
+                    selCidade.value = opcao.value;
+                    if (autoAnalisar) await executarAnalise();
+                }
+            }
         })();
     </script>
 </body>

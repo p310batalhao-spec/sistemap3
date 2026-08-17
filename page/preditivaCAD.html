@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise Preditiva CAD — P3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <style>
+        /* ── Tokens (mesma paleta de page/analisePreditiva.html) ────────
+           Aliasados pros tokens globais de css/theme.css (--p3-*) — como
+           esses tokens TROCAM de valor sozinhos quando data-p3-theme=dark
+           está no <html> (ver css/theme.css), qualquer regra abaixo que
+           use var(--bg)/var(--borda)/var(--sub) passa a respeitar o modo
+           escuro automaticamente, sem precisar duplicar cada regra num
+           bloco :root[data-p3-theme="dark"] separado. */
+        :root {
+            --azul:    #0a448f;
+            --azul-m:  #3b6fb8;
+            --cad:     #00695c;
+            --cad-l:   rgba(0,105,92,.12);
+            --alerta:  #b71c1c;
+            --ok:      #2e7d32;
+            --warn:    #f57f17;
+            --borda:   var(--p3-border, #e0e4ef);
+            --sub:     var(--p3-text-muted, #5a6382);
+            --bg:      var(--p3-bg, #f3f3f5);
+            --superficie: var(--p3-surface, #ffffff);
+            --texto:   var(--p3-text, #1a1f36);
+            --cvp:     #e65100;
+            --cvli:    #6a1b9a;
+            --mvi:     #b71c1c;
+        }
+
+        main { flex-grow:1; padding:1.25rem; display:flex; flex-direction:column; gap:1.25rem; }
+
+        /* ── Faixa de cabeçalho da página ──────────────────────────── */
+        .page-header {
+            display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem;
+            background:linear-gradient(90deg,#00443c 0%,#00695c 50%,#00897b 100%);
+            border-radius:.625rem; padding:1rem 1.5rem; color:white;
+        }
+        .page-header h2 { font-size:1.1rem; font-weight:bold; margin:0; font-family:Arial,sans-serif; }
+        .page-header small { font-size:.78rem; opacity:.75; display:block; margin-top:.2rem; }
+        .badge-ia {
+            background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.3);
+            padding:.3rem .9rem; border-radius:20px; font-size:.72rem; font-weight:bold;
+            letter-spacing:.08em; white-space:nowrap;
+        }
+
+        /* ── Token GEO/CAD (idêntico a rastreamento-guarnicao.html) ──── */
+        .token-banner {
+            display:flex; align-items:center; gap:10px;
+            padding:8px 14px; border-radius:8px; font-size:.83rem;
+            font-weight:600; flex-wrap:wrap;
+        }
+        .token-ok   { background:rgba(0,100,50,.1);  color:#006432; border:1px solid #006432; }
+        .token-warn { background:rgba(180,100,0,.1); color:#b46400; border:1px solid #b46400; }
+        .token-err  { background:rgba(180,0,0,.1);   color:#b40000; border:1px solid #b40000; }
+        .token-banner button {
+            margin-left:auto; padding:4px 12px;
+            background:#003366; color:white; border:none;
+            border-radius:5px; font-size:.78rem; cursor:pointer; font-weight:700;
+        }
+        #modal-token {
+            display:none; position:fixed; inset:0;
+            background:rgba(0,0,0,.55); z-index:9000;
+            align-items:center; justify-content:center;
+        }
+        #modal-token.aberto { display:flex; }
+        .modal-token-box {
+            background:var(--p3-surface,#fff);
+            border:1px solid var(--p3-border,#ddd);
+            border-radius:12px; max-width:530px; width:95%;
+            overflow:hidden; box-shadow:0 16px 48px rgba(0,0,0,.35);
+        }
+        .modal-token-head {
+            background:#003366; color:white;
+            padding:14px 18px; display:flex;
+            justify-content:space-between; align-items:center;
+            font-weight:700; font-size:.95rem;
+        }
+        .modal-token-head button { background:none; border:none; color:rgba(255,255,255,.7); font-size:1.3rem; cursor:pointer; line-height:1; }
+        .modal-token-body { padding:18px; }
+        .token-instrucao {
+            background:var(--p3-surface-alt,#f5f5f5);
+            border-left:3px solid #003366;
+            padding:10px 14px; border-radius:0 6px 6px 0;
+            font-size:.8rem; line-height:1.75; margin-bottom:14px;
+            color:var(--p3-text,#333);
+        }
+        .modal-token-body label { display:block; font-size:.75rem; font-weight:700; text-transform:uppercase; color:var(--p3-text-muted,#666); margin-bottom:5px; }
+        .modal-token-body textarea {
+            width:100%; height:80px; padding:8px;
+            border:2px solid #003366; border-radius:6px;
+            font-size:.78rem; font-family:monospace;
+            resize:vertical; background:var(--p3-surface,#fff); color:var(--p3-text,#333);
+        }
+        .modal-token-foot { padding:0 18px 18px; display:flex; gap:8px; justify-content:flex-end; }
+        .modal-token-foot .rg-btn-cancel {
+            background:var(--p3-surface-alt,#eee); color:var(--p3-text,#333);
+            border:1px solid var(--p3-border,#ccc); border-radius:5px;
+            padding:7px 16px; cursor:pointer; font-size:.85rem;
+        }
+        .rg-btn { background:#003366; color:#fff; border:none; border-radius:5px; padding:7px 16px; cursor:pointer; font-size:.85rem; font-weight:700; }
+        .msg-token { font-size:.78rem; color:#b40000; min-height:16px; margin-top:6px; font-weight:600; }
+
+        /* ── Filtro de período ─────────────────────────────────────── */
+        .filtro-bar {
+            display:flex; align-items:center; gap:.6rem; flex-wrap:wrap;
+            background:var(--superficie); border-radius:.625rem; padding:.85rem 1.1rem;
+            box-shadow:0 .25rem .5rem rgba(0,0,0,.08); font-family:Arial,sans-serif; font-size:.82rem;
+        }
+        .filtro-bar label { font-weight:bold; color:var(--sub); font-size:.75rem; text-transform:uppercase; letter-spacing:.05em; }
+        .filtro-bar input[type=date] { padding:.4rem .6rem; border:1px solid var(--borda); border-radius:.4rem; font-size:.82rem; }
+        .filtro-bar button {
+            padding:.5rem 1.1rem; background:var(--cad); color:#fff; border:none;
+            border-radius:.4rem; font-size:.82rem; font-weight:bold; cursor:pointer;
+        }
+        .filtro-bar button.secundario { background:var(--bg); color:var(--sub); border:1px solid var(--borda); }
+        #status-carga { font-size:.78rem; color:var(--sub); margin-left:auto; }
+
+        /* ── Alertas ────────────────────────────────────────────────── */
+        .alerta-bar { display:flex; gap:.75rem; flex-wrap:wrap; }
+        .alerta {
+            flex:1; min-width:200px; border-radius:.625rem; padding:.9rem 1.1rem;
+            display:flex; align-items:center; gap:.85rem; border-left:4px solid;
+            font-family:Arial,sans-serif; box-shadow:0 2px 6px rgba(0,0,0,.07);
+        }
+        .alerta.alto { background:#fce4ec; border-color:var(--alerta); }
+        .alerta.ok   { background:#e8f5e9; border-color:var(--ok); }
+        :root[data-p3-theme="dark"] .alerta.alto { background:rgba(255,93,78,.14); }
+        :root[data-p3-theme="dark"] .alerta.ok   { background:rgba(43,227,166,.12); }
+        .alerta-icone { font-size:1.6rem; line-height:1; flex-shrink:0; }
+        .alerta-txt strong { font-size:.88rem; font-weight:bold; display:block; color:var(--texto); }
+        .alerta-txt small { font-size:.76rem; color:var(--sub); }
+
+        /* ── Grids / Cards ─────────────────────────────────────────── */
+        .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+        .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:1.25rem; }
+        .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:1.25rem; }
+        @media(max-width:1100px) { .grid-4 { grid-template-columns:repeat(2,1fr); } }
+        @media(max-width:900px) { .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+        .card {
+            background:var(--superficie); border-radius:.625rem; padding:1.25rem;
+            box-shadow:0 .25rem .5rem rgba(0,0,0,.1); font-family:Arial,sans-serif;
+        }
+        .card-titulo {
+            font-size:.75rem; font-weight:bold; text-transform:uppercase;
+            letter-spacing:.08em; color:var(--sub); margin-bottom:1rem;
+            display:flex; align-items:center; gap:.45rem;
+        }
+        .card-titulo .dot { width:8px; height:8px; border-radius:50%; display:inline-block; flex-shrink:0; background:var(--cad); }
+
+        /* ── KPIs ───────────────────────────────────────────────────── */
+        .kpi { flex:1; min-width:110px; text-align:center; background:var(--bg); border-radius:.5rem; padding:1rem .5rem; border:1px solid var(--borda); }
+        .kpi .val { font-size:2.1rem; font-weight:bold; line-height:1.1; color:var(--cad); }
+        .kpi .lbl { font-size:.7rem; color:var(--sub); margin-top:.3rem; font-weight:bold; text-transform:uppercase; letter-spacing:.05em; }
+        .kpi .nota { font-size:.68rem; color:var(--sub); margin-top:.25rem; }
+        .kpi .delta { font-size:.72rem; font-weight:bold; margin-top:.2rem; }
+        .delta.up   { color:var(--mvi); }
+        .delta.down { color:var(--ok); }
+        .delta.eq   { color:var(--sub); }
+        .kpi-row { display:flex; gap:.75rem; flex-wrap:wrap; }
+
+        /* ── Previsão ───────────────────────────────────────────────── */
+        .previsao-box {
+            background:linear-gradient(135deg,#00251a 0%,#00443c 100%);
+            border-radius:.625rem; padding:1.25rem; color:white;
+            font-family:Arial,sans-serif; box-shadow:0 .25rem .5rem rgba(0,0,0,.18);
+        }
+        .previsao-box h3 { font-size:.72rem; text-transform:uppercase; letter-spacing:.1em; opacity:.65; margin-bottom:.85rem; }
+        .previsao-nota { font-size:.75rem; opacity:.75; line-height:1.5; }
+        .p-val { font-size:2.6rem; font-weight:bold; line-height:1; color:#4db6ac; }
+        .p-lbl { font-size:.78rem; opacity:.75; margin-top:.2rem; }
+        .previsao-row { display:flex; gap:1rem; margin-top:.9rem; flex-wrap:wrap; }
+        .previsao-col { flex:1; min-width:150px; background:rgba(255,255,255,.06); border-radius:.5rem; padding:.75rem .9rem; }
+        .previsao-col h4 { font-size:.68rem; text-transform:uppercase; letter-spacing:.07em; opacity:.7; margin:0 0 .6rem; font-weight:bold; }
+        .previsao-col .linha { display:flex; justify-content:space-between; align-items:baseline; font-size:.85rem; padding:.15rem 0; }
+        .previsao-col .linha .n { font-weight:bold; font-size:1.05rem; }
+
+        /* ── Caixas de comparação CVP/CVLI/MVI (mês atual / próximo mês) ──
+           Classe própria — antes reaproveitava ".previsao-item" (a mesma
+           usada no ranking de "Previsão de Risco — Onde e Quando" abaixo,
+           que força display:flex + fundo claro + padding), o que cortava
+           o conteúdo e misturava um cartão claro dentro do gradiente
+           escuro do .previsao-box. min-width + flex-wrap garantem que o
+           valor "estimado → real" nunca fica cortado, mesmo em telas
+           estreitas com os 3 blocos lado a lado. */
+        .previsao-comp { flex:1; min-width:130px; }
+        .previsao-comp-valores { display:flex; align-items:baseline; gap:.3rem; flex-wrap:wrap; }
+        .previsao-comp-seta { font-size:.8rem; opacity:.5; }
+        .previsao-comp .p-val { font-size:1.9rem; word-break:break-word; }
+        .p-delta { font-size:.68rem; font-weight:bold; margin-top:.5rem; display:block; }
+        .p-delta.up   { color:#ff8a65; }
+        .p-delta.down { color:#a5d6a7; }
+        .p-delta.eq   { color:rgba(255,255,255,.55); }
+
+        /* ── Barra de progresso do carregamento CAD ────────────────── */
+        .progresso-cad { display:none; margin-top:.6rem; }
+        .progresso-cad-trilha { background:var(--borda); border-radius:20px; height:8px; overflow:hidden; }
+        .progresso-cad-barra { background:var(--cad); height:100%; width:0%; transition:width .3s ease; border-radius:20px; }
+        .progresso-cad-texto { font-size:.7rem; color:var(--sub); margin-top:.3rem; }
+
+        /* ── Gráficos ───────────────────────────────────────────────── */
+        .chart-wrap { position:relative; }
+        .chart-wrap canvas { width:100%!important; }
+
+        /* ── Tabelas ────────────────────────────────────────────────── */
+        .tabela-cad { width:100%; border-collapse:collapse; font-size:.8rem; font-family:Arial,sans-serif; }
+        .tabela-cad th {
+            text-align:left; padding:.5rem .65rem; background:var(--bg); font-size:.68rem;
+            text-transform:uppercase; letter-spacing:.07em; color:var(--sub);
+            border-bottom:2px solid var(--borda); position:sticky; top:0;
+        }
+        .tabela-cad td { padding:.5rem .65rem; border-bottom:1px solid var(--borda); vertical-align:top; }
+        .tabela-cad tr:last-child td { border-bottom:none; }
+        .tabela-cad tr:hover td { background:var(--p3-blue-100, #f7f9ff); }
+        .tabela-cad tr.linha-clicavel { cursor:pointer; }
+        .modal-boletim { font-weight:bold; color:var(--cad); white-space:nowrap; }
+        a.modal-boletim { text-decoration:none; cursor:pointer; }
+        a.modal-boletim:hover { text-decoration:underline; }
+        .modal-vazio { text-align:center; color:var(--sub); padding:2rem; font-size:.85rem; }
+        .tabela-scroll { max-height:420px; overflow-y:auto; }
+        .link-mapa-cad { color:var(--cad); text-decoration:none; font-weight:600; white-space:nowrap; }
+        .link-mapa-cad:hover { text-decoration:underline; }
+
+        .busca-tabela {
+            width:100%; padding:.55rem .8rem; border:1px solid var(--borda);
+            border-radius:.4rem; font-size:.82rem; margin-bottom:.8rem; box-sizing:border-box;
+        }
+        .busca-tabela:focus { outline:none; border-color:var(--cad); }
+        .contagem-tabela { font-size:.7rem; color:var(--sub); float:right; margin-top:-1.9rem; margin-right:.2rem; position:relative; z-index:1; }
+
+        .secao-titulo {
+            font-size:.78rem; font-weight:bold; text-transform:uppercase;
+            color:var(--cad); letter-spacing:.09em; padding:.35rem 0;
+            border-bottom:2px solid var(--cad); margin-bottom:.1rem; font-family:Arial,sans-serif;
+        }
+
+        /* ── Chips de filtro cruzado (clique num gráfico filtra os demais,
+           igual page/dashboard-cruzado.html) ─────────────────────────── */
+        .cross-chips-cad {
+            display:none; align-items:center; gap:.5rem; flex-wrap:wrap;
+            font-family:Arial,sans-serif; font-size:.76rem;
+        }
+        .cross-chips-cad .chips-label-cad { color:var(--sub); font-weight:bold; }
+        .cross-chips-cad .chip-cad {
+            display:inline-flex; align-items:center; gap:.35rem;
+            background:var(--p3-blue-100); color:var(--cad); border:1px solid var(--cad);
+            border-radius:20px; padding:.2rem .7rem; cursor:pointer; font-weight:600;
+        }
+        .cross-chips-cad .chip-cad:hover { opacity:.8; }
+        .cross-chips-cad .chip-limpar-cad {
+            background:none; border:1px solid var(--borda); color:var(--sub);
+            border-radius:20px; padding:.2rem .7rem; cursor:pointer; font-size:.76rem; font-weight:600;
+        }
+        .cross-chips-cad .chip-limpar-cad:hover { background:var(--bg); }
+
+        /* ── Modal de ocorrências (clique num ponto do gráfico mensal) ─── */
+        .modal-overlay-cad {
+            display:none; position:fixed; inset:0;
+            background:rgba(10,20,50,.55); z-index:10000;
+            align-items:center; justify-content:center;
+        }
+        .modal-overlay-cad.aberto { display:flex; }
+        .modal-box-cad {
+            background:var(--superficie); border-radius:.75rem;
+            width:min(720px, 95vw); max-height:82vh;
+            display:flex; flex-direction:column;
+            box-shadow:0 8px 40px rgba(0,0,0,.35);
+            font-family:Arial,sans-serif; overflow:hidden;
+        }
+        .modal-header-cad {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:.9rem 1.2rem; border-bottom:2px solid var(--borda);
+        }
+        .modal-header-cad h4 { margin:0; font-size:.95rem; color:var(--texto); }
+        .modal-header-cad small { font-size:.75rem; color:var(--sub); display:block; margin-top:.15rem; }
+        .modal-fechar-cad {
+            background:none; border:none; font-size:1.4rem;
+            cursor:pointer; color:var(--sub); line-height:1;
+            padding:.2rem .5rem; border-radius:.3rem;
+        }
+        .modal-fechar-cad:hover { background:var(--bg); color:var(--texto); }
+        .modal-corpo-cad { overflow-y:auto; padding:1rem 1.2rem; flex:1; }
+        .modal-busca-cad {
+            width:100%; padding:.55rem .8rem; border:1px solid var(--borda);
+            border-radius:.4rem; font-size:.82rem; margin-bottom:.8rem;
+            box-sizing:border-box; background:var(--superficie); color:var(--texto);
+        }
+        .modal-busca-cad:focus { outline:none; border-color:var(--cad); }
+        .modal-footer-cad { padding:.6rem 1.2rem; border-top:1px solid var(--borda); font-size:.72rem; color:var(--sub); }
+
+        /* ── Heatmap horário ────────────────────────────────────────── */
+        .hora-grid { display:grid; grid-template-columns:repeat(12,1fr); gap:3px; margin-top:.25rem; }
+        .hora-cel {
+            height:32px; border-radius:4px; display:flex; align-items:center; justify-content:center;
+            font-size:.68rem; font-weight:bold; color:white; cursor:default;
+        }
+        .hora-cel.zero { background:var(--borda)!important; color:var(--sub); }
+        .hora-cel:hover { filter:brightness(1.12); }
+        .hora-cel { cursor:pointer; }
+
+        /* ── Badges de risco (hotspot) ─────────────────────────────── */
+        .risco-badge {
+            display:inline-block; padding:.15rem .55rem; border-radius:20px;
+            font-size:.68rem; font-weight:bold; text-transform:uppercase;
+        }
+        .risco-alto  { background:#ffebee; color:#c62828; }
+        .risco-medio { background:#fff3e0; color:#e65100; }
+        .risco-baixo { background:#e8f5e9; color:#2e7d32; }
+        :root[data-p3-theme="dark"] .risco-alto  { background:rgba(255,93,78,.18);  color:#ff9a8f; }
+        :root[data-p3-theme="dark"] .risco-medio { background:rgba(255,179,71,.18); color:#ffcb80; }
+        :root[data-p3-theme="dark"] .risco-baixo { background:rgba(43,227,166,.16); color:#7be0c2; }
+
+        /* ── Previsão onde/quando ──────────────────────────────────── */
+        .previsao-resumo-geral {
+            background:var(--bg); border:1px solid var(--borda); border-radius:.5rem;
+            padding:.75rem 1rem; font-size:.82rem; margin-bottom:1rem; line-height:1.55; font-family:Arial,sans-serif;
+        }
+        .previsao-ranking { display:flex; flex-direction:column; gap:.55rem; }
+        .previsao-item {
+            display:flex; align-items:center; gap:.9rem; background:var(--bg);
+            border:1px solid var(--borda); border-radius:.5rem; padding:.6rem .9rem; font-family:Arial,sans-serif;
+        }
+        .previsao-pos { font-size:1.05rem; font-weight:bold; color:var(--cad); width:2rem; text-align:center; flex-shrink:0; }
+        .previsao-detalhe { flex:1; min-width:0; }
+        .previsao-detalhe strong { font-size:.86rem; color:var(--texto); margin-right:.5rem; }
+        .previsao-sub { font-size:.74rem; color:var(--sub); margin-top:.2rem; }
+        .previsao-item.linha-clicavel { cursor:pointer; }
+        .coord-rural { font-weight:normal; font-size:.82em; color:var(--cad); text-decoration:none; }
+        .coord-rural:hover { text-decoration:underline; }
+
+        /* ── Filtro Geral/CVP/CVLI/MVI do card de Previsão de Risco ───── */
+        .filtro-categoria-risco {
+            display:flex; gap:.4rem; flex-wrap:wrap; margin-bottom:.9rem;
+            font-family:Arial,sans-serif;
+        }
+        .cat-risco-btn {
+            --cor-cat: var(--cad);
+            padding:.4rem 1rem; border-radius:20px; border:1px solid var(--borda);
+            background:var(--bg); color:var(--sub); font-size:.78rem; font-weight:bold;
+            cursor:pointer; transition:background-color .15s, color .15s, border-color .15s;
+        }
+        .cat-risco-btn:hover { border-color:var(--cor-cat); color:var(--cor-cat); }
+        .cat-risco-btn.ativa { background:var(--cor-cat); border-color:var(--cor-cat); color:white; }
+
+        /* ── Acurácia Preditiva Espacial (hit rate) ────────────────────── */
+        .acuracia-valor { font-size:2.4rem; font-weight:bold; line-height:1; margin-bottom:.5rem; font-family:Arial,sans-serif; }
+        .acuracia-trilha { background:var(--borda); border-radius:20px; height:10px; overflow:hidden; margin-bottom:.6rem; }
+        .acuracia-barra { height:100%; border-radius:20px; transition:width .4s ease; }
+
+        /* ── Diagnóstico ────────────────────────────────────────────── */
+        #painel-diagnostico { display:none; }
+        #diagnostico-saida {
+            white-space:pre-wrap; word-break:break-word; font-family:monospace;
+            font-size:.72rem; background:#0a1f1c; color:#a5f3e5; padding:1rem;
+            border-radius:.5rem; max-height:400px; overflow-y:auto;
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="preditiva-cad"
+        data-extra='[{"id":"preditiva-cad","href":"page/preditivaCAD.html","label":"Preditiva CAD","icone":"https://img.icons8.com/ios/50/mind-map.png","depoisDe":"rastreamento","titulo":"Análise Preditiva — dados do CAD em tempo real"}]'></script>
+
+    <section class="pagecomplete">
+        <main>
+
+            <!-- ══ Cabeçalho ══════════════════════════════════════ -->
+            <div class="page-header">
+                <div>
+                    <h2>🎯 Análise Preditiva — CAD (Despacho em Tempo Real)</h2>
+                    <small id="cabecalho-unidade">Carregando unidade…</small>
+                </div>
+                <span class="badge-ia">🔌 CAD SEDS/AL</span>
+            </div>
+
+            <!-- ══ Token CAD ══════════════════════════════════════ -->
+            <div id="token-banner" class="token-banner token-err" style="display:none">
+                <span id="token-banner-texto">Token não configurado</span>
+                <button type="button" onclick="abrirModalToken()">🔑 Configurar acesso ao CAD</button>
+            </div>
+
+            <!-- ══ Filtro de período ══════════════════════════════ -->
+            <div class="filtro-bar">
+                <label>De</label>
+                <input type="date" id="data-ini">
+                <label>Até</label>
+                <input type="date" id="data-fim">
+                <button type="button" id="btn-atualizar-cad">🔄 Atualizar do CAD</button>
+                <button type="button" class="secundario" onclick="abrirRelatorioCAD()">🖨️ Imprimir Relatório</button>
+                <button type="button" class="secundario" id="btn-diagnostico">🔧 Diagnóstico CAD</button>
+                <span id="status-carga">Aguardando token…</span>
+                <div class="progresso-cad" id="progresso-cad">
+                    <div class="progresso-cad-trilha"><div class="progresso-cad-barra" id="progresso-cad-barra"></div></div>
+                    <div class="progresso-cad-texto" id="progresso-cad-texto">—</div>
+                </div>
+            </div>
+
+            <!-- ══ Alertas ════════════════════════════════════════ -->
+            <div class="alerta-bar" id="alertas-cad"></div>
+
+            <!-- ══ Painel de diagnóstico (só aparece sob demanda) ══ -->
+            <div class="card" id="painel-diagnostico">
+                <div class="card-titulo"><span class="dot"></span>Diagnóstico — resposta bruta dos endpoints do CAD</div>
+                <p style="font-size:.75rem;color:var(--sub);margin:0 0 .6rem;">
+                    Use isto se as tabelas abaixo aparecerem vazias mesmo com o token válido — mostra exatamente o que o
+                    CAD respondeu, sem normalização, para ajustar o mapeamento de colunas no Apps Script.
+                </p>
+                <pre id="diagnostico-saida">—</pre>
+            </div>
+
+            <!-- ══ KPIs ═══════════════════════════════════════════ -->
+            <div class="grid-3">
+                <div class="kpi">
+                    <div class="val" id="kpi-total-ocorrencias">--</div>
+                    <div class="lbl">Ocorrências no período</div>
+                </div>
+                <div class="kpi">
+                    <div class="val" id="kpi-total-envolvidos">--</div>
+                    <div class="lbl">Envolvidos/autores</div>
+                </div>
+                <div class="kpi">
+                    <div class="val" id="kpi-coord-validas">--</div>
+                    <div class="lbl">Coordenadas válidas</div>
+                    <div class="nota" id="kpi-coord-nota">—</div>
+                </div>
+            </div>
+
+            <!-- ══ Classificação de Risco — CVP/CVLI/MVI ═══════════ -->
+            <!-- Mesmo padrão visual/matemático de page/analisePreditiva.html
+                 (KPI total/mês atual+delta/média/cidade-bairro crítico +
+                 gráfico de tendência de 12 meses), só que alimentado pelos
+                 dados reais do CAD em vez do Firebase. -->
+            <div class="secao-titulo">🎯 Classificação de Risco — CVP / CVLI / MVI (12 meses)</div>
+            <div class="cross-chips-cad" id="cross-chips-cad"></div>
+            <div class="alerta-bar" id="alertas-risco"></div>
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--cvp)"></span>CVP — Crimes Violentos contra o Patrimônio</div>
+                    <div class="kpi-row">
+                        <div class="kpi">
+                            <div class="val" id="cvp-total" style="color:var(--cvp)">--</div>
+                            <div class="lbl">Total no período</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="cvp-mes-atual" style="color:var(--cvp)">--</div>
+                            <div class="lbl">Mês Atual</div>
+                            <div class="delta" id="cvp-delta">…</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="cvp-media" style="color:var(--cvp)">--</div>
+                            <div class="lbl">Média/mês</div>
+                        </div>
+                        <div class="kpi" style="min-width:100%">
+                            <div class="val" id="cvp-cidade-bairro" style="color:var(--cvp);font-size:.85rem;line-height:1.2">--</div>
+                            <div class="lbl">Cidade / Bairro Crítico</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                        <canvas id="chart-cvp-mes"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>CVLI — Crimes Violentos Letais Intencionais</div>
+                    <div class="kpi-row">
+                        <div class="kpi">
+                            <div class="val" id="cvli-total" style="color:var(--cvli)">--</div>
+                            <div class="lbl">Total no período</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="cvli-mes-atual" style="color:var(--cvli)">--</div>
+                            <div class="lbl">Mês Atual</div>
+                            <div class="delta" id="cvli-delta">…</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="cvli-media" style="color:var(--cvli)">--</div>
+                            <div class="lbl">Média/mês</div>
+                        </div>
+                        <div class="kpi" style="min-width:100%">
+                            <div class="val" id="cvli-cidade-bairro" style="color:var(--cvli);font-size:.85rem;line-height:1.2">--</div>
+                            <div class="lbl">Cidade / Bairro Crítico</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                        <canvas id="chart-cvli-mes"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--mvi)"></span>MVI — Mortes Violentas Intencionais</div>
+                    <div class="kpi-row">
+                        <div class="kpi">
+                            <div class="val" id="mvi-total" style="color:var(--mvi)">--</div>
+                            <div class="lbl">Total no período</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="mvi-mes-atual" style="color:var(--mvi)">--</div>
+                            <div class="lbl">Mês Atual</div>
+                            <div class="delta" id="mvi-delta">…</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="val" id="mvi-media" style="color:var(--mvi)">--</div>
+                            <div class="lbl">Média/mês</div>
+                        </div>
+                        <div class="kpi" style="min-width:100%">
+                            <div class="val" id="mvi-cidade-bairro" style="color:var(--mvi);font-size:.85rem;line-height:1.2">--</div>
+                            <div class="lbl">Cidade / Bairro Crítico</div>
+                        </div>
+                    </div>
+                    <div class="chart-wrap" style="height:130px;margin-top:1rem">
+                        <canvas id="chart-mvi-mes"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ Previsão vs Real (mês atual) + Previsão (próximo mês) ══ -->
+            <div class="grid-2">
+                <div class="previsao-box">
+                    <h3>📅 Previsão vs Real — <span id="prev-nome-mes-atual">…</span></h3>
+                    <div class="previsao-row">
+                        <div class="previsao-comp cvp">
+                            <div class="previsao-comp-valores">
+                                <div class="p-val" id="prevmes-cvp" style="font-size:1.5rem;opacity:.7;color:#ff7043">--</div>
+                                <div class="previsao-comp-seta">→</div>
+                                <div class="p-val" id="real-cvp" style="color:#ff7043">--</div>
+                            </div>
+                            <div class="p-lbl">CVP est. → real</div>
+                            <span class="p-delta" id="delta-cvp-mes">…</span>
+                        </div>
+                        <div class="previsao-comp cvli">
+                            <div class="previsao-comp-valores">
+                                <div class="p-val" id="prevmes-cvli" style="font-size:1.5rem;opacity:.7;color:#ce93d8">--</div>
+                                <div class="previsao-comp-seta">→</div>
+                                <div class="p-val" id="real-cvli" style="color:#ce93d8">--</div>
+                            </div>
+                            <div class="p-lbl">CVLI est. → real</div>
+                            <span class="p-delta" id="delta-cvli-mes">…</span>
+                        </div>
+                        <div class="previsao-comp mvi">
+                            <div class="previsao-comp-valores">
+                                <div class="p-val" id="prevmes-mvi" style="font-size:1.5rem;opacity:.7;color:#ef5350">--</div>
+                                <div class="previsao-comp-seta">→</div>
+                                <div class="p-val" id="real-mvi" style="color:#ef5350">--</div>
+                            </div>
+                            <div class="p-lbl">MVI est. → real</div>
+                            <span class="p-delta" id="delta-mvi-mes">…</span>
+                        </div>
+                    </div>
+                    <div class="previsao-nota">Estimativa (3 meses ant., mesmo modelo do Análise Preditiva) → valor real do CAD até hoje.</div>
+                </div>
+                <div class="previsao-box">
+                    <h3>📈 Previsão — <span id="prev-nome-prox-mes">…</span></h3>
+                    <div class="previsao-row">
+                        <div class="previsao-comp cvp">
+                            <div class="p-val" id="prev-cvp" style="color:#ff7043">--</div>
+                            <div class="p-lbl">CVP Estimado</div>
+                        </div>
+                        <div class="previsao-comp cvli">
+                            <div class="p-val" id="prev-cvli" style="color:#ce93d8">--</div>
+                            <div class="p-lbl">CVLI Estimado</div>
+                        </div>
+                        <div class="previsao-comp mvi">
+                            <div class="p-val" id="prev-mvi" style="color:#ef5350">--</div>
+                            <div class="p-lbl">MVI Estimado</div>
+                        </div>
+                    </div>
+                    <div class="previsao-nota" id="previsao-confianca-nota">Modelo: ensemble 50% (média ponderada + regressão linear) / 50% Holt com sazonalidade (Machine Learning).</div>
+                </div>
+            </div>
+            <!-- ══ FIM DO BLOCO PRESERVADO (confronto Taxa do Mês x Estimativa) ══ -->
+
+            <!-- ══ Acurácia Preditiva Espacial (Hit Rate) ══════════ -->
+            <div class="card">
+                <div class="card-titulo"><span class="dot"></span>📊 Acurácia Preditiva Espacial</div>
+                <p style="font-size:.72rem;color:var(--sub);margin:0 0 .8rem;">
+                    % das ocorrências reais do mês atual que caíram dentro de bairros já sinalizados como risco
+                    Alto/Médio no período de referência (últimos até 3 meses ANTES do atual, acumulados) — mede se
+                    o modelo acerta <strong>ONDE</strong>, não só quanto vai acontecer.
+                </p>
+                <div id="acuracia-preditiva-conteudo"><div class="previsao-nota">Aguardando dados do CAD…</div></div>
+            </div>
+
+            <!-- ══ Janela Móvel Tática (7-14 dias) ══════════════════ -->
+            <div class="card">
+                <div class="card-titulo"><span class="dot"></span>🗓️ Janela Móvel Tática (7 a 14 dias)</div>
+                <p style="font-size:.72rem;color:var(--sub);margin:0 0 .8rem;">
+                    Matriz de risco de curtíssimo prazo (Bairro × Dia da Semana × Faixa Horária) pra apoiar a
+                    confecção da OPO e o emprego imediato de guarnições — os 3 hotspots mais críticos dos últimos
+                    dias.
+                </p>
+                <div id="janela-movel-tatica"><div class="previsao-nota">Aguardando dados do CAD…</div></div>
+            </div>
+
+            <!-- ══ Tipificações por categoria ═══════════════════════ -->
+            <div class="secao-titulo">📊 Top Tipificações por Categoria</div>
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--cvp)"></span>CVP</div>
+                    <div class="chart-wrap" style="height:230px">
+                        <canvas id="chart-tip-cvp"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--cvli)"></span>CVLI</div>
+                    <div class="chart-wrap" style="height:230px">
+                        <canvas id="chart-tip-cvli"></canvas>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-titulo"><span class="dot" style="background:var(--mvi)"></span>MVI</div>
+                    <div class="chart-wrap" style="height:230px">
+                        <canvas id="chart-tip-mvi"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ Previsão automática — onde e quando ═════════════ -->
+            <div class="card">
+                <div class="card-titulo"><span class="dot"></span>🎯 Previsão de Risco — Onde e Quando (automático)</div>
+                <p style="font-size:.72rem;color:var(--sub);margin:0 0 .6rem;">
+                    Calculado sobre as ocorrências do período selecionado acima (mais o filtro cruzado, se houver
+                    algum ativo). Mostra em qual cidade/bairro, dia da semana e horário o risco é maior — escolha
+                    abaixo entre o panorama GERAL (CVP+CVLI+MVI juntos) ou cada tipo SEPARADAMENTE, já que o padrão
+                    de onde/quando de um roubo não é o mesmo de um homicídio.
+                </p>
+                <div class="filtro-categoria-risco" id="filtro-categoria-risco">
+                    <button type="button" class="cat-risco-btn ativa" data-cat="geral">🎯 Geral</button>
+                    <button type="button" class="cat-risco-btn" data-cat="cvp" style="--cor-cat:var(--cvp)">CVP</button>
+                    <button type="button" class="cat-risco-btn" data-cat="cvli" style="--cor-cat:var(--cvli)">CVLI</button>
+                    <button type="button" class="cat-risco-btn" data-cat="mvi" style="--cor-cat:var(--mvi)">MVI</button>
+                </div>
+                <div id="previsao-onde-quando"><div class="previsao-nota">Aguardando dados do CAD…</div></div>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-titulo"><span class="dot"></span>Horários — CVP + CVLI + MVI</div>
+                    <div class="hora-grid" id="heatmap-horario"></div>
+                </div>
+                <div class="card">
+                    <div class="card-titulo"><span class="dot"></span>Dias da semana — CVP / CVLI / MVI</div>
+                    <div class="chart-wrap" style="height:230px">
+                        <canvas id="chart-dia-semana"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-titulo"><span class="dot"></span>Hotspots — Cidade / Bairro (CVP, CVLI, MVI)</div>
+                <p style="font-size:.72rem;color:var(--sub);margin:0 0 .6rem;">
+                    MVI considera apenas homicídio/feminicídio/latrocínio consumado; sem o campo Óbito na grade do
+                    CAD, tentativas desses tipos entram em CVLI (mesma simplificação já documentada no código).
+                </p>
+                <p style="font-size:.7rem;color:var(--sub);margin:0 0 .5rem;">💡 Clique numa linha para filtrar os demais gráficos por esse local — clique de novo pra desfazer.</p>
+                <div class="tabela-scroll">
+                    <table class="tabela-cad">
+                        <thead>
+                            <tr><th>#</th><th>Cidade</th><th>Bairro</th><th>CVP</th><th>CVLI</th><th>MVI</th><th>Total</th><th>Risco</th><th>Coordenadas</th></tr>
+                        </thead>
+                        <tbody id="tbody-hotspot">
+                            <tr><td colspan="9" class="modal-vazio">Aguardando dados do CAD…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ══ Busca direta no CAD (por nº de ocorrência ou data) ═ -->
+            <div class="secao-titulo">🎯 Busca Direta no CAD</div>
+            <div class="card">
+                <p style="font-size:.72rem;color:var(--sub);margin:0 0 .7rem;">
+                    Diferente da busca abaixo (que filtra só os dados já carregados na tela), isto faz uma
+                    requisição NOVA direto ao CAD — encontra um boletim específico ou os casos de um dia
+                    específico mesmo que estejam fora do período selecionado acima.
+                </p>
+                <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+                    <input type="text" id="busca-direta-boletim" placeholder="Nº da ocorrência (boletim)" inputmode="numeric"
+                        style="padding:.5rem .7rem;border:1px solid var(--borda);border-radius:.4rem;font-size:.85rem;width:220px;background:var(--superficie);color:var(--texto);">
+                    <span style="color:var(--sub);font-size:.8rem;">ou</span>
+                    <input type="date" id="busca-direta-data" style="padding:.45rem .6rem;border:1px solid var(--borda);border-radius:.4rem;font-size:.82rem;background:var(--superficie);color:var(--texto);">
+                    <button type="button" id="btn-busca-direta">🔍 Buscar no CAD</button>
+                </div>
+                <div id="busca-direta-status" style="font-size:.76rem;color:var(--sub);margin-top:.6rem;"></div>
+                <div class="tabela-scroll" id="busca-direta-resultado-wrap" style="display:none;margin-top:.8rem;">
+                    <table class="tabela-cad">
+                        <thead>
+                            <tr><th>Boletim</th><th>Data/Hora</th><th>Tipificação</th><th>Cidade/Bairro</th><th>Solução</th><th>Atendente</th></tr>
+                        </thead>
+                        <tbody id="tbody-busca-direta"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ══ Tabela de ocorrências ═════════════════════════════ -->
+            <div class="secao-titulo">📋 Ocorrências — Despacho CAD</div>
+            <div class="card">
+                <input class="busca-tabela" id="busca-ocorrencias" type="text" placeholder="🔍 Buscar por boletim, bairro, tipificação, atendente…">
+                <span class="contagem-tabela" id="contagem-ocorrencias"></span>
+                <div class="tabela-scroll">
+                    <table class="tabela-cad">
+                        <thead>
+                            <tr><th>Boletim</th><th>Data/Hora</th><th>Tipificação</th><th>Cidade/Bairro</th><th>Solução</th><th>Atendente</th></tr>
+                        </thead>
+                        <tbody id="tbody-ocorrencias">
+                            <tr><td colspan="6" class="modal-vazio">Aguardando dados do CAD…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- ══ Tabela de envolvidos ══════════════════════════════ -->
+            <div class="secao-titulo">👤 Envolvidos / Autores — Despacho CAD</div>
+            <div class="card">
+                <input class="busca-tabela" id="busca-envolvidos" type="text" placeholder="🔍 Buscar por nome, CPF, natureza, cidade…">
+                <span class="contagem-tabela" id="contagem-envolvidos"></span>
+                <div class="tabela-scroll">
+                    <table class="tabela-cad">
+                        <thead>
+                            <tr><th>Boletim</th><th>Nome</th><th>CPF</th><th>Situação</th><th>Natureza</th><th>Cidade/Bairro</th><th>Envolvimento</th></tr>
+                        </thead>
+                        <tbody id="tbody-envolvidos">
+                            <tr><td colspan="7" class="modal-vazio">Aguardando dados do CAD…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </section>
+
+    <footer>
+        <h4>Seção de Planejamento, Instrução e Estatística — P3 / 10º BPM</h4>
+        <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <!-- MODAL TOKEN CAD -->
+    <div id="modal-token">
+        <div class="modal-token-box">
+            <div class="modal-token-head">
+                🔑 Login CAD SEDS/AL — Ocorrências e Envolvidos
+                <button type="button" onclick="fecharModalToken()" title="Fechar">✕</button>
+            </div>
+            <div class="modal-token-body">
+                <div class="token-instrucao">
+                    <strong>Por que login e senha, além do token?</strong><br>
+                    A pesquisa de ocorrências/envolvidos no CAD é liberada pela SUA conta pessoal (CPF+senha), não
+                    só pelo token — o token sozinho só autentica o rastreamento de viaturas. O sistema faz os dois
+                    logins em sequência (CPF+senha → token por e-mail) automaticamente.<br>
+                    <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente. Login/senha ficam
+                    salvos no Apps Script (Script Properties) até você trocar — não são enviados a mais ninguém.</span>
+                </div>
+                <label>CPF de acesso ao CAD (só números):</label>
+                <input type="text" id="input-cad-login" placeholder="09089567461"
+                    style="width:100%;box-sizing:border-box;padding:8px;border:2px solid #003366;border-radius:6px;font-size:.95rem;margin-bottom:12px"
+                    inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+                <label>Senha de acesso ao CAD:</label>
+                <input type="password" id="input-cad-senha" placeholder="Senha do CAD" autocomplete="off"
+                    style="width:100%;box-sizing:border-box;padding:8px;border:2px solid #003366;border-radius:6px;font-size:.95rem;margin-bottom:12px">
+                <label>Token de acesso CAD (ex: TK2037113550):</label>
+                <textarea id="input-token-geo"
+                    placeholder="TK2037113550"
+                    style="height:54px;font-size:1.1rem;text-align:center;letter-spacing:3px;font-family:monospace"
+                    oninput="this.value=this.value.toUpperCase()"></textarea>
+                <div class="msg-token" id="msg-token-geo"></div>
+            </div>
+            <div class="modal-token-foot">
+                <button type="button" class="rg-btn-cancel" onclick="fecharModalToken()">Cancelar</button>
+                <button type="button" class="rg-btn" onclick="salvarTokenGEO()">✅ Salvar e entrar no CAD</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE OCORRÊNCIAS (clique num ponto do gráfico mensal CVP/CVLI/MVI) -->
+    <div class="modal-overlay-cad" id="modal-ocorrencias-cad">
+        <div class="modal-box-cad">
+            <div class="modal-header-cad">
+                <div>
+                    <h4 id="modal-cad-titulo">—</h4>
+                    <small id="modal-cad-subtitulo">—</small>
+                </div>
+                <button type="button" class="modal-fechar-cad" id="modal-cad-fechar" title="Fechar">✕</button>
+            </div>
+            <div class="modal-corpo-cad">
+                <input class="modal-busca-cad" id="modal-cad-busca" type="text" placeholder="🔍 Buscar por boletim, bairro, tipificação…">
+                <div class="tabela-scroll">
+                    <table class="tabela-cad">
+                        <thead>
+                            <tr><th>Boletim</th><th>Data/Hora</th><th>Tipificação</th><th>Cidade/Bairro</th></tr>
+                        </thead>
+                        <tbody id="modal-cad-tbody">
+                            <tr><td colspan="4" class="modal-vazio">—</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer-cad" id="modal-cad-footer">—</div>
+        </div>
+    </div>
+
+    <script src="../js/machineLearningLeve.js"></script>
+    <script src="../js/preditivaCAD.js"></script>
+</body>
+</html>
