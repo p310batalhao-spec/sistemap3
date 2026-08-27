@@ -770,13 +770,15 @@
     }
 
     // ── Botão flutuante do Xerife (assistente da unidade) ──────────────
-    // Aparece em toda página, pra quem já está logado. js/xerife.js é
-    // carregado assim que a página termina de carregar (NÃO espera o clique
-    // no botão) — porque, além da lógica de perguntas, ele dispara em
-    // segundo plano o download do modelo de IA local (WebLLM/WebGPU), que
-    // pode levar um tempo; carregar cedo dá tempo dele ficar pronto antes do
-    // usuário realmente abrir o chat. Em navegadores sem WebGPU (ou sem
-    // suporte), isso não baixa nada pesado — só cai direto no modo regras.
+    // Aparece em toda página, pra quem já está logado. js/xerife.js só é
+    // carregado no PRIMEIRO CLIQUE no botão (ver garantirScriptXerifeCarregado
+    // abaixo) — CORRIGIDO (27/08/2026): carregar cedo demais (antes, direto
+    // aqui, sem esperar clique) mantinha o modelo de IA local (WebLLM/
+    // WebGPU, ver js/xerife.js) baixado/rodando em TODA página pra TODO
+    // usuário logado, mesmo quem nunca abre o chat — ~1GB de RAM extra
+    // ocupado à toa (reclamação real rodando dentro do app desktop/webview,
+    // mas vale pra qualquer navegador). Agora só baixa quando alguém
+    // realmente clica em conversar com o Xerife.
     function injetarXerife() {
         document.addEventListener('DOMContentLoaded', () => {
             if (!getSession()) return;
@@ -826,18 +828,35 @@
             btn.addEventListener('mouseleave', () => { btn.style.transform = 'scale(1)'; });
             document.body.appendChild(btn);
 
-            // Carrega já (sem esperar clique) — ver comentário acima.
-            const script = document.createElement('script');
-            script.src = prefixo + 'js/xerife.js';
-            script.onerror = () => { btn.title = 'Xerife indisponível no momento'; };
-            document.body.appendChild(script);
+            // CORREÇÃO (27/08/2026) — antes, js/xerife.js era carregado aqui
+            // mesmo, sem esperar o clique, JUSTAMENTE pra dar tempo do
+            // modelo de IA local (WebLLM/WebGPU, ver js/xerife.js) baixar/
+            // carregar antes do usuário abrir o chat. Só que isso baixa e
+            // mantém ~1GB de RAM ocupado em TODA página, pra TODO usuário
+            // logado, mesmo quem nunca abre o Xerife — reclamação real:
+            // "o sistema webview está deixando o windows extremamente
+            // lento... chegou a marcar mais 1Gb no uso de memória". Agora só
+            // carrega (e só então baixa o modelo) no primeiro clique no
+            // botão — o spinner/polling abaixo já existia pra cobrir esse
+            // caso (clique antes do script terminar de carregar), então não
+            // precisou de lógica nova, só parou de disparar cedo demais.
+            let scriptXerifeInjetado = false;
+            function garantirScriptXerifeCarregado() {
+                if (scriptXerifeInjetado) return;
+                scriptXerifeInjetado = true;
+                const script = document.createElement('script');
+                script.src = prefixo + 'js/xerife.js';
+                script.onerror = () => { btn.title = 'Xerife indisponível no momento'; };
+                document.body.appendChild(script);
+            }
 
             btn.addEventListener('click', () => {
                 if (global.Xerife) { global.Xerife.alternar(); return; }
-                // script ainda não terminou de carregar (raro, mas possível
-                // num clique muito rápido) — espera terminar e então abre.
-                // Desiste depois de ~10s pra não ficar checando pra sempre
-                // se o carregamento genuinamente falhou (ex.: rede offline).
+                garantirScriptXerifeCarregado();
+                // script ainda não terminou de carregar — espera terminar e
+                // então abre. Desiste depois de ~10s pra não ficar checando
+                // pra sempre se o carregamento genuinamente falhou (ex.:
+                // rede offline).
                 btn.disabled = true;
                 btn.textContent = '⏳';
                 let tentativas = 0;

@@ -205,7 +205,11 @@
     // ════════════════════════════════════════════════════════════════
     // IA LOCAL (WebLLM / WebGPU) — 100% no navegador, nenhum dado sai da
     // máquina, sem chave de API, sem servidor. Baixa o modelo em segundo
-    // plano assim que este script carrega (não espera o clique no chat).
+    // plano assim que ESTE SCRIPT carrega — o que agora só acontece no
+    // primeiro clique no botão flutuante (ver garantirScriptXerifeCarregado
+    // em js/core/session.js, corrigido em 27/08/2026 — antes carregava cedo
+    // demais, em toda página, e mantinha ~1GB de RAM ocupado à toa mesmo
+    // sem ninguém usar o chat).
     //
     // IMPORTANTE — por que a IA não calcula números sozinha: um modelo de
     // 1B parâmetros rodando em q4 é ótimo pra entender linguagem natural e
