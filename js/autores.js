@@ -21,6 +21,16 @@ let GAS_AUTORES_URL = null;
 let todosAutores = [];
 let filtroTexto = '';
 let filtroStatus = '';
+let filtroFotoCad = '';
+let filtroUnidade = '';
+
+// Guarda o resultado da ÚLTIMA verificação feita pelo servidor local
+// (ver verificarAgoraLocal) — permite reabrir o modal de mudanças depois
+// (botão "🕓 Ver última atualização"), mesmo que o usuário já tenha
+// fechado ou navegado pra outra aba/página e voltado. Guardado mesmo
+// quando NENHUMA mudança foi encontrada (permitirVazio no modal mostra
+// "nada mudou" em vez de fingir que a verificação nunca aconteceu).
+const AUTORES_ULTIMA_ATUALIZACAO_KEY = 'p3_autores_ultima_atualizacao';
 
 function escaparHtml(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -59,13 +69,13 @@ function processarDadosAutores(dados) {
 
 async function carregarAutores() {
     const tbody = document.getElementById('autores-tbody');
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Carregando...</td></tr>';
     try {
         const dados = await P3.Autores.listar(cfgUnidade);
         processarDadosAutores(dados);
     } catch (e) {
         console.error('[autores] Erro ao carregar:', e);
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Erro ao carregar autores. Tente recarregar a página.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Erro ao carregar autores. Tente recarregar a página.</td></tr>';
     }
 }
 
@@ -124,11 +134,16 @@ function atualizarProgresso() {
     const fill = document.getElementById('autores-progresso-geral-fill');
     const texto = document.getElementById('autores-progresso-geral-texto');
     if (!wrap || !fill || !texto) return;
-    const total = todosAutores.length;
+    // Só entram na conta os autores do 10º BPM — a descoberta/checagem
+    // automática de e-SAJ nunca toca nos das outras unidades (ver
+    // apps-script/autores-esaj-hostinger.gs), então contá-los aqui deixaria
+    // a barra presa "aguardando" pra sempre.
+    const autoresDoBpm = todosAutores.filter(a => a.UNIDADE === '10bpm');
+    const total = autoresDoBpm.length;
     if (!total) { wrap.style.display = 'none'; return; }
-    const vinculados = todosAutores.filter(a => a.statusVinculoEsaj === 'vinculado').length;
-    const pendentes = todosAutores.filter(a => a.statusVinculoEsaj === 'pendente_revisao').length;
-    const naoEncontrados = todosAutores.filter(a => a.statusVinculoEsaj === 'nao_encontrado').length;
+    const vinculados = autoresDoBpm.filter(a => a.statusVinculoEsaj === 'vinculado').length;
+    const pendentes = autoresDoBpm.filter(a => a.statusVinculoEsaj === 'pendente_revisao').length;
+    const naoEncontrados = autoresDoBpm.filter(a => a.statusVinculoEsaj === 'nao_encontrado').length;
     const jaProcessados = vinculados + pendentes + naoEncontrados;
 
     if (jaProcessados >= total) { wrap.style.display = 'none'; return; }
@@ -151,13 +166,24 @@ function aplicarFiltros() {
             const status = a.statusVinculoEsaj || 'nao_verificado';
             if (status !== filtroStatus) return false;
         }
+        if (filtroFotoCad === 'sem_foto' && a.vetorFacialEm) return false;
+        if (filtroFotoCad === 'com_foto' && !a.vetorFacialEm) return false;
+        if (filtroUnidade === '10bpm' && a.UNIDADE !== '10bpm') return false;
+        if (filtroUnidade === 'outras' && (!a.UNIDADE || a.UNIDADE === '10bpm')) return false;
         if (textoNorm) {
             // Um campo só faz tudo: nome/CPF/nome da mãe (evita homônimos)
             // + COP, data, tipificação e movimentação (pra achar rápido por
             // qualquer coluna visível na tabela, sem precisar de filtro
-            // separado pra cada uma).
+            // separado pra cada uma). Movimentação inclui o processo
+            // PRINCIPAL e os EXTRAS (autor_processos — um autor pode ter
+            // mais de um processo vinculado à mão) — sem os extras dava
+            // pra buscar "alvará"/"expedição de mandado" e não achar
+            // ninguém cujo único processo com esse movimento fosse um
+            // extra, mesmo aparecendo na tela.
+            const movimentacoesExtras = (Array.isArray(a.processosExtras) ? a.processosExtras : [])
+                .map(p => p.movimentacaoProcesso).filter(Boolean).join(' ');
             const alvo = normalizarBusca([
-                a.NOME, a.CPF, a.NOME_MAE, a.BOLETIM, a.DATA, a.TIPIFICACAO, a.movimentacaoAutor
+                a.NOME, a.CPF, a.NOME_MAE, a.BOLETIM, a.DATA, a.TIPIFICACAO, a.movimentacaoAutor, movimentacoesExtras
             ].filter(Boolean).join(' '));
             if (alvo.indexOf(textoNorm) === -1) return false;
         }
@@ -180,6 +206,41 @@ function badgeStatus(status) {
     return `<span class="status-badge status-${s}"${s === 'pendente_revisao' ? ' title="Clique para ver os candidatos"' : ''}>${rotulos[s] || s}</span>`;
 }
 
+// Coluna "Foto CAD" — badge de sincronizado/pendente + botão de busca
+// individual, junto na mesma célula (antes o botão ficava perdido na
+// coluna Status; separar deixa claro o que já foi sincronizado do CAD
+// e o que ainda falta, principalmente com a tabela crescendo com o tempo).
+function celulaFotoCad(a, id) {
+    const quando = formatarDataHoraIso(a.vetorFacialEm);
+    const badge = a.vetorFacialEm
+        ? `<span class="foto-cad-badge foto-cad-com" title="Sincronizada em ${quando || '—'}">📷 Sincronizada</span>`
+        : `<span class="foto-cad-badge foto-cad-sem">Sem foto ainda</span>`;
+    const botao = a.CPF
+        ? `<button type="button" class="btn-buscar-foto-cad" data-id="${escaparHtml(id)}" title="Buscar foto no CAD (SERIS/Alcatraz) por este CPF">🔍 Buscar</button>`
+        : '';
+    return `<span class="foto-cad-coluna">${badge}${botao}</span>`;
+}
+
+// Miniatura clicável — abre o modal de detalhes (js/pessoa-modal.js) com
+// tudo que existe sobre a pessoa (Hostinger + cruzamento echelonx/Supabase).
+function celulaFoto(a) {
+    const url = (cfgUnidade && cfgUnidade.apiPhp && a.fotoArquivo) ? cfgUnidade.apiPhp.fotosAutoresBaseUrl + a.fotoArquivo : null;
+    return url
+        ? `<img class="pessoa-foto-thumb" src="${escaparHtml(url)}" alt="" data-abrir-detalhes="${escaparHtml(a._id)}" title="Ver detalhes">`
+        : `<div class="pessoa-foto-vazia" data-abrir-detalhes="${escaparHtml(a._id)}" title="Ver detalhes">👤</div>`;
+}
+
+// Identificador curto (ex.: "10bpm") -> rótulo legível pra célula da
+// tabela — só o 10º BPM tem rótulo dedicado hoje; qualquer outro valor
+// aparece em maiúsculas cru (a lista de outras unidades ainda não tem um
+// diretório central pra nomes bonitos), e NULL/vazio (registros antigos,
+// gravados antes desta coluna existir) aparece como "—".
+function rotuloUnidade(unidade) {
+    if (!unidade) return '<span style="opacity:.5;" title="Sem unidade cadastrada">—</span>';
+    if (unidade === '10bpm') return '10º BPM';
+    return escaparHtml(unidade.toUpperCase());
+}
+
 function celulaNomeMae(a) {
     const podeEditar = P3.Autores.usaApiPhp(cfgUnidade);
     const valor = a.NOME_MAE ? escaparHtml(a.NOME_MAE) : '<span style="opacity:.5;">—</span>';
@@ -187,10 +248,30 @@ function celulaNomeMae(a) {
     return `<span class="nome-mae-valor" data-nome-mae-de="${escaparHtml(a._id)}" title="Clique para editar">${valor}</span>`;
 }
 
+// Movimentação agora pode vir com uma 2ª linha — o texto narrativo do
+// e-SAJ (ex.: o parágrafo de uma Certidão, ver
+// tools/atualizador-local/esaj_movimentos.py), separada por "\n" da
+// linha de título+data. Mostra só o título na tabela (compacta) + a
+// narrativa truncada embaixo, com o texto INTEIRO disponível ao passar
+// o mouse (atributo title, tooltip nativo) — sem isso, um parágrafo
+// inteiro de Certidão quebraria o layout da tabela.
+const MOVIMENTACAO_NARRATIVA_MAX = 140;
+function celulaMovimentacaoTexto(texto) {
+    if (!texto) return '<span style="opacity:.5;">—</span>';
+    const partes = String(texto).split('\n');
+    const titulo = escaparHtml(partes[0]);
+    const narrativa = partes.slice(1).join(' ').trim();
+    if (!narrativa) return titulo;
+    const truncada = narrativa.length > MOVIMENTACAO_NARRATIVA_MAX
+        ? narrativa.slice(0, MOVIMENTACAO_NARRATIVA_MAX) + '…'
+        : narrativa;
+    return `${titulo}<div style="font-size:11px;opacity:.75;margin-top:2px;" title="${escaparHtml(narrativa)}">${escaparHtml(truncada)}</div>`;
+}
+
 function renderizarTabela(lista) {
     const tbody = document.getElementById('autores-tbody');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum autor encontrado com esse filtro.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="empty-msg">Nenhum autor encontrado com esse filtro.</td></tr>';
         return;
     }
 
@@ -238,9 +319,7 @@ function renderizarTabela(lista) {
                 const alertaLinha = p.alertaImportante
                     ? `<div style="font-size:11px;color:#fff;background:#c0392b;padding:2px 6px;border-radius:4px;margin-top:3px;display:inline-block;" title="Evento importante detectado no processo — mandado, alvará, revogação de prisão etc.">🚨 ${escaparHtml(p.alertaImportante)}</div>`
                     : '';
-                return `<div class="lista-multi-item">${p.movimentacaoAutor
-                    ? escaparHtml(p.movimentacaoAutor) + (atualizadoEm ? `<div style="font-size:11px;opacity:.6;margin-top:2px;">atualizado em ${atualizadoEm}</div>` : '')
-                    : '<span style="opacity:.5;">—</span>'}${assuntoLinha}${alertaLinha}</div>`;
+                return `<div class="lista-multi-item">${celulaMovimentacaoTexto(p.movimentacaoAutor)}${atualizadoEm ? `<div style="font-size:11px;opacity:.6;margin-top:2px;">atualizado em ${atualizadoEm}</div>` : ''}${assuntoLinha}${alertaLinha}</div>`;
             }).join('')}</div>`
             : '<span style="opacity:.5;">—</span>';
 
@@ -255,7 +334,7 @@ function renderizarTabela(lista) {
                 </div>`;
             }).join('');
             linhaCandidatos = `<tr class="linha-candidatos" data-candidatos-de="${escaparHtml(a._id)}" style="display:none;">
-                <td colspan="9">
+                <td colspan="12">
                     <strong>Candidatos encontrados no e-SAJ para "${escaparHtml(a.NOME)}":</strong>
                     ${itens}
                     <button type="button" class="btn-nao-encontrado-manual" data-autor-id="${escaparHtml(a._id)}">Nenhum destes — marcar como não encontrado</button>
@@ -264,15 +343,20 @@ function renderizarTabela(lista) {
         }
 
         return `<tr data-autor-id="${escaparHtml(a._id)}">
+            <td>${celulaFoto(a)}</td>
             <td>${escaparHtml(a.NOME)}</td>
             <td>${a.CPF ? escaparHtml(a.CPF) : '<span style="opacity:.5;">—</span>'}</td>
             <td data-cel-nome-mae="${escaparHtml(a._id)}">${celulaNomeMae(a)}</td>
+            <td>${rotuloUnidade(a.UNIDADE)}</td>
             <td>${escaparHtml(a.BOLETIM || '—')}</td>
             <td>${escaparHtml(a.DATA || '—')}</td>
             <td>${a.TIPIFICACAO ? escaparHtml(a.TIPIFICACAO) : '<span style="opacity:.5;">—</span>'}</td>
             <td>${numeroProcesso}</td>
             <td>${movimentacao}</td>
-            <td><span class="status-toggle" data-toggle-de="${escaparHtml(a._id)}">${badgeStatus(status)}</span></td>
+            <td>
+                <span class="status-toggle" data-toggle-de="${escaparHtml(a._id)}">${badgeStatus(status)}</span>
+            </td>
+            <td>${celulaFotoCad(a, a._id)}</td>
         </tr>${linhaCandidatos}`;
     }).join('');
 }
@@ -317,6 +401,102 @@ async function excluirProcessoAutor(processoId) {
     if (!confirm('Remover este vínculo de processo?')) return;
     await P3.Autores.excluirProcesso(cfgUnidade, processoId);
     await carregarAutores();
+}
+
+// ====================================================================
+// BUSCA DE FOTO NO CAD (SERIS/Alcatraz) — botão "🔍" por linha e botão
+// "Buscar fotos de todos" (ver js/cad-busca-foto.js pro fluxo em si:
+// busca no CAD por CPF -> detecta rosto no navegador -> salva pelo
+// mesmo pipeline da aba "Upload de foto"). Roda inteiramente disparado
+// pelo clique — sem gatilho automático/diário nenhum.
+// ====================================================================
+async function buscarFotoCadAutor(idAutor) {
+    const autor = todosAutores.find(a => a._id === idAutor);
+    if (!autor) return;
+    const btn = document.querySelector(`.btn-buscar-foto-cad[data-id="${CSS.escape(idAutor)}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    const r = await cadBuscarESalvarUmaPessoa(cfgUnidade, 'autor', idAutor, autor.CPF);
+    if (btn) { btn.disabled = false; btn.textContent = '🔍'; }
+
+    if (r.status === 'salvo') alert(`${r.salvas} de ${r.totalFotos} foto(s) do CAD salva(s) para ${autor.NOME}${r.comVetor ? ` (${r.comVetor} com vetor facial).` : ' (rosto não detectado nas fotos — salvas só como referência).'}`);
+    else if (r.status === 'nao_encontrado') alert(`Nenhuma foto encontrada no CAD (SERIS/Alcatraz) para ${autor.NOME}.`);
+    else if (r.status === 'sem_cpf') alert('Este autor não tem CPF cadastrado.');
+    else alert('Erro ao buscar no CAD: ' + (r.erro || 'desconhecido'));
+}
+
+// Painel de progresso visível (contagem processados/achados/sem foto/
+// erros) — mesmo estilo das barras "Verificar agora" já existentes.
+function atualizarProgressoCadAutores(processados, total, achados, naoAchados, erros) {
+    const wrap = document.getElementById('autores-progresso-cad-wrap');
+    const fill = document.getElementById('autores-progresso-cad-fill');
+    const texto = document.getElementById('autores-progresso-cad-texto');
+    if (!wrap) return;
+    wrap.style.display = total ? 'block' : 'none';
+    if (!total) return;
+    const pct = Math.min(100, Math.round((processados / total) * 100));
+    fill.style.width = pct + '%';
+    texto.textContent = `${processados} de ${total} (${pct}%)`;
+    document.getElementById('autores-cad-stat-processados').textContent = `${processados} processados`;
+    document.getElementById('autores-cad-stat-achados').textContent = `${achados} salvos`;
+    document.getElementById('autores-cad-stat-nao-achados').textContent = `${naoAchados} sem foto`;
+    document.getElementById('autores-cad-stat-erros').textContent = `${erros} erros`;
+}
+
+// Roda 100% no navegador (loop sequencial, sem gatilho no Apps Script)
+// — clicar de novo no MESMO botão enquanto está rodando cancela (termina
+// o CPF que já estava em andamento e para no próximo, não corta no meio
+// de uma chamada). Fechar/recarregar a aba também é seguro a qualquer
+// momento: não existe nada "preso" rodando do lado do servidor, e cada
+// CPF já processado com sucesso já foi salvo.
+let autoresBuscaCadEmAndamento = false;
+let autoresBuscaCadCancelar = false;
+async function buscarFotosCadTodosAutores() {
+    const btn = document.getElementById('btn-autores-buscar-foto-cad-todos');
+    if (autoresBuscaCadEmAndamento) {
+        autoresBuscaCadCancelar = true;
+        if (btn) btn.textContent = '⏳ Cancelando (termina o CPF atual)...';
+        return;
+    }
+
+    // Pula quem já tem QUALQUER imagem salva na Hostinger (fotoArquivo) —
+    // não só quem já tem vetor facial. Antes o critério era vetorFacialEm
+    // (só pulava quem tinha rosto detectado com sucesso), o que fazia
+    // "buscar todos" reprocessar de novo, a cada rodada, todo mundo cuja
+    // foto salva não teve rosto detectável — cada CPF é várias requisições
+    // lentas pro CAD (a busca no Alcatraz é de longe a fonte mais lenta,
+    // ver comentário em rastreamento.gs:buscarFotoPessoaCAD_), então isso
+    // deixava "buscar todos" cada vez mais lento à toa. Quem quiser
+    // resincronizar uma pessoa específica (foto nova, ângulo melhor...)
+    // usa o botão individual "🔍 Buscar" da linha dela, que sempre roda de novo.
+    const comCpf = todosAutores.filter(a => a.CPF);
+    const elegiveis = comCpf.filter(a => !a.fotoArquivo);
+    const jaSincronizados = comCpf.length - elegiveis.length;
+    if (!elegiveis.length) { alert(`Nenhum autor pendente — todos os ${comCpf.length} com CPF já têm foto salva.`); return; }
+    if (!confirm(`Isso vai buscar no CAD, um autor de cada vez, os ${elegiveis.length} autor(es) com CPF ainda sem nenhuma foto salva (${jaSincronizados} já com foto serão pulados) — pode levar vários minutos. Clique no mesmo botão de novo a qualquer momento pra cancelar. Continuar?`)) return;
+
+    autoresBuscaCadEmAndamento = true;
+    autoresBuscaCadCancelar = false;
+    const textoOriginal = btn ? btn.textContent : '';
+    let achados = 0, naoAchados = 0, erros = 0, processados = 0, cancelado = false;
+    atualizarProgressoCadAutores(0, elegiveis.length, 0, 0, 0);
+    for (; processados < elegiveis.length; processados++) {
+        if (autoresBuscaCadCancelar) { cancelado = true; break; }
+        const autor = elegiveis[processados];
+        if (btn) btn.textContent = `⏳ ${processados + 1}/${elegiveis.length} — clique pra cancelar`;
+        const r = await cadBuscarESalvarUmaPessoa(cfgUnidade, 'autor', autor._id, autor.CPF);
+        if (r.status === 'salvo') achados++;
+        else if (r.status === 'erro') erros++;
+        else naoAchados++;
+        atualizarProgressoCadAutores(processados + 1, elegiveis.length, achados, naoAchados, erros);
+        // Pausa entre cada CPF — não martela o CAD sem parar, e dá tempo
+        // do Apps Script liberar a execução anterior antes da próxima.
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    autoresBuscaCadEmAndamento = false;
+    autoresBuscaCadCancelar = false;
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+    document.getElementById('autores-progresso-cad-wrap').style.display = 'none';
+    alert(`${cancelado ? 'Cancelado' : 'Concluído'} — ${achados} foto(s) salva(s), ${naoAchados} sem foto no CAD, ${erros} erro(s) (${processados} de ${elegiveis.length} processados).`);
 }
 
 function abrirEdicaoNomeMae(idAutor) {
@@ -374,8 +554,14 @@ let autoresPollTimer = null;
 const AUTORES_VERIF_STORAGE_KEY = 'p3_autores_verificacao_ativa';
 const AUTORES_VERIF_TETO_MS = 40 * 60 * 1000; // ~40 min desde o clique original — teto de segurança
 
+// Mesmo critério do Apps Script (ver elegiveis em
+// apps-script/autores-esaj-hostinger.gs:sincronizarAutoresDiario) — a
+// checagem de UNIDADE precisa bater aqui também, senão a barra de
+// progresso do "Verificar agora" fica contando autores que o robô nunca
+// vai processar (nunca chegaria a 100%).
 function autorElegivelParaForcar(a) {
     if (!a || !a.NOME || a.NOME === '---') return false;
+    if (a.UNIDADE !== '10bpm') return false;
     if (!a.statusVinculoEsaj) return true;
     return a.statusVinculoEsaj === 'vinculado' && !!a.numeroProcessoEsaj;
 }
@@ -506,12 +692,122 @@ async function detectarAtividadeEmAndamentoAutores() {
     }
 }
 
+// Caminho NOVO (preferido) — usa o servidor local Python (ver
+// tools/atualizador-local/), que faz a MESMA descoberta/checagem que o
+// Apps Script fazia, só que rodando na hora (sem esperar gatilho nenhum)
+// e reportando progresso REAL item a item via streaming, em vez da
+// aproximação por polling (refetch a cada 15s comparando verificadoEm)
+// que o caminho antigo (GAS) precisava usar por não ter como saber o
+// progresso de verdade. Já sai com o bug do "tipo_de_documento" corrigido
+// (ver tools/atualizador-local/esaj_datajud.py).
+async function verificarAgoraLocal(totalEstimado) {
+    const btn = document.getElementById('btn-autores-verificar-agora');
+    const msg = document.getElementById('autores-status-msg');
+
+    autoresVerificacaoEmAndamento = true;
+    if (btn) btn.disabled = true;
+    msg.textContent = 'Atualizando via servidor local — os mais desatualizados primeiro...';
+    atualizarBarraLiveAutores(0, totalEstimado);
+
+    // Guarda até 3 mensagens de erro DIFERENTES vindas do servidor local
+    // (evento 'aviso') pra mostrar direto na tela — sem isso, um problema
+    // sistemático (ex.: falha de rede/certificado ao consultar o DataJud)
+    // ficava só no console (F12), e o resumo final parecia "0 em tudo"
+    // sem nenhuma pista do motivo real.
+    const amostrasErro = [];
+    // Toda vez que o servidor local encontra uma movimentação DIFERENTE
+    // da que já estava salva (ver campo `mudanca` em
+    // tools/atualizador-local/sync_movimentacoes.py), acumula aqui —
+    // vira o modal de "o que mudou" no final E entra direto no sino de
+    // notificações (P3Notificacoes.adicionarNotificacoes), sem esperar o
+    // próximo ciclo de detecção passiva.
+    const mudancasColetadas = [];
+    try {
+        const resumo = await P3AtualizadorLocal.atualizarMovimentacoes('autores', function (evento) {
+            if (evento.tipo === 'inicio') {
+                atualizarBarraLiveAutores(0, evento.total);
+            } else if (evento.tipo === 'progresso') {
+                atualizarBarraLiveAutores(evento.processados, evento.total);
+                msg.textContent = `Atualizando (servidor local) — ${evento.processados}/${evento.total}: ${evento.item || ''}`;
+            } else if (evento.tipo === 'mudanca') {
+                mudancasColetadas.push(evento);
+            } else if (evento.tipo === 'aviso') {
+                console.warn('[autores] Aviso do atualizador local:', evento);
+                if (amostrasErro.length < 3 && evento.erro && amostrasErro.indexOf(evento.erro) === -1) {
+                    amostrasErro.push(evento.erro);
+                }
+            }
+        });
+
+        // Recarrega a tabela com os dados já atualizados — mesma função
+        // que o polling antigo usava a cada tick.
+        const dados = await P3.Autores.listar(cfgUnidade);
+        processarDadosAutores(dados);
+
+        const agoraIso = new Date().toISOString();
+        const link = '../page/autores.html';
+        const totalProcessado = (resumo && resumo.autores && resumo.autores.total) || 0;
+        const mudancasComLink = mudancasColetadas.map(m => Object.assign({}, m, { link }));
+
+        // Persiste o resultado desta rodada (mesmo vazio) pro botão "🕓
+        // Ver última atualização" — ver AUTORES_ULTIMA_ATUALIZACAO_KEY.
+        try {
+            localStorage.setItem(AUTORES_ULTIMA_ATUALIZACAO_KEY, JSON.stringify({
+                quando: agoraIso, total: totalProcessado, mudancas: mudancasComLink,
+            }));
+        } catch (e) { /* localStorage indisponível/cheio — só perde a retomada, não quebra nada */ }
+
+        if (mudancasColetadas.length) {
+            if (typeof P3ModalMudancas !== 'undefined') {
+                P3ModalMudancas.exibir(mudancasComLink, {
+                    titulo: `${mudancasColetadas.length} movimentação(ões) de autor atualizada(s)`,
+                    quando: agoraIso,
+                });
+            }
+            if (typeof P3Notificacoes !== 'undefined') {
+                P3Notificacoes.adicionarNotificacoes(mudancasColetadas.map(m => ({
+                    id: 'autor-esaj:' + m.id + ':' + m.ultimoCodigoMovimento + '@' + (m.ultimaMovimentacaoEm || ''),
+                    categoria: 'autores',
+                    icone: m.alertaImportante ? '🚨' : '⚖️',
+                    titulo: m.alertaImportante ? 'Evento importante no processo do autor' : 'Movimentação no processo do autor',
+                    // Só a 1ª linha (título+data) — a narrativa completa
+                    // (quando existe) fica pro modal, não pro cartão
+                    // compacto de notificação.
+                    texto: `${m.nome || 'Autor'}: ${(m.movimentacaoAtual || '').split('\n')[0]}`,
+                    link: link,
+                })));
+            }
+        }
+
+        // Mostra TODAS as categorias que o servidor local reporta — não
+        // só as 4 "boas" (atualizado/vinculado/pendente/não encontrado).
+        // sem_movimento e nao_encontrado_datajud são resultados NORMAIS
+        // (processo achado mas sem novidade, ou não indexado ainda no
+        // DataJud) — erro é o único que pede atenção de verdade.
+        const c = (resumo && resumo.autores && resumo.autores.contagem) || {};
+        const total = (resumo && resumo.autores && resumo.autores.total) || 0;
+        let texto = `Concluído (${total}) — ${c.atualizado || 0} atualizado(s), ${c.vinculado || 0} vinculado(s) agora, ` +
+            `${c.pendente_revisao || 0} pendente(s) de revisão, ${c.nao_encontrado || 0} não encontrado(s) por nome, ` +
+            `${c.sem_movimento || 0} sem movimento novo, ${c.nao_encontrado_esaj || 0} processo(s) não encontrado(s) no e-SAJ`;
+        if (c.erro) {
+            texto += ` — ⚠️ ${c.erro} erro(s)`;
+            if (amostrasErro.length) texto += `: ${amostrasErro.join(' | ')}`;
+        }
+        msg.textContent = texto + '.';
+        if (!c.erro) setTimeout(() => { if (msg.textContent.indexOf('Concluído') === 0) msg.textContent = ''; }, 12000);
+    } catch (e) {
+        console.error('[autores] Erro em verificarAgoraLocal:', e);
+        msg.textContent = 'Erro no atualizador local: ' + e.message;
+    } finally {
+        autoresVerificacaoEmAndamento = false;
+        if (btn) btn.disabled = false;
+        const wrap = document.getElementById('autores-progresso-live-wrap');
+        if (wrap) wrap.style.display = 'none';
+    }
+}
+
 async function verificarAgora() {
     const msg = document.getElementById('autores-status-msg');
-    if (!GAS_AUTORES_URL) {
-        msg.textContent = 'Apps Script de Autores/Suspeitos não configurado para esta unidade.';
-        return;
-    }
     if (autoresVerificacaoEmAndamento) {
         msg.textContent = 'Já existe uma verificação em andamento — acompanhe pela barra abaixo.';
         return;
@@ -525,7 +821,24 @@ async function verificarAgora() {
         return;
     }
 
-    msg.textContent = 'Forçando verificação — os mais desatualizados primeiro; acompanhe pela barra abaixo.';
+    // Preferido: servidor local (ver comentário em verificarAgoraLocal).
+    // Só cai pro caminho antigo (Apps Script + polling aproximado) se o
+    // servidor local não estiver rodando — assim o botão continua
+    // funcionando mesmo se você esquecer de abrir o
+    // tools/atualizador-local/app.py, só mais devagar/menos preciso.
+    if (await P3AtualizadorLocal.disponivel()) {
+        await verificarAgoraLocal(total);
+        return;
+    }
+
+    if (!GAS_AUTORES_URL) {
+        msg.textContent = 'Atualizador local (Python) não está rodando, e o Apps Script de Autores/Suspeitos ' +
+            'não está configurado para esta unidade — veja tools/atualizador-local/README.md.';
+        return;
+    }
+
+    msg.textContent = 'Atualizador local não está rodando — usando o Apps Script (mais lento; ' +
+        'veja tools/atualizador-local/README.md pra rodar localmente). Os mais desatualizados primeiro.';
 
     try {
         await fetch(`${GAS_AUTORES_URL}?action=sincronizarAutoresAgora`);
@@ -536,6 +849,29 @@ async function verificarAgora() {
     }
 
     iniciarPollAutores(Date.now(), idsElegiveis, total);
+}
+
+// Botão "🕓 Ver última atualização" — reabre o modal de mudanças com o
+// resultado da ÚLTIMA vez que "Verificar agora" rodou (servidor local),
+// mesmo depois de fechado/de ter navegado pra outra página e voltado.
+// Diferente da abertura automática pós-verificação: um clique aqui é
+// EXPLÍCITO, então mostra até quando não teve nenhuma mudança (ver
+// permitirVazio em P3ModalMudancas.exibir).
+function abrirUltimaAtualizacaoAutores() {
+    let dados = null;
+    try { dados = JSON.parse(localStorage.getItem(AUTORES_ULTIMA_ATUALIZACAO_KEY) || 'null'); }
+    catch (e) { dados = null; }
+
+    if (!dados) {
+        alert('Ainda não foi feita nenhuma verificação pelo servidor local nesta sessão do navegador — clique em "Verificar agora" primeiro.');
+        return;
+    }
+    if (typeof P3ModalMudancas === 'undefined') return;
+    P3ModalMudancas.exibir(dados.mudancas || [], {
+        titulo: `Última verificação de autores — ${dados.total || 0} processado(s)`,
+        quando: dados.quando,
+        permitirVazio: true,
+    });
 }
 
 // ====================================================================
@@ -552,7 +888,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const temFonte = cfg && (P3.Autores.usaApiPhp(cfg) || (cfg.firebase && cfg.firebase.databaseURL));
     if (!temFonte) {
         document.getElementById('autores-tbody').innerHTML =
-            '<tr><td colspan="9" class="empty-msg">Configuração da unidade indisponível — não foi possível carregar os autores.</td></tr>';
+            '<tr><td colspan="12" class="empty-msg">Configuração da unidade indisponível — não foi possível carregar os autores.</td></tr>';
         return;
     }
 
@@ -566,11 +902,35 @@ document.addEventListener('DOMContentLoaded', async function () {
         filtroStatus = e.target.value;
         aplicarFiltros();
     });
+    document.getElementById('autores-filtro-foto-cad').addEventListener('change', function (e) {
+        filtroFotoCad = e.target.value;
+        aplicarFiltros();
+    });
+    document.getElementById('autores-filtro-unidade').addEventListener('change', function (e) {
+        filtroUnidade = e.target.value;
+        aplicarFiltros();
+    });
     btnVerificar.addEventListener('click', verificarAgora);
+
+    const btnVerUltimaAtualizacao = document.getElementById('btn-autores-ver-ultima-atualizacao');
+    if (btnVerUltimaAtualizacao) btnVerUltimaAtualizacao.addEventListener('click', abrirUltimaAtualizacaoAutores);
+
+    const btnBuscarFotoCadTodos = document.getElementById('btn-autores-buscar-foto-cad-todos');
+    if (btnBuscarFotoCadTodos) btnBuscarFotoCadTodos.addEventListener('click', buscarFotosCadTodosAutores);
 
     // Delegação de eventos — a tabela é reconstruída via innerHTML a
     // cada render, então listeners individuais por linha se perderiam.
     document.getElementById('autores-tbody').addEventListener('click', function (e) {
+        const btnBuscarFotoCad = e.target.closest('.btn-buscar-foto-cad');
+        if (btnBuscarFotoCad) { buscarFotoCadAutor(btnBuscarFotoCad.dataset.id); return; }
+
+        const fotoClicavel = e.target.closest('[data-abrir-detalhes]');
+        if (fotoClicavel) {
+            const autor = todosAutores.find(a => a._id === fotoClicavel.dataset.abrirDetalhes);
+            if (autor) PessoaModal.abrir({ cfg: cfgUnidade, tipo: 'autor', registro: autor });
+            return;
+        }
+
         const valorNomeMae = e.target.closest('.nome-mae-valor');
         if (valorNomeMae) {
             abrirEdicaoNomeMae(valorNomeMae.dataset.nomeMaeDe);

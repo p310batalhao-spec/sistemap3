@@ -15,6 +15,18 @@ let cfgUnidadeSuspeitos = null;
 let GAS_AUTORES_URL_SUSPEITOS = null;
 let todosSuspeitos = [];
 let filtroTextoSuspeitos = '';
+let filtroFotoCadSuspeitos = '';
+
+// Ver comentário equivalente em js/autores.js:AUTORES_ULTIMA_ATUALIZACAO_KEY.
+const SUSPEITOS_ULTIMA_ATUALIZACAO_KEY = 'p3_suspeitos_ultima_atualizacao';
+
+// Fotos/detecções de rosto escolhidas no modal "Novo suspeito"/"Adicionar
+// fotos" (ver abrirModalSuspeito/salvarNovoSuspeito abaixo) — guardadas em
+// memória (não dá pra jogar File no HTML), zeradas a cada abertura do
+// modal. Alinhadas por índice: msDescritoresFoto[i] é o descritor (ou
+// null) de msArquivosFoto[i].
+let msArquivosFoto = [];
+let msDescritoresFoto = [];
 
 function escaparHtmlSusp(s) {
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -22,6 +34,24 @@ function escaparHtmlSusp(s) {
 
 function normalizarBuscaSusp(s) {
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+}
+
+// Ver comentário equivalente em js/autores.js:celulaMovimentacaoTexto —
+// mesma lógica (título compacto na tabela + narrativa truncada com o
+// texto inteiro no hover), duplicada aqui pelo mesmo motivo de
+// escaparHtmlSusp/formatarDataHoraIsoSusp (arquivos sem módulo
+// compartilhado entre si).
+const MOVIMENTACAO_NARRATIVA_MAX_SUSP = 140;
+function celulaMovimentacaoTextoSusp(texto) {
+    if (!texto) return '<span style="opacity:.5;">—</span>';
+    const partes = String(texto).split('\n');
+    const titulo = escaparHtmlSusp(partes[0]);
+    const narrativa = partes.slice(1).join(' ').trim();
+    if (!narrativa) return titulo;
+    const truncada = narrativa.length > MOVIMENTACAO_NARRATIVA_MAX_SUSP
+        ? narrativa.slice(0, MOVIMENTACAO_NARRATIVA_MAX_SUSP) + '…'
+        : narrativa;
+    return `${titulo}<div style="font-size:11px;opacity:.75;margin-top:2px;" title="${escaparHtmlSusp(narrativa)}">${escaparHtmlSusp(truncada)}</div>`;
 }
 
 function formatarDataHoraIsoSusp(iso) {
@@ -62,21 +92,29 @@ function processarDadosSuspeitos(dados) {
 
 async function carregarSuspeitos() {
     const tbody = document.getElementById('suspeitos-tbody');
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Carregando...</td></tr>';
     try {
         const dados = await P3.Suspeitos.listar(cfgUnidadeSuspeitos);
         processarDadosSuspeitos(dados);
     } catch (e) {
         console.error('[suspeitos] Erro ao carregar:', e);
-        tbody.innerHTML = `<tr><td colspan="6" class="empty-msg">Erro ao carregar suspeitos: ${escaparHtmlSusp(e.message)}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="empty-msg">Erro ao carregar suspeitos: ${escaparHtmlSusp(e.message)}</td></tr>`;
     }
 }
 
 function aplicarFiltrosSuspeitos() {
     const textoNorm = normalizarBuscaSusp(filtroTextoSuspeitos);
     const lista = todosSuspeitos.filter(s => {
+        if (filtroFotoCadSuspeitos === 'sem_foto' && s.vetorFacialEm) return false;
+        if (filtroFotoCadSuspeitos === 'com_foto' && !s.vetorFacialEm) return false;
         if (!textoNorm) return true;
-        const alvo = normalizarBuscaSusp((s.NOME || '') + ' ' + (s.CPF || ''));
+        // Inclui a movimentação de TODOS os processos da pessoa (1:N —
+        // diferente de Autores, aqui não existe "processo principal") —
+        // mesmo espírito de js/autores.js:aplicarFiltros, pra dar pra
+        // buscar por "alvará"/"expedição de mandado" etc.
+        const movimentacoes = (Array.isArray(s.processos) ? s.processos : [])
+            .map(p => p.movimentacaoProcesso).filter(Boolean).join(' ');
+        const alvo = normalizarBuscaSusp([s.NOME, s.CPF, movimentacoes].filter(Boolean).join(' '));
         return alvo.indexOf(textoNorm) !== -1;
     });
     renderizarTabelaSuspeitos(lista);
@@ -97,10 +135,32 @@ function badgeStatusSuspeito(s) {
     return `<span class="status-badge status-${status}"${status === 'pendente_revisao' ? ' title="Clique para ver os candidatos"' : ''}>${rotulos[status] || status}</span>`;
 }
 
+// Mesmo papel de celulaFotoCad em js/autores.js — ver comentário lá.
+function celulaFotoCadSuspeito(s) {
+    const quando = formatarDataHoraIsoSusp(s.vetorFacialEm);
+    const badge = s.vetorFacialEm
+        ? `<span class="foto-cad-badge foto-cad-com" title="Sincronizada em ${quando || '—'}">📷 Sincronizada</span>`
+        : `<span class="foto-cad-badge foto-cad-sem">Sem foto ainda</span>`;
+    const botaoCad = s.CPF
+        ? `<button type="button" class="btn-buscar-foto-cad" data-id="${s.id}" title="Buscar foto no CAD (SERIS/Alcatraz) por este CPF">🔍 Buscar</button>`
+        : '';
+    const botaoFotos = `<button type="button" class="btn-adicionar-fotos-susp" data-id="${s.id}" title="Adicionar mais fotos deste suspeito">➕📷 Fotos</button>`;
+    return `<span class="foto-cad-coluna">${badge}${botaoCad}${botaoFotos}</span>`;
+}
+
+// Miniatura clicável — mesmo componente/modal de js/autores.js (ver
+// js/pessoa-modal.js), mostra tudo sobre o suspeito (só leitura).
+function celulaFotoSuspeito(s) {
+    const url = (cfgUnidadeSuspeitos && cfgUnidadeSuspeitos.apiPhp && s.fotoArquivo) ? cfgUnidadeSuspeitos.apiPhp.fotosSuspeitosBaseUrl + s.fotoArquivo : null;
+    return url
+        ? `<img class="pessoa-foto-thumb" src="${escaparHtmlSusp(url)}" alt="" data-abrir-detalhes-susp="${s.id}" title="Ver detalhes">`
+        : `<div class="pessoa-foto-vazia" data-abrir-detalhes-susp="${s.id}" title="Ver detalhes">👤</div>`;
+}
+
 function renderizarTabelaSuspeitos(lista) {
     const tbody = document.getElementById('suspeitos-tbody');
     if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum suspeito cadastrado com esse filtro.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-msg">Nenhum suspeito cadastrado com esse filtro.</td></tr>';
         return;
     }
 
@@ -135,9 +195,7 @@ function renderizarTabelaSuspeitos(lista) {
                 const alertaLinha = p.alertaImportante
                     ? `<div style="font-size:11px;color:#fff;background:#c0392b;padding:2px 6px;border-radius:4px;margin-top:3px;display:inline-block;" title="Evento importante detectado no processo — mandado, alvará, revogação de prisão etc.">🚨 ${escaparHtmlSusp(p.alertaImportante)}</div>`
                     : '';
-                return `<div class="lista-multi-item">${p.movimentacaoProcesso
-                    ? escaparHtmlSusp(p.movimentacaoProcesso) + (atualizadoEm ? `<div style="font-size:11px;opacity:.6;margin-top:2px;">atualizado em ${atualizadoEm}</div>` : '')
-                    : '<span style="opacity:.5;">—</span>'}${assuntoLinha}${alertaLinha}</div>`;
+                return `<div class="lista-multi-item">${celulaMovimentacaoTextoSusp(p.movimentacaoProcesso)}${atualizadoEm ? `<div style="font-size:11px;opacity:.6;margin-top:2px;">atualizado em ${atualizadoEm}</div>` : ''}${assuntoLinha}${alertaLinha}</div>`;
             }).join('')}</div>`
             : '<span style="opacity:.5;">—</span>';
 
@@ -152,7 +210,7 @@ function renderizarTabelaSuspeitos(lista) {
                 </div>`;
             }).join('');
             linhaCandidatos = `<tr class="linha-candidatos" data-candidatos-susp-de="${s.id}" style="display:none;">
-                <td colspan="6">
+                <td colspan="10">
                     <strong>Candidatos encontrados no e-SAJ para "${escaparHtmlSusp(s.NOME)}":</strong>
                     ${itens}
                     <button type="button" class="btn-nao-encontrado-manual-susp" data-suspeito-id="${s.id}">Nenhum destes — marcar como não encontrado</button>
@@ -161,11 +219,17 @@ function renderizarTabelaSuspeitos(lista) {
         }
 
         return `<tr data-suspeito-id="${s.id}">
+            <td>${celulaFotoSuspeito(s)}</td>
             <td>${escaparHtmlSusp(s.NOME)}</td>
             <td>${s.CPF ? escaparHtmlSusp(s.CPF) : '<span style="opacity:.5;">—</span>'}</td>
+            <td>${s.RG ? escaparHtmlSusp(s.RG) : '<span style="opacity:.5;">—</span>'}</td>
+            <td>${s.MAE ? escaparHtmlSusp(s.MAE) : '<span style="opacity:.5;">—</span>'}</td>
             <td>${colunaEsaj}</td>
             <td>${colunaMovimentacao}</td>
-            <td><span class="status-toggle-susp" data-toggle-susp-de="${s.id}">${badgeStatusSuspeito(s)}</span></td>
+            <td>
+                <span class="status-toggle-susp" data-toggle-susp-de="${s.id}">${badgeStatusSuspeito(s)}</span>
+            </td>
+            <td>${celulaFotoCadSuspeito(s)}</td>
             <td><button type="button" class="btn-excluir-suspeito" data-suspeito-id="${s.id}" title="Excluir suspeito e todos os vínculos">🗑</button></td>
         </tr>${linhaCandidatos}`;
     }).join('');
@@ -174,26 +238,129 @@ function renderizarTabelaSuspeitos(lista) {
 // ====================================================================
 // AÇÕES
 // ====================================================================
-async function salvarNovoSuspeito() {
-    const nomeInput = document.getElementById('novo-suspeito-nome');
-    const cpfInput = document.getElementById('novo-suspeito-cpf');
-    const msg = document.getElementById('suspeitos-status-msg');
-    const nome = nomeInput.value.trim();
-    const cpf = cpfInput.value.trim();
-    if (!nome) { msg.textContent = 'Informe o nome.'; return; }
+// MODAL "Novo suspeito" — cadastro + foto numa mesma tela (fusão das
+// antigas abas "Suspeitos"/"Upload de foto", ver page/autores.html). Dá
+// pra selecionar VÁRIAS fotos de uma vez (input multiple) — cada uma
+// soma ao histórico da pessoa (autor_fotos/suspeito_fotos) e ao vetor
+// facial, sem apagar as anteriores.
+//
+// 2 modos, controlados por msSuspeitoEmEdicao:
+//   null   -> cadastro completo (nome/cpf/rg/mãe + foto(s) opcionais)
+//   objeto -> só a área de fotos, pra ACRESCENTAR mais fotos a um
+//             suspeito que já existe (ver btn-adicionar-fotos-susp)
+// ====================================================================
+let msSuspeitoEmEdicao = null;
 
+function abrirModalSuspeito(suspeitoExistente) {
+    msSuspeitoEmEdicao = suspeitoExistente || null;
+    const camposCadastro = document.getElementById('ms-campos-cadastro');
+    const titulo = document.getElementById('ms-titulo');
+
+    if (msSuspeitoEmEdicao) {
+        camposCadastro.style.display = 'none';
+        titulo.textContent = `📷 Fotos de ${msSuspeitoEmEdicao.NOME || 'suspeito'}`;
+    } else {
+        camposCadastro.style.display = '';
+        titulo.textContent = '🕵️ Novo suspeito';
+        ['novo-suspeito-nome', 'novo-suspeito-cpf', 'novo-suspeito-rg', 'novo-suspeito-mae'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
+    document.getElementById('ms-input-foto').value = '';
+    document.getElementById('ms-foto-previews').innerHTML = '';
+    document.getElementById('ms-status-msg').textContent = '';
+    msArquivosFoto = [];
+    msDescritoresFoto = [];
+    document.getElementById('modal-suspeito').classList.add('aberto');
+    (msSuspeitoEmEdicao ? document.getElementById('ms-input-foto') : document.getElementById('novo-suspeito-nome')).focus();
+}
+
+function fecharModalSuspeito() {
+    document.getElementById('modal-suspeito').classList.remove('aberto');
+    msSuspeitoEmEdicao = null;
+}
+
+// Detecta o rosto de CADA arquivo selecionado, em paralelo, e guarda os
+// descritores no mesmo índice dos arquivos — msArquivosFoto/
+// msDescritoresFoto ficam alinhados por posição.
+async function msOnArquivoSelecionado(e) {
+    const arquivos = Array.from(e.target.files || []);
+    const previews = document.getElementById('ms-foto-previews');
+    const status = document.getElementById('ms-status-msg');
+    msArquivosFoto = arquivos;
+    msDescritoresFoto = new Array(arquivos.length).fill(null);
+    previews.innerHTML = arquivos.map(a => `<img src="${URL.createObjectURL(a)}" alt="Foto selecionada">`).join('');
+    if (!arquivos.length) { status.textContent = ''; return; }
+
+    status.textContent = `Detectando rosto em ${arquivos.length} foto(s)...`;
+    let comRosto = 0;
+    await Promise.all(arquivos.map(async (arquivo, idx) => {
+        try {
+            const resultado = await p3DetectarRostoComQualidade(arquivo);
+            msDescritoresFoto[idx] = resultado ? resultado.descritor : null;
+            if (resultado) comRosto++;
+        } catch (err) {
+            console.error('[suspeitos] Erro ao detectar rosto:', err);
+        }
+    }));
+    status.textContent = `${comRosto} de ${arquivos.length} foto(s) com rosto detectado — as demais ainda podem ser salvas como referência.`;
+}
+
+// Envia cada foto selecionada numa chamada própria (sequencial, não em
+// paralelo — evita condição de corrida sobre qual arquivo "virou capa").
+// capa:false sempre: se a pessoa ainda não tem NENHUMA foto, o próprio
+// backend força a primeira a virar capa mesmo assim (ver uploadFoto em
+// hostinger-api/suspeitos.php); se já tem, isso preserva a foto principal
+// já escolhida em vez de trocá-la sem querer só por ter subido mais fotos.
+async function msEnviarLoteFotos(id) {
+    const status = document.getElementById('ms-status-msg');
+    for (let i = 0; i < msArquivosFoto.length; i++) {
+        status.textContent = `Enviando foto ${i + 1} de ${msArquivosFoto.length}...`;
+        await P3.Suspeitos.uploadFoto(cfgUnidadeSuspeitos, id, msArquivosFoto[i], msDescritoresFoto[i], { capa: false });
+    }
+}
+
+async function salvarNovoSuspeito() {
+    const status = document.getElementById('ms-status-msg');
     const btn = document.getElementById('btn-salvar-novo-suspeito');
     btn.disabled = true;
+
     try {
-        await P3.Suspeitos.criar(cfgUnidadeSuspeitos, { nome, cpf });
-        nomeInput.value = '';
-        cpfInput.value = '';
-        document.getElementById('form-novo-suspeito').classList.remove('aberto');
+        if (msSuspeitoEmEdicao) {
+            if (!msArquivosFoto.length) { status.textContent = 'Selecione ao menos uma foto.'; return; }
+            await msEnviarLoteFotos(msSuspeitoEmEdicao.id);
+            fecharModalSuspeito();
+            const msg = document.getElementById('suspeitos-status-msg');
+            msg.textContent = 'Foto(s) adicionada(s).';
+            setTimeout(() => { msg.textContent = ''; }, 5000);
+            await carregarSuspeitos();
+            return;
+        }
+
+        const nomeInput = document.getElementById('novo-suspeito-nome');
+        const cpfInput = document.getElementById('novo-suspeito-cpf');
+        const rgInput = document.getElementById('novo-suspeito-rg');
+        const maeInput = document.getElementById('novo-suspeito-mae');
+        const nome = nomeInput.value.trim();
+        const cpf = cpfInput.value.trim();
+        const rg = rgInput ? rgInput.value.trim() : '';
+        const nomeMae = maeInput ? maeInput.value.trim() : '';
+        if (!nome) { status.textContent = 'Informe o nome.'; return; }
+
+        status.textContent = 'Cadastrando...';
+        const r = await P3.Suspeitos.criar(cfgUnidadeSuspeitos, { nome, cpf, rg, nomeMae });
+        if (msArquivosFoto.length && r && r.id) {
+            await msEnviarLoteFotos(r.id);
+        }
+        fecharModalSuspeito();
+        const msg = document.getElementById('suspeitos-status-msg');
         msg.textContent = 'Suspeito cadastrado.';
         setTimeout(() => { msg.textContent = ''; }, 5000);
         await carregarSuspeitos();
     } catch (e) {
-        msg.textContent = e.message || 'Erro ao cadastrar suspeito.';
+        status.textContent = e.message || 'Erro ao salvar.';
     } finally {
         btn.disabled = false;
     }
@@ -239,6 +406,85 @@ async function excluirSuspeito(suspeitoId) {
     if (!confirm('Excluir este suspeito e todos os processos vinculados a ele?')) return;
     await P3.Suspeitos.excluirSuspeito(cfgUnidadeSuspeitos, suspeitoId);
     await carregarSuspeitos();
+}
+
+// ====================================================================
+// BUSCA DE FOTO NO CAD (SERIS/Alcatraz) — mesmo mecanismo de
+// js/autores.js (ver js/cad-busca-foto.js pro fluxo completo).
+// ====================================================================
+async function buscarFotoCadSuspeito(idSuspeito) {
+    const suspeito = todosSuspeitos.find(s => String(s.id) === String(idSuspeito));
+    if (!suspeito) return;
+    const btn = document.querySelector(`.btn-buscar-foto-cad[data-id="${CSS.escape(idSuspeito)}"]`);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    const r = await cadBuscarESalvarUmaPessoa(cfgUnidadeSuspeitos, 'suspeito', idSuspeito, suspeito.CPF);
+    if (btn) { btn.disabled = false; btn.textContent = '🔍'; }
+
+    if (r.status === 'salvo') alert(`${r.salvas} de ${r.totalFotos} foto(s) do CAD salva(s) para ${suspeito.NOME}${r.comVetor ? ` (${r.comVetor} com vetor facial).` : ' (rosto não detectado nas fotos — salvas só como referência).'}`);
+    else if (r.status === 'nao_encontrado') alert(`Nenhuma foto encontrada no CAD (SERIS/Alcatraz) para ${suspeito.NOME}.`);
+    else if (r.status === 'sem_cpf') alert('Este suspeito não tem CPF cadastrado.');
+    else alert('Erro ao buscar no CAD: ' + (r.erro || 'desconhecido'));
+}
+
+// Painel de progresso visível — mesmo padrão de
+// js/autores.js:atualizarProgressoCadAutores.
+function atualizarProgressoCadSuspeitos(processados, total, achados, naoAchados, erros) {
+    const wrap = document.getElementById('suspeitos-progresso-cad-wrap');
+    const fill = document.getElementById('suspeitos-progresso-cad-fill');
+    const texto = document.getElementById('suspeitos-progresso-cad-texto');
+    if (!wrap) return;
+    wrap.style.display = total ? 'block' : 'none';
+    if (!total) return;
+    const pct = Math.min(100, Math.round((processados / total) * 100));
+    fill.style.width = pct + '%';
+    texto.textContent = `${processados} de ${total} (${pct}%)`;
+    document.getElementById('suspeitos-cad-stat-processados').textContent = `${processados} processados`;
+    document.getElementById('suspeitos-cad-stat-achados').textContent = `${achados} salvos`;
+    document.getElementById('suspeitos-cad-stat-nao-achados').textContent = `${naoAchados} sem foto`;
+    document.getElementById('suspeitos-cad-stat-erros').textContent = `${erros} erros`;
+}
+
+// Mesmo mecanismo de cancelamento de js/autores.js:buscarFotosCadTodosAutores
+// — ver comentário lá.
+let suspeitosBuscaCadEmAndamento = false;
+let suspeitosBuscaCadCancelar = false;
+async function buscarFotosCadTodosSuspeitos() {
+    const btn = document.getElementById('btn-suspeitos-buscar-foto-cad-todos');
+    if (suspeitosBuscaCadEmAndamento) {
+        suspeitosBuscaCadCancelar = true;
+        if (btn) btn.textContent = '⏳ Cancelando (termina o CPF atual)...';
+        return;
+    }
+
+    // Pula quem já tem QUALQUER imagem salva na Hostinger (fotoArquivo) —
+    // ver mesmo comentário/motivo em js/autores.js:buscarFotosCadTodosAutores.
+    const comCpf = todosSuspeitos.filter(s => s.CPF);
+    const elegiveis = comCpf.filter(s => !s.fotoArquivo);
+    const jaSincronizados = comCpf.length - elegiveis.length;
+    if (!elegiveis.length) { alert(`Nenhum suspeito pendente — todos os ${comCpf.length} com CPF já têm foto salva.`); return; }
+    if (!confirm(`Isso vai buscar no CAD, um suspeito de cada vez, os ${elegiveis.length} suspeito(s) com CPF ainda sem nenhuma foto salva (${jaSincronizados} já com foto serão pulados) — pode levar vários minutos. Clique no mesmo botão de novo a qualquer momento pra cancelar. Continuar?`)) return;
+
+    suspeitosBuscaCadEmAndamento = true;
+    suspeitosBuscaCadCancelar = false;
+    const textoOriginal = btn ? btn.textContent : '';
+    let achados = 0, naoAchados = 0, erros = 0, processados = 0, cancelado = false;
+    atualizarProgressoCadSuspeitos(0, elegiveis.length, 0, 0, 0);
+    for (; processados < elegiveis.length; processados++) {
+        if (suspeitosBuscaCadCancelar) { cancelado = true; break; }
+        const suspeito = elegiveis[processados];
+        if (btn) btn.textContent = `⏳ ${processados + 1}/${elegiveis.length} — clique pra cancelar`;
+        const r = await cadBuscarESalvarUmaPessoa(cfgUnidadeSuspeitos, 'suspeito', suspeito.id, suspeito.CPF);
+        if (r.status === 'salvo') achados++;
+        else if (r.status === 'erro') erros++;
+        else naoAchados++;
+        atualizarProgressoCadSuspeitos(processados + 1, elegiveis.length, achados, naoAchados, erros);
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    suspeitosBuscaCadEmAndamento = false;
+    suspeitosBuscaCadCancelar = false;
+    if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+    document.getElementById('suspeitos-progresso-cad-wrap').style.display = 'none';
+    alert(`${cancelado ? 'Cancelado' : 'Concluído'} — ${achados} foto(s) salva(s), ${naoAchados} sem foto no CAD, ${erros} erro(s) (${processados} de ${elegiveis.length} processados).`);
 }
 
 // Mesmo mecanismo do botão "Verificar agora" de Autores (ver
@@ -409,12 +655,108 @@ async function detectarAtividadeEmAndamentoSuspeitos() {
     }
 }
 
+// Caminho NOVO (preferido) — mesmo mecanismo de js/autores.js:
+// verificarAgoraLocal (ver comentário mais detalhado lá), usando o
+// servidor local Python (tools/atualizador-local/) em vez do Apps
+// Script — progresso REAL item a item via streaming, sem esperar
+// gatilho nenhum.
+async function verificarAgoraSuspeitosLocal(totalEstimado) {
+    const btn = document.getElementById('btn-suspeitos-verificar-agora');
+    const msg = document.getElementById('suspeitos-status-msg');
+
+    suspeitosVerificacaoEmAndamento = true;
+    if (btn) btn.disabled = true;
+    msg.textContent = 'Atualizando via servidor local — os mais desatualizados primeiro...';
+    atualizarBarraLiveSuspeitos(0, totalEstimado);
+
+    // Ver comentário equivalente em js/autores.js:verificarAgoraLocal —
+    // guarda amostras de erro pra mostrar direto na tela, não só no console.
+    const amostrasErro = [];
+    // Idem — mudanças de movimentação detectadas nesta rodada (vira modal
+    // + notificação, ver abaixo).
+    const mudancasColetadas = [];
+    try {
+        const resumo = await P3AtualizadorLocal.atualizarMovimentacoes('suspeitos', function (evento) {
+            if (evento.tipo === 'inicio') {
+                atualizarBarraLiveSuspeitos(0, evento.total);
+            } else if (evento.tipo === 'progresso') {
+                atualizarBarraLiveSuspeitos(evento.processados, evento.total);
+                msg.textContent = `Atualizando (servidor local) — ${evento.processados}/${evento.total}: ${evento.item || ''}`;
+            } else if (evento.tipo === 'mudanca') {
+                mudancasColetadas.push(evento);
+            } else if (evento.tipo === 'aviso') {
+                console.warn('[suspeitos] Aviso do atualizador local:', evento);
+                if (amostrasErro.length < 3 && evento.erro && amostrasErro.indexOf(evento.erro) === -1) {
+                    amostrasErro.push(evento.erro);
+                }
+            }
+        });
+
+        const dados = await P3.Suspeitos.listar(cfgUnidadeSuspeitos);
+        processarDadosSuspeitos(dados);
+
+        const agoraIso = new Date().toISOString();
+        const link = '../page/autores.html';
+        const totalProcessado = (resumo && resumo.suspeitos && resumo.suspeitos.total) || 0;
+        const mudancasComLink = mudancasColetadas.map(m => Object.assign({}, m, { link }));
+
+        // Persiste o resultado desta rodada (mesmo vazio) pro botão "🕓
+        // Ver última atualização" — ver SUSPEITOS_ULTIMA_ATUALIZACAO_KEY.
+        try {
+            localStorage.setItem(SUSPEITOS_ULTIMA_ATUALIZACAO_KEY, JSON.stringify({
+                quando: agoraIso, total: totalProcessado, mudancas: mudancasComLink,
+            }));
+        } catch (e) { /* localStorage indisponível/cheio — só perde a retomada, não quebra nada */ }
+
+        if (mudancasColetadas.length) {
+            if (typeof P3ModalMudancas !== 'undefined') {
+                P3ModalMudancas.exibir(mudancasComLink, {
+                    titulo: `${mudancasColetadas.length} movimentação(ões) de suspeito atualizada(s)`,
+                    quando: agoraIso,
+                });
+            }
+            if (typeof P3Notificacoes !== 'undefined') {
+                // Mesma chave "susp:{suspeitoId}:{processoId}" que
+                // js/core/notificacoes.js:obterMovimentacoesEsajSuspeito já
+                // usa — evita duplicar quando o detector passivo mais
+                // tarde também encontrar essa mesma mudança.
+                P3Notificacoes.adicionarNotificacoes(mudancasColetadas.map(m => ({
+                    id: 'suspeito-esaj:susp:' + m.suspeitoId + ':' + m.id + ':' + m.ultimoCodigoMovimento + '@' + (m.ultimaMovimentacaoEm || ''),
+                    categoria: 'autores',
+                    icone: m.alertaImportante ? '🚨' : '⚖️',
+                    titulo: m.alertaImportante ? 'Evento importante no processo do suspeito' : 'Movimentação no processo do suspeito',
+                    // Só a 1ª linha (título+data) — ver comentário
+                    // equivalente em js/autores.js.
+                    texto: `${m.nome || 'Suspeito'}: ${(m.movimentacaoAtual || '').split('\n')[0]}`,
+                    link: link,
+                })));
+            }
+        }
+
+        const c = (resumo && resumo.suspeitos && resumo.suspeitos.contagem) || {};
+        const total = (resumo && resumo.suspeitos && resumo.suspeitos.total) || 0;
+        let texto = `Concluído (${total}) — ${c.atualizado || 0} processo(s) atualizado(s), ${c.vinculado || 0} vinculado(s) agora, ` +
+            `${c.pendente_revisao || 0} pendente(s) de revisão, ${c.nao_encontrado || 0} não encontrado(s) no e-SAJ, ` +
+            `${c.sem_movimento || 0} sem movimento novo, ${c.nao_encontrado_esaj || 0} não encontrado(s) no e-SAJ`;
+        if (c.erro) {
+            texto += ` — ⚠️ ${c.erro} erro(s)`;
+            if (amostrasErro.length) texto += `: ${amostrasErro.join(' | ')}`;
+        }
+        msg.textContent = texto + '.';
+        if (!c.erro) setTimeout(() => { if (msg.textContent.indexOf('Concluído') === 0) msg.textContent = ''; }, 12000);
+    } catch (e) {
+        console.error('[suspeitos] Erro em verificarAgoraSuspeitosLocal:', e);
+        msg.textContent = 'Erro no atualizador local: ' + e.message;
+    } finally {
+        suspeitosVerificacaoEmAndamento = false;
+        if (btn) btn.disabled = false;
+        const wrap = document.getElementById('suspeitos-progresso-live-wrap');
+        if (wrap) wrap.style.display = 'none';
+    }
+}
+
 async function verificarAgoraSuspeitos() {
     const msg = document.getElementById('suspeitos-status-msg');
-    if (!GAS_AUTORES_URL_SUSPEITOS) {
-        msg.textContent = 'Apps Script de Autores/Suspeitos não configurado para esta unidade.';
-        return;
-    }
     if (suspeitosVerificacaoEmAndamento) {
         msg.textContent = 'Já existe uma verificação em andamento — acompanhe pela barra abaixo.';
         return;
@@ -428,7 +770,22 @@ async function verificarAgoraSuspeitos() {
         return;
     }
 
-    msg.textContent = 'Forçando verificação — os mais desatualizados primeiro; acompanhe pela barra abaixo.';
+    // Preferido: servidor local — só cai pro caminho antigo (Apps
+    // Script + polling aproximado) se ele não estiver rodando (ver
+    // js/autores.js:verificarAgora, mesmo raciocínio).
+    if (await P3AtualizadorLocal.disponivel()) {
+        await verificarAgoraSuspeitosLocal(total);
+        return;
+    }
+
+    if (!GAS_AUTORES_URL_SUSPEITOS) {
+        msg.textContent = 'Atualizador local (Python) não está rodando, e o Apps Script de Autores/Suspeitos ' +
+            'não está configurado para esta unidade — veja tools/atualizador-local/README.md.';
+        return;
+    }
+
+    msg.textContent = 'Atualizador local não está rodando — usando o Apps Script (mais lento; ' +
+        'veja tools/atualizador-local/README.md pra rodar localmente). Os mais desatualizados primeiro.';
 
     try {
         await fetch(`${GAS_AUTORES_URL_SUSPEITOS}?action=sincronizarSuspeitosAgora`);
@@ -439,6 +796,24 @@ async function verificarAgoraSuspeitos() {
     }
 
     iniciarPollSuspeitos(Date.now(), idsDescoberta, idsProcesso, total);
+}
+
+// Ver comentário equivalente em js/autores.js:abrirUltimaAtualizacaoAutores.
+function abrirUltimaAtualizacaoSuspeitos() {
+    let dados = null;
+    try { dados = JSON.parse(localStorage.getItem(SUSPEITOS_ULTIMA_ATUALIZACAO_KEY) || 'null'); }
+    catch (e) { dados = null; }
+
+    if (!dados) {
+        alert('Ainda não foi feita nenhuma verificação pelo servidor local nesta sessão do navegador — clique em "Verificar agora" primeiro.');
+        return;
+    }
+    if (typeof P3ModalMudancas === 'undefined') return;
+    P3ModalMudancas.exibir(dados.mudancas || [], {
+        titulo: `Última verificação de suspeitos — ${dados.total || 0} processado(s)`,
+        quando: dados.quando,
+        permitirVazio: true,
+    });
 }
 
 // ====================================================================
@@ -463,17 +838,42 @@ document.addEventListener('DOMContentLoaded', async function () {
         filtroTextoSuspeitos = e.target.value;
         aplicarFiltrosSuspeitos();
     });
+    document.getElementById('suspeitos-filtro-foto-cad').addEventListener('change', function (e) {
+        filtroFotoCadSuspeitos = e.target.value;
+        aplicarFiltrosSuspeitos();
+    });
 
-    document.getElementById('btn-suspeitos-novo').addEventListener('click', function () {
-        document.getElementById('form-novo-suspeito').classList.toggle('aberto');
-    });
-    document.getElementById('btn-cancelar-novo-suspeito').addEventListener('click', function () {
-        document.getElementById('form-novo-suspeito').classList.remove('aberto');
-    });
+    document.getElementById('btn-suspeitos-novo').addEventListener('click', () => abrirModalSuspeito());
+    document.getElementById('ms-btn-cancelar').addEventListener('click', fecharModalSuspeito);
+    document.getElementById('ms-btn-fechar-x').addEventListener('click', fecharModalSuspeito);
+    document.getElementById('ms-input-foto').addEventListener('change', msOnArquivoSelecionado);
     document.getElementById('btn-salvar-novo-suspeito').addEventListener('click', salvarNovoSuspeito);
     document.getElementById('btn-suspeitos-verificar-agora').addEventListener('click', verificarAgoraSuspeitos);
 
+    const btnVerUltimaAtualizacaoSusp = document.getElementById('btn-suspeitos-ver-ultima-atualizacao');
+    if (btnVerUltimaAtualizacaoSusp) btnVerUltimaAtualizacaoSusp.addEventListener('click', abrirUltimaAtualizacaoSuspeitos);
+
+    const btnBuscarFotoCadTodosSusp = document.getElementById('btn-suspeitos-buscar-foto-cad-todos');
+    if (btnBuscarFotoCadTodosSusp) btnBuscarFotoCadTodosSusp.addEventListener('click', buscarFotosCadTodosSuspeitos);
+
     document.getElementById('suspeitos-tbody').addEventListener('click', function (e) {
+        const btnBuscarFotoCad = e.target.closest('.btn-buscar-foto-cad');
+        if (btnBuscarFotoCad) { buscarFotoCadSuspeito(btnBuscarFotoCad.dataset.id); return; }
+
+        const btnAdicionarFotos = e.target.closest('.btn-adicionar-fotos-susp');
+        if (btnAdicionarFotos) {
+            const suspeito = todosSuspeitos.find(s => String(s.id) === String(btnAdicionarFotos.dataset.id));
+            if (suspeito) abrirModalSuspeito(suspeito);
+            return;
+        }
+
+        const fotoClicavel = e.target.closest('[data-abrir-detalhes-susp]');
+        if (fotoClicavel) {
+            const suspeito = todosSuspeitos.find(s => String(s.id) === String(fotoClicavel.dataset.abrirDetalhesSusp));
+            if (suspeito) PessoaModal.abrir({ cfg: cfgUnidadeSuspeitos, tipo: 'suspeito', registro: suspeito });
+            return;
+        }
+
         const toggle = e.target.closest('.status-toggle-susp');
         if (toggle) {
             const id = toggle.dataset.toggleSuspDe;

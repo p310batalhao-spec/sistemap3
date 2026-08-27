@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Busca Facial (Campo)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* Cores vêm dos tokens de css/theme.css (--p3-*) — trocam sozinhas
+           no modo escuro, nenhuma regra aqui usa cor fixa. */
+        .bfc-wrap { padding: 20px; max-width: 900px; margin: 0 auto; }
+
+        .bfc-aviso {
+            background: var(--p3-bg); border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-blue-700);
+            border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--p3-text-muted);
+        }
+        .bfc-upload-area { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 22px; }
+        .bfc-preview {
+            width: 220px; height: 220px; border-radius: 8px; border: 2px dashed var(--p3-border);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            background: var(--p3-surface); flex-shrink: 0; color: var(--p3-text-muted); font-size: 12px; text-align: center; padding: 10px;
+        }
+        .bfc-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .bfc-controles { display: flex; flex-direction: column; gap: 10px; min-width: 240px; }
+        .bfc-controles input[type="file"] { font-size: 13px; color: var(--p3-text); }
+        .bfc-controles button {
+            padding: 9px 16px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px; font-weight: 600; align-self: flex-start;
+        }
+        .bfc-controles button:hover { background: var(--p3-blue-500); }
+        .bfc-controles button:disabled { opacity: .6; cursor: not-allowed; }
+        .bfc-controles .bfc-btn-secundario { background: var(--p3-surface-alt, #eee); color: var(--p3-text); border: 1px solid var(--p3-border); }
+        #bfc-status-msg { font-size: 12px; color: var(--p3-text-muted); min-height: 16px; }
+
+        /* Reaproveita as mesmas classes visuais de resultado da tela de
+           Reconhecimento Facial (page/autores.html) — mesmo padrão de
+           card, mesma escala de cor por faixa de compatibilidade. */
+        .rf-resultados { display: flex; flex-direction: column; gap: 10px; }
+        .rf-resultado-item {
+            display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 8px;
+            background: var(--p3-surface); box-shadow: var(--p3-shadow-lg);
+        }
+        .rf-resultado-thumb {
+            width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+            background: var(--p3-bg); border: 1px solid var(--p3-border);
+        }
+        .bfc-foto-clicavel { cursor: pointer; }
+        .bfc-foto-clicavel:hover { outline: 2px solid var(--p3-blue-700); }
+        .rf-resultado-info { flex: 1; min-width: 0; }
+        .rf-resultado-nome { font-weight: 600; color: var(--p3-text); }
+        .rf-resultado-cpf { font-size: 12px; color: var(--p3-text-muted); }
+        .rf-resultado-score { font-size: 20px; font-weight: 700; min-width: 70px; text-align: right; }
+        .rf-score-alta { color: #1e6b34; }
+        .rf-score-media { color: #8a6100; }
+        .rf-score-baixa { color: var(--p3-text-muted); }
+        .empty-msg { padding: 24px; text-align: center; opacity: .6; color: var(--p3-text-muted); }
+
+        /* Modais (câmera + detalhe da pessoa) */
+        .bfc-modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
+            z-index: 9000; align-items: center; justify-content: center;
+        }
+        .bfc-modal.aberto { display: flex; }
+        .bfc-modal-box {
+            background: var(--p3-surface, #fff); border: 1px solid var(--p3-border, #ddd);
+            border-radius: 12px; max-width: 480px; width: 92%; padding: 18px;
+            box-shadow: 0 16px 48px rgba(0,0,0,.35); position: relative;
+        }
+        #bfc-video { width: 100%; border-radius: 8px; background: #000; }
+        .bfc-modal-controles { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+        .bfc-modal-controles button {
+            padding: 9px 18px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+        }
+        #bfc-btn-capturar { background: var(--p3-blue-700); color: #fff; }
+        #bfc-btn-cancelar-camera { background: var(--p3-surface-alt, #eee); color: var(--p3-text); border: 1px solid var(--p3-border); }
+
+        .bfc-modal-pessoa-box { max-width: 380px; text-align: center; }
+        .bfc-modal-fechar {
+            position: absolute; top: 10px; right: 12px; background: none; border: none;
+            font-size: 20px; cursor: pointer; color: var(--p3-text-muted); line-height: 1;
+        }
+        .bfc-modal-pessoa-foto {
+            width: 160px; height: 160px; border-radius: 10px; object-fit: cover;
+            border: 1px solid var(--p3-border); margin: 8px auto 14px; display: block; background: var(--p3-bg);
+        }
+        #bfc-modal-pessoa-nome { margin: 0 0 4px; color: var(--p3-text); }
+        #bfc-modal-pessoa-cpf { margin: 0 0 14px; color: var(--p3-text-muted); font-size: 13px; }
+        .bfc-bnmp-status {
+            padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
+            background: var(--p3-bg); color: var(--p3-text-muted); border: 1px solid var(--p3-border);
+        }
+        .bfc-bnmp-alerta { background: #fbdada; color: #8f1f1f; border-color: #d9534f; }
+        .bfc-bnmp-ok { background: #d7f4dd; color: #1e6b34; border-color: #1e6b34; }
+        .bfc-bnmp-erro { background: #fff2cc; color: #8a6100; border-color: #8a6100; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="busca-facial-campo"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="bfc-wrap">
+                <div class="saudacao">
+                    <h2>🔎 Busca Facial — Operador de Campo</h2>
+                </div>
+
+                <div class="bfc-aviso">
+                    ⚠️ Resultado é uma <strong>estimativa de similaridade</strong> entre a foto enviada e as fotos já
+                    cadastradas de autores/suspeitos — não é uma identificação positiva. Sempre confirme manualmente
+                    (documento, outras fontes) antes de qualquer decisão operacional.
+                </div>
+
+                <div class="bfc-upload-area">
+                    <div class="bfc-preview" id="bfc-preview">Nenhuma imagem selecionada</div>
+                    <div class="bfc-controles">
+                        <input type="file" id="bfc-input-foto" accept="image/*">
+                        <button type="button" id="bfc-btn-camera" class="bfc-btn-secundario">📷 Usar câmera</button>
+                        <button type="button" id="bfc-btn-buscar" disabled>Buscar compatibilidade</button>
+                        <span id="bfc-status-msg"></span>
+                    </div>
+                </div>
+
+                <div class="rf-resultados" id="bfc-resultados"></div>
+            </div>
+        </main>
+    </section>
+
+    <!-- MODAL CÂMERA -->
+    <div id="bfc-modal-camera" class="bfc-modal">
+        <div class="bfc-modal-box">
+            <video id="bfc-video" autoplay playsinline muted></video>
+            <canvas id="bfc-canvas" style="display:none;"></canvas>
+            <div class="bfc-modal-controles">
+                <button type="button" id="bfc-btn-capturar">📸 Capturar</button>
+                <button type="button" id="bfc-btn-cancelar-camera">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DETALHE DA PESSOA (foto clicável) -->
+    <div id="bfc-modal-pessoa" class="bfc-modal">
+        <div class="bfc-modal-box bfc-modal-pessoa-box">
+            <button type="button" class="bfc-modal-fechar" id="bfc-btn-fechar-pessoa" title="Fechar">✕</button>
+            <img id="bfc-modal-pessoa-foto" class="bfc-modal-pessoa-foto" src="" alt="Foto da pessoa">
+            <h3 id="bfc-modal-pessoa-nome"></h3>
+            <p id="bfc-modal-pessoa-cpf"></p>
+            <div id="bfc-modal-pessoa-bnmp" class="bfc-bnmp-status">Consultando BNMP...</div>
+        </div>
+    </div>
+
+    <script src="../js/vendor/face-api.min.js"></script>
+    <script src="../js/core/facial-detect.js"></script>
+    <script src="../js/busca-facial-campo.js"></script>
+</body>
+
+</html>

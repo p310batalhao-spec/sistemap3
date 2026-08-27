@@ -83,7 +83,11 @@
           condicao: function (s) { return !!s && s.unidadeId === '10bpm'; } },
         { id: 'usuarios', domId: 'nav-usuarios', href: 'page/admin-usuarios.html', label: 'Usuários',
           icone: 'https://img.icons8.com/ios/50/administrator-male.png', w: 48, h: 48,
-          condicao: function (s) { return !!s && s.nivel === 'admin'; } }
+          condicao: function (s) { return !!s && s.nivel === 'admin'; } },
+        { id: 'busca-facial-campo', domId: 'nav-busca-facial-campo', href: 'page/busca-facial-campo.html', label: 'Busca Facial (Campo)',
+          icone: 'https://img.icons8.com/ios/50/face-id.png', w: 48, h: 48,
+          titulo: 'Busca facial pra operador de campo',
+          condicao: function (s) { return !!s && (s.nivel === 'operador_campo' || s.nivel === 'admin'); } }
     ];
 
     // Sessão nível "copom": redirecionada pra rastreamento-guarnicao.html
@@ -91,6 +95,11 @@
     // mostrar a nav inteira pra esse usuário só gera cliques que voltam
     // pro mesmo lugar. Nav reduzida ao que realmente é navegável.
     var IDS_COPOM = ['home', 'rastreamento'];
+
+    // Mesmo espírito de IDS_COPOM, pro nível "operador_campo" (ver
+    // restringirNivelOperadorCampo em session.js) — só a busca facial é
+    // navegável pra esse perfil.
+    var IDS_OPERADOR_CAMPO = ['home', 'busca-facial-campo'];
 
     function montarIconeItem(item) {
         if (item.id === 'chat-xerife') {
@@ -124,9 +133,11 @@
 
     function gerarNavHTML(sessao, paginaAtiva, extras) {
         var nivelCopom = !!sessao && sessao.nivel === 'copom';
+        var nivelOperadorCampo = !!sessao && sessao.nivel === 'operador_campo';
         var partes = [];
         ITENS_NAV.forEach(function (item) {
             if (nivelCopom && IDS_COPOM.indexOf(item.id) === -1) return;
+            if (nivelOperadorCampo && IDS_OPERADOR_CAMPO.indexOf(item.id) === -1) return;
             partes.push(montarItemHTML(item, item.id === paginaAtiva, sessao));
             (extras || []).filter(function (ex) { return ex.depoisDe === item.id; })
                 .forEach(function (ex) { partes.push(montarExtraHTML(ex, ex.id === paginaAtiva)); });

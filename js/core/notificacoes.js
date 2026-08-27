@@ -176,6 +176,34 @@
         return isNaN(d.getTime()) ? null : d;
     }
 
+    // ISO 8601 -> "23/08/2026 09:35" no fuso do navegador — mesmo formato
+    // de js/autores.js (formatarDataHoraIso), reproduzido aqui porque
+    // notificacoes.js roda em TODA página com header unificado, não só em
+    // autores.html (esse módulo não está sempre carregado).
+    //
+    // Usado pra mostrar "verificado em" ao lado da movimentação de
+    // autor/suspeito: a data que vem dentro do texto de
+    // movimentacaoAutor/movimentacaoProcesso é a do MOVIMENTO em si (ex.:
+    // "Expedição de mandado (20/07/2026)"), que é só o que o DataJud do
+    // CNJ tinha registrado — o DataJud é uma RÉPLICA do e-SAJ sincronizada
+    // periodicamente pelo tribunal, não em tempo real, então pode ficar
+    // dias/semanas atrás do que aparece ao vivo no e-SAJ. Sem o
+    // "verificado em", a notificação parecia estar mostrando uma
+    // atualização de hoje quando na verdade era só a movimentação MAIS
+    // RECENTE QUE O DATAJUD CONHECIA na última vez que o robô checou —
+    // deixa isso explícito em vez de dar a entender que o sistema está
+    // atrasado/quebrado.
+    function formatarDataHoraLocal(iso) {
+        if (!iso) return null;
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return null;
+        const dia = String(d.getDate()).padStart(2, '0');
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        return `${dia}/${mes}/${d.getFullYear()} ${hh}:${mm}`;
+    }
+
     function escaparHtml(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
@@ -529,12 +557,14 @@
                     const chave = codigo + '@' + (a.ultimaMovimentacaoEm || '');
                     novoSnapshot[id] = chave;
                     if (!primeiraVez && snapshotAnterior[id] !== undefined && snapshotAnterior[id] !== chave) {
+                        const verificadoFmt = formatarDataHoraLocal(a.verificadoEm);
                         notificacoes.push({
                             id: 'autor-esaj:' + id + ':' + chave,
                             categoria: 'autores',
                             icone: '⚖️',
                             titulo: 'Movimentação no processo do autor',
-                            texto: `${a.NOME || 'Autor'}: ${a.movimentacaoAutor || ''}`,
+                            texto: `${a.NOME || 'Autor'}: ${a.movimentacaoAutor || ''}` +
+                                (verificadoFmt ? ` (verificado em ${verificadoFmt})` : ''),
                             link: _prefixoPaginaRisco() + 'page/autores.html',
                         });
                     }
@@ -612,12 +642,14 @@
                         const chave = codigo + '@' + (p.ultimaMovimentacaoEm || '');
                         novoSnapshot[chaveProc] = chave;
                         if (!primeiraVez && snapshotAnterior[chaveProc] !== undefined && snapshotAnterior[chaveProc] !== chave) {
+                            const verificadoFmt = formatarDataHoraLocal(p.verificadoEm);
                             notificacoes.push({
                                 id: 'suspeito-esaj:' + chaveProc + ':' + chave,
                                 categoria: 'autores',
                                 icone: '⚖️',
                                 titulo: 'Movimentação no processo do suspeito',
-                                texto: `${s.NOME || 'Suspeito'}: ${p.movimentacaoProcesso || ''}`,
+                                texto: `${s.NOME || 'Suspeito'}: ${p.movimentacaoProcesso || ''}` +
+                                    (verificadoFmt ? ` (verificado em ${verificadoFmt})` : ''),
                                 link: _prefixoPaginaRisco() + 'page/autores.html',
                             });
                         }
@@ -748,6 +780,12 @@
 
         const visivel = categoriaAtiva === 'todas' ? lista : lista.filter(function (n) { return categoriaDe(n) === categoriaAtiva; });
 
+        // Precisa ser lido AQUI, antes do clique no sino chamar
+        // marcarVistas() — é o que diferencia visualmente o que é novo
+        // (nunca visto por este navegador) do que já apareceu antes,
+        // resolvendo o "abre o sino e não dá pra saber qual é a nova".
+        const vistas = lerVistas();
+
         if (!visivel.length) {
             container.innerHTML = '<p class="empty-msg">' + (lista.length ? 'Nada nesta aba' : 'Nenhuma notificação nova') + '</p>';
         } else {
@@ -755,9 +793,11 @@
                 const linkAttr = n.link ? ' data-link="' + escaparHtml(n.link) + '"' : '';
                 const clicavelClass = n.link ? ' notif-clicavel' : '';
                 const clicavelStyle = n.link ? ' style="cursor:pointer;"' : '';
-                return '<div class="notif-item' + clicavelClass + '" data-id="' + escaparHtml(n.id) + '"' + linkAttr + clicavelStyle + '>' +
+                const novaClass = vistas.has(n.id) ? '' : ' notif-nao-vista';
+                const selo = vistas.has(n.id) ? '' : '<span class="notif-selo-nova">NOVA</span>';
+                return '<div class="notif-item' + clicavelClass + novaClass + '" data-id="' + escaparHtml(n.id) + '"' + linkAttr + clicavelStyle + '>' +
                     '<button type="button" class="notif-dismiss" title="Dispensar" aria-label="Dispensar">✕</button>' +
-                    '<strong>' + (n.icone || '🔔') + ' ' + escaparHtml(n.titulo || '') + '</strong><br>' +
+                    '<strong>' + (n.icone || '🔔') + ' ' + escaparHtml(n.titulo || '') + selo + '</strong><br>' +
                     escaparHtml(n.texto || '') +
                     '</div>';
             }).join('');
@@ -850,7 +890,27 @@
         } catch (e) { console.error('[P3Notificacoes]', e); }
     }
 
-    global.P3Notificacoes = { coletarTodas: coletarTodas, iniciar: iniciar };
+    // ── API pública pra INJETAR notificações direto, sem esperar o
+    // próximo ciclo de detecção automática (coletarTodas/throttle de
+    // 10min) — usada pelo "Verificar agora" do atualizador local
+    // (js/autores.js, js/suspeitos.js): uma mudança de movimentação
+    // encontrada NA HORA pelo servidor local já aparece no sino
+    // imediatamente, sem esperar a próxima checagem passiva.
+    //
+    // Reaproveita o MESMO mecanismo de persistência/dedupe por id que as
+    // fontes internas já usam (mesclarNaPersistencia) — se o ciclo
+    // automático mais tarde detectar essa MESMA mudança (mesmo id), não
+    // duplica, só confirma o que já estava lá.
+    function adicionarNotificacoes(lista) {
+        if (!Array.isArray(lista) || !lista.length) return;
+        const mesclada = mesclarNaPersistencia(lista);
+        // Só re-renderiza se esta página tiver o dropdown do sino (header
+        // unificado já carregado) — noutras páginas isso só persiste em
+        // localStorage pro sino aparecer atualizado na próxima navegação.
+        if (document.getElementById('notif-items')) renderizar(mesclada);
+    }
+
+    global.P3Notificacoes = { coletarTodas: coletarTodas, iniciar: iniciar, adicionarNotificacoes: adicionarNotificacoes };
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', iniciar);
     } else {

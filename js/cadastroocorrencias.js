@@ -72,7 +72,12 @@ const MAPA_AUTOR = {
     "MES": ["Mês da Ocorrência"],
     "ANO": ["Ano da Ocorrência"],
     "ENVOLVIMENTO": ["Tipo de Envolvimento", "Tipo Envolvido"],
-    "CPF": ["CPF"]
+    "CPF": ["CPF"],
+    // Unidade responsável pela ocorrência (BOPE, ROTAM, 1º BPM, 3ª CPM/I...)
+    // — já vem PRONTA, linha a linha, na planilha do CAD ("Unidade") — ver
+    // normalizarUnidadeAutor abaixo, que só precisa normalizar a variante
+    // do 10º BPM pro identificador "10bpm" usado no resto do sistema.
+    "UNIDADE": ["Unidade"]
 };
 
 // ─────────────────────────────────────────────
@@ -178,6 +183,26 @@ function buscarValor(linha, lista) {
     }
     return null;
 }
+
+// Normaliza o valor bruto da coluna "Unidade" da planilha do CAD pro
+// identificador usado no resto do sistema — SÓ a variante do 10º BPM
+// precisa virar exatamente "10bpm" (mesmo valor de session.unidadeId em
+// js/core/session.js, usado pelo filtro do Apps Script e pela tela de
+// Autores); as demais unidades (BOPE, ROTAM, 3º BPM, 3ª CPM/I...) ficam
+// como vieram na planilha, sem inventar um código pra cada uma.
+function normalizarUnidadeAutor(bruto) {
+    const original = (bruto || '').toString().trim();
+    if (!original || original === '---') return null;
+    const semSimbolo = original.toUpperCase().replace(/[ºª°]/g, '').replace(/\s+/g, ' ').trim();
+    return (semSimbolo === '10 BPM' || semSimbolo === '10BPM') ? '10bpm' : original;
+}
+
+// Campo "Unidade dona deste relatório" só faz sentido pro tipo "autor"
+// (é a única coleção que virou tabela compartilhada entre unidades — ver
+// hostinger-api/migrar_autores_unidade.sql) — escondido nos demais tipos.
+document.getElementById('tipo-colecao').addEventListener('change', function (e) {
+    document.getElementById('wrap-unidade-relatorio').style.display = e.target.value === 'autor' ? 'block' : 'none';
+});
 
 // ─────────────────────────────────────────────
 // LEITURA DO ARQUIVO XLS
@@ -288,6 +313,11 @@ document.getElementById('btn-save-cloud').onclick = async function() {
     const updates = {};
     const autoresParaApi = []; // tipo 'autor' no 10º BPM vai pra API PHP/MySQL, não pro objeto `updates` acima
     const agora = new Date().toISOString();
+    // Fallback SÓ pra quando a planilha de autores não tiver a coluna
+    // "Unidade" (a maioria já tem — ver coluna UNIDADE em MAPA_AUTOR e
+    // normalizarUnidadeAutor) — usado linha a linha só se d.UNIDADE vier
+    // vazio, ver mais abaixo.
+    const unidadeRelatorioAutor = normalizarUnidadeAutor(document.getElementById('input-unidade-relatorio').value);
 
     btn.disabled = true;
     btn.innerText = "SINCRONIZANDO...";
@@ -461,7 +491,15 @@ document.getElementById('btn-save-cloud').onclick = async function() {
                     // js/core/session.js e hostinger-api/). Demais unidades
                     // e demais tipos seguem 100% Firebase, sem mudança.
                     if (tipo === 'autor' && cfgUnidade && P3.Autores.usaApiPhp(cfgUnidade)) {
-                        autoresParaApi.push(Object.assign({ _id: uniqueId }, dadoFinal));
+                        // `unidade`: preferência é a coluna "Unidade" que já
+                        // vem PRONTA, linha a linha, na planilha do CAD
+                        // (BOPE, ROTAM, 1º BPM, 3ª CPM/I...) — normalizada
+                        // só pra padronizar a variante do 10º BPM. Só cai
+                        // pro campo manual (#input-unidade-relatorio) se a
+                        // planilha usada não tiver essa coluna. Ver coluna
+                        // `unidade` em hostinger-api/migrar_autores_unidade.sql.
+                        const unidadeLinha = normalizarUnidadeAutor(d.UNIDADE) || unidadeRelatorioAutor || null;
+                        autoresParaApi.push(Object.assign({ _id: uniqueId, unidade: unidadeLinha }, dadoFinal));
                     } else {
                         updates[`/${tipo}/${uniqueId}`] = dadoFinal;
                     }

@@ -114,6 +114,21 @@
                         <option value="guarnicao">Relatório de Guarnição (COP)</option>
                     </select>
 
+                    <!-- Só usado quando tipo = "Autores": a planilha do CAD já traz a
+                         unidade responsável linha a linha (coluna "Unidade" — BOPE, ROTAM,
+                         1º BPM, 3ª CPM/I etc., ver MAPA_AUTOR em js/cadastroocorrencias.js) —
+                         este campo só entra em ação como RESERVA, pra linhas onde essa coluna
+                         vier vazia (ou se algum dia você usar uma planilha de autores sem
+                         essa coluna). -->
+                    <div id="wrap-unidade-relatorio" style="display:none;max-width:400px;margin-bottom:20px;">
+                        <label for="input-unidade-relatorio" style="display:block;margin-bottom:6px;font-weight:600;font-size:.9rem;">
+                            Unidade padrão (reserva — só se a planilha não tiver a coluna "Unidade")
+                        </label>
+                        <input type="text" id="input-unidade-relatorio" class="select-p3" value="10bpm"
+                            placeholder="ex.: 10bpm"
+                            style="width:100%;box-sizing:border-box;padding:12px;">
+                    </div>
+
                     <div class="upload-box" id="drop-zone"
                         style="border: 2px dashed #1a237e; padding: 40px; text-align: center; position: relative; background: #f8f9ff;">
                         <input type="file" id="input-xls" accept=".xls, .xlsx"

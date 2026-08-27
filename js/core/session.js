@@ -56,7 +56,21 @@
         // (o resto do sistema continua 100% Firebase). Ver hostinger-api/.
         apiPhp: {
             url: 'https://irispmal.io/api-p3/autores.php',
-            apiKey: '#254562mdE1804199225359818#'
+            apiKey: '#254562mdE1804199225359818#',
+            // Pastas públicas com as fotos de autores/suspeitos — nomes
+            // FIXOS (fotos_autores/fotos_suspeitos dentro de hostinger-api/
+            // no servidor), criadas sozinhas pela rota uploadFoto na
+            // primeira foto enviada pela tela. Usadas só pra mostrar
+            // miniatura nas telas de Reconhecimento facial / Upload de
+            // foto. Se você subiu fotos manualmente por FTP pro fluxo do
+            // tools/vetores-faciais/ (script Node), use essa MESMA pasta
+            // (fotos_autores) no FOTOS_BASE_URL do .env dele, pra não
+            // ficar com fotos espalhadas em dois lugares diferentes.
+            fotosAutoresBaseUrl: 'https://irispmal.io/api-p3/fotos_autores/',
+            fotosSuspeitosBaseUrl: 'https://irispmal.io/api-p3/fotos_suspeitos/',
+            // Pessoas sincronizadas do echelonx (Supabase) — ver
+            // hostinger-api/pessoas_echelonx.php e tools/sincronizar-echelonx/.
+            fotosEchelonxBaseUrl: 'https://irispmal.io/api-p3/fotos_echelonx/'
         }
     };
 
@@ -238,6 +252,39 @@
         });
     }
 
+    // Nível "operador_campo": mesmo espírito de restringirNivelCopom() —
+    // perfil criado pra quem só deve ter acesso à busca facial em campo
+    // (page/busca-facial-campo.html), nada mais do sistema. Cadastro fica
+    // pendente de aprovação do admin (ver login.html: auto-cadastro pra
+    // este nível grava ativo:false; login já bloqueia usuário inativo com
+    // "Contate o administrador" — admin aprova mudando ativo pra true em
+    // admin-usuarios.html).
+    const PAGINA_UNICA_OPERADOR_CAMPO = 'busca-facial-campo.html';
+    function restringirNivelOperadorCampo() {
+        document.addEventListener('DOMContentLoaded', () => {
+            const session = getSession();
+            if (!session || session.nivel !== 'operador_campo') return;
+            const pagina = (global.location.pathname.split('/').pop() || '').toLowerCase();
+            if (pagina === PAGINA_UNICA_OPERADOR_CAMPO || pagina === 'login.html') return;
+            global.location.href = estaEmSubpasta() ? PAGINA_UNICA_OPERADOR_CAMPO : 'page/' + PAGINA_UNICA_OPERADOR_CAMPO;
+        });
+    }
+
+    // Guarda de página, no mesmo espírito de requireAdmin() — usada em
+    // page/busca-facial-campo.html pra impedir acesso direto de quem não
+    // tem esse nível (a restrição acima só cuida do sentido contrário:
+    // operador_campo tentando abrir OUTRA página).
+    function requireOperadorCampo() {
+        const session = requireAuth();
+        if (!session) return null;
+        if (session.nivel !== 'operador_campo' && session.nivel !== 'admin') {
+            alert('Acesso restrito a Operador de Campo.');
+            global.location.href = indexUrlFromHere();
+            return null;
+        }
+        return session;
+    }
+
     function mergeSobreDefault(base, override) {
         const result = { nome: base.nome, firebase: Object.assign({}, base.firebase), gas: Object.assign({}, base.gas), apiPhp: Object.assign({}, base.apiPhp), paginasPermitidas: null };
         if (override && override.nome) result.nome = override.nome;
@@ -343,6 +390,100 @@
     async function autoresListar(cfg) {
         if (autoresUsaApiPhp(cfg)) return await autoresApiFetch(cfg, 'listar');
         return await fbGetAutorNode(cfg);
+    }
+
+    // Vetores faciais (embeddings) já calculados — ver tools/vetores-faciais/
+    // e page/autores.html (aba "Reconhecimento facial"). Só existe no
+    // caminho Hostinger; nas demais unidades (Firebase) devolve vazio, sem
+    // erro, pra tela poder mostrar "recurso indisponível" ao invés de quebrar.
+    async function autoresListarVetores(cfg) {
+        if (!autoresUsaApiPhp(cfg)) return {};
+        return await autoresApiFetch(cfg, 'listarVetores');
+    }
+
+    // Histórico completo de fotos já salvas pro autor (tabela autor_fotos)
+    // — diferente de foto_arquivo (só a de capa), usado pelo modal de
+    // detalhes (js/pessoa-modal.js) pra mostrar TODAS as fotos registradas.
+    async function autoresListarFotos(cfg, id) {
+        if (!autoresUsaApiPhp(cfg) || !id) return [];
+        return await autoresApiFetch(cfg, 'listarFotos', { query: '&id=' + encodeURIComponent(id) });
+    }
+
+    // ====================================================================
+    // P3.PessoasEchelonx — cache local de gente do echelonx (Supabase) —
+    // só leitura por aqui (quem escreve é tools/sincronizar-echelonx/,
+    // por fora). Mesmo formato de retorno de autoresListarVetores/
+    // suspeitosListarVetores, pra js/autores-reconhecimento-facial.js e
+    // js/busca-facial-campo.js somarem como uma 3ª fonte sem lógica
+    // especial. Ver hostinger-api/pessoas_echelonx.php.
+    // ====================================================================
+    async function pessoasEchelonxListarVetores(cfg) {
+        if (!autoresUsaApiPhp(cfg)) return {};
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url.replace(/autores\.php$/i, 'pessoas_echelonx.php') : `${cfg.apiPhp.url}/pessoas_echelonx.php`;
+        const res = await fetch(`${base}?action=listarVetores`);
+        if (!res.ok) throw new Error(`API pessoas_echelonx (listarVetores) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // Cruzamento pontual por CPF — usado pelo modal de detalhes (autor/
+    // suspeito/resultado do reconhecimento facial) pra mostrar o que
+    // existe no echelonx (Supabase) sobre a mesma pessoa. Devolve null
+    // quando não há correspondência (nunca lança por "não achou").
+    async function pessoasEchelonxBuscarPorCpf(cfg, cpf) {
+        if (!autoresUsaApiPhp(cfg) || !cpf) return null;
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url.replace(/autores\.php$/i, 'pessoas_echelonx.php') : `${cfg.apiPhp.url}/pessoas_echelonx.php`;
+        const res = await fetch(`${base}?action=buscarPorCpf&cpf=${encodeURIComponent(cpf)}`);
+        if (!res.ok) throw new Error(`API pessoas_echelonx (buscarPorCpf) — HTTP ${res.status}`);
+        const j = await res.json();
+        return (j && j.CPF) ? j : null;
+    }
+
+    // Upload de foto (arquivo de verdade, multipart/form-data) — diferente
+    // de autoresApiFetch (que só manda JSON): NÃO define Content-Type
+    // manualmente, o navegador precisa gerar o boundary do multipart
+    // sozinho. `vetorFacial` é opcional (Float32Array/array de 128
+    // números já calculado no navegador via face-api.js — ver
+    // js/core/facial-detect.js); se ausente, só a foto é salva.
+    // `opts` (opcional): { capa, origem } — cada foto agora vira um
+    // arquivo PRÓPRIO no servidor (nunca mais sobrescreve a anterior, ver
+    // p3_salvar_foto_pessoa em hostinger-api/config.php). `capa: false`
+    // salva a foto (e soma o vetor, se enviado) SEM trocar qual é a foto
+    // de capa da pessoa — usado por js/cad-busca-foto.js pras fotos
+    // extras (a melhor já foi escolhida como capa antes). `origem` é só
+    // rótulo pra auditoria ('upload'|'cad'|'echelonx', default 'upload'
+    // no servidor).
+    async function autoresUploadFoto(cfg, id, arquivo, vetorFacial, opts) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Upload de foto só está disponível para o 10º BPM.');
+        opts = opts || {};
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url : `${cfg.apiPhp.url}/autores.php`;
+        const form = new FormData();
+        form.append('id', id);
+        form.append('foto', arquivo);
+        if (vetorFacial) form.append('vetorFacial', JSON.stringify(Array.from(vetorFacial)));
+        if (opts.capa === false) form.append('capa', '0');
+        if (opts.origem) form.append('origem', opts.origem);
+        const res = await fetch(`${base}?action=uploadFoto`, {
+            method: 'POST', headers: { 'X-Api-Key': cfg.apiPhp.apiKey || '' }, body: form
+        });
+        if (!res.ok) {
+            let msg = `API autores (uploadFoto) — HTTP ${res.status}`;
+            try { const j = await res.json(); if (j && j.erro) msg = j.erro; } catch (e) {}
+            throw new Error(msg);
+        }
+        return await res.json();
+    }
+
+    // Acrescenta um vetor facial (embedding já calculado) SEM mexer na
+    // foto de capa da pessoa — usado quando já existe uma foto melhor
+    // marcada como capa (ver js/cad-busca-foto.js: baixa várias fotos do
+    // CAD, escolhe a de rosto mais visível pra virar a capa via
+    // autoresUploadFoto, e manda o resto só por aqui, pra não sobrescrever
+    // a capa com uma foto pior — ex.: foto de mão/documento sem rosto).
+    async function autoresAtualizarVetorFacial(cfg, id, vetorFacial) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Vetor facial só está disponível para o 10º BPM.');
+        return await autoresApiFetch(cfg, 'atualizarVetorFacial', {
+            method: 'POST', body: { id, vetorFacial: Array.from(vetorFacial) }
+        });
     }
 
     // Busca precisa por NOME + CPF + NOME DA MÃE (evita homônimos). Só faz
@@ -468,9 +609,9 @@
         return await suspeitosApiFetch(cfg, 'buscar', { query: '&' + q.toString() });
     }
 
-    async function suspeitosCriar(cfg, { nome, cpf }) {
+    async function suspeitosCriar(cfg, { nome, cpf, rg, nomeMae }) {
         const sessao = getSession();
-        return await suspeitosApiFetch(cfg, 'criar', { method: 'POST', body: { nome, cpf, criadoPor: sessao ? sessao.cpf : null } });
+        return await suspeitosApiFetch(cfg, 'criar', { method: 'POST', body: { nome, cpf, rg, nomeMae, criadoPor: sessao ? sessao.cpf : null } });
     }
 
     async function suspeitosVincularProcesso(cfg, suspeitoId, numeroProcesso, origemVinculo) {
@@ -491,6 +632,50 @@
 
     async function suspeitosExcluirSuspeito(cfg, id) {
         return await suspeitosApiFetch(cfg, 'excluirSuspeito', { method: 'POST', body: { id } });
+    }
+
+    // Mesmo propósito de autoresListarVetores — ver comentário lá.
+    async function suspeitosListarVetores(cfg) {
+        if (!autoresUsaApiPhp(cfg)) return {};
+        return await suspeitosApiFetch(cfg, 'listarVetores');
+    }
+
+    // Mesmo propósito de autoresListarFotos — ver comentário lá.
+    async function suspeitosListarFotos(cfg, id) {
+        if (!autoresUsaApiPhp(cfg) || !id) return [];
+        return await suspeitosApiFetch(cfg, 'listarFotos', { query: '&id=' + encodeURIComponent(id) });
+    }
+
+    // Mesmo propósito de autoresUploadFoto — ver comentário lá.
+    // Mesmo esquema de opts { capa, origem } de autoresUploadFoto — ver
+    // comentário lá.
+    async function suspeitosUploadFoto(cfg, id, arquivo, vetorFacial, opts) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Upload de foto só está disponível para o 10º BPM.');
+        opts = opts || {};
+        const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url.replace(/autores\.php$/i, 'suspeitos.php') : `${cfg.apiPhp.url}/suspeitos.php`;
+        const form = new FormData();
+        form.append('id', id);
+        form.append('foto', arquivo);
+        if (vetorFacial) form.append('vetorFacial', JSON.stringify(Array.from(vetorFacial)));
+        if (opts.capa === false) form.append('capa', '0');
+        if (opts.origem) form.append('origem', opts.origem);
+        const res = await fetch(`${base}?action=uploadFoto`, {
+            method: 'POST', headers: { 'X-Api-Key': cfg.apiPhp.apiKey || '' }, body: form
+        });
+        if (!res.ok) {
+            let msg = `API suspeitos (uploadFoto) — HTTP ${res.status}`;
+            try { const j = await res.json(); if (j && j.erro) msg = j.erro; } catch (e) {}
+            throw new Error(msg);
+        }
+        return await res.json();
+    }
+
+    // Mesmo propósito de autoresAtualizarVetorFacial — ver comentário lá.
+    async function suspeitosAtualizarVetorFacial(cfg, id, vetorFacial) {
+        if (!autoresUsaApiPhp(cfg)) throw new Error('Vetor facial só está disponível para o 10º BPM.');
+        return await suspeitosApiFetch(cfg, 'atualizarVetorFacial', {
+            method: 'POST', body: { id, vetorFacial: Array.from(vetorFacial) }
+        });
     }
 
     // Mostra o item de menu "Usuários" (oculto por padrão no HTML) somente
@@ -681,12 +866,17 @@
         requireAuth,
         requireAdmin,
         requireUnidade10bpm,
+        requireOperadorCampo,
         logout,
         loadUnidadeConfig,
         alternarTema,
         Autores: {
             usaApiPhp: autoresUsaApiPhp,
             listar: autoresListar,
+            listarVetores: autoresListarVetores,
+            listarFotos: autoresListarFotos,
+            uploadFoto: autoresUploadFoto,
+            atualizarVetorFacial: autoresAtualizarVetorFacial,
             buscar: autoresBuscar,
             vincular: autoresVincular,
             marcarNaoEncontrado: autoresMarcarNaoEncontrado,
@@ -698,12 +888,20 @@
         Suspeitos: {
             disponivel: suspeitosDisponivel,
             listar: suspeitosListar,
+            listarVetores: suspeitosListarVetores,
+            listarFotos: suspeitosListarFotos,
+            uploadFoto: suspeitosUploadFoto,
+            atualizarVetorFacial: suspeitosAtualizarVetorFacial,
             buscar: suspeitosBuscar,
             criar: suspeitosCriar,
             vincularProcesso: suspeitosVincularProcesso,
             marcarNaoEncontrado: suspeitosMarcarNaoEncontrado,
             excluirProcesso: suspeitosExcluirProcesso,
             excluirSuspeito: suspeitosExcluirSuspeito
+        },
+        PessoasEchelonx: {
+            listarVetores: pessoasEchelonxListarVetores,
+            buscarPorCpf: pessoasEchelonxBuscarPorCpf
         }
     };
 
@@ -714,5 +912,6 @@
     iniciarMonitorInatividade();
     restringirAcessoPorPagina();
     restringirNivelCopom();
+    restringirNivelOperadorCampo();
     injetarXerife();
 })(window);

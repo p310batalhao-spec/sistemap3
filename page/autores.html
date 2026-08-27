@@ -59,13 +59,29 @@
         }
         @keyframes p3-progress-stripes { from { background-position: 0 0; } to { background-position: 28px 0; } }
 
-        .autores-table-wrap { overflow-x: auto; border-radius: 8px; box-shadow: var(--p3-shadow-lg); }
+        .autores-table-wrap {
+            overflow: auto; max-height: 70vh; border-radius: 8px; box-shadow: var(--p3-shadow-lg);
+        }
         table.tabela-autores { width: 100%; border-collapse: collapse; background: var(--p3-surface); font-size: 13px; color: var(--p3-text); }
         table.tabela-autores th, table.tabela-autores td {
             padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--p3-border); vertical-align: top;
         }
-        table.tabela-autores th { background: var(--p3-bg); font-weight: 600; white-space: nowrap; color: var(--p3-text); }
+        table.tabela-autores th {
+            background: var(--p3-bg); font-weight: 600; white-space: nowrap; color: var(--p3-text);
+            position: sticky; top: 0; z-index: 1;
+        }
         table.tabela-autores tbody tr:hover { background: rgba(127,127,127,.08); }
+
+        .pessoa-foto-thumb {
+            width: 40px; height: 40px; border-radius: 6px; object-fit: cover;
+            cursor: pointer; border: 1px solid var(--p3-border); background: var(--p3-bg); display: block;
+        }
+        .pessoa-foto-thumb:hover { outline: 2px solid var(--p3-blue-700); }
+        .pessoa-foto-vazia {
+            width: 40px; height: 40px; border-radius: 6px; cursor: pointer;
+            border: 1px dashed var(--p3-border); background: var(--p3-bg); display: flex;
+            align-items: center; justify-content: center; font-size: 16px; opacity: .5;
+        }
 
         .status-badge {
             display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px;
@@ -75,6 +91,14 @@
         .status-pendente_revisao { background: #fff2cc; color: #8a6100; cursor: pointer; text-decoration: underline dotted; }
         .status-nao_encontrado { background: #fbdada; color: #8f1f1f; }
         .status-nao_verificado { background: #e6e6e6; color: #555; }
+
+        .foto-cad-badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px;
+            font-weight: 600; white-space: nowrap; margin-bottom: 4px;
+        }
+        .foto-cad-com { background: #d7f4dd; color: #1e6b34; }
+        .foto-cad-sem { background: #e6e6e6; color: #555; }
+        .foto-cad-coluna { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
 
         .linha-candidatos td { background: rgba(255,193,7,.12); padding: 10px 14px 14px 32px; }
         .candidato-item {
@@ -121,23 +145,6 @@
         .lista-multi-item { padding: 4px 0; border-bottom: 1px dashed var(--p3-border); color: var(--p3-text); }
         .lista-multi-item:last-child { border-bottom: none; }
 
-        .form-novo-suspeito {
-            display: none; gap: 10px; align-items: center; padding: 14px; margin-bottom: 16px;
-            background: var(--p3-bg); border: 1px solid var(--p3-border); border-radius: 8px; flex-wrap: wrap;
-        }
-        .form-novo-suspeito.aberto { display: flex; }
-        .form-novo-suspeito input[type="text"] {
-            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 14px;
-            background: var(--p3-surface); color: var(--p3-text);
-        }
-        .form-novo-suspeito button {
-            padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
-            background: var(--p3-blue-700); color: #fff; font-size: 13px; font-weight: 600;
-        }
-        .form-novo-suspeito button:hover { background: var(--p3-blue-500); }
-        .form-novo-suspeito #btn-cancelar-novo-suspeito { background: var(--p3-text-muted); }
-        .form-novo-suspeito #btn-cancelar-novo-suspeito:hover { background: var(--p3-text); }
-
         .btn-excluir-processo, .btn-excluir-suspeito, .btn-excluir-processo-autor {
             border: none; background: none; color: var(--p3-danger); cursor: pointer; font-size: 13px; padding: 0 4px;
         }
@@ -153,6 +160,173 @@
             color: var(--p3-blue-700); cursor: pointer; font-size: 12px; font-weight: 700; line-height: 1;
         }
         .add-processo-manual button:hover { background: var(--p3-blue-700); color: #fff; }
+
+        /* Reconhecimento facial */
+        .rf-aviso {
+            background: var(--p3-bg); border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-blue-700);
+            border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--p3-text-muted);
+        }
+        .rf-upload-area {
+            display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 22px;
+        }
+        .rf-preview {
+            width: 220px; height: 220px; border-radius: 8px; border: 2px dashed var(--p3-border);
+            display: flex; align-items: center; justify-content: center; overflow: hidden;
+            background: var(--p3-surface); flex-shrink: 0; color: var(--p3-text-muted); font-size: 12px; text-align: center; padding: 10px;
+        }
+        .rf-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .rf-controles { display: flex; flex-direction: column; gap: 10px; min-width: 240px; }
+        .rf-controles input[type="file"] {
+            font-size: 13px; color: var(--p3-text);
+        }
+        .rf-controles button {
+            padding: 9px 16px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px; font-weight: 600; align-self: flex-start;
+        }
+        .rf-controles button:hover { background: var(--p3-blue-500); }
+        .rf-controles button:disabled { opacity: .6; cursor: not-allowed; }
+        #rf-status-msg { font-size: 12px; color: var(--p3-text-muted); min-height: 16px; }
+
+        .rf-resultados { display: flex; flex-direction: column; gap: 10px; }
+        .rf-resultado-item {
+            display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 8px;
+            background: var(--p3-surface); box-shadow: var(--p3-shadow-lg); cursor: pointer;
+        }
+        .rf-resultado-item:hover { outline: 2px solid var(--p3-blue-700); }
+        .rf-resultado-thumb {
+            width: 56px; height: 56px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+            background: var(--p3-bg); border: 1px solid var(--p3-border);
+        }
+        .rf-resultado-info { flex: 1; min-width: 0; }
+        .rf-resultado-nome { font-weight: 600; color: var(--p3-text); }
+        .rf-resultado-cpf { font-size: 12px; color: var(--p3-text-muted); }
+        .rf-resultado-score { font-size: 20px; font-weight: 700; min-width: 70px; text-align: right; }
+        .rf-score-alta { color: #1e6b34; }
+        .rf-score-media { color: #8a6100; }
+        .rf-score-baixa { color: var(--p3-text-muted); }
+
+        .btn-buscar-foto-cad, .btn-adicionar-fotos-susp {
+            margin-left: 6px; border: 1px solid var(--p3-border); background: var(--p3-surface);
+            border-radius: 5px; cursor: pointer; font-size: 12px; padding: 2px 6px; line-height: 1.4;
+        }
+        .btn-buscar-foto-cad:hover, .btn-adicionar-fotos-susp:hover { background: var(--p3-blue-700); border-color: var(--p3-blue-700); }
+        .btn-buscar-foto-cad:disabled, .btn-adicionar-fotos-susp:disabled { opacity: .6; cursor: not-allowed; }
+
+        /* Progresso da busca de fotos no CAD (botão "buscar todos") */
+        .cad-busca-stats {
+            display: flex; flex-wrap: wrap; gap: 8px; margin: -2px 0 14px;
+            font-size: 12px;
+        }
+        .cad-busca-stats .stat {
+            padding: 3px 10px; border-radius: 12px; font-weight: 600; white-space: nowrap;
+        }
+        .cad-busca-stats .stat-processados { background: var(--p3-bg); color: var(--p3-text-muted); border: 1px solid var(--p3-border); }
+        .cad-busca-stats .stat-achados { background: #d7f4dd; color: #1e6b34; }
+        .cad-busca-stats .stat-nao-achados { background: #e6e6e6; color: #555; }
+        .cad-busca-stats .stat-erros { background: #fbdada; color: #8f1f1f; }
+
+        /* ── Token/login CAD (mesmo mecanismo de page/preditivaCAD.html,
+           via js/core/cad-status-banner.js) — mostra se a sessão do CAD
+           usada pela busca de fotos (🔍) está ativa, prestes a expirar
+           ou não configurada. */
+        .token-banner {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 14px; border-radius: 8px; font-size: .83rem;
+            font-weight: 600; flex-wrap: wrap; margin-bottom: 14px;
+        }
+        .token-ok   { background: rgba(0,100,50,.1);  color: #006432; border: 1px solid #006432; }
+        .token-warn { background: rgba(180,100,0,.1); color: #b46400; border: 1px solid #b46400; }
+        .token-err  { background: rgba(180,0,0,.1);   color: #b40000; border: 1px solid #b40000; }
+        .token-banner button {
+            margin-left: auto; padding: 4px 12px;
+            background: #003366; color: white; border: none;
+            border-radius: 5px; font-size: .78rem; cursor: pointer; font-weight: 700;
+        }
+        #modal-token {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,.55); z-index: 9000;
+            align-items: center; justify-content: center;
+        }
+        #modal-token.aberto { display: flex; }
+        .modal-token-box {
+            background: var(--p3-surface,#fff);
+            border: 1px solid var(--p3-border,#ddd);
+            border-radius: 12px; max-width: 530px; width: 95%;
+            overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35);
+        }
+        .modal-token-head {
+            background: #003366; color: white;
+            padding: 14px 18px; display: flex;
+            justify-content: space-between; align-items: center;
+            font-weight: 700; font-size: .95rem;
+        }
+        .modal-token-head button { background: none; border: none; color: rgba(255,255,255,.7); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+        .modal-token-body { padding: 18px; }
+        .token-instrucao {
+            background: var(--p3-surface-alt,#f5f5f5);
+            border-left: 3px solid #003366;
+            padding: 10px 14px; border-radius: 0 6px 6px 0;
+            font-size: .8rem; line-height: 1.75; margin-bottom: 14px;
+            color: var(--p3-text,#333);
+        }
+        .modal-token-body label { display: block; font-size: .75rem; font-weight: 700; text-transform: uppercase; color: var(--p3-text-muted,#666); margin-bottom: 5px; }
+        .modal-token-body textarea {
+            width: 100%; height: 80px; padding: 8px;
+            border: 2px solid #003366; border-radius: 6px;
+            font-size: .78rem; font-family: monospace;
+            resize: vertical; background: var(--p3-surface,#fff); color: var(--p3-text,#333);
+        }
+        .modal-token-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+        .modal-token-foot .rg-btn-cancel {
+            background: var(--p3-surface-alt,#eee); color: var(--p3-text,#333);
+            border: 1px solid var(--p3-border,#ccc); border-radius: 5px;
+            padding: 7px 16px; cursor: pointer; font-size: .85rem;
+        }
+        .modal-token-foot .rg-btn {
+            background: #003366; color: white; border: none; border-radius: 5px;
+            padding: 7px 16px; cursor: pointer; font-size: .85rem; font-weight: 700;
+        }
+        .msg-token { font-size: .8rem; margin-top: 8px; min-height: 1.2em; }
+
+        /* Modal de cadastro de suspeito (nome/cpf/rg/mãe + foto numa
+           mesma tela) — mesmo visual do modal-token acima. */
+        #modal-suspeito {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9050;
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        #modal-suspeito.aberto { display: flex; }
+        .ms-box {
+            background: var(--p3-surface,#fff); border: 1px solid var(--p3-border,#ddd);
+            border-radius: 12px; max-width: 480px; width: 100%; overflow: hidden;
+            box-shadow: 0 16px 48px rgba(0,0,0,.35);
+        }
+        .ms-head {
+            background: #003366; color: #fff; padding: 14px 18px; display: flex;
+            justify-content: space-between; align-items: center; font-weight: 700; font-size: .95rem;
+        }
+        .ms-head button { background: none; border: none; color: rgba(255,255,255,.7); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+        .ms-body { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+        .ms-body label { font-size: .75rem; font-weight: 700; text-transform: uppercase; color: var(--p3-text-muted); }
+        .ms-body input[type="text"] {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 14px;
+            background: var(--p3-surface); color: var(--p3-text); width: 100%; box-sizing: border-box;
+        }
+        .ms-foto-area { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+        .ms-foto-previews { display: flex; flex-wrap: wrap; gap: 8px; }
+        .ms-foto-previews:empty { display: none; }
+        .ms-foto-previews img {
+            width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
+            border: 1px solid var(--p3-border); background: var(--p3-bg);
+        }
+        #ms-status-msg { font-size: 12px; color: var(--p3-text-muted); min-height: 16px; }
+        .ms-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+        .ms-foot button {
+            padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+        }
+        #ms-btn-cancelar { background: var(--p3-text-muted); color: #fff; }
+        #ms-btn-salvar { background: var(--p3-blue-700); color: #fff; }
+        #ms-btn-salvar:hover { background: var(--p3-blue-500); }
+        #ms-btn-salvar:disabled { opacity: .6; cursor: not-allowed; }
     </style>
 </head>
 
@@ -163,9 +337,15 @@
     <section class="pagecomplete">
         <main>
             <div class="autores-wrap">
+                <div id="token-banner" class="token-banner token-err" style="display:none">
+                    <span id="token-banner-texto">Token não configurado</span>
+                    <button type="button" onclick="abrirModalToken()">🔑 Configurar acesso ao CAD</button>
+                </div>
+
                 <div class="abas-topo">
                     <button type="button" class="aba-btn ativa" id="aba-btn-autores" data-aba="autores">👤 Autores</button>
                     <button type="button" class="aba-btn" id="aba-btn-suspeitos" data-aba="suspeitos">🕵️ Suspeitos</button>
+                    <button type="button" class="aba-btn" id="aba-btn-facial" data-aba="facial">🔎 Reconhecimento facial</button>
                 </div>
 
                 <div id="painel-autores" class="tab-painel">
@@ -185,9 +365,25 @@
                             <option value="nao_encontrado">Não encontrado</option>
                             <option value="nao_verificado">Não verificado ainda</option>
                         </select>
+                        <select id="autores-filtro-foto-cad" title="Filtrar pela sincronização de foto do CAD (SERIS/Alcatraz)">
+                            <option value="">Foto CAD: todos</option>
+                            <option value="sem_foto">Sem foto ainda</option>
+                            <option value="com_foto">Com foto sincronizada</option>
+                        </select>
+                        <select id="autores-filtro-unidade" title="Filtrar pela unidade dona da ocorrência">
+                            <option value="">Unidade: todas</option>
+                            <option value="10bpm">10º BPM</option>
+                            <option value="outras">Outras unidades</option>
+                        </select>
                         <button id="btn-autores-verificar-agora" type="button">
                             <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/refresh--v1.png" alt="">
                             Verificar agora
+                        </button>
+                        <button id="btn-autores-ver-ultima-atualizacao" type="button" title="Reabre o resumo da última verificação feita pelo servidor local">
+                            🕓 Ver última atualização
+                        </button>
+                        <button id="btn-autores-buscar-foto-cad-todos" type="button" title="Busca no CAD (SERIS/Alcatraz), um autor de cada vez, por CPF — só roda quando clicado, sem gatilho automático">
+                            🔍 Buscar fotos de todos (CAD)
                         </button>
                         <span id="autores-status-msg"></span>
                         <span id="autores-atualizado-em" style="font-size:11px;opacity:.55;color:var(--p3-text-muted);"></span>
@@ -209,23 +405,40 @@
                         <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="autores-progresso-live-fill"></div></div>
                     </div>
 
+                    <div class="p3-progress-wrap" id="autores-progresso-cad-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Busca de fotos no CAD (SERIS/Alcatraz)</span>
+                            <span id="autores-progresso-cad-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="autores-progresso-cad-fill"></div></div>
+                        <div class="cad-busca-stats">
+                            <span class="stat stat-processados" id="autores-cad-stat-processados">0 processados</span>
+                            <span class="stat stat-achados" id="autores-cad-stat-achados">0 salvos</span>
+                            <span class="stat stat-nao-achados" id="autores-cad-stat-nao-achados">0 sem foto</span>
+                            <span class="stat stat-erros" id="autores-cad-stat-erros">0 erros</span>
+                        </div>
+                    </div>
+
                     <div class="autores-table-wrap">
                         <table class="tabela-autores">
                             <thead>
                                 <tr>
+                                    <th>Foto</th>
                                     <th>Nome</th>
                                     <th>CPF</th>
                                     <th>Nome da Mãe</th>
+                                    <th>Unidade</th>
                                     <th>COP</th>
                                     <th>Data</th>
                                     <th>Tipificação</th>
                                     <th>E-SAJ</th>
                                     <th>Movimentação</th>
                                     <th>Status</th>
+                                    <th>Foto CAD</th>
                                 </tr>
                             </thead>
                             <tbody id="autores-tbody">
-                                <tr><td colspan="9" class="empty-msg">Carregando...</td></tr>
+                                <tr><td colspan="12" class="empty-msg">Carregando...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -240,11 +453,22 @@
                     </p>
 
                     <div class="autores-toolbar">
-                        <input type="text" id="suspeitos-filtro-texto" placeholder="Buscar por nome ou CPF...">
+                        <input type="text" id="suspeitos-filtro-texto" placeholder="Buscar por nome, CPF ou movimentação...">
+                        <select id="suspeitos-filtro-foto-cad" title="Filtrar pela sincronização de foto do CAD (SERIS/Alcatraz)">
+                            <option value="">Foto CAD: todos</option>
+                            <option value="sem_foto">Sem foto ainda</option>
+                            <option value="com_foto">Com foto sincronizada</option>
+                        </select>
                         <button id="btn-suspeitos-novo" type="button">➕ Novo suspeito</button>
                         <button id="btn-suspeitos-verificar-agora" type="button">
                             <img width="16" height="16" src="https://img.icons8.com/ios-filled/50/ffffff/refresh--v1.png" alt="">
                             Verificar agora
+                        </button>
+                        <button id="btn-suspeitos-ver-ultima-atualizacao" type="button" title="Reabre o resumo da última verificação feita pelo servidor local">
+                            🕓 Ver última atualização
+                        </button>
+                        <button id="btn-suspeitos-buscar-foto-cad-todos" type="button" title="Busca no CAD (SERIS/Alcatraz), um suspeito de cada vez, por CPF — só roda quando clicado, sem gatilho automático">
+                            🔍 Buscar fotos de todos (CAD)
                         </button>
                         <span id="suspeitos-status-msg"></span>
                         <span id="suspeitos-atualizado-em" style="font-size:11px;opacity:.55;color:var(--p3-text-muted);"></span>
@@ -258,37 +482,157 @@
                         <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="suspeitos-progresso-live-fill"></div></div>
                     </div>
 
-                    <div class="form-novo-suspeito" id="form-novo-suspeito">
-                        <input type="text" id="novo-suspeito-nome" placeholder="Nome completo">
-                        <input type="text" id="novo-suspeito-cpf" placeholder="CPF (opcional, evita duplicidade)">
-                        <button id="btn-salvar-novo-suspeito" type="button">Salvar</button>
-                        <button id="btn-cancelar-novo-suspeito" type="button">Cancelar</button>
+                    <div class="p3-progress-wrap" id="suspeitos-progresso-cad-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Busca de fotos no CAD (SERIS/Alcatraz)</span>
+                            <span id="suspeitos-progresso-cad-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="suspeitos-progresso-cad-fill"></div></div>
+                        <div class="cad-busca-stats">
+                            <span class="stat stat-processados" id="suspeitos-cad-stat-processados">0 processados</span>
+                            <span class="stat stat-achados" id="suspeitos-cad-stat-achados">0 salvos</span>
+                            <span class="stat stat-nao-achados" id="suspeitos-cad-stat-nao-achados">0 sem foto</span>
+                            <span class="stat stat-erros" id="suspeitos-cad-stat-erros">0 erros</span>
+                        </div>
                     </div>
 
                     <div class="autores-table-wrap">
                         <table class="tabela-autores">
                             <thead>
                                 <tr>
+                                    <th>Foto</th>
                                     <th>Nome</th>
                                     <th>CPF</th>
+                                    <th>RG</th>
+                                    <th>Mãe</th>
                                     <th>E-SAJ</th>
                                     <th>Movimentação</th>
                                     <th>Status</th>
+                                    <th>Foto CAD</th>
                                     <th></th>
                                 </tr>
                             </thead>
                             <tbody id="suspeitos-tbody">
-                                <tr><td colspan="6" class="empty-msg">Carregando...</td></tr>
+                                <tr><td colspan="10" class="empty-msg">Carregando...</td></tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
+
+                <div id="painel-facial" class="tab-painel" style="display:none;">
+                    <h3>🔎 Reconhecimento facial — comparação por similaridade</h3>
+                    <div class="rf-aviso">
+                        ⚠️ Resultado é uma <strong>estimativa de similaridade</strong> entre a foto enviada e as
+                        fotos já cadastradas dos autores (ver <code>tools/vetores-faciais/</code>) — não é uma
+                        identificação positiva. Sempre confirme manualmente antes de qualquer decisão operacional.
+                        A base de comparação é só o que já está na sua pasta da Hostinger.
+                    </div>
+
+                    <div class="rf-upload-area">
+                        <div class="rf-preview" id="rf-preview">Nenhuma imagem selecionada</div>
+                        <div class="rf-controles">
+                            <input type="file" id="rf-input-foto" accept="image/*">
+                            <button type="button" id="rf-btn-buscar" disabled>Buscar compatibilidade</button>
+                            <span id="rf-status-msg"></span>
+                        </div>
+                    </div>
+
+                    <div class="rf-resultados" id="rf-resultados"></div>
+                </div>
+
             </div>
         </main>
     </section>
 
+    <!-- MODAL "Novo suspeito" / "Adicionar fotos" — cadastro (nome/cpf/rg/
+         mãe) + fotos (múltiplas) numa única tela (fusão das antigas abas
+         "Suspeitos"/"Upload de foto"). Reaproveitado em 2 modos por
+         js/suspeitos.js (abrirModalSuspeito): cadastro completo pra um
+         suspeito novo, ou só a área de fotos pra acrescentar mais fotos a
+         um suspeito já existente (#ms-campos-cadastro escondido nesse caso). -->
+    <div id="modal-suspeito">
+        <div class="ms-box">
+            <div class="ms-head">
+                <span id="ms-titulo">🕵️ Novo suspeito</span>
+                <button type="button" id="ms-btn-fechar-x" title="Fechar">✕</button>
+            </div>
+            <div class="ms-body">
+                <div id="ms-campos-cadastro">
+                    <label>Nome completo</label>
+                    <input type="text" id="novo-suspeito-nome" placeholder="Nome completo">
+                    <label>CPF (opcional, evita duplicidade)</label>
+                    <input type="text" id="novo-suspeito-cpf" placeholder="CPF">
+                    <label>RG (opcional)</label>
+                    <input type="text" id="novo-suspeito-rg" placeholder="RG">
+                    <label>Nome da mãe (opcional)</label>
+                    <input type="text" id="novo-suspeito-mae" placeholder="Nome da mãe">
+                </div>
+
+                <label style="margin-top:6px;">Foto(s) — pode selecionar mais de uma de uma vez</label>
+                <div class="ms-foto-area">
+                    <div class="ms-foto-previews" id="ms-foto-previews"></div>
+                    <input type="file" id="ms-input-foto" accept="image/*" multiple>
+                </div>
+                <div id="ms-status-msg"></div>
+            </div>
+            <div class="ms-foot">
+                <button id="ms-btn-cancelar" type="button">Cancelar</button>
+                <button id="btn-salvar-novo-suspeito" type="button">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL TOKEN/LOGIN CAD — mesma sessão do CAD usada pela Análise
+         Preditiva (page/preditivaCAD.html); ver js/core/cad-status-banner.js -->
+    <div id="modal-token">
+        <div class="modal-token-box">
+            <div class="modal-token-head">
+                🔑 Login CAD SEDS/AL — Busca de fotos (Alcatraz)
+                <button type="button" onclick="fecharModalToken()" title="Fechar">✕</button>
+            </div>
+            <div class="modal-token-body">
+                <div class="token-instrucao">
+                    <strong>Por que login e senha, além do token?</strong><br>
+                    A busca de fotos no CAD é liberada pela SUA conta pessoal (CPF+senha), não só pelo token — o
+                    token sozinho só autentica o rastreamento de viaturas. É a MESMA sessão usada pela Análise
+                    Preditiva — configurar aqui ou lá vale para as duas telas.<br>
+                    <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente. Login/senha ficam
+                    salvos no Apps Script (Script Properties) até você trocar — não são enviados a mais ninguém.
+                    Se o servidor local (tools/atualizador-local/) estiver aberto neste PC, "Salvar" também
+                    configura ele com a mesma credencial — não precisa editar arquivo nenhum.</span>
+                </div>
+                <label>CPF de acesso ao CAD (só números):</label>
+                <input type="text" id="input-cad-login" placeholder="09089567461"
+                    style="width:100%;box-sizing:border-box;padding:8px;border:2px solid #003366;border-radius:6px;font-size:.95rem;margin-bottom:12px"
+                    inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')">
+                <label>Senha de acesso ao CAD:</label>
+                <input type="password" id="input-cad-senha" placeholder="Senha do CAD" autocomplete="off"
+                    style="width:100%;box-sizing:border-box;padding:8px;border:2px solid #003366;border-radius:6px;font-size:.95rem;margin-bottom:12px">
+                <label>Token de acesso CAD (ex: TK2037113550):</label>
+                <textarea id="input-token-geo"
+                    placeholder="TK2037113550"
+                    style="height:54px;font-size:1.1rem;text-align:center;letter-spacing:3px;font-family:monospace"
+                    oninput="this.value=this.value.toUpperCase()"></textarea>
+
+                <div class="msg-token" id="msg-token-geo"></div>
+            </div>
+            <div class="modal-token-foot">
+                <button type="button" class="rg-btn-cancel" onclick="fecharModalToken()">Cancelar</button>
+                <button type="button" class="rg-btn" onclick="salvarTokenGEO()">✅ Salvar e entrar no CAD</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/core/cad-status-banner.js"></script>
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/core/modal-mudancas-movimentacao.js"></script>
+    <script src="../js/vendor/face-api.min.js"></script>
+    <script src="../js/core/facial-detect.js"></script>
+    <script src="../js/cad-busca-foto.js"></script>
+    <script src="../js/pessoa-modal.js"></script>
     <script src="../js/autores.js"></script>
     <script src="../js/suspeitos.js"></script>
+    <script src="../js/autores-reconhecimento-facial.js"></script>
     <script>
         document.querySelectorAll('.aba-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -296,6 +640,7 @@
                 btn.classList.add('ativa');
                 document.getElementById('painel-autores').style.display = btn.dataset.aba === 'autores' ? '' : 'none';
                 document.getElementById('painel-suspeitos').style.display = btn.dataset.aba === 'suspeitos' ? '' : 'none';
+                document.getElementById('painel-facial').style.display = btn.dataset.aba === 'facial' ? '' : 'none';
             });
         });
     </script>
