@@ -790,32 +790,22 @@ async function verificarAgoraSuspeitos() {
         return;
     }
 
-    // Preferido: servidor local — só cai pro caminho antigo (Apps
-    // Script + polling aproximado) se ele não estiver rodando (ver
-    // js/autores.js:verificarAgora, mesmo raciocínio).
+    // ÚNICO caminho agora — servidor local (Python, e-SAJ direto ao vivo).
+    // CORREÇÃO (27/08/2026) — ver comentário completo em
+    // js/autores.js:verificarAgora: o fallback pro Apps Script (DataJud,
+    // sempre atrasado) foi removido — ficava sobrescrevendo com dado
+    // velho a movimentação que o Python tinha acabado de gravar mais
+    // atualizada. O robô do Apps Script foi desativado do lado do
+    // servidor também (ver sincronizarSuspeitosDiario em
+    // apps-script/suspeitos-esaj-hostinger.gs).
     if (await P3AtualizadorLocal.disponivel()) {
         await verificarAgoraSuspeitosLocal(total);
         return;
     }
 
-    if (!GAS_AUTORES_URL_SUSPEITOS) {
-        msg.textContent = 'Atualizador local (Python) não está rodando, e o Apps Script de Autores/Suspeitos ' +
-            'não está configurado para esta unidade — veja tools/atualizador-local/README.md.';
-        return;
-    }
-
-    msg.textContent = 'Atualizador local não está rodando — usando o Apps Script (mais lento; ' +
-        'veja tools/atualizador-local/README.md pra rodar localmente). Os mais desatualizados primeiro.';
-
-    try {
-        await fetch(`${GAS_AUTORES_URL_SUSPEITOS}?action=sincronizarSuspeitosAgora`);
-    } catch (e) {
-        console.error('[suspeitos] Erro em verificarAgoraSuspeitos:', e);
-        msg.textContent = 'Erro ao acionar a verificação — tente novamente em instantes.';
-        return;
-    }
-
-    iniciarPollSuspeitos(Date.now(), idsDescoberta, idsProcesso, total);
+    msg.textContent = 'Atualizador local (Python) não está rodando — abra tools/atualizador-local (python app.py, ' +
+        'ou o app desktop) e clique em "Verificar agora" de novo. O Apps Script deixou de ser usado aqui (ficava ' +
+        'sobrescrevendo com dado desatualizado do DataJud).';
 }
 
 // Ver comentário equivalente em js/autores.js:abrirUltimaAtualizacaoAutores.
