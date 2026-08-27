@@ -323,6 +323,13 @@
                 <option value="10bpm">10º BPM</option>
             </select>
         </div>
+        <div class="campo" style="display:flex;align-items:flex-start;gap:8px;">
+            <input type="checkbox" id="cad-operador-campo" style="width:auto;margin-top:3px;">
+            <label for="cad-operador-campo" style="font-weight:400;font-size:.85rem;">
+                Quero acesso como <strong>Operador de Campo</strong> (só a tela de busca facial) —
+                cadastro fica pendente de aprovação do administrador antes de poder entrar.
+            </label>
+        </div>
 
         <button class="btn-submit" id="btn-cadastrar" onclick="fazerCadastro()">CADASTRAR</button>
     </div>
@@ -523,7 +530,14 @@ async function fazerCadastro() {
     const cpf        = limparCPF(document.getElementById('cad-cpf').value);
     const senha      = document.getElementById('cad-senha').value.trim();
     const unidade    = document.getElementById('cad-unidade').value;
-    const nivel      = 'operador'; // auto-cadastro sempre entra como Operador; promoção é feita pelo admin
+    // Auto-cadastro normal sempre entra como Operador (ativo na hora).
+    // Quem marca "Operador de Campo" entra como esse nível, mas PENDENTE
+    // (ativo:false) — login já bloqueia usuário inativo (ver checkAtivo
+    // mais abaixo), admin aprova mudando ativo pra true em
+    // admin-usuarios.html. Evita alguém ganhar acesso à busca facial de
+    // campo só se auto-declarando, sem nenhuma revisão.
+    const querOperadorCampo = document.getElementById('cad-operador-campo').checked;
+    const nivel      = querOperadorCampo ? 'operador_campo' : 'operador';
 
     // Validações básicas
     if (!graduacao || !nome || !cpf || !senha) {
@@ -560,13 +574,15 @@ async function fazerCadastro() {
             senha,
             nivel,
             unidade,
-            ativo      : true,
+            ativo      : !querOperadorCampo, // Operador de Campo entra inativo, pendente de aprovação do admin
             cadastrado_em: new Date().toISOString()
         };
 
         await db.ref(`usuarios/${cpf}`).set(novoUsuario);
 
-        mostrarMensagem('msg-cadastro', 'Cadastro realizado! Você já pode fazer login.', 'sucesso');
+        mostrarMensagem('msg-cadastro', querOperadorCampo
+            ? 'Cadastro realizado! Fica pendente de aprovação do administrador antes de poder entrar.'
+            : 'Cadastro realizado! Você já pode fazer login.', 'sucesso');
 
         // Limpa o formulário e volta para aba de login após 2s
         document.getElementById('cad-graduacao').value  = '';
@@ -574,6 +590,7 @@ async function fazerCadastro() {
         document.getElementById('cad-nomeguerra').value = '';
         document.getElementById('cad-cpf').value        = '';
         document.getElementById('cad-senha').value      = '';
+        document.getElementById('cad-operador-campo').checked = false;
 
         setTimeout(() => trocarAba('login'), 2000);
 
