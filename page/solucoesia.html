@@ -70,6 +70,45 @@
                     <p>Painel Alerta</p>
                 </a>
 
+                <!-- CORREÇÃO (27/08/2026) — pedido explícito do usuário: nav
+                     principal enxuta, só com o essencial (ver
+                     js/core/header-nav.js). Estes 7 links SAÍRAM de lá e
+                     vieram pra cá — mesmas páginas de sempre, só o
+                     caminho até elas mudou. "Busca Facial (Campo)" manteve
+                     a MESMA restrição de nível que tinha na nav (operador_campo
+                     ou admin) — replicada abaixo em JS (ver
+                     #link-busca-facial-campo), já que aqui não existe o
+                     mecanismo de `condicao` dinâmico que header-nav.js tem. -->
+                <a class="btn" href="materiais.html">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/box--v1.png" alt="materiais" />
+                    <p>Materiais Apreendidos</p>
+                </a>
+                <a class="btn" href="autores.html">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/user-male-circle.png" alt="autores" />
+                    <p>Autores</p>
+                </a>
+                <a class="btn" href="instrucoes.html">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/training.png" alt="instrução" />
+                    <p>Instrução</p>
+                </a>
+                <a class="btn" href="cumprimento-cartao.html" title="Cumprimento do cartão-programa/OPO">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/checked-checkbox.png" alt="cumprimento" />
+                    <p>Cumprimento</p>
+                </a>
+                <a class="btn" href="rastreamento-guarnicao.html" title="Rastreamento de guarnição">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/map-marker.png" alt="rastreamento" />
+                    <p>Rastreamento</p>
+                </a>
+                <a class="btn" href="chat-mobile.html" title="Chat com o Xerife (mobile)">
+                    <img width="64" height="64" src="../img/xerife-logo.png" alt="chat xerife"
+                        style="object-fit:cover;border-radius:50%;" onerror="this.src='https://img.icons8.com/ios/50/chat--v1.png'">
+                    <p>Chat Xerife</p>
+                </a>
+                <a class="btn" href="busca-facial-campo.html" id="link-busca-facial-campo" title="Busca facial pra operador de campo" style="display:none;">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/face-id.png" alt="busca facial campo" />
+                    <p>Busca Facial (Campo)</p>
+                </a>
+
             </section>
             <div id="iframe-container" style="display: none;">
                 <iframe id="cartao-programa-iframe" src="" frameborder="0"></iframe>
@@ -93,6 +132,16 @@
     document.addEventListener('DOMContentLoaded', function () {
         const sessao = P3.requireUnidade10bpm();
         if (!sessao) return;
+
+        // "Busca Facial (Campo)" — mesma condição que tinha como item de
+        // nav (ver js/core/header-nav.js antes da correção de 27/08/2026):
+        // só pra nível operador_campo ou admin. Começa escondido no HTML
+        // (style="display:none") de propósito — evita um "pisca" visível
+        // pra quem não tem o nível, mostrando e escondendo de novo.
+        const linkBuscaFacial = document.getElementById('link-busca-facial-campo');
+        if (linkBuscaFacial && (sessao.nivel === 'operador_campo' || sessao.nivel === 'admin')) {
+            linkBuscaFacial.style.display = '';
+        }
     });
 
     document.addEventListener('DOMContentLoaded', function () {
