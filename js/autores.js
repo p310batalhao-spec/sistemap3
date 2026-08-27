@@ -845,34 +845,26 @@ async function verificarAgora() {
         return;
     }
 
-    // Preferido: servidor local (ver comentário em verificarAgoraLocal).
-    // Só cai pro caminho antigo (Apps Script + polling aproximado) se o
-    // servidor local não estiver rodando — assim o botão continua
-    // funcionando mesmo se você esquecer de abrir o
-    // tools/atualizador-local/app.py, só mais devagar/menos preciso.
+    // ÚNICO caminho agora — servidor local (Python, e-SAJ direto ao vivo).
+    // CORREÇÃO (27/08/2026) — antes, sem o servidor local aberto, caía
+    // pro Apps Script (DataJud, sempre atrasado — ver
+    // tools/atualizador-local/README.md, "Por que e-SAJ, não DataJud")
+    // como fallback automático. Isso fazia esse robô SOBRESCREVER com
+    // dado velho a movimentação que o Python tinha acabado de gravar
+    // mais atualizada (uma rodada chegou a achar 300+ mudanças de uma
+    // vez, quase tudo o e-SAJ "corrigindo" de volta o que o Apps Script
+    // tinha sujado). O robô do Apps Script foi desativado do lado do
+    // servidor também (ver sincronizarAutoresDiario em
+    // apps-script/autores-esaj-hostinger.gs) — aqui só some o fallback
+    // que o acionava.
     if (await P3AtualizadorLocal.disponivel()) {
         await verificarAgoraLocal(total);
         return;
     }
 
-    if (!GAS_AUTORES_URL) {
-        msg.textContent = 'Atualizador local (Python) não está rodando, e o Apps Script de Autores/Suspeitos ' +
-            'não está configurado para esta unidade — veja tools/atualizador-local/README.md.';
-        return;
-    }
-
-    msg.textContent = 'Atualizador local não está rodando — usando o Apps Script (mais lento; ' +
-        'veja tools/atualizador-local/README.md pra rodar localmente). Os mais desatualizados primeiro.';
-
-    try {
-        await fetch(`${GAS_AUTORES_URL}?action=sincronizarAutoresAgora`);
-    } catch (e) {
-        console.error('[autores] Erro em verificarAgora:', e);
-        msg.textContent = 'Erro ao acionar a verificação — tente novamente em instantes.';
-        return;
-    }
-
-    iniciarPollAutores(Date.now(), idsElegiveis, total);
+    msg.textContent = 'Atualizador local (Python) não está rodando — abra tools/atualizador-local (python app.py, ' +
+        'ou o app desktop) e clique em "Verificar agora" de novo. O Apps Script deixou de ser usado aqui (ficava ' +
+        'sobrescrevendo com dado desatualizado do DataJud).';
 }
 
 // Botão "🕓 Ver última atualização" — reabre o modal de mudanças com o
