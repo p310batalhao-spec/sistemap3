@@ -24,6 +24,16 @@ let filtroStatus = '';
 let filtroFotoCad = '';
 let filtroUnidade = '';
 
+// Paginação — CORREÇÃO (27/08/2026): renderizar as ~1500+ linhas de uma
+// vez (innerHTML inteiro, com foto/badges/listas de processo por linha)
+// era um dos maiores pesos no WebView2 embutido do app desktop
+// (reclamação real: app lento, +1GB de RAM). O FILTRO continua rodando
+// sobre TODOS os dados normalmente (busca por nome/CPF/movimentação
+// funciona em qualquer página) — só a exibição final é fatiada em blocos
+// de ITENS_POR_PAGINA_AUTORES, com ou sem filtro ativo.
+const ITENS_POR_PAGINA_AUTORES = 50;
+let paginaAtualAutores = 1;
+
 // Guarda o resultado da ÚLTIMA verificação feita pelo servidor local
 // (ver verificarAgoraLocal) — permite reabrir o modal de mudanças depois
 // (botão "🕓 Ver última atualização"), mesmo que o usuário já tenha
@@ -159,7 +169,13 @@ function atualizarProgresso() {
 // ====================================================================
 // FILTROS
 // ====================================================================
-function aplicarFiltros() {
+// resetarPagina=true quando o usuário MUDOU algum filtro (volta pra
+// página 1 — senão ele podia ficar "preso" numa página 3 que não existe
+// mais pro filtro novo); omitido/false quando é só um refresh de dados
+// (ex.: polling do "Verificar agora") — mantém a página onde o usuário
+// estava navegando.
+function aplicarFiltros(resetarPagina) {
+    if (resetarPagina) paginaAtualAutores = 1;
     const textoNorm = normalizarBusca(filtroTexto);
     const lista = todosAutores.filter(a => {
         if (filtroStatus) {
@@ -189,7 +205,25 @@ function aplicarFiltros() {
         }
         return true;
     });
-    renderizarTabela(lista);
+
+    const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA_AUTORES));
+    if (paginaAtualAutores > totalPaginas) paginaAtualAutores = totalPaginas;
+    const inicio = (paginaAtualAutores - 1) * ITENS_POR_PAGINA_AUTORES;
+    renderizarTabela(lista.slice(inicio, inicio + ITENS_POR_PAGINA_AUTORES));
+    atualizarPaginacaoAutores(lista.length, totalPaginas);
+}
+
+function atualizarPaginacaoAutores(totalFiltrado, totalPaginas) {
+    const wrap = document.getElementById('autores-paginacao');
+    const texto = document.getElementById('autores-pag-texto');
+    const btnAnt = document.getElementById('autores-pag-anterior');
+    const btnProx = document.getElementById('autores-pag-proxima');
+    if (!wrap || !texto || !btnAnt || !btnProx) return;
+    if (!totalFiltrado) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    texto.textContent = `Página ${paginaAtualAutores} de ${totalPaginas} (${totalFiltrado} resultado(s))`;
+    btnAnt.disabled = paginaAtualAutores <= 1;
+    btnProx.disabled = paginaAtualAutores >= totalPaginas;
 }
 
 // ====================================================================
@@ -912,19 +946,25 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     document.getElementById('autores-filtro-texto').addEventListener('input', function (e) {
         filtroTexto = e.target.value;
-        aplicarFiltros();
+        aplicarFiltros(true);
     });
     document.getElementById('autores-filtro-status').addEventListener('change', function (e) {
         filtroStatus = e.target.value;
-        aplicarFiltros();
+        aplicarFiltros(true);
     });
     document.getElementById('autores-filtro-foto-cad').addEventListener('change', function (e) {
         filtroFotoCad = e.target.value;
-        aplicarFiltros();
+        aplicarFiltros(true);
     });
     document.getElementById('autores-filtro-unidade').addEventListener('change', function (e) {
         filtroUnidade = e.target.value;
-        aplicarFiltros();
+        aplicarFiltros(true);
+    });
+    document.getElementById('autores-pag-anterior').addEventListener('click', function () {
+        if (paginaAtualAutores > 1) { paginaAtualAutores--; aplicarFiltros(); }
+    });
+    document.getElementById('autores-pag-proxima').addEventListener('click', function () {
+        paginaAtualAutores++; aplicarFiltros();
     });
     btnVerificar.addEventListener('click', verificarAgora);
 
