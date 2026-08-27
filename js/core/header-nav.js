@@ -162,14 +162,16 @@
 
     // ── Itens padrão de navegação ──────────────────────────────────────
     // CORREÇÃO (27/08/2026) — pedido explícito do usuário: nav enxuta,
-    // só com o que é usado o tempo todo. Materiais Apreendidos, Autores,
-    // Instrução, Cumprimento, Rastreamento e Chat Xerife SAÍRAM daqui —
-    // viraram links dentro de page/solucoesia.html (seção "dashboard",
-    // ao lado dos outros atalhos que já existiam lá), não desapareceram
-    // do sistema. Acesso por nível continua valendo pra quem ficou aqui
-    // (solucoesia/usuarios) E pro que foi pra lá (busca-facial-campo
-    // manteve a mesma condição de nível, replicada em JS na própria
-    // página — ver solucoesia.html).
+    // só com o que é usado o tempo todo. Materiais Apreendidos, Instrução,
+    // Cumprimento, Rastreamento e Chat Xerife SAÍRAM daqui — viraram links
+    // dentro de page/solucoesia.html (seção "dashboard", ao lado dos
+    // outros atalhos que já existiam lá), não desapareceram do sistema.
+    // "Autores" tinha saído junto nessa 1ª rodada, mas voltou pra cá por
+    // pedido explícito do usuário — sem trava de nível (nunca teve
+    // nenhuma, igual sempre foi). Acesso por nível continua valendo pra
+    // quem ficou aqui (solucoesia/usuarios) E pro que foi pra
+    // solucoesia.html (busca-facial-campo manteve a mesma condição de
+    // nível, replicada em JS na própria página — ver solucoesia.html).
     var ITENS_NAV = [
         { id: 'home', href: 'index.html', label: 'Home',
           icone: 'https://img.icons8.com/fluency-systems-regular/48/home--v1.png', w: 48, h: 48 },
@@ -177,6 +179,9 @@
           icone: 'https://img.icons8.com/fluency-systems-regular/48/statistics.png', w: 48, h: 48 },
         { id: 'cadastro-ocorrencias', href: 'page/cadastroocorrencias.html', label: 'Cadastro de Ocorrências',
           icone: 'https://img.icons8.com/ios/50/add-file.png', w: 50, h: 50 },
+        { id: 'autores', href: 'page/autores.html', label: 'Autores',
+          icone: 'https://img.icons8.com/ios/50/user-male-circle.png', w: 50, h: 50,
+          titulo: 'Autores — vínculo de processo E-SAJ e movimentação' },
         { id: 'eventos', href: 'page/eventos.html', label: 'Eventos',
           icone: 'https://img.icons8.com/external-outlines-amoghdesign/32/external-dance-happy-new-year-outlines-amoghdesign.png', w: 32, h: 32 },
         { id: 'solucoesia', domId: 'nav-solucoesia', href: 'page/solucoesia.html', label: 'Soluções IA',
