@@ -587,6 +587,30 @@ function pararPollAutores() {
     autoresVerificacaoEmAndamento = false;
 }
 
+// Botão "⏹ Parar" (ver #btn-autores-parar-verificacao) — pedido do
+// usuário: sem isso, o "Verificar agora" ficava travado (desabilitado)
+// acompanhando um lote disparado pelo Apps Script (gatilho automático ou
+// fallback do botão quando o servidor local ainda não estava aberto), e
+// não tinha como interromper esse acompanhamento pra tentar de novo já
+// preferindo o servidor local. IMPORTANTE — só encerra o ACOMPANHAMENTO
+// aqui (limpa o estado salvo, esconde a barra, libera o botão): se o que
+// estava rodando era o Apps Script, o lote em si é assíncrono do lado do
+// Google e continua até terminar sozinho — clicar aqui não cancela isso,
+// só para de mostrar o progresso nesta aba.
+function pararVerificacaoAutores() {
+    pararPollAutores();
+    limparEstadoVerificacaoAutores();
+    const wrap = document.getElementById('autores-progresso-live-wrap');
+    if (wrap) wrap.style.display = 'none';
+    const btn = document.getElementById('btn-autores-verificar-agora');
+    if (btn) btn.disabled = false;
+    const msg = document.getElementById('autores-status-msg');
+    if (msg) {
+        msg.textContent = 'Acompanhamento interrompido por aqui — se era o Apps Script, o lote continua rodando do lado de fora até terminar sozinho. Clique em "Verificar agora" pra tentar de novo (usa o servidor local se ele estiver aberto).';
+        setTimeout(() => { if (msg.textContent.indexOf('Acompanhamento interrompido') === 0) msg.textContent = ''; }, 10000);
+    }
+}
+
 function salvarEstadoVerificacaoAutores(inicioMs, idsElegiveis, total) {
     try { localStorage.setItem(AUTORES_VERIF_STORAGE_KEY, JSON.stringify({ inicioMs, ids: idsElegiveis, total })); }
     catch (e) { /* localStorage indisponível/cheio — só perde a retomada após reload, não quebra nada */ }
@@ -911,6 +935,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         aplicarFiltros();
     });
     btnVerificar.addEventListener('click', verificarAgora);
+
+    const btnPararVerificacao = document.getElementById('btn-autores-parar-verificacao');
+    if (btnPararVerificacao) btnPararVerificacao.addEventListener('click', pararVerificacaoAutores);
 
     const btnVerUltimaAtualizacao = document.getElementById('btn-autores-ver-ultima-atualizacao');
     if (btnVerUltimaAtualizacao) btnVerUltimaAtualizacao.addEventListener('click', abrirUltimaAtualizacaoAutores);
