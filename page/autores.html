@@ -74,6 +74,23 @@
         .autores-table-wrap {
             overflow: auto; max-height: 70vh; border-radius: 8px; box-shadow: var(--p3-shadow-lg);
         }
+
+        /* Paginação — CORREÇÃO (27/08/2026): renderizar as ~1500+ linhas de
+           uma vez (innerHTML inteiro) era um dos maiores pesos no WebView2
+           embutido (reclamação real: app ficando lento, +1GB de RAM). Só
+           monta no DOM a página atual (50 por vez, ver ITENS_POR_PAGINA em
+           js/autores.js/js/suspeitos.js) — o filtro continua rodando sobre
+           TODOS os dados, só a exibição é paginada. */
+        .p3-paginacao {
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            margin-top: 10px; font-size: 13px; color: var(--p3-text-muted);
+        }
+        .p3-paginacao button {
+            padding: 6px 14px; border-radius: 6px; border: 1px solid var(--p3-border); cursor: pointer;
+            background: var(--p3-surface); color: var(--p3-text); font-size: 13px;
+        }
+        .p3-paginacao button:hover:not(:disabled) { background: var(--p3-blue-500); color: #fff; border-color: var(--p3-blue-500); }
+        .p3-paginacao button:disabled { opacity: .4; cursor: not-allowed; }
         table.tabela-autores { width: 100%; border-collapse: collapse; background: var(--p3-surface); font-size: 13px; color: var(--p3-text); }
         table.tabela-autores th, table.tabela-autores td {
             padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--p3-border); vertical-align: top;
@@ -457,6 +474,12 @@
                             </tbody>
                         </table>
                     </div>
+
+                    <div class="p3-paginacao" id="autores-paginacao" style="display:none;">
+                        <button type="button" id="autores-pag-anterior">‹ Anterior</button>
+                        <span id="autores-pag-texto"></span>
+                        <button type="button" id="autores-pag-proxima">Próxima ›</button>
+                    </div>
                 </div>
 
                 <div id="painel-suspeitos" class="tab-painel" style="display:none;">
@@ -534,6 +557,12 @@
                                 <tr><td colspan="10" class="empty-msg">Carregando...</td></tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <div class="p3-paginacao" id="suspeitos-paginacao" style="display:none;">
+                        <button type="button" id="suspeitos-pag-anterior">‹ Anterior</button>
+                        <span id="suspeitos-pag-texto"></span>
+                        <button type="button" id="suspeitos-pag-proxima">Próxima ›</button>
                     </div>
                 </div>
 
