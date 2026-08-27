@@ -102,7 +102,15 @@ async function carregarSuspeitos() {
     }
 }
 
-function aplicarFiltrosSuspeitos() {
+// Paginação — mesmo mecanismo/motivo de js/autores.js:aplicarFiltros
+// (ver comentário lá). resetarPagina=true nas mudanças de filtro; omitido
+// nos refreshs de dados, pra não tirar o usuário da página que ele estava
+// navegando.
+const ITENS_POR_PAGINA_SUSPEITOS = 50;
+let paginaAtualSuspeitos = 1;
+
+function aplicarFiltrosSuspeitos(resetarPagina) {
+    if (resetarPagina) paginaAtualSuspeitos = 1;
     const textoNorm = normalizarBuscaSusp(filtroTextoSuspeitos);
     const lista = todosSuspeitos.filter(s => {
         if (filtroFotoCadSuspeitos === 'sem_foto' && s.vetorFacialEm) return false;
@@ -117,7 +125,25 @@ function aplicarFiltrosSuspeitos() {
         const alvo = normalizarBuscaSusp([s.NOME, s.CPF, movimentacoes].filter(Boolean).join(' '));
         return alvo.indexOf(textoNorm) !== -1;
     });
-    renderizarTabelaSuspeitos(lista);
+
+    const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA_SUSPEITOS));
+    if (paginaAtualSuspeitos > totalPaginas) paginaAtualSuspeitos = totalPaginas;
+    const inicio = (paginaAtualSuspeitos - 1) * ITENS_POR_PAGINA_SUSPEITOS;
+    renderizarTabelaSuspeitos(lista.slice(inicio, inicio + ITENS_POR_PAGINA_SUSPEITOS));
+    atualizarPaginacaoSuspeitos(lista.length, totalPaginas);
+}
+
+function atualizarPaginacaoSuspeitos(totalFiltrado, totalPaginas) {
+    const wrap = document.getElementById('suspeitos-paginacao');
+    const texto = document.getElementById('suspeitos-pag-texto');
+    const btnAnt = document.getElementById('suspeitos-pag-anterior');
+    const btnProx = document.getElementById('suspeitos-pag-proxima');
+    if (!wrap || !texto || !btnAnt || !btnProx) return;
+    if (!totalFiltrado) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'flex';
+    texto.textContent = `Página ${paginaAtualSuspeitos} de ${totalPaginas} (${totalFiltrado} resultado(s))`;
+    btnAnt.disabled = paginaAtualSuspeitos <= 1;
+    btnProx.disabled = paginaAtualSuspeitos >= totalPaginas;
 }
 
 // ====================================================================
@@ -846,11 +872,17 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     document.getElementById('suspeitos-filtro-texto').addEventListener('input', function (e) {
         filtroTextoSuspeitos = e.target.value;
-        aplicarFiltrosSuspeitos();
+        aplicarFiltrosSuspeitos(true);
     });
     document.getElementById('suspeitos-filtro-foto-cad').addEventListener('change', function (e) {
         filtroFotoCadSuspeitos = e.target.value;
-        aplicarFiltrosSuspeitos();
+        aplicarFiltrosSuspeitos(true);
+    });
+    document.getElementById('suspeitos-pag-anterior').addEventListener('click', function () {
+        if (paginaAtualSuspeitos > 1) { paginaAtualSuspeitos--; aplicarFiltrosSuspeitos(); }
+    });
+    document.getElementById('suspeitos-pag-proxima').addEventListener('click', function () {
+        paginaAtualSuspeitos++; aplicarFiltrosSuspeitos();
     });
 
     document.getElementById('btn-suspeitos-novo').addEventListener('click', () => abrirModalSuspeito());
