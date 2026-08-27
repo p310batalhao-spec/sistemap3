@@ -59,6 +59,18 @@
         }
         @keyframes p3-progress-stripes { from { background-position: 0 0; } to { background-position: 28px 0; } }
 
+        /* Botão "Parar" — só encerra o ACOMPANHAMENTO nesta aba/navegador
+           (limpa o estado salvo e libera o botão "Verificar agora" pra
+           poder testar o servidor local na hora); se o que estava rodando
+           era o Apps Script (gatilho automático ou fallback do botão), o
+           lote em si continua até terminar do lado do Google — só some
+           daqui. Ver pararVerificacaoAutores/pararVerificacaoSuspeitos. */
+        .p3-progress-parar-btn {
+            background: none; border: 1px solid var(--p3-border); color: var(--p3-text-muted);
+            border-radius: 4px; padding: 1px 8px; font-size: 11px; cursor: pointer;
+        }
+        .p3-progress-parar-btn:hover { background: var(--p3-border); color: var(--p3-text); }
+
         .autores-table-wrap {
             overflow: auto; max-height: 70vh; border-radius: 8px; box-shadow: var(--p3-shadow-lg);
         }
@@ -400,7 +412,10 @@
                     <div class="p3-progress-wrap" id="autores-progresso-live-wrap" style="display:none;">
                         <div class="p3-progress-label">
                             <span>Verificação em andamento (Verificar agora)</span>
-                            <span id="autores-progresso-live-texto"></span>
+                            <span>
+                                <span id="autores-progresso-live-texto"></span>
+                                <button type="button" id="btn-autores-parar-verificacao" class="p3-progress-parar-btn" title="Para de acompanhar por aqui e libera o botão Verificar agora (se era o Apps Script, o lote em si continua até terminar do lado do Google)">⏹ Parar</button>
+                            </span>
                         </div>
                         <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="autores-progresso-live-fill"></div></div>
                     </div>
@@ -477,7 +492,10 @@
                     <div class="p3-progress-wrap" id="suspeitos-progresso-live-wrap" style="display:none;">
                         <div class="p3-progress-label">
                             <span>Verificação em andamento (Verificar agora)</span>
-                            <span id="suspeitos-progresso-live-texto"></span>
+                            <span>
+                                <span id="suspeitos-progresso-live-texto"></span>
+                                <button type="button" id="btn-suspeitos-parar-verificacao" class="p3-progress-parar-btn" title="Para de acompanhar por aqui e libera o botão Verificar agora (se era o Apps Script, o lote em si continua até terminar do lado do Google)">⏹ Parar</button>
+                            </span>
                         </div>
                         <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="suspeitos-progresso-live-fill"></div></div>
                     </div>
