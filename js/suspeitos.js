@@ -535,6 +535,26 @@ function pararPollSuspeitos() {
     suspeitosVerificacaoEmAndamento = false;
 }
 
+// Botão "⏹ Parar" (ver #btn-suspeitos-parar-verificacao) — mesmo motivo
+// de pararVerificacaoAutores em js/autores.js: sem isso, o "Verificar
+// agora" ficava travado acompanhando um lote do Apps Script, sem jeito
+// de interromper pra tentar de novo já preferindo o servidor local. Só
+// encerra o ACOMPANHAMENTO aqui — se era o Apps Script, o lote em si
+// continua rodando do lado do Google até terminar sozinho.
+function pararVerificacaoSuspeitos() {
+    pararPollSuspeitos();
+    limparEstadoVerificacaoSuspeitos();
+    const wrap = document.getElementById('suspeitos-progresso-live-wrap');
+    if (wrap) wrap.style.display = 'none';
+    const btn = document.getElementById('btn-suspeitos-verificar-agora');
+    if (btn) btn.disabled = false;
+    const msg = document.getElementById('suspeitos-status-msg');
+    if (msg) {
+        msg.textContent = 'Acompanhamento interrompido por aqui — se era o Apps Script, o lote continua rodando do lado de fora até terminar sozinho. Clique em "Verificar agora" pra tentar de novo (usa o servidor local se ele estiver aberto).';
+        setTimeout(() => { if (msg.textContent.indexOf('Acompanhamento interrompido') === 0) msg.textContent = ''; }, 10000);
+    }
+}
+
 function salvarEstadoVerificacaoSuspeitos(inicioMs, idsDescoberta, idsProcesso, total) {
     try { localStorage.setItem(SUSPEITOS_VERIF_STORAGE_KEY, JSON.stringify({ inicioMs, idsDescoberta, idsProcesso, total })); }
     catch (e) { /* localStorage indisponível/cheio — só perde a retomada após reload, não quebra nada */ }
@@ -849,6 +869,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     document.getElementById('ms-input-foto').addEventListener('change', msOnArquivoSelecionado);
     document.getElementById('btn-salvar-novo-suspeito').addEventListener('click', salvarNovoSuspeito);
     document.getElementById('btn-suspeitos-verificar-agora').addEventListener('click', verificarAgoraSuspeitos);
+    const btnPararVerifSuspeitos = document.getElementById('btn-suspeitos-parar-verificacao');
+    if (btnPararVerifSuspeitos) btnPararVerifSuspeitos.addEventListener('click', pararVerificacaoSuspeitos);
 
     const btnVerUltimaAtualizacaoSusp = document.getElementById('btn-suspeitos-ver-ultima-atualizacao');
     if (btnVerUltimaAtualizacaoSusp) btnVerUltimaAtualizacaoSusp.addEventListener('click', abrirUltimaAtualizacaoSuspeitos);
