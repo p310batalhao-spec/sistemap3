@@ -103,70 +103,87 @@
             return;
         }
 
+        // ── Apps Script — CORRIGIDO (26/08/2026, achado testando o app
+        // desktop numa 2ª máquina): antes, uma falha aqui interrompia a
+        // função com `return` e o trecho "NOVO" mais abaixo (salvar no
+        // servidor local) NUNCA chegava a rodar — mesmo com o servidor
+        // local aberto e funcionando perfeitamente. Agora as duas
+        // tentativas (Apps Script e servidor local) SEMPRE rodam as
+        // duas, cada uma guarda seu próprio resultado, e o texto final
+        // mostra as duas linhas — uma falhar não derruba a outra.
         msgEl.style.color = '#555';
         msgEl.textContent = 'Salvando credenciais no Apps Script...';
-
+        let statusGas;
         try {
             const dataCred = await fetchCAD('definir_credenciais_cad', { login: login, senha: senha });
             if (dataCred.ok === false) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ ' + (dataCred.erro || 'Falha ao salvar CPF/senha.');
-                return;
-            }
-
-            msgEl.textContent = 'Validando token com o CAD...';
-            const dataToken = await fetchCAD('definir_token', { token: token });
-            if (dataToken.ok === false) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ ' + (dataToken.erro || 'Token inválido ou expirado.');
-                return;
-            }
-
-            msgEl.textContent = 'Testando login completo (CPF+senha+token) no CAD — pode levar alguns segundos...';
-            const dataAuth = await fetchCAD('diagnostico_auth', {});
-            const trace = dataAuth && dataAuth.trace;
-            if (dataAuth.ok === false || !trace || trace.erro || !trace.sessidFinal) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ Login completo falhou: ' + ((trace && trace.erro) || dataAuth.erro || 'sessão final não obtida');
-                return;
+                statusGas = { ok: false, msg: dataCred.erro || 'Falha ao salvar CPF/senha.' };
+            } else {
+                msgEl.textContent = 'Validando token com o CAD (Apps Script)...';
+                const dataToken = await fetchCAD('definir_token', { token: token });
+                if (dataToken.ok === false) {
+                    statusGas = { ok: false, msg: dataToken.erro || 'Token inválido ou expirado.' };
+                } else {
+                    msgEl.textContent = 'Testando login completo no Apps Script — pode levar alguns segundos...';
+                    const dataAuth = await fetchCAD('diagnostico_auth', {});
+                    const trace = dataAuth && dataAuth.trace;
+                    if (dataAuth.ok === false || !trace || trace.erro || !trace.sessidFinal) {
+                        statusGas = { ok: false, msg: 'login completo falhou: ' + ((trace && trace.erro) || dataAuth.erro || 'sessão final não obtida') };
+                    } else {
+                        statusGas = { ok: true, msg: 'validado' };
+                    }
+                }
             }
         } catch (e) {
-            msgEl.style.color = '#b40000';
-            msgEl.textContent = '❌ Erro de conexão com o Apps Script: ' + e.message;
-            return;
+            statusGas = { ok: false, msg: 'erro de conexão — ' + e.message };
         }
 
-        // NOVO — a MESMA credencial (o token muda todo dia, por isso este
-        // modal já existia) também vale pro servidor local
-        // (tools/atualizador-local/), que hoje faz a busca de foto do
-        // Alcatraz sem depender do Apps Script (ver js/cad-busca-foto.js)
-        // — salvar aqui evita ter que editar o .env dele toda vez que o
-        // token expira. Best-effort: se o servidor local não estiver
-        // aberto agora, só avisa — não bloqueia o sucesso do Apps Script
-        // (a pessoa pode simplesmente não estar usando ele hoje).
-        let statusLocal = ' (servidor local: não está rodando agora — abra tools/atualizador-local/app.py se for usar a busca de fotos por lá)';
+        // ── Servidor local — a MESMA credencial (o token muda todo dia,
+        // por isso este modal já existia) também vale pro servidor
+        // local (tools/atualizador-local/), que hoje faz a busca de foto
+        // do Alcatraz sem depender do Apps Script (ver
+        // js/cad-busca-foto.js). SEMPRE tentado, independente do
+        // resultado do Apps Script acima.
+        msgEl.textContent = 'Testando no servidor local...';
+        let statusLocal;
         if (typeof P3AtualizadorLocal !== 'undefined' && await P3AtualizadorLocal.disponivel()) {
             try {
                 const respLocal = await P3AtualizadorLocal.configurarCad(login, senha, token);
-                statusLocal = respLocal.ok
-                    ? ' (servidor local: ✅ login testado com sucesso)'
-                    : ' (servidor local: ❌ ' + (respLocal.erro || 'falhou') + ')';
+                statusLocal = { ok: !!respLocal.ok, msg: respLocal.ok ? 'login testado com sucesso' : (respLocal.erro || 'falhou') };
             } catch (e) {
-                statusLocal = ' (servidor local: ❌ erro de conexão — ' + e.message + ')';
+                statusLocal = { ok: false, msg: 'erro de conexão — ' + e.message };
             }
+        } else {
+            // null = "nem tentado" (servidor fechado/indisponível agora),
+            // diferente de false ("tentou e falhou") — ver ➖ no ícone abaixo.
+            statusLocal = { ok: null, msg: 'servidor local não está rodando agora' };
         }
 
-        localStorage.setItem(TOKEN_GEO_KEY, token);
-        localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
-        localStorage.setItem(CAD_LOGIN_KEY, login);
+        // Guarda o login/token no navegador (banner de status) se PELO
+        // MENOS UM dos dois funcionou — continuam válidos mesmo que só
+        // um lado tenha aceitado.
+        const algumFuncionou = statusGas.ok || statusLocal.ok === true;
+        if (algumFuncionou) {
+            localStorage.setItem(TOKEN_GEO_KEY, token);
+            localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
+            localStorage.setItem(CAD_LOGIN_KEY, login);
+        }
         document.getElementById('input-cad-senha').value = '';
-        msgEl.style.color = '#006432';
-        msgEl.textContent = '✅ Login completo validado!' + statusLocal;
 
-        setTimeout(function () {
-            fecharModalToken();
-            verificarTokenGEO();
-        }, 2200);
+        const iconeGas = statusGas.ok ? '✅' : '❌';
+        const iconeLocal = statusLocal.ok === true ? '✅' : (statusLocal.ok === false ? '❌' : '➖');
+        msgEl.style.color = algumFuncionou ? '#006432' : '#b40000';
+        msgEl.textContent = `Apps Script: ${iconeGas} ${statusGas.msg} | Servidor local: ${iconeLocal} ${statusLocal.msg}`;
+
+        // Só fecha sozinho se pelo menos um dos dois funcionou — se os
+        // DOIS falharam, deixa o modal aberto com o erro visível em vez
+        // de fechar e esconder o motivo.
+        if (algumFuncionou) {
+            setTimeout(function () {
+                fecharModalToken();
+                verificarTokenGEO();
+            }, 3500);
+        }
     };
 
     document.addEventListener('DOMContentLoaded', inicializarTokenGEO);
