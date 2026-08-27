@@ -108,6 +108,9 @@
         </div>
         <div style="display:flex;gap:8px;">
           <button class="btn-acao btn-secundario" onclick="carregarRelatorio()">&#8635; Atualizar</button>
+          <button class="btn-acao btn-secundario" id="btn-imprimir-relatorio" onclick="imprimirRelatorioCompleto()">
+            &#128424;&#65039; Imprimir Relatório
+          </button>
           <button class="btn-acao btn-primario" id="btn-sugestoes" onclick="abrirSugestoes()" style="display:none;">
             &#128161; Sugestões de Correção
           </button>
@@ -262,6 +265,22 @@
       carregarRelatorio(comarca, ini, fim);
     }
 
+    // CORREÇÃO (28/08/2026) — pedido explícito do usuário: antes, o
+    // Relatório Consolidado aparecia primeiro (assim que a busca de
+    // sentenças terminava) e só DEPOIS a aba de Aceitabilidade disparava
+    // suas PRÓPRIAS buscas (Firebase de guarnição + TCOs do GAS), com um
+    // "Calculando aceitabilidade..." visível por cima enquanto isso —
+    // um carregamento em 2 tempos, visivelmente separado (a reclamação:
+    // "tem uma parte que está sendo carregada e outra parte carregada
+    // posteriormente"). Agora as 3 fontes (sentenças, guarnição, TCO) são
+    // buscadas TODAS DE UMA VEZ (Promise.all, reaproveitando cache
+    // quando já existir de uma consulta anterior) e as duas seções só
+    // aparecem NA MESMA PASSADA, sem gap perceptível entre elas — mesmo
+    // princípio de um só "spinner" cobrindo tudo até estar pronto.
+    // As tabelas de agrupamento (mkSec — Atipicidade Material/Formal) e
+    // as listas de porcentagem de "Visão Geral da Aceitabilidade"/
+    // "Aceitabilidade por Ano" (dentro de renderAceitabilidade) não
+    // mudaram nada — só a ORQUESTRAÇÃO de quando tudo aparece.
     async function carregarRelatorio(comarca, dataIni, dataFim) {
       comarca = comarca || '';
       dataIni = (dataIni !== undefined) ? dataIni : _filtroPeriodoIni;
@@ -269,25 +288,51 @@
       _filtroPeriodoIni = dataIni || '';
       _filtroPeriodoFim = dataFim || '';
 
-      var el = document.getElementById('conteudo-relatorio');
-      el.innerHTML = '<div class="vz"><div class="vi">&#9203;</div><div class="vt">Carregando...</div></div>';
+      var elRel = document.getElementById('conteudo-relatorio');
+      var elAceit = document.getElementById('conteudo-aceitabilidade');
+      elRel.innerHTML = '<div class="vz"><div class="vi">&#9203;</div><div class="vt">Carregando relatório...</div></div>';
+      elAceit.innerHTML = '';
       try {
-        // Busca a lista BRUTA de sentenças uma única vez (mesma fonte da aba
-        // Registros) e reaproveita em memória — os filtros de comarca/período
-        // e a classificação são todos recalculados aqui no navegador.
-        if (!window._SENTENCAS_RAW) {
-          var resp = await fetch(GAS_URL + '?action=listarSentencas', { redirect: 'follow' });
-          var lista = await resp.json();
-          window._SENTENCAS_RAW = Array.isArray(lista) ? lista : [];
-        }
+        // Cada fonte só é buscada de verdade na 1ª vez — trocar filtro
+        // (comarca/período) reaproveita o cache e só recalcula em
+        // memória (buildDashboardFromRaw), sem bater na rede de novo.
+        var pSentencas = window._SENTENCAS_RAW
+          ? Promise.resolve(window._SENTENCAS_RAW)
+          : fetch(GAS_URL + '?action=listarSentencas', { redirect: 'follow' }).then(function (r) { return r.json(); });
+        var pGuarnicao = window._GUAR_DADOS
+          ? Promise.resolve(window._GUAR_DADOS)
+          : fetch(FB_GUARNICAO, { redirect: 'follow' }).then(function (r) { return r.json(); })
+              .catch(function (e) { console.warn('Guarnição:', e.message); return null; });
+        var pTco = window._TCO_DADOS
+          ? Promise.resolve(window._TCO_DADOS)
+          : fetch(TCO_URL + '?action=getTCO', { redirect: 'follow' }).then(function (r) { return r.json(); })
+              .catch(function (e) { console.warn('TCO:', e.message); return null; });
+
+        var resultados = await Promise.all([pSentencas, pGuarnicao, pTco]);
+
+        if (!window._SENTENCAS_RAW) window._SENTENCAS_RAW = Array.isArray(resultados[0]) ? resultados[0] : [];
         if (!window._SENTENCAS_RAW.length) {
-          el.innerHTML = '<div class="vz"><div class="vi">&#128229;</div><div class="vt">Nenhuma sentença registrada ainda</div><div class="vs">Importe dados na aba "Importar do Gem"</div></div>'; return;
+          elRel.innerHTML = '<div class="vz"><div class="vi">&#128229;</div><div class="vt">Nenhuma sentença registrada ainda</div><div class="vs">Importe dados na aba "Importar do Gem"</div></div>';
+          return;
         }
+
+        if (!window._GUAR_DADOS) {
+          var guarPorBoletim = {};
+          var fbGuar = resultados[1];
+          if (fbGuar && typeof fbGuar === 'object') {
+            Object.entries(fbGuar).forEach(function (e) {
+              var arr = Array.isArray(e[1]) ? e[1] : Object.values(e[1] || {});
+              guarPorBoletim[e[0]] = arr.filter(Boolean);
+            });
+          }
+          window._GUAR_DADOS = guarPorBoletim;
+        }
+        if (!window._TCO_DADOS) window._TCO_DADOS = Array.isArray(resultados[2]) ? resultados[2] : [];
 
         var d = buildDashboardFromRaw(window._SENTENCAS_RAW, comarca, dataIni, dataFim);
 
         if (!d.total) {
-          el.innerHTML = '<div class="vz"><div class="vi">&#128269;</div><div class="vt">Nenhuma sentença no filtro atual</div><div class="vs">Tente ampliar o período ou trocar a comarca</div></div>';
+          elRel.innerHTML = '<div class="vz"><div class="vi">&#128269;</div><div class="vt">Nenhuma sentença no filtro atual</div><div class="vs">Tente ampliar o período ou trocar a comarca</div></div>';
           return;
         }
 
@@ -306,12 +351,18 @@
         window._EM = d.errosMaterial;
         window._EF = d.errosFormais;
         mostrarBtnSugestoes(d);
-        el.innerHTML = renderRel(d);
-        setTimeout(ativarToggle, 0);
         window._DADOS_RELATORIO_ACEIT = d;
-        carregarAceitabilidade();
+
+        // As duas seções são escritas no DOM em sequência SÍNCRONA (sem
+        // "await" entre elas) — aparecem juntas na mesma renderização do
+        // navegador, não uma antes da outra com um intervalo visível.
+        elRel.innerHTML = renderRel(d);
+        setTimeout(ativarToggle, 0);
+        elAceit.innerHTML = renderAceitabilidade(d, window._GUAR_DADOS, window._TCO_DADOS);
+        filtrarMilitares();
       } catch (e) {
-        el.innerHTML = '<div class="al ae">Erro ao carregar: ' + esc(e.message) + '</div>';
+        elRel.innerHTML = '<div class="al ae">Erro ao carregar: ' + esc(e.message) + '</div>';
+        elAceit.innerHTML = '';
       }
     }
 
@@ -1258,48 +1309,13 @@ function gerarHTMLSugestoes(d) {
     // ACEITABILIDADE & GUARNIÇÃO
     // ════════════════════════════════════════════════════════════════
 
-    // Cache global
+    // Cache global — preenchido dentro de carregarRelatorio() agora (ver
+    // CORREÇÃO 28/08/2026 lá em cima); a antiga carregarAceitabilidade()
+    // (que buscava isso separadamente, DEPOIS do relatório principal já
+    // estar na tela) foi removida — era a causa do carregamento em 2
+    // tempos.
     window._TCO_DADOS     = null;  // array de TCOs do GAS
     window._GUAR_DADOS    = null;  // objeto {boletim: [integrantes]} do Firebase
-
-    async function carregarAceitabilidade() {
-      var el = document.getElementById('conteudo-aceitabilidade');
-      if (!el) return;
-
-      var d = window._DADOS_RELATORIO_ACEIT;
-      if (!d || !d.porMotivo) {
-        el.innerHTML = '<div class="alerta alerta-info">Carregue o relatório primeiro.</div>';
-        return;
-      }
-
-      el.innerHTML = '<div class="vz"><div class="vi">&#9203;</div><div class="vt">Calculando aceitabilidade...</div></div>';
-
-      var guarPorBoletim = {};
-      var tcos = [];
-
-      // Guarnição (Firebase) e TCOs em paralelo — erros são silenciosos
-      try {
-        var [resFB, resTCO] = await Promise.all([
-          fetch(FB_GUARNICAO, { redirect:'follow' }),
-          fetch(TCO_URL + '?action=getTCO', { redirect:'follow' })
-        ]);
-        var fbGuar  = await resFB.json();
-        var tcoJson = await resTCO.json();
-
-        if (fbGuar && typeof fbGuar === 'object') {
-          Object.entries(fbGuar).forEach(function(e) {
-            var arr = Array.isArray(e[1]) ? e[1] : Object.values(e[1] || {});
-            guarPorBoletim[e[0]] = arr.filter(Boolean);
-          });
-        }
-        if (Array.isArray(tcoJson)) tcos = tcoJson;
-        window._GUAR_DADOS = guarPorBoletim;
-        window._TCO_DADOS  = tcos;
-      } catch(e) { console.warn('Guarnição/TCO:', e.message); }
-
-      el.innerHTML = renderAceitabilidade(d, guarPorBoletim, tcos);
-      filtrarMilitares();
-    }
 
     // ── Renderiza toda a aba de Aceitabilidade ─────────────────────
     function renderAceitabilidade(d, guarPorBoletim, tcos) {
@@ -1993,7 +2009,361 @@ function gerarHTMLSugestoes(d) {
     }
 
     function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
-  
+
+    // ════════════════════════════════════════════════════════════════
+    // IMPRESSÃO DO RELATÓRIO COMPLETO (28/08/2026) — pedido explícito do
+    // usuário: botão de imprimir o relatório inteiro (Relatório
+    // Consolidado + Aceitabilidade juntos), no MESMO padrão visual de
+    // js/core/modal-mudancas-movimentacao.js / relatorios/relatorio_preditiva.html
+    // (capa em gradiente azul-marinho + brasão, cartão de seção com selo
+    // numerado), com CADA seção comentada em texto corrido.
+    //
+    // Cada bloco (KPIs, gráficos, tabelas de agrupamento, aceitabilidade)
+    // é CLONADO do que já está desenhado na tela — nunca redesenhado do
+    // zero — porque o pedido foi explícito: "mantenha as tabelas de
+    // agrupamento como estão e a lista de porcentagem da visão geral de
+    // aceitabilidade e da aceitabilidade por ano". Clonar garante que
+    // sai IDÊNTICO ao que o usuário já está vendo; só ganha a moldura de
+    // impressão ao redor e um parágrafo de comentário (gerado a partir
+    // dos MESMOS números já calculados em `d` — nunca inventa dado novo).
+    // ════════════════════════════════════════════════════════════════
+    var QTCO_IMPRESSAO_ESTILO =
+      '#qtco-print-raiz { display: none; }' +
+      '@media print {' +
+      '  body > *:not(#qtco-print-raiz) { display: none !important; }' +
+      '  #qtco-print-raiz { display: block !important; font-family: Arial, Helvetica, sans-serif; color: #1a1f36; background: #fff; padding: 1rem; }' +
+      '  #qtco-print-raiz .qp-capa { background: linear-gradient(135deg, #0a1f4d 0%, #1a3a6e 60%, #0d2a5c 100%); border-radius: .75rem; padding: 1.75rem 1.5rem; color: #fff; margin-bottom: 1.25rem; display: flex; flex-direction: column; }' +
+      '  #qtco-print-raiz .qp-capa-header { display: flex; flex-direction: row; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }' +
+      '  #qtco-print-raiz .qp-capa-header img { height: 3.5rem; }' +
+      '  #qtco-print-raiz .qp-capa-org h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .04em; }' +
+      '  #qtco-print-raiz .qp-capa-org h2 { font-size: .8rem; opacity: .7; margin-top: .25rem; font-weight: 400; }' +
+      '  #qtco-print-raiz .qp-capa-titulo { border-top: .0625rem solid rgba(255,255,255,.25); padding-top: 1rem; margin-top: .75rem; display: flex; flex-direction: column; }' +
+      '  #qtco-print-raiz .qp-capa-titulo h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; }' +
+      '  #qtco-print-raiz .qp-capa-titulo p { font-size: .8rem; opacity: .65; margin-top: .3rem; }' +
+      '  #qtco-print-raiz .qp-capa-meta { display: flex; flex-direction: row; flex-wrap: wrap; gap: .4rem 1.25rem; margin-top: 1rem; font-size: .78rem; opacity: .8; }' +
+      '  #qtco-print-raiz .qp-secao { page-break-inside: avoid; margin-bottom: 1.5rem; }' +
+      '  #qtco-print-raiz .qp-secao-titulo { display: flex; align-items: flex-start; gap: .8rem; margin-bottom: .75rem; padding-bottom: .6rem; border-bottom: .125rem solid #e8ecf5; }' +
+      '  #qtco-print-raiz .qp-secao-numero { width: 2rem; height: 2rem; border-radius: 50%; background: #0a448f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; flex-shrink: 0; }' +
+      '  #qtco-print-raiz .qp-secao-titulo h2 { font-size: .92rem; font-weight: 700; color: #0a1f4d; }' +
+      '  #qtco-print-raiz .qp-secao-titulo p { font-size: .72rem; color: #9ea3b5; margin-top: .15rem; }' +
+      '  #qtco-print-raiz .qp-comentario { background: #f4f6fb; border-left: 3px solid #0a448f; border-radius: 0 .375rem .375rem 0; padding: .7rem .9rem; margin-bottom: .9rem; font-size: .78rem; line-height: 1.65; color: #384258; }' +
+      '  #qtco-print-raiz .qp-comentario strong { color: #0a1f4d; }' +
+      '  #qtco-print-raiz .qp-conteudo-clonado { font-size: .78rem; }' +
+      '  #qtco-print-raiz button, #qtco-print-raiz input, #qtco-print-raiz select { display: none !important; }' +
+      '  #qtco-print-raiz .fd.visivel { display: block !important; }' +
+      '  #qtco-print-raiz .qp-rodape { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: .5rem; border-top: .125rem solid #e8ecf5; margin-top: 1.5rem; padding-top: .85rem; font-size: .72rem; color: #9ea3b5; line-height: 1.6; }' +
+      '}';
+
+    function _qtcoGarantirDomImpressao() {
+      if (document.getElementById('qtco-print-raiz')) return;
+      var style = document.createElement('style');
+      style.textContent = QTCO_IMPRESSAO_ESTILO;
+      document.head.appendChild(style);
+      var raiz = document.createElement('div');
+      raiz.id = 'qtco-print-raiz';
+      document.body.appendChild(raiz);
+    }
+
+    // node: elemento original da tela (será CLONADO — não some da tela)
+    // OU, se jaMontado=true, um nó já pronto pra ser movido direto (não
+    // clona de novo — usado quando já montei um wrapper combinando mais
+    // de um bloco, ver imprimirRelatorioCompleto).
+    function _qtcoMontarSecao(numero, titulo, subtitulo, comentarioHtml, node, jaMontado) {
+      var secao = document.createElement('div');
+      secao.className = 'qp-secao';
+      var tituloDiv = document.createElement('div');
+      tituloDiv.className = 'qp-secao-titulo';
+      tituloDiv.innerHTML = '<div class="qp-secao-numero">' + numero + '</div>' +
+        '<div><h2>' + esc(titulo) + '</h2>' + (subtitulo ? '<p>' + esc(subtitulo) + '</p>' : '') + '</div>';
+      secao.appendChild(tituloDiv);
+      if (comentarioHtml) {
+        var com = document.createElement('div');
+        com.className = 'qp-comentario';
+        com.innerHTML = comentarioHtml;
+        secao.appendChild(com);
+      }
+      if (node) {
+        var conteudo = jaMontado ? node : node.cloneNode(true);
+        conteudo.className = (conteudo.className || '') + ' qp-conteudo-clonado';
+        secao.appendChild(conteudo);
+      }
+      return secao;
+    }
+
+    // ── Geradores de comentário — cada um lê os MESMOS dados já
+    // calculados pro relatório na tela (nunca inventa número novo). ──
+    function _qtcoTopDoObj(obj) {
+      if (!obj) return null;
+      var entries = Array.isArray(obj) ? obj.map(function (e) { return [e.texto, e.qtd]; }) : Object.entries(obj);
+      if (!entries.length) return null;
+      entries.sort(function (a, b) { return b[1] - a[1]; });
+      var total = entries.reduce(function (a, e) { return a + e[1]; }, 0);
+      return { chave: entries[0][0], qtd: entries[0][1], total: total };
+    }
+
+    function comentarioResumoGeral(d) {
+      var total = d.total || 0;
+      var arquiv = d.totalArquivamentos || somaObj(d.porMotivo);
+      var pArquiv = total > 0 ? Math.round(arquiv / total * 100) : 0;
+      var atipMat = buscarMotivo(d.porMotivo, 'atipicidade material');
+      var atipForm = buscarMotivo(d.porMotivo, 'atipicidade formal');
+      var trans = buscarMotivo(d.porMotivo, 'transac');
+      var anpp = buscarMotivo(d.porMotivo, 'anpp');
+      var comarcaSel = document.getElementById('sel-comarca');
+      var comarcaTxt = (comarcaSel && comarcaSel.value) ? (' na comarca de ' + esc(comarcaSel.value)) : ' em todas as comarcas monitoradas';
+      var periodoTxt = (_filtroPeriodoIni || _filtroPeriodoFim)
+        ? (', no período de ' + (esc(_filtroPeriodoIni) || '…') + ' a ' + (esc(_filtroPeriodoFim) || '…'))
+        : ', em todo o período disponível na base';
+      return '<p>Foram analisadas <strong>' + total + ' sentença(s)/decisão(ões)</strong>' + comarcaTxt + periodoTxt + '. ' +
+        'Desse total, <strong>' + arquiv + ' (' + pArquiv + '%)</strong> resultaram em arquivamento. ' +
+        'Dentre os motivos de arquivamento, destacam-se a atipicidade material (' + atipMat + ' caso(s)) e a atipicidade formal (' + atipForm +
+        ' caso(s)) — ambas indicam falha na tipificação ou na instrução do TCO na origem. Já a transação penal (' + trans + ') e o ANPP (' + anpp +
+        ') representam desfechos consensuais, quando a medida aplicada foi efetivamente cumprida pelo autor do fato.</p>';
+    }
+
+    function comentarioDistribuicao(d) {
+      var tRes = _qtcoTopDoObj(d.porResultado), tMot = _qtcoTopDoObj(d.porMotivo),
+          tAno = _qtcoTopDoObj(d.porAno), tTip = _qtcoTopDoObj(d.porTipificacao);
+      var partes = [];
+      if (tRes) partes.push('o resultado mais frequente foi <strong>' + esc(tRes.chave) + '</strong>, com ' + tRes.qtd + ' ocorrência(s) (' + Math.round(tRes.qtd / tRes.total * 100) + '% do total)');
+      if (tMot) partes.push('o motivo de arquivamento mais recorrente foi <strong>' + esc(tMot.chave) + '</strong> (' + tMot.qtd + ' caso(s))');
+      if (tAno) partes.push('o ano com mais registros foi <strong>' + esc(tAno.chave) + '</strong> (' + tAno.qtd + ')');
+      if (tTip) partes.push('a tipificação penal mais recorrente foi <strong>' + esc(tTip.chave) + '</strong> (' + tTip.qtd + ' caso(s))');
+      if (!partes.length) return '';
+      return '<p>Na distribuição do filtro atual, ' + partes.join('; ') + '. Esses picos ajudam a direcionar onde concentrar esforço de instrução e correção de TCOs.</p>';
+    }
+
+    function comentarioTipoDocumento(d) {
+      var ptd = d.porTipoDocumento || {};
+      var sent = ptd['Sentença'] || ptd['Sentenca'] || 0;
+      var dec = ptd['Decisão'] || ptd['Decisao'] || 0;
+      var total = sent + dec;
+      if (!total) return '';
+      var pSent = Math.round(sent / total * 100), pDec = Math.round(dec / total * 100);
+      return '<p>Do total classificado por tipo de documento, <strong>' + sent + ' (' + pSent + '%)</strong> são sentenças judiciais e <strong>' +
+        dec + ' (' + pDec + '%)</strong> são decisões de arquivamento (despacho sem sentença formal).</p>';
+    }
+
+    function comentarioFalhas(lista, rotulo) {
+      lista = lista || [];
+      if (!lista.length) return '<p>Nenhuma ocorrência de ' + esc(rotulo) + ' identificada no filtro atual.</p>';
+      var total = lista.reduce(function (a, e) { return a + (e.qtd || 0); }, 0);
+      var top = lista.slice().sort(function (a, b) { return b.qtd - a.qtd; })[0];
+      var pTop = total > 0 ? Math.round(top.qtd / total * 100) : 0;
+      return '<p>Foram identificados <strong>' + lista.length + ' tipo(s)</strong> de ' + esc(rotulo) + ', somando <strong>' + total + ' processo(s)</strong>. ' +
+        'O padrão mais recorrente foi "<strong>' + esc(top.texto) + '</strong>", presente em ' + top.qtd + ' processo(s) (' + pTop +
+        '% do total desta categoria). Na tela (não na versão impressa), clicar em cada linha mostra os processos correspondentes.</p>';
+    }
+
+    function comentarioAceitGeral(d) {
+      var mot = d.porMotivo || {};
+      var totalSent = d.total || 0;
+      var totalAceit = Object.entries(mot).reduce(function (acc, e) { return acc + (motivoEhAceitavel(e[0]) ? e[1] : 0); }, 0);
+      var totalFalha = somaObj(mot) - totalAceit;
+      var taxa = totalSent > 0 ? Math.round(totalAceit / totalSent * 100) : 0;
+      var classif = taxa >= 70 ? 'ALTA' : taxa >= 50 ? 'MEDIANA' : 'BAIXA';
+      var leitura = taxa >= 70
+        ? 'indicando que a grande maioria dos TCOs lavrados cumpriu seu papel de justiça consensual, com poucas falhas de origem.'
+        : taxa >= 50
+          ? 'indicando espaço real de melhoria na instrução/tipificação de uma parcela relevante dos TCOs.'
+          : 'indicando um volume preocupante de falhas de origem — vale revisar os motivos de arquivamento mais recorrentes (seção de falhas acima) para orientar a instrução.';
+      return '<p>De um total de <strong>' + totalSent + ' sentença(s)/decisão(ões)</strong> analisadas, <strong>' + totalAceit + '</strong> foram consideradas aceitáveis e <strong>' +
+        totalFalha + '</strong> tiveram alguma falha de origem. A taxa de aceitabilidade geral é de <strong>' + taxa + '%</strong>, classificada como <strong>' +
+        classif + '</strong> — ' + leitura + '</p>';
+    }
+
+    function comentarioAceitPorAno(d) {
+      var porMotivoAno = d.porMotivoAno || {};
+      var anosDisp = Object.keys(porMotivoAno).filter(function (a) { return /^\d{4}$/.test(a); }).map(Number).sort();
+      if (!anosDisp.length) return '';
+      var taxas = anosDisp.map(function (ano) {
+        var motAno = porMotivoAno[ano] || {};
+        var textos = motAno._textos || {};
+        var ac = 0, fa = 0;
+        Object.entries(motAno).forEach(function (e) {
+          if (e[0] === '_textos') return;
+          if (motivoEhAceitavel(textos[e[0]] || e[0])) ac += e[1]; else fa += e[1];
+        });
+        var total = ac + fa;
+        return { ano: ano, taxa: total > 0 ? Math.round(ac / total * 100) : 0 };
+      });
+      var primeiro = taxas[0], ultimo = taxas[taxas.length - 1], tendenciaTxt;
+      if (taxas.length < 2) {
+        tendenciaTxt = 'Só há dados de um ano no filtro atual, então não é possível comparar evolução.';
+      } else if (ultimo.taxa > primeiro.taxa) {
+        tendenciaTxt = 'a taxa subiu de ' + primeiro.taxa + '% em ' + primeiro.ano + ' para ' + ultimo.taxa + '% em ' + ultimo.ano +
+          ', uma melhora de ' + (ultimo.taxa - primeiro.taxa) + ' ponto(s) percentual(is).';
+      } else if (ultimo.taxa < primeiro.taxa) {
+        tendenciaTxt = 'a taxa caiu de ' + primeiro.taxa + '% em ' + primeiro.ano + ' para ' + ultimo.taxa + '% em ' + ultimo.ano +
+          ', uma piora de ' + (primeiro.taxa - ultimo.taxa) + ' ponto(s) percentual(is) — vale investigar o que mudou.';
+      } else {
+        tendenciaTxt = 'a taxa se manteve estável em ' + ultimo.taxa + '% entre ' + primeiro.ano + ' e ' + ultimo.ano + '.';
+      }
+      var melhorAno = taxas.slice().sort(function (a, b) { return b.taxa - a.taxa; })[0];
+      return '<p>Comparando os ' + taxas.length + ' ano(s) com dados no filtro atual, ' + tendenciaTxt + ' O melhor desempenho foi em <strong>' +
+        melhorAno.ano + '</strong>, com taxa de <strong>' + melhorAno.taxa + '%</strong>.</p>';
+    }
+
+    function comentarioCategorias(d) {
+      var catDados = d.porCategoria || {};
+      var catEntries = Object.values(catDados);
+      if (!catEntries.length) return '';
+      var grupos = {};
+      catEntries.forEach(function (c) { grupos[c.grupo] = (grupos[c.grupo] || 0) + c.qtd; });
+      var totalCat = Object.values(grupos).reduce(function (a, b) { return a + b; }, 0);
+      var LABELS = {
+        aceitavel: 'Aceitação Plena/Resolutiva', processual: 'Aceitação Processual', falha: 'Não Aceitação (Rejeição)',
+        externo: 'Extinção por Fatores Alheios', neutro: 'Neutro/Declinação', outros: 'Outros'
+      };
+      var dominante = Object.entries(grupos).sort(function (a, b) { return b[1] - a[1]; })[0];
+      var pctDom = totalCat > 0 ? Math.round(dominante[1] / totalCat * 100) : 0;
+      return '<p>A categoria predominante foi <strong>' + (LABELS[dominante[0]] || dominante[0]) + '</strong>, respondendo por <strong>' + pctDom +
+        '%</strong> (' + dominante[1] + ' de ' + totalCat + ') dos casos classificados. A tabela abaixo detalha cada tipo de decisão dentro dessas categorias.</p>';
+    }
+
+    function comentarioDetalhamentoMotivo(d) {
+      var totalMotivos = Object.keys(d.porMotivo || {}).length;
+      if (!totalMotivos) return '';
+      return '<p>A tabela abaixo lista individualmente cada um dos <strong>' + totalMotivos +
+        ' motivo(s)</strong> de arquivamento identificados, já classificados como aceitável ou com falha conforme o critério explicado na seção anterior.</p>';
+    }
+
+    function comentarioDistribuicaoPorAno(d) {
+      var entries = Object.entries(d.porAno || {}).filter(function (e) { return /^\d{4}$/.test(String(e[0])); });
+      if (!entries.length) return '';
+      entries.sort(function (a, b) { return b[1] - a[1]; });
+      var top = entries[0];
+      return '<p>O ano de <strong>' + top[0] + '</strong> concentrou o maior volume de sentenças/decisões (' + top[1] + '), dentre os ' +
+        entries.length + ' ano(s) com registro no filtro atual.</p>';
+    }
+
+    function comentarioMilitares() {
+      var ranking = window._MIL_RANKING_ATUAL || [];
+      if (!ranking.length) return '<p>Sem dados suficientes de guarnição/TCO pra montar o ranking por militar no filtro atual.</p>';
+      var maisFalhas = ranking.slice().sort(function (a, b) { return b.falhas - a.falhas; })[0];
+      var maisAceit = ranking.slice().sort(function (a, b) { return b.aceitaveis - a.aceitaveis; })[0];
+      return '<p>Ranking com <strong>' + ranking.length + ' militar(es)</strong> (top 20, ordenado por processos com falha).' +
+        (maisFalhas && maisFalhas.falhas > 0 ? ' Maior número de falhas: <strong>' + esc(maisFalhas.nome) + '</strong> (' + maisFalhas.falhas + ').' : '') +
+        (maisAceit && maisAceit.aceitaveis > 0 ? ' Maior número de aceitáveis: <strong>' + esc(maisAceit.nome) + '</strong> (' + maisAceit.aceitaveis + ').' : '') +
+        '</p>';
+    }
+
+    // ── Monta o documento inteiro e chama window.print() ──────────────
+    function imprimirRelatorioCompleto() {
+      var d = window._DADOS_RELATORIO_ACEIT;
+      if (!d) { alert('Carregue o relatório primeiro (aba Relatório → Atualizar) antes de imprimir.'); return; }
+
+      _qtcoGarantirDomImpressao();
+      var raiz = document.getElementById('qtco-print-raiz');
+      raiz.innerHTML = '';
+
+      var relEl = document.getElementById('conteudo-relatorio');
+      var aceitEl = document.getElementById('conteudo-aceitabilidade');
+      if (!relEl || !aceitEl) return;
+
+      var comarcaSel = document.getElementById('sel-comarca');
+      var comarcaTxt = (comarcaSel && comarcaSel.value) ? comarcaSel.value : 'Todas as comarcas';
+      var periodoTxt = (_filtroPeriodoIni || _filtroPeriodoFim)
+        ? ((_filtroPeriodoIni || '…') + ' até ' + (_filtroPeriodoFim || '…'))
+        : 'Todo o período disponível';
+      var agora = new Date();
+      var agoraFmt = String(agora.getDate()).padStart(2, '0') + '/' + String(agora.getMonth() + 1).padStart(2, '0') + '/' + agora.getFullYear() +
+        ' ' + String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+
+      // ── Capa ──────────────────────────────────────────────────────
+      var capa = document.createElement('div');
+      capa.className = 'qp-capa';
+      capa.innerHTML =
+        '<div class="qp-capa-header">' +
+        '<img src="../img/brasao.png" alt="Brasão 10º BPM">' +
+        '<div class="qp-capa-org"><h1>SISTEMA DE GERENCIAMENTO P3</h1><h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS</h2></div>' +
+        '</div>' +
+        '<div class="qp-capa-titulo">' +
+        '<h3>RELATÓRIO QUALITATIVO DE TCO — ANÁLISE DE SENTENÇAS E DECISÕES</h3>' +
+        '<p>Consolidado de resultados, motivos de arquivamento, falhas de tipificação e taxa de aceitabilidade</p>' +
+        '</div>' +
+        '<div class="qp-capa-meta">' +
+        '<span>&#127963; Comarca: ' + esc(comarcaTxt) + '</span>' +
+        '<span>&#128197; Período: ' + esc(periodoTxt) + '</span>' +
+        '<span>&#128203; Total de sentenças: ' + (d.total || 0) + '</span>' +
+        '<span>&#128424;&#65039; Impresso em ' + agoraFmt + '</span>' +
+        '</div>';
+      raiz.appendChild(capa);
+
+      var n = 1;
+
+      // ── 1. Resumo Geral (KPIs) ───────────────────────────────────
+      var kg = relEl.querySelector(':scope > .kg');
+      if (kg) raiz.appendChild(_qtcoMontarSecao(n++, 'Resumo Geral', 'Indicadores consolidados do período/filtro atual', comentarioResumoGeral(d), kg));
+
+      // ── 2. Distribuição (gráficos: Resultado/Motivo/Ano/Tipificação) ──
+      var gg = relEl.querySelector(':scope > .gg');
+      if (gg) raiz.appendChild(_qtcoMontarSecao(n++, 'Distribuição — Resultado, Motivo, Ano e Tipificação', 'Top ocorrências de cada categoria', comentarioDistribuicao(d), gg));
+
+      // ── 2b. Tipo de Documento (só existe se houver mais de 1 tipo) ──
+      relEl.querySelectorAll(':scope > .gc').forEach(function (gc) {
+        var titEl = gc.querySelector('.gt');
+        if (titEl && /Tipo de Documento/i.test(titEl.textContent)) {
+          raiz.appendChild(_qtcoMontarSecao(n++, 'Tipo de Documento', 'Sentenças vs. decisões de arquivamento', comentarioTipoDocumento(d), gc));
+        }
+      });
+
+      // ── 3/4. Tabelas de agrupamento — Atipicidade Material/Formal
+      // (MANTIDAS COMO ESTÃO — clonadas direto da tela, sem mudar nada) ──
+      relEl.querySelectorAll(':scope > .fs').forEach(function (fs) {
+        var tEl = fs.querySelector('.fht');
+        var textoOriginal = tEl ? tEl.textContent.trim() : 'Falhas';
+        var ehMaterial = /Material/i.test(textoOriginal);
+        var titulo = textoOriginal.replace(/^\S+\s*/, ''); // tira o emoji do começo
+        raiz.appendChild(_qtcoMontarSecao(n++, titulo, 'Tabela de agrupamento — mesma exibida na tela',
+          comentarioFalhas(ehMaterial ? d.errosMaterial : d.errosFormais, ehMaterial ? 'atipicidade material' : 'atipicidade formal'), fs));
+      });
+
+      // ── 5+. Aceitabilidade — Visão Geral / Por Ano / Categorias /
+      // Detalhamento / Distribuição por Ano / Militares (nessa ordem,
+      // igual já aparece em #conteudo-aceitabilidade). "Visão Geral" e
+      // "Aceitabilidade por Ano" são as duas MANTIDAS COMO ESTÃO por
+      // pedido explícito — clonadas direto, sem mudar nada.
+      var kgAceit = aceitEl.querySelector(':scope > .kg');
+      var cards = aceitEl.querySelectorAll(':scope > .card');
+      cards.forEach(function (card, idx) {
+        var tEl = card.querySelector('.card-titulo');
+        var tituloBruto = tEl ? tEl.textContent.trim() : 'Seção';
+        var titulo = tituloBruto.replace(/^\S+\s*/, '');
+        var comentario = '';
+        if (/Visão Geral da Aceitabilidade/i.test(titulo)) comentario = comentarioAceitGeral(d);
+        else if (/Aceitabilidade por Ano/i.test(titulo)) comentario = comentarioAceitPorAno(d);
+        else if (/Categorias de Aceitabilidade/i.test(titulo)) comentario = comentarioCategorias(d);
+        else if (/Detalhamento por Motivo/i.test(titulo)) comentario = comentarioDetalhamentoMotivo(d);
+        else if (/Distribuição de Sentenças por Ano/i.test(titulo)) comentario = comentarioDistribuicaoPorAno(d);
+        else if (/Militares/i.test(titulo)) comentario = comentarioMilitares();
+
+        // O card de "Indicadores de Aceitabilidade" (.kg, solto, sem
+        // card-titulo próprio) fica junto do 1º card ("Visão Geral") —
+        // mesmo assunto, evita 2 seções seguidas repetindo o comentário.
+        var conteudo = card;
+        if (idx === 0 && kgAceit) {
+          var wrapper = document.createElement('div');
+          wrapper.appendChild(kgAceit.cloneNode(true));
+          wrapper.appendChild(card.cloneNode(true));
+          conteudo = wrapper;
+          raiz.appendChild(_qtcoMontarSecao(n++, titulo, '', comentario, conteudo, true));
+        } else {
+          raiz.appendChild(_qtcoMontarSecao(n++, titulo, '', comentario, conteudo));
+        }
+      });
+
+      // ── Rodapé ────────────────────────────────────────────────────
+      var rodape = document.createElement('div');
+      rodape.className = 'qp-rodape';
+      rodape.innerHTML =
+        '<div><strong>Sistema P3</strong> — 10º Batalhão de Polícia Militar<br>Seção de Planejamento, Ensino e Instrução — P3/10ºBPM</div>' +
+        '<div style="text-align:right;">Relatório gerado automaticamente — ' + agoraFmt + '</div>';
+      raiz.appendChild(rodape);
+
+      window.print();
+    }
+
   // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
   // js/core/header-nav.js.
   document.addEventListener('DOMContentLoaded', async function () {
