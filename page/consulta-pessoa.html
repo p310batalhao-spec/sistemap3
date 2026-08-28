@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema P3 — Consulta Integrada de Pessoas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="../css/theme.css">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+  <style>
+    /* ══════════════════════════════════════════════════════════════
+       Consulta Integrada de Pessoas — página NOVA, fora de Autores
+       (pedido explícito do usuário). Recurso sensível — só aparece pra
+       quem tem nível P2/ADMIN (ver requireP2OuAdmin() no <script> no
+       fim do arquivo), mesmo critério já usado em
+       page/busca-facial-campo.html. Depende do servidor Python local
+       (tools/atualizador-local/) estar rodando — as fontes (CAD, TJAL)
+       não têm equivalente via Apps Script, diferente de Autores.
+       ══════════════════════════════════════════════════════════════ */
+    .cip-wrap { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .cip-busca {
+      display: flex; gap: 10px; align-items: center; margin-bottom: 18px; flex-wrap: wrap;
+    }
+    .cip-busca input[type="text"] {
+      flex: 1; min-width: 260px; padding: 12px 16px; border-radius: 8px;
+      border: 1px solid var(--p3-border); background: var(--p3-surface); color: var(--p3-text); font-size: 15px;
+    }
+    .cip-busca button {
+      padding: 12px 22px; border-radius: 8px; border: none; cursor: pointer;
+      background: var(--p3-blue-700); color: #fff; font-size: 14px; font-weight: 600;
+    }
+    .cip-busca button:hover { background: var(--p3-blue-500); }
+    .cip-busca button:disabled { opacity: .6; cursor: not-allowed; }
+    #cip-aviso-servidor {
+      display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;
+      background: #fff2cc; color: #8a6100; border: 1px solid #f0d98a;
+    }
+    #cip-status-msg { font-size: 13px; color: var(--p3-text-muted); margin-bottom: 12px; }
+
+    /* Cabeçalho da pessoa */
+    .cip-header-pessoa {
+      display: none; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 10px;
+      padding: 18px 22px; margin-bottom: 18px; box-shadow: var(--p3-shadow-lg); gap: 18px; align-items: flex-start;
+    }
+    .cip-header-pessoa.visivel { display: flex; }
+    .cip-header-foto {
+      width: 84px; height: 84px; border-radius: 10px; background: var(--p3-bg); border: 1px solid var(--p3-border);
+      display: flex; align-items: center; justify-content: center; font-size: 34px; flex-shrink: 0; opacity: .5;
+    }
+    .cip-header-info h2 { font-size: 19px; color: var(--p3-text); margin-bottom: 6px; }
+    .cip-header-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 20px;
+      font-size: 12.5px; color: var(--p3-text-muted);
+    }
+    .cip-header-grid b { color: var(--p3-text); font-weight: 600; }
+    .cip-header-alerta {
+      display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 20px;
+      background: var(--p3-danger); color: #fff; font-size: 12px; font-weight: 700;
+    }
+
+    /* Abas */
+    .cip-abas {
+      display: flex; gap: 4px; border-bottom: 2px solid var(--p3-border); margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .cip-aba-btn {
+      padding: 9px 16px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600;
+      color: var(--p3-text-muted); border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 6px;
+    }
+    .cip-aba-btn.ativa { color: var(--p3-blue-700); border-bottom-color: var(--p3-blue-700); }
+    .cip-aba-btn .cip-badge-contagem {
+      background: var(--p3-border); color: var(--p3-text-muted); border-radius: 20px; padding: 1px 8px; font-size: 11px;
+    }
+    .cip-aba-btn.ativa .cip-badge-contagem { background: var(--p3-blue-700); color: #fff; }
+    .cip-painel { display: none; }
+    .cip-painel.ativo { display: block; }
+
+    .cip-card {
+      background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 10px;
+      padding: 16px 20px; margin-bottom: 14px; box-shadow: var(--p3-shadow-lg);
+    }
+    .cip-card-titulo { font-size: 13.5px; font-weight: 700; color: var(--p3-blue-700); margin-bottom: 10px; }
+    .cip-vazio { padding: 30px 0; text-align: center; color: var(--p3-text-muted); font-size: 13px; }
+
+    .cip-tabela-wrap { overflow-x: auto; }
+    table.cip-tabela { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    table.cip-tabela th {
+      background: var(--p3-bg); color: var(--p3-text-muted); text-align: left; padding: 8px 12px;
+      font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+      border-bottom: 1px solid var(--p3-border); white-space: nowrap;
+    }
+    table.cip-tabela td { padding: 9px 12px; border-bottom: 1px solid var(--p3-border); vertical-align: top; color: var(--p3-text); }
+    table.cip-tabela tbody tr { cursor: pointer; }
+    table.cip-tabela tbody tr:hover { background: rgba(127,127,127,.08); }
+    .cip-detalhe-linha { display: none; background: rgba(47,95,221,.05); }
+    .cip-detalhe-linha.visivel { display: table-row; }
+    .cip-detalhe-linha td { padding: 14px 20px; }
+    .cip-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 6px 18px; font-size: 12px; }
+    .cip-kv div b { color: var(--p3-text-muted); font-weight: 600; margin-right: 4px; }
+
+    .cip-pessoa-link { color: var(--p3-blue-700); font-weight: 600; cursor: pointer; text-decoration: underline dotted; }
+    .cip-fonte-tag {
+      display: inline-block; padding: 2px 9px; border-radius: 20px; background: var(--p3-border);
+      color: var(--p3-text-muted); font-size: 10.5px; font-weight: 600; margin-left: 6px;
+    }
+    .cip-status-ok { color: #1e6b34; }
+    .cip-status-erro { color: #8f1f1f; }
+
+    .cip-timeline { display: flex; flex-direction: column; gap: 0; }
+    .cip-timeline-ano { font-size: 15px; font-weight: 700; color: var(--p3-blue-700); margin: 14px 0 8px; }
+    .cip-timeline-item {
+      display: flex; gap: 12px; padding: 8px 0; border-left: 2px solid var(--p3-border); padding-left: 16px; position: relative;
+    }
+    .cip-timeline-item::before {
+      content: ''; position: absolute; left: -5px; top: 14px; width: 8px; height: 8px; border-radius: 50%; background: var(--p3-blue-700);
+    }
+    .cip-timeline-data { font-size: 11px; color: var(--p3-text-muted); white-space: nowrap; min-width: 90px; }
+    .cip-timeline-texto { font-size: 13px; color: var(--p3-text); }
+
+    #cip-fontes-lista { display: flex; flex-direction: column; gap: 6px; }
+    .cip-fonte-linha { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: var(--p3-bg); }
+  </style>
+</head>
+
+<body>
+  <script src="../js/core/session.js"></script>
+  <script src="../js/core/header-nav.js" data-active=""></script>
+
+  <section class="pagecomplete">
+    <main>
+      <div class="cip-wrap">
+        <h3>🔎 Consulta Integrada de Pessoas</h3>
+        <p style="font-size:13px;color:var(--p3-text-muted);margin:8px 0 16px;">
+          Consolida CAD (identificação, CNH, ocorrências PM/PC, SISPOL, BNMP, IDNET, veículos) e TJAL/e-SAJ numa
+          única consulta por CPF. Cada dado mostra a fonte de onde veio — nenhuma correlação é apresentada como
+          fato sem confirmação.
+        </p>
+
+        <div id="cip-aviso-servidor">
+          ⚠️ Servidor local (Python) não está rodando — esta página depende dele (não tem alternativa via Apps
+          Script). Abra <code>tools/atualizador-local</code> (<code>python app.py</code>, ou o app desktop) e
+          recarregue.
+        </div>
+
+        <div class="cip-busca">
+          <input type="text" id="cip-input-cpf" placeholder="CPF (só números ou com pontuação)" inputmode="numeric">
+          <button type="button" id="cip-btn-consultar">Consultar</button>
+        </div>
+        <div id="cip-status-msg"></div>
+
+        <div class="cip-header-pessoa" id="cip-header-pessoa">
+          <div class="cip-header-foto" id="cip-header-foto">👤</div>
+          <div class="cip-header-info">
+            <h2 id="cip-header-nome">—</h2>
+            <div class="cip-header-grid" id="cip-header-grid"></div>
+            <div id="cip-header-alertas"></div>
+          </div>
+        </div>
+
+        <div id="cip-conteudo" style="display:none;">
+          <div class="cip-abas" id="cip-abas"></div>
+          <div id="cip-paineis"></div>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <script src="../js/core/atualizador-local.js"></script>
+  <script src="../js/consulta-pessoa.js"></script>
+</body>
+</html>

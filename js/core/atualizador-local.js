@@ -116,6 +116,25 @@
         return resp.json();
     }
 
+    // Consulta Integrada de Pessoas (page/consulta-pessoa.html) — ver
+    // rotas /pessoa/consultar e /pessoa/ocorrencia-detalhe em
+    // tools/atualizador-local/app.py. Timeout mais alto que os demais
+    // (TIMEOUT_HEALTH_MS é só pro /health) porque a consulta bate em
+    // várias fontes do CAD em sequência (ver comentário em
+    // consulta_pessoa_service.py sobre por que não é paralelo) — pode
+    // legitimamente levar bem mais que 2s.
+    async function consultarPessoa(cpfLimpo) {
+        const resp = await fetch(`${URL_BASE}/pessoa/consultar?cpf=${encodeURIComponent(cpfLimpo)}`);
+        return resp.json();
+    }
+
+    // params: {tipo:'ppe', id, hash} | {tipo:'pc_antigo', numeroBo} | {tipo:'despacho', idOcor}
+    async function ocorrenciaDetalhe(params) {
+        const qs = new URLSearchParams(params).toString();
+        const resp = await fetch(`${URL_BASE}/pessoa/ocorrencia-detalhe?${qs}`);
+        return resp.json();
+    }
+
     global.P3AtualizadorLocal = {
         URL_BASE: URL_BASE,
         disponivel: disponivel,
@@ -123,5 +142,7 @@
         buscarFotoAlcatraz: buscarFotoAlcatraz,
         statusCad: statusCad,
         configurarCad: configurarCad,
+        consultarPessoa: consultarPessoa,
+        ocorrenciaDetalhe: ocorrenciaDetalhe,
     };
 })(window);
