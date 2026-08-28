@@ -100,6 +100,9 @@
             });
             progFill.style.width = '100%';
             ULTIMO_RESULTADO = r;
+            const btnImprimir = document.getElementById('cip-btn-imprimir');
+            btnImprimir.disabled = false;
+            btnImprimir.title = '';
             msg.style.color = '#1e6b34';
             const okCount = r.fontes.filter(f => f.ok).length;
             msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${okCount}/${r.fontes.length} etapa(s) concluídas.`;
@@ -559,6 +562,119 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // IMPRESSÃO — pedido explícito do usuário: "imprimir a consulta com
+    // todos os dados completos". Mesmo padrão visual (capa em gradiente
+    // + cartão de seção com selo numerado) de
+    // js/core/modal-mudancas-movimentacao.js / relatorios/relatorio_preditiva.html.
+    // Reaproveita as MESMAS funções render*(r) já usadas na tela — nunca
+    // recalcula nada — então a impressão sai com o mesmo texto/números
+    // que a tela mostra, incluindo a regra de não citar de onde cada
+    // dado veio.
+    //
+    // Ocorrências ganham um render PRÓPRIO pra impressão
+    // (renderOcorrenciasParaImpressao) porque a versão da tela depende
+    // de clique pra abrir o detalhe — no papel isso não existe, então o
+    // detalhe já carregado (ver r.detalhesOcorrencias, preenchido
+    // automaticamente pras ocorrências mais recentes — ver
+    // LIMITE_DETALHE_AUTOMATICO no Python) entra ABERTO, sem exigir
+    // ação nenhuma. As ocorrências que nunca tiveram o detalhe buscado
+    // (além do limite automático, ou de outras fontes) aparecem só com
+    // o resumo da tabela — a impressão não dispara buscas novas.
+    function _cipGarantirDomImpressao() {
+        if (document.getElementById('cip-print-raiz')) return;
+        const raiz = document.createElement('div');
+        raiz.id = 'cip-print-raiz';
+        document.body.appendChild(raiz);
+    }
+
+    function renderOcorrenciasParaImpressao(r) {
+        const ppe = r.ocorrenciasPpe || [];
+        const pcAntigo = r.ocorrenciasPcAntigo || [];
+        const despc = r.ocorrenciasDespacho || [];
+        if (!ppe.length && !pcAntigo.length && !despc.length) {
+            return '<div class="cip-vazio">Nenhuma ocorrência encontrada.</div>';
+        }
+        const detalhesPorId = {};
+        (r.detalhesOcorrencias || []).forEach(d => { detalhesPorId[d.idOcorrencia] = d; });
+
+        let h = '';
+        if (despc.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Ocorrências — ${despc.length}</div>`;
+            despc.forEach(o => {
+                const det = detalhesPorId[o._id_ocor];
+                h += `<div style="padding:10px 0;border-top:1px dashed var(--p3-border);">
+                    <div style="font-size:12.5px;"><b>${esc(o.id_ocor_fk || o._id_ocor || '—')}</b> — ${esc(o.dt_ocor || '—')}</div>
+                    <div style="font-size:12px;color:var(--p3-text);margin-top:2px;">${esc(o.ds_ocor_sgrup || '—')}</div>
+                    <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">Envolvimento: ${esc(o.ds_oco_despc_tipo_envl || '—')} · Situação: ${esc(o.ds_ocor_despc_envl_pess_sitc || '—')}</div>
+                    ${det ? montarHtmlDetalheCampos(det.campos) : ''}
+                </div>`;
+            });
+            h += '</div>';
+        }
+        if (ppe.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Ocorrências policiais — ${ppe.length}</div>${tabelaOcorrenciasPpe(ppe)}</div>`;
+        }
+        if (pcAntigo.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Registros anteriores — ${pcAntigo.length} boletim(ns)</div>${tabelaOcorrenciasPcAntigo(pcAntigo)}</div>`;
+        }
+        return h;
+    }
+
+    function _cipMontarSecao(numero, titulo, htmlConteudo) {
+        return `<div class="cpp-secao">
+            <div class="cpp-secao-titulo"><div class="cpp-secao-numero">${numero}</div><div><h2>${esc(titulo)}</h2></div></div>
+            <div class="cpp-conteudo">${htmlConteudo}</div>
+        </div>`;
+    }
+
+    function imprimirConsultaCompleta() {
+        const r = ULTIMO_RESULTADO;
+        if (!r) { alert('Consulte uma pessoa primeiro.'); return; }
+
+        _cipGarantirDomImpressao();
+        const raiz = document.getElementById('cip-print-raiz');
+        const p = r.pessoa || {};
+        const agora = new Date();
+        const agoraFmt = String(agora.getDate()).padStart(2, '0') + '/' + String(agora.getMonth() + 1).padStart(2, '0') + '/' + agora.getFullYear() +
+            ' ' + String(agora.getHours()).padStart(2, '0') + ':' + String(agora.getMinutes()).padStart(2, '0');
+
+        let html = `<div class="cpp-capa">
+            <div class="cpp-capa-header">
+                <img src="../img/brasao.png" alt="Brasão 10º BPM">
+                <div class="cpp-capa-org"><h1>SISTEMA DE GERENCIAMENTO P3</h1><h2>10º BATALHÃO DE POLÍCIA MILITAR DE ALAGOAS</h2></div>
+            </div>
+            <div class="cpp-capa-titulo">
+                <h3>CONSULTA INTEGRADA DE PESSOAS</h3>
+                <p>Identificação, CNH, vínculos, endereços, ocorrências, mandados, processos e veículos consolidados</p>
+            </div>
+            <div class="cpp-capa-meta">
+                <span>👤 ${esc(p.nome || '(nome não encontrado)')}</span>
+                <span>📄 CPF ${esc(formatarCpf(r.cpf))}</span>
+                <span>🖨️ Impresso em ${agoraFmt}</span>
+            </div>
+        </div>`;
+
+        let n = 1;
+        html += _cipMontarSecao(n++, 'Visão Geral', renderVisaoGeral(r));
+        html += _cipMontarSecao(n++, 'CNH', renderCnh(r));
+        html += _cipMontarSecao(n++, 'Vínculos', renderVinculos(r));
+        html += _cipMontarSecao(n++, 'Endereços', renderEnderecos(r));
+        html += _cipMontarSecao(n++, 'Ocorrências', renderOcorrenciasParaImpressao(r));
+        html += _cipMontarSecao(n++, 'Mandados', renderMandados(r));
+        html += _cipMontarSecao(n++, 'Processos Judiciais', renderProcessos(r));
+        html += _cipMontarSecao(n++, 'Veículos', renderVeiculos(r));
+        html += _cipMontarSecao(n++, 'Linha do Tempo', renderTimeline(r));
+
+        html += `<div class="cpp-rodape">
+            <div><strong>Sistema P3</strong> — 10º Batalhão de Polícia Militar<br>Seção de Planejamento, Ensino e Instrução — P3/10ºBPM</div>
+            <div style="text-align:right;">Consulta realizada em ${esc(r.consultadoEm)}</div>
+        </div>`;
+
+        raiz.innerHTML = html;
+        window.print();
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // BOOT
     // ────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', async function () {
@@ -569,6 +685,7 @@
         }
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);
+        document.getElementById('cip-btn-imprimir').addEventListener('click', imprimirConsultaCompleta);
         document.getElementById('cip-input-cpf').addEventListener('keydown', function (e) {
             if (e.key === 'Enter') consultar();
         });
@@ -577,3 +694,4 @@
         });
     });
 })();
+
