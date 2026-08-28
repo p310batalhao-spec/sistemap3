@@ -133,9 +133,8 @@
       <div class="cip-wrap">
         <h3>🔎 Consulta Integrada de Pessoas</h3>
         <p style="font-size:13px;color:var(--p3-text-muted);margin:8px 0 16px;">
-          Consolida CAD (identificação, CNH, ocorrências PM/PC, SISPOL, BNMP, IDNET, veículos) e TJAL/e-SAJ numa
-          única consulta por CPF. Cada dado mostra a fonte de onde veio — nenhuma correlação é apresentada como
-          fato sem confirmação.
+          Consolida identificação, CNH, ocorrências, mandados, endereços e veículos numa única consulta por CPF.
+          Nenhuma correlação é apresentada como fato sem confirmação.
         </p>
 
         <div id="cip-aviso-servidor">
@@ -149,6 +148,15 @@
           <button type="button" id="cip-btn-consultar">Consultar</button>
         </div>
         <div id="cip-status-msg"></div>
+        <div id="cip-progresso-wrap" style="display:none;margin-bottom:14px;">
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--p3-text-muted);margin-bottom:4px;">
+            <span id="cip-progresso-etapa">—</span>
+            <span id="cip-progresso-texto"></span>
+          </div>
+          <div style="height:8px;border-radius:5px;background:var(--p3-border);overflow:hidden;">
+            <div id="cip-progresso-fill" style="height:100%;width:0%;border-radius:5px;background:var(--p3-blue-500);transition:width .4s ease;"></div>
+          </div>
+        </div>
 
         <div class="cip-header-pessoa" id="cip-header-pessoa">
           <div class="cip-header-foto" id="cip-header-foto">👤</div>
