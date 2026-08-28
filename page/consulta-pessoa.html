@@ -121,6 +121,36 @@
 
     #cip-fontes-lista { display: flex; flex-direction: column; gap: 6px; }
     .cip-fonte-linha { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 10px; border-radius: 6px; background: var(--p3-bg); }
+
+    #cip-btn-imprimir { padding: 12px 18px; border-radius: 8px; border: 1px solid var(--p3-border); background: var(--p3-surface); color: var(--p3-text); font-size: 13px; font-weight: 600; cursor: pointer; }
+    #cip-btn-imprimir:hover { background: var(--p3-border); }
+    #cip-btn-imprimir:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Impressão — mesmo padrão visual (capa gradiente + selo numerado)
+       de js/core/modal-mudancas-movimentacao.js / relatorios/relatorio_preditiva.html.
+       Nenhum texto de fonte/sistema de origem aparece aqui também (mesma
+       regra da tela — ver comentário no topo de js/consulta-pessoa.js). */
+    #cip-print-raiz { display: none; }
+    @media print {
+      body > *:not(#cip-print-raiz) { display: none !important; }
+      #cip-print-raiz { display: block !important; font-family: Arial, Helvetica, sans-serif; color: #1a1f36; background: #fff; padding: 1rem; }
+      #cip-print-raiz .cpp-capa { background: linear-gradient(135deg, #0a1f4d 0%, #1a3a6e 60%, #0d2a5c 100%); border-radius: .75rem; padding: 1.75rem 1.5rem; color: #fff; margin-bottom: 1.25rem; display: flex; flex-direction: column; }
+      #cip-print-raiz .cpp-capa-header { display: flex; flex-direction: row; align-items: center; gap: 1rem; margin-bottom: 1.1rem; }
+      #cip-print-raiz .cpp-capa-header img { height: 3.5rem; }
+      #cip-print-raiz .cpp-capa-org h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: .04em; }
+      #cip-print-raiz .cpp-capa-org h2 { font-size: .8rem; opacity: .7; margin-top: .25rem; font-weight: 400; }
+      #cip-print-raiz .cpp-capa-titulo { border-top: .0625rem solid rgba(255,255,255,.25); padding-top: 1rem; margin-top: .75rem; display: flex; flex-direction: column; }
+      #cip-print-raiz .cpp-capa-titulo h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; }
+      #cip-print-raiz .cpp-capa-titulo p { font-size: .8rem; opacity: .65; margin-top: .3rem; }
+      #cip-print-raiz .cpp-capa-meta { display: flex; flex-direction: row; flex-wrap: wrap; gap: .4rem 1.25rem; margin-top: 1rem; font-size: .78rem; opacity: .8; }
+      #cip-print-raiz .cpp-secao { page-break-inside: avoid; margin-bottom: 1.5rem; }
+      #cip-print-raiz .cpp-secao-titulo { display: flex; align-items: flex-start; gap: .8rem; margin-bottom: .75rem; padding-bottom: .6rem; border-bottom: .125rem solid #e8ecf5; }
+      #cip-print-raiz .cpp-secao-numero { width: 2rem; height: 2rem; border-radius: 50%; background: #0a448f; color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; font-weight: 700; flex-shrink: 0; }
+      #cip-print-raiz .cpp-secao-titulo h2 { font-size: .92rem; font-weight: 700; color: #0a1f4d; }
+      #cip-print-raiz .cpp-conteudo { font-size: .78rem; }
+      #cip-print-raiz button, #cip-print-raiz input, #cip-print-raiz select { display: none !important; }
+      #cip-print-raiz .cpp-rodape { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: .5rem; border-top: .125rem solid #e8ecf5; margin-top: 1.5rem; padding-top: .85rem; font-size: .72rem; color: #9ea3b5; line-height: 1.6; }
+    }
   </style>
 </head>
 
@@ -146,6 +176,7 @@
         <div class="cip-busca">
           <input type="text" id="cip-input-cpf" placeholder="CPF (só números ou com pontuação)" inputmode="numeric">
           <button type="button" id="cip-btn-consultar">Consultar</button>
+          <button type="button" id="cip-btn-imprimir" disabled title="Consulte uma pessoa primeiro">🖨️ Imprimir</button>
         </div>
         <div id="cip-status-msg"></div>
         <div id="cip-progresso-wrap" style="display:none;margin-bottom:14px;">
