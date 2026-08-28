@@ -76,26 +76,40 @@
 
         btn.disabled = true;
         msg.style.color = 'var(--p3-text-muted)';
-        msg.textContent = 'Consultando CAD (identificação, CNH, ocorrências, BNMP, IDNET, veículos) e TJAL — pode levar alguns segundos, várias fontes são checadas em sequência...';
+        msg.textContent = 'Consultando — pode levar alguns segundos, várias etapas são checadas em sequência...';
         document.getElementById('cip-header-pessoa').classList.remove('visivel');
         document.getElementById('cip-conteudo').style.display = 'none';
 
+        const progWrap = document.getElementById('cip-progresso-wrap');
+        const progFill = document.getElementById('cip-progresso-fill');
+        const progEtapa = document.getElementById('cip-progresso-etapa');
+        const progTexto = document.getElementById('cip-progresso-texto');
+        progWrap.style.display = 'block';
+        progFill.style.width = '0%';
+        progEtapa.textContent = 'Iniciando...';
+        progTexto.textContent = '';
+
         try {
-            const r = await P3AtualizadorLocal.consultarPessoa(cpfLimpo);
-            if (!r.ok) {
-                msg.style.color = 'var(--p3-danger)';
-                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
-                return;
-            }
+            const r = await P3AtualizadorLocal.consultarPessoaStream(cpfLimpo, function (evento) {
+                if (evento.tipo === 'progresso') {
+                    const pct = Math.round((evento.concluidas / evento.total) * 100);
+                    progFill.style.width = pct + '%';
+                    progEtapa.textContent = evento.etapa;
+                    progTexto.textContent = `${evento.concluidas}/${evento.total} (${pct}%)`;
+                }
+            });
+            progFill.style.width = '100%';
             ULTIMO_RESULTADO = r;
             msg.style.color = '#1e6b34';
-            msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${r.fontes.filter(f => f.ok).length}/${r.fontes.length} fonte(s) responderam.`;
+            const okCount = r.fontes.filter(f => f.ok).length;
+            msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${okCount}/${r.fontes.length} etapa(s) concluídas.`;
             renderizarTudo(r);
         } catch (e) {
             msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Erro de conexão: ' + e.message;
+            msg.textContent = 'Erro: ' + e.message;
         } finally {
             btn.disabled = false;
+            setTimeout(() => { progWrap.style.display = 'none'; }, 1200);
         }
     }
 
@@ -119,6 +133,13 @@
         el.classList.add('visivel');
         document.getElementById('cip-header-nome').textContent = p.nome || '(sem nome)';
 
+        const fotoEl = document.getElementById('cip-header-foto');
+        if (r.fotos && r.fotos.length) {
+            fotoEl.innerHTML = `<img src="${r.fotos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
+        } else {
+            fotoEl.innerHTML = '👤';
+        }
+
         const grid = document.getElementById('cip-header-grid');
         const linhas = [
             ['CPF', formatarCpf(r.cpf)],
@@ -134,7 +155,7 @@
         const alertas = [];
         if (r.mandados && r.mandados.possuiMandado) alertas.push('🚨 MANDADO DE PRISÃO ATIVO (BNMP)');
         if (r.pessoasEncontradas && r.pessoasEncontradas.length > 1) {
-            alertas.push(`⚠️ ${r.pessoasEncontradas.length} registros encontrados no CAD pra este CPF — possível duplicidade cadastral`);
+            alertas.push(`⚠️ ${r.pessoasEncontradas.length} registros encontrados pra este CPF — possível duplicidade cadastral`);
         }
         alertasEl.innerHTML = alertas.map(a => `<span class="cip-header-alerta">${esc(a)}</span>`).join(' ');
     }
@@ -186,15 +207,31 @@
     // VISÃO GERAL
     // ────────────────────────────────────────────────────────────────
     function renderVisaoGeral(r) {
+        const p = r.pessoa || {};
         const totalOcor = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
+
+        // Foto + nome completo (pedido explícito do usuário) — foto vem
+        // de r.fotos[0] quando disponível; sem foto ainda, fica um
+        // espaço reservado (ex.: fonte em depuração no momento) em vez
+        // de simplesmente não mostrar nada.
+        const temFoto = r.fotos && r.fotos.length;
+        let h = '<div class="cip-card" style="display:flex;gap:16px;align-items:center;">';
+        h += `<div style="width:72px;height:72px;border-radius:10px;background:var(--p3-bg);border:1px solid var(--p3-border);
+              display:flex;align-items:center;justify-content:center;font-size:30px;opacity:${temFoto ? '1' : '.4'};overflow:hidden;flex-shrink:0;">`;
+        h += temFoto ? `<img src="${r.fotos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤';
+        h += '</div>';
+        h += `<div><div style="font-size:17px;font-weight:700;color:var(--p3-text);">${esc(p.nome || '(nome não encontrado)')}</div>
+              <div style="font-size:12px;color:var(--p3-text-muted);margin-top:3px;">CPF ${esc(formatarCpf(r.cpf))}${p.dataNascimento ? ' · Nascimento ' + esc(p.dataNascimento) : ''}</div></div>`;
+        h += '</div>';
+
         const kpis = [
-            ['🚓', totalOcor, 'Ocorrências (PM+PC+SISPOL)'],
+            ['🚓', totalOcor, 'Ocorrências'],
             ['⚖️', (r.processos || []).length, 'Processos TJAL'],
             ['🚗', (r.veiculos || []).length, 'Veículos (via ocorrências)'],
             ['📍', montarEnderecos(r).length, 'Endereços'],
-            ['🔌', r.fontes.filter(f => f.ok).length + '/' + r.fontes.length, 'Fontes responderam'],
+            ['🔌', r.fontes.filter(f => f.ok).length + '/' + r.fontes.length, 'Etapas concluídas'],
         ];
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Resumo</div>';
+        h += '<div class="cip-card"><div class="cip-card-titulo">Resumo</div>';
         h += '<div style="display:flex;gap:14px;flex-wrap:wrap;">';
         kpis.forEach(([ic, n, l]) => {
             h += `<div style="flex:1;min-width:140px;background:var(--p3-bg);border-radius:8px;padding:12px 16px;">
@@ -215,10 +252,10 @@
     // CNH
     // ────────────────────────────────────────────────────────────────
     function renderCnh(r) {
-        if (!r.cnh) return '<div class="cip-vazio">Nenhum dado de CNH encontrado no DETRAN pra este CPF.</div>';
+        if (!r.cnh) return '<div class="cip-vazio">Nenhum dado de CNH encontrado pra este CPF.</div>';
         const h = Object.entries(r.cnh).map(([k, v]) =>
             `<div><b>${esc(k)}:</b> ${esc(v || '—')}</div>`).join('');
-        return `<div class="cip-card"><div class="cip-card-titulo">CNH — DETRAN <span class="cip-fonte-tag">CAD</span></div>
+        return `<div class="cip-card"><div class="cip-card-titulo">CNH</div>
             <div class="cip-kv">${h}</div></div>`;
     }
 
@@ -228,10 +265,10 @@
     function renderVinculos(r) {
         const p = r.pessoa;
         if (!p || (!p.mae && !p.pai)) return '<div class="cip-vazio">Nenhuma filiação encontrada.</div>';
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Filiação <span class="cip-fonte-tag">CAD</span></div><div class="cip-kv">';
+        let h = '<div class="cip-card"><div class="cip-card-titulo">Filiação</div><div class="cip-kv">';
         if (p.mae) h += `<div><b>Mãe:</b> ${esc(p.mae)}</div>`;
         if (p.pai) h += `<div><b>Pai:</b> ${esc(p.pai)}</div>`;
-        h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CAD não devolve o CPF da mãe/pai — pra consultar essa pessoa, é preciso pesquisar o CPF dela diretamente, se conhecido.</p></div>';
+        h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CPF da mãe/pai não está disponível — pra consultar essa pessoa, é preciso pesquisar o CPF dela diretamente, se conhecido.</p></div>';
         return h;
     }
 
@@ -252,20 +289,20 @@
             const chave = normalizarEndereco(end);
             if (vistos.has(chave)) return;
             vistos.add(chave);
-            lista.push({ endereco: end, data: reg['Data de Atendimento no IC'] || null, fonte: 'IDNET' });
+            lista.push({ endereco: end, data: reg['Data de Atendimento no IC'] || null });
         });
         return lista;
     }
     function renderEnderecos(r) {
         const lista = montarEnderecos(r);
-        if (!lista.length) return '<div class="cip-vazio">Nenhum endereço encontrado (fonte: IDNET).</div>';
+        if (!lista.length) return '<div class="cip-vazio">Nenhum endereço encontrado.</div>';
         // Mais recente primeiro — data no formato DD/MM/AAAA HH:MM:SS
         lista.sort((a, b) => {
             const da = a.data ? a.data.split(' ')[0].split('/').reverse().join('') : '';
             const db = b.data ? b.data.split(' ')[0].split('/').reverse().join('') : '';
             return db.localeCompare(da);
         });
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Endereços <span class="cip-fonte-tag">IDNET</span></div>';
+        let h = '<div class="cip-card"><div class="cip-card-titulo">Endereços</div>';
         lista.forEach((e, i) => {
             h += `<div style="padding:8px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
                 <div style="font-size:13px;color:var(--p3-text);">${esc(e.endereco)}</div>
@@ -286,18 +323,18 @@
         const pcAntigo = r.ocorrenciasPcAntigo || [];
         const despc = r.ocorrenciasDespacho || [];
         if (!ppe.length && !pcAntigo.length && !despc.length) {
-            return '<div class="cip-vazio">Nenhuma ocorrência encontrada nas 3 fontes (PPE, PC antigo, SISPOL).</div>';
+            return '<div class="cip-vazio">Nenhuma ocorrência encontrada.</div>';
         }
 
         let h = '';
         if (despc.length) {
-            h += `<div class="cip-card"><div class="cip-card-titulo">SISPOL / Despacho <span class="cip-fonte-tag">CAD</span> — ${despc.length} ocorrência(s)</div>${tabelaOcorrenciasDespc(r, despc)}</div>`;
+            h += `<div class="cip-card"><div class="cip-card-titulo">Ocorrências — ${despc.length}</div>${tabelaOcorrenciasDespc(r, despc)}</div>`;
         }
         if (ppe.length) {
-            h += `<div class="cip-card"><div class="cip-card-titulo">PPE — Ocorrências PM <span class="cip-fonte-tag">CAD</span> — ${ppe.length} ocorrência(s)</div>${tabelaOcorrenciasPpe(ppe)}</div>`;
+            h += `<div class="cip-card"><div class="cip-card-titulo">Ocorrências policiais — ${ppe.length}</div>${tabelaOcorrenciasPpe(ppe)}</div>`;
         }
         if (pcAntigo.length) {
-            h += `<div class="cip-card"><div class="cip-card-titulo">Polícia Civil (sistema antigo) <span class="cip-fonte-tag">CAD</span> — ${pcAntigo.length} boletim(ns)</div>${tabelaOcorrenciasPcAntigo(pcAntigo)}</div>`;
+            h += `<div class="cip-card"><div class="cip-card-titulo">Registros anteriores — ${pcAntigo.length} boletim(ns)</div>${tabelaOcorrenciasPcAntigo(pcAntigo)}</div>`;
         }
         return h;
     }
@@ -433,8 +470,8 @@
     // ────────────────────────────────────────────────────────────────
     function renderProcessos(r) {
         const lista = r.processos || [];
-        if (!lista.length) return '<div class="cip-vazio">Nenhum processo encontrado no e-SAJ pelo nome desta pessoa.</div>';
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Processos — TJAL/e-SAJ <span class="cip-fonte-tag">e-SAJ</span></div>';
+        if (!lista.length) return '<div class="cip-vazio">Nenhum processo encontrado pelo nome desta pessoa.</div>';
+        let h = '<div class="cip-card"><div class="cip-card-titulo">Processos judiciais</div>';
         h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nº Processo</th><th>Origem do vínculo</th><th></th></tr></thead><tbody>';
         lista.forEach(p => {
             const link = `https://www2.tjal.jus.br/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.numeroProcesso)}&dadosConsulta.tipoNuProcesso=UNIFICADO`;
@@ -451,10 +488,10 @@
     function renderVeiculos(r) {
         const lista = r.veiculos || [];
         if (!lista.length) return '<div class="cip-vazio">Nenhum veículo encontrado nas ocorrências desta pessoa.</div>';
-        let h = `<div class="cip-card"><div class="cip-card-titulo">Veículos <span class="cip-fonte-tag">CAD/DETRAN</span></div>
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Veículos</div>
             <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
                 Descobertos a partir das ocorrências desta pessoa — a relação PROPRIETÁRIO só é atribuída quando o
-                CPF do proprietário no DETRAN bate com o CPF pesquisado.
+                CPF do proprietário bate com o CPF pesquisado.
             </p>`;
         h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Placa</th><th>Modelo</th><th>Cor</th><th>Ano</th><th>Relação</th><th>Situação na ocorrência</th></tr></thead><tbody>';
         lista.forEach(v => {
@@ -483,9 +520,9 @@
     }
     function renderTimeline(r) {
         const itens = [];
-        (r.ocorrenciasPpe || []).forEach(o => itens.push({ data: o.dt_ocorrencia, texto: `PPE — ${o.no_natureza_ocorrencia || 'ocorrência'} (${o.tipo_envolvimento || '—'})`, fonte: 'CAD/PPE' }));
-        (r.ocorrenciasPcAntigo || []).forEach(o => itens.push({ data: o.data_hora_registro, texto: `Polícia Civil — Boletim ${o.attr_numero_bo || '—'}`, fonte: 'CAD/PC antigo' }));
-        (r.ocorrenciasDespacho || []).forEach(o => itens.push({ data: o.dt_ocor, texto: `SISPOL — ${o.ds_ocor_sgrup || 'ocorrência'} (${o.ds_oco_despc_tipo_envl || '—'})`, fonte: 'CAD/SISPOL' }));
+        (r.ocorrenciasPpe || []).forEach(o => itens.push({ data: o.dt_ocorrencia, texto: `${o.no_natureza_ocorrencia || 'Ocorrência'} (${o.tipo_envolvimento || '—'})`, fonte: 'Ocorrência' }));
+        (r.ocorrenciasPcAntigo || []).forEach(o => itens.push({ data: o.data_hora_registro, texto: `Boletim ${o.attr_numero_bo || '—'}`, fonte: 'Registro anterior' }));
+        (r.ocorrenciasDespacho || []).forEach(o => itens.push({ data: o.dt_ocor, texto: `${o.ds_ocor_sgrup || 'Ocorrência'} (${o.ds_oco_despc_tipo_envl || '—'})`, fonte: 'Ocorrência' }));
 
         itens.forEach(it => { it._ord = parseDataBrParaOrdenacao(it.data); });
         itens.sort((a, b) => b._ord.localeCompare(a._ord));
@@ -510,15 +547,13 @@
     // FONTES
     // ────────────────────────────────────────────────────────────────
     function renderFontes(r) {
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Fontes consultadas nesta busca</div><div id="cip-fontes-lista">';
+        let h = '<div class="cip-card"><div class="cip-card-titulo">Etapas desta consulta</div><div id="cip-fontes-lista">';
         r.fontes.forEach(f => {
             const status = f.ok ? '<span class="cip-status-ok">✓ ok</span>' : `<span class="cip-status-erro">✗ erro: ${esc(f.erro || '')}</span>`;
             h += `<div class="cip-fonte-linha"><span>${esc(f.fonte)}</span><span>${status} — ${f.elapsedMs}ms</span></div>`;
         });
         h += `</div><p style="font-size:11px;color:var(--p3-text-muted);margin-top:10px;">
             Consultado em ${esc(r.consultadoEm)} — tempo total ${(r.tempoTotalMs / 1000).toFixed(1)}s.
-            As fontes do CAD rodam em sequência (não em paralelo) — ver comentário em
-            tools/atualizador-local/consulta_pessoa_service.py.
         </p></div>`;
         return h;
     }
