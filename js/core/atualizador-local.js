@@ -117,15 +117,30 @@
     }
 
     // Consulta Integrada de Pessoas (page/consulta-pessoa.html) — ver
-    // rotas /pessoa/consultar e /pessoa/ocorrencia-detalhe em
-    // tools/atualizador-local/app.py. Timeout mais alto que os demais
-    // (TIMEOUT_HEALTH_MS é só pro /health) porque a consulta bate em
-    // várias fontes do CAD em sequência (ver comentário em
-    // consulta_pessoa_service.py sobre por que não é paralelo) — pode
-    // legitimamente levar bem mais que 2s.
-    async function consultarPessoa(cpfLimpo) {
+    // rota /pessoa/consultar em tools/atualizador-local/app.py.
+    // Streaming NDJSON (mesmo padrão de atualizarMovimentacoes acima) —
+    // a consulta bate em ~17 etapas em sequência e pode passar de 30s;
+    // onProgresso(obj) é chamado a cada evento {tipo:'inicio'|'progresso', ...}
+    // pra alimentar uma barra de progresso, sem esperar a consulta
+    // inteira terminar pra mostrar alguma coisa. Lança erro em caso de
+    // falha de conexão/HTTP/evento erro_fatal; devolve o `resultado`
+    // final (mesmo objeto que a versão não-streaming devolvia).
+    async function consultarPessoaStream(cpfLimpo, onProgresso) {
         const resp = await fetch(`${URL_BASE}/pessoa/consultar?cpf=${encodeURIComponent(cpfLimpo)}`);
-        return resp.json();
+        if (!resp.ok) {
+            let detalhe = '';
+            try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+            throw new Error(detalhe || `Consulta respondeu HTTP ${resp.status}`);
+        }
+        let resultadoFinal = null;
+        let erroFatal = null;
+        await lerStreamNdjson(resp, function (obj) {
+            if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+            else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+            else if (onProgresso) onProgresso(obj);
+        });
+        if (erroFatal) throw new Error(erroFatal);
+        return resultadoFinal;
     }
 
     // params: {tipo:'ppe', id, hash} | {tipo:'pc_antigo', numeroBo} | {tipo:'despacho', idOcor}
@@ -142,7 +157,7 @@
         buscarFotoAlcatraz: buscarFotoAlcatraz,
         statusCad: statusCad,
         configurarCad: configurarCad,
-        consultarPessoa: consultarPessoa,
+        consultarPessoaStream: consultarPessoaStream,
         ocorrenciaDetalhe: ocorrenciaDetalhe,
     };
 })(window);
