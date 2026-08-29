@@ -150,6 +150,25 @@
         return resp.json();
     }
 
+    // Busca de identificação por NOME/MÃE/PAI (não pede CPF) — devolve
+    // {ok, pessoas:[{nome,mae,pai,cpf,dataNascimento,rg,alcunha}]}, pode
+    // ter mais de 1 (homônimos). Ver P3ConsultaPessoaAbrirCpf pra
+    // continuar a partir de 1 dos resultados.
+    async function buscarPessoaPorNome(nome, mae, pai) {
+        const qs = new URLSearchParams({ nome: nome || '', mae: mae || '', pai: pai || '' }).toString();
+        const resp = await fetch(`${URL_BASE}/pessoa/buscar-por-nome?${qs}`);
+        return resp.json();
+    }
+
+    // Busca de veículo por PLACA ou CHASSI (RENAVAM não é aceito como
+    // critério pelo CAD — ver comentário em app.py/cad_consulta.py) —
+    // devolve {ok, encontrado, veiculo?, erro?}.
+    async function buscarVeiculo(placa, chassi) {
+        const qs = new URLSearchParams({ placa: placa || '', chassi: chassi || '' }).toString();
+        const resp = await fetch(`${URL_BASE}/veiculo/consultar?${qs}`);
+        return resp.json();
+    }
+
     // 2ª fonte de foto na Consulta Integrada de Pessoas (ver
     // page/consulta-pessoa.html) — {ok, configurado}.
     async function idsegStatus() {
@@ -176,6 +195,8 @@
         configurarCad: configurarCad,
         consultarPessoaStream: consultarPessoaStream,
         ocorrenciaDetalhe: ocorrenciaDetalhe,
+        buscarPessoaPorNome: buscarPessoaPorNome,
+        buscarVeiculo: buscarVeiculo,
         idsegStatus: idsegStatus,
         idsegConfigurar: idsegConfigurar,
     };
