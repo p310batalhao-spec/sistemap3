@@ -45,6 +45,25 @@
       margin-bottom: 12px; display: inline-block; background: none; border: none; padding: 0; font-family: inherit;
     }
 
+    /* Alternância de modo de busca (29/08/2026 — pedido explícito:
+       CPF | Nome/Mãe/Pai | Veículo por Placa/Chassi, igual ao CAD). */
+    .cip-modo-busca { display: flex; gap: 6px; margin-bottom: 12px; }
+    .cip-modo-btn {
+      padding: 8px 16px; border-radius: 999px; border: 1px solid var(--p3-border);
+      background: var(--p3-surface); color: var(--p3-text-muted); font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .cip-modo-btn.cip-modo-ativo { background: var(--p3-blue-700); color: #fff; border-color: var(--p3-blue-700); }
+    .cip-lista-resultado {
+      display: none; margin: 4px 0 18px; border: 1px solid var(--p3-border); border-radius: 8px; overflow: hidden;
+    }
+    .cip-lista-resultado-item {
+      padding: 10px 14px; border-bottom: 1px solid var(--p3-border); cursor: pointer; font-size: 13.5px;
+    }
+    .cip-lista-resultado-item:last-child { border-bottom: none; }
+    .cip-lista-resultado-item:hover { background: var(--p3-blue-500); color: #fff; }
+    .cip-lista-resultado-item b { display: block; font-size: 14px; margin-bottom: 2px; }
+    .cip-lista-resultado-item span { font-size: 12px; opacity: .85; }
+
     /* Modal único — login CAD + token CAD (rastreamento) + token
        Quimera (2ª fonte de foto), tudo numa tela só (pedido explícito
        do usuário — antes era preciso ir noutra página pro CAD e tinha
@@ -250,11 +269,33 @@
 
         <button type="button" id="cip-config-link">🔑 Configurar acesso (CAD + Quimera)</button>
 
-        <div class="cip-busca">
+        <div class="cip-modo-busca" id="cip-modo-busca">
+          <button type="button" class="cip-modo-btn cip-modo-ativo" data-modo="cpf">CPF</button>
+          <button type="button" class="cip-modo-btn" data-modo="nome">Nome / Mãe / Pai</button>
+          <button type="button" class="cip-modo-btn" data-modo="veiculo">🚗 Veículo</button>
+        </div>
+
+        <div class="cip-busca" id="cip-busca-cpf">
           <input type="text" id="cip-input-cpf" placeholder="CPF (só números ou com pontuação)" inputmode="numeric">
           <button type="button" id="cip-btn-consultar">Consultar</button>
           <button type="button" id="cip-btn-imprimir" disabled title="Consulte uma pessoa primeiro">🖨️ Imprimir</button>
         </div>
+
+        <div class="cip-busca" id="cip-busca-nome" style="display:none;">
+          <input type="text" id="cip-input-nome" placeholder="Nome completo">
+          <input type="text" id="cip-input-mae" placeholder="Nome da mãe">
+          <input type="text" id="cip-input-pai" placeholder="Nome do pai">
+          <button type="button" id="cip-btn-buscar-nome">Buscar</button>
+        </div>
+        <div class="cip-lista-resultado" id="cip-lista-nome"></div>
+
+        <div class="cip-busca" id="cip-busca-veiculo" style="display:none;">
+          <input type="text" id="cip-input-placa" placeholder="Placa" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+          <input type="text" id="cip-input-chassi" placeholder="Chassi" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+          <button type="button" id="cip-btn-buscar-veiculo">Buscar</button>
+        </div>
+        <div class="cip-lista-resultado" id="cip-resultado-veiculo"></div>
+
         <div id="cip-status-msg"></div>
         <div id="cip-progresso-wrap" style="display:none;margin-bottom:14px;">
           <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--p3-text-muted);margin-bottom:4px;">
