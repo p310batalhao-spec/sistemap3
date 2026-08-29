@@ -618,19 +618,38 @@
     // Diagrama de rede simples (SVG puro, sem biblioteca externa) —
     // pessoa consultada no centro, vínculos cadastrados no Supabase ao
     // redor, ligados por linha com o tipo do vínculo. Pedido explícito
-    // do usuário (29/08/2026): "vínculos... em modelo de rede ou árvore".
+    // do usuário (29/08/2026): "vínculos... em modelo de rede".
+    //
+    // CORREÇÃO (29/08/2026, relatado pelo usuário: "não está clicável e
+    // não consigo ver os detalhes que eu pedi como estava anteriormente.
+    // ao invés de arvore faça como uma rede"):
+    //   1) Espaçamento angular UNIFORME (2π/n) fazia 2 vínculos caírem
+    //      exatamente em lados opostos (linha reta vertical) — visual de
+    //      "árvore"/organograma, não de rede. Trocado pelo ÂNGULO DE
+    //      OURO (~137,5°), técnica de distribuição orgânica (mesma usada
+    //      em phyllotaxis) que nunca cai em posições simétricas/opostas,
+    //      não importa o total de nós.
+    //   2) Só nós com CPF eram clicáveis (iam direto pra outra consulta,
+    //      sem mostrar nada antes) — agora TODOS os nós são clicáveis e
+    //      abrem um cartão de detalhe (nome completo, CPF, RG, data de
+    //      nasc., mãe, pai, tipo/subtipo do vínculo, nível de confiança,
+    //      observação — ver buscar_vinculos_pessoa em supabase_intel.py,
+    //      que agora devolve todos esses campos, não só nome/cpf/tipo).
+    //      Consultar o CPF vira uma ação EXPLÍCITA dentro do cartão (botão
+    //      "🔍 Consultar este CPF"), só quando há CPF.
     function primeiroNome(nomeCompleto) {
         return String(nomeCompleto || '').trim().split(/\s+/)[0] || '?';
     }
+    const _CIP_ANGULO_OURO = 2.399963229728653; // ~137,5° em radianos
     function montarRedeVinculosHtml(nomeCentral, vinculos) {
         if (!vinculos || !vinculos.length) return '';
         const n = vinculos.length;
-        const W = 640, H = Math.max(320, 130 + n * 40);
+        const W = 640, H = Math.max(340, 130 + n * 42);
         const cx = W / 2, cy = H / 2;
         const R = Math.min(W, H) / 2 - 90;
         let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:520px;display:block;" xmlns="http://www.w3.org/2000/svg">`;
         vinculos.forEach((v, i) => {
-            const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+            const ang = i * _CIP_ANGULO_OURO;
             const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
             const mx = cx + (R * 0.55) * Math.cos(ang), my = cy + (R * 0.55) * Math.sin(ang);
             svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--p3-border)" stroke-width="1.5" />`;
@@ -639,17 +658,45 @@
         });
         svg += `<circle cx="${cx}" cy="${cy}" r="34" fill="var(--p3-blue-700)" /><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${esc(primeiroNome(nomeCentral))}</text>`;
         vinculos.forEach((v, i) => {
-            const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+            const ang = i * _CIP_ANGULO_OURO;
             const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
-            const clicavel = !!v.cpf;
-            svg += `<g style="cursor:${clicavel ? 'pointer' : 'default'};" ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')"` : ''}>
-                <title>${esc(v.nome)}${v.cpf ? ' — ' + esc(formatarCpf(v.cpf)) : ''}</title>
-                <circle cx="${x}" cy="${y}" r="26" fill="${clicavel ? 'var(--p3-surface)' : 'var(--p3-bg)'}" stroke="var(--p3-border)" stroke-width="1.5" />
+            svg += `<g class="cip-rede-no" data-idx="${i}" style="cursor:pointer;">
+                <title>${esc(v.nome)} — clique pra ver os detalhes</title>
+                <circle cx="${x}" cy="${y}" r="26" fill="var(--p3-surface)" stroke="var(--p3-border)" stroke-width="1.5" />
                 <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="9" fill="var(--p3-text)">${esc(primeiroNome(v.nome).slice(0, 10))}</text>
             </g>`;
         });
         svg += '</svg>';
-        return svg;
+        return `<div>${svg}<div id="cip-rede-detalhe" style="margin-top:8px;padding:12px 14px;border:1px dashed var(--p3-border);border-radius:8px;font-size:12px;color:var(--p3-text-muted);">👆 Clique num nome do diagrama pra ver os detalhes do vínculo.</div></div>`;
+    }
+
+    // Cartão de detalhe mostrado abaixo do diagrama ao clicar num nó —
+    // ver montarRedeVinculosHtml acima e a religação de clique em
+    // ligarEventosPainelAtivo.
+    function montarDetalheNoRedeHtml(v) {
+        const cpfLimpo = limparCpf(v.cpf);
+        let h = '<div>';
+        h += `<div style="font-weight:700;font-size:14px;color:var(--p3-text);margin-bottom:6px;">${esc(v.nome || 'Sem nome')}</div>`;
+        h += montarHtmlDetalheCampos({
+            'CPF': cpfLimpo ? formatarCpf(cpfLimpo) : 'Não informado',
+            'RG': v.rg,
+            'Data de nascimento': v.dataNascimento,
+            'Mãe': v.mae,
+            'Pai': v.pai,
+            'Tipo de vínculo': [v.tipo, v.subtipo].filter(Boolean).join(' — '),
+            'Nível de confiança': v.nivelConfianca,
+            'Observação': v.observacao,
+        });
+        if (cpfLimpo) {
+            h += `<button type="button" class="cip-rede-btn-consultar" data-cpf="${esc(cpfLimpo)}"
+                style="margin-top:10px;padding:7px 14px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">
+                🔍 Consultar este CPF
+            </button>`;
+        } else {
+            h += '<div style="font-size:11px;color:var(--p3-text-muted);margin-top:8px;">Sem CPF cadastrado — não é possível abrir a consulta completa dessa pessoa.</div>';
+        }
+        h += '</div>';
+        return h;
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -984,6 +1031,19 @@
                 detalheEl.classList.add('visivel');
                 const rel = ((r.inteligencia && r.inteligencia.relint) || [])[i];
                 detalheEl.querySelector('td').innerHTML = rel ? montarCamposDetalheRelint(rel) : '';
+            });
+        });
+        document.querySelectorAll('.cip-rede-no').forEach(no => {
+            no.addEventListener('click', () => {
+                const i = Number(no.dataset.idx);
+                const v = ((r.inteligencia && r.inteligencia.vinculos) || [])[i];
+                const detalheEl = document.getElementById('cip-rede-detalhe');
+                if (!detalheEl || !v) return;
+                detalheEl.style.border = 'none';
+                detalheEl.style.color = '';
+                detalheEl.innerHTML = montarDetalheNoRedeHtml(v);
+                const btnConsultar = detalheEl.querySelector('.cip-rede-btn-consultar');
+                if (btnConsultar) btnConsultar.addEventListener('click', () => P3ConsultaPessoaAbrirCpf(btnConsultar.dataset.cpf));
             });
         });
         document.querySelectorAll('.cip-denuncia-vermais').forEach(btn => {
