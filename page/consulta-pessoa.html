@@ -64,6 +64,30 @@
     .cip-lista-resultado-item b { display: block; font-size: 14px; margin-bottom: 2px; }
     .cip-lista-resultado-item span { font-size: 12px; opacity: .85; }
 
+    /* Abas de consulta "estilo navegador" (29/08/2026, pedido explícito
+       — cada CPF consultado vira uma aba própria, pra clicar num
+       vínculo não fazer perder a consulta anterior). */
+    .cip-abas-consulta { display: none; gap: 4px; margin-bottom: -1px; flex-wrap: wrap; align-items: flex-end; position: relative; z-index: 1; }
+    .cip-aba-consulta-btn {
+      display: flex; align-items: center; gap: 7px; padding: 8px 8px 8px 12px; border-radius: 10px 10px 0 0;
+      background: var(--p3-bg); border: 1px solid var(--p3-border); border-bottom: none; cursor: pointer;
+      font-size: 12.5px; color: var(--p3-text-muted); max-width: 220px;
+    }
+    .cip-aba-consulta-btn.ativa {
+      background: var(--p3-surface); color: var(--p3-text); font-weight: 700; box-shadow: 0 -3px 0 var(--p3-blue-700) inset;
+    }
+    .cip-aba-consulta-titulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px; }
+    .cip-aba-consulta-fechar {
+      background: none; border: none; color: inherit; opacity: .55; cursor: pointer; font-size: 11px; line-height: 1;
+      padding: 3px 5px; border-radius: 4px; flex-shrink: 0;
+    }
+    .cip-aba-consulta-fechar:hover { opacity: 1; background: rgba(127,127,127,.2); }
+    .cip-aba-consulta-spinner {
+      width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--p3-border); border-top-color: var(--p3-blue-700);
+      display: inline-block; animation: cip-spin .7s linear infinite; flex-shrink: 0;
+    }
+    @keyframes cip-spin { to { transform: rotate(360deg); } }
+
     /* Modal único — login CAD + token CAD (rastreamento) + token
        Quimera (2ª fonte de foto), tudo numa tela só (pedido explícito
        do usuário — antes era preciso ir noutra página pro CAD e tinha
@@ -93,6 +117,19 @@
     }
     .cip-mc-body input:focus { border-color: var(--p3-blue-700); outline: none; }
     .cip-mc-ajuda { font-size: 11px; color: var(--p3-text-muted); margin: -8px 0 12px; }
+    /* Mesmo visual do modal de token em page/autores.html (#modal-token
+       .token-instrucao) — pedido explícito do usuário: "quero também
+       que a aba... seja igual ao design que tem em autores". */
+    .cip-mc-instrucao {
+      background: var(--p3-bg); border-left: 3px solid var(--p3-blue-700); padding: 10px 14px;
+      border-radius: 0 6px 6px 0; font-size: 12px; line-height: 1.7; margin-bottom: 14px; color: var(--p3-text);
+    }
+    .cip-mc-instrucao strong { color: var(--p3-text); }
+    /* Campos de código/token — monoespaçado, centralizado, espaçado
+       (mesmo tratamento visual do textarea de token em autores.html). */
+    .cip-mc-body input.cip-mc-token-field {
+      height: 46px; font-size: 1.05rem; text-align: center; letter-spacing: 3px; font-family: monospace;
+    }
     #cip-mc-msg { font-size: .8rem; margin-top: 6px; min-height: 1.2em; }
     .cip-mc-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
     .cip-mc-foot .cip-mc-cancelar {
@@ -307,6 +344,8 @@
           </div>
         </div>
 
+        <div class="cip-abas-consulta" id="cip-abas-consulta"></div>
+
         <div class="cip-header-pessoa" id="cip-header-pessoa">
           <div class="cip-header-foto" id="cip-header-foto">👤</div>
           <div class="cip-header-info">
@@ -327,27 +366,39 @@
   <div id="cip-modal-config">
     <div class="cip-mc-box">
       <div class="cip-mc-head">
-        🔑 Configurar acesso ao CAD e à 2ª fonte de foto
+        🔑 Login CAD SEDS/AL — CNH, ocorrências, foto (Alcatraz e Quimera)
         <button type="button" onclick="P3ConsultaPessoaFecharModalConfig()" title="Fechar">✕</button>
       </div>
       <div class="cip-mc-body">
         <div class="cip-mc-secao-titulo">Login no CAD</div>
+        <div class="cip-mc-instrucao">
+          <strong>Por que login e senha, além do token?</strong><br>
+          A consulta é liberada pela SUA conta pessoal (CPF+senha), não só pelo token — o token sozinho só
+          autentica o rastreamento de viaturas. É a MESMA sessão usada em Autores/Suspeitos e na Análise Preditiva —
+          configurar aqui ou lá vale pra todas as telas.<br>
+          <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente.</span>
+        </div>
         <label>CPF de acesso (só números):</label>
         <input type="text" id="cip-mc-login" placeholder="09089567461" inputmode="numeric"
           oninput="this.value=this.value.replace(/\D/g,'')">
         <label>Senha:</label>
         <input type="password" id="cip-mc-senha" placeholder="Senha do CAD" autocomplete="off">
         <label>Token de acesso (ex: TK2037113550):</label>
-        <input type="text" id="cip-mc-token-cad" placeholder="TK2037113550" oninput="this.value=this.value.toUpperCase()">
-        <div class="cip-mc-ajuda">O token expira em 24h — renove diariamente. Mesma credencial já usada em outras
-          telas do sistema (configurar aqui vale pras duas).</div>
+        <input type="text" id="cip-mc-token-cad" class="cip-mc-token-field" placeholder="TK2037113550"
+          oninput="this.value=this.value.toUpperCase()">
 
-        <div class="cip-mc-secao-titulo">2ª fonte de foto (opcional)</div>
+        <div class="cip-mc-secao-titulo">2ª fonte de foto — Quimera (opcional)</div>
+        <div class="cip-mc-instrucao">
+          <strong>De onde vem esse código?</strong><br>
+          Chega por e-mail ("Aplicativo Quimera &lt;naoresponda@seguranca.al.gov.br&gt;") a cada login novo no app
+          Quimera. Deixe em branco pra não mexer no que já está salvo.<br>
+          <span style="color:#b46400">⚠️ Dura só ALGUMAS HORAS (bem menos que o token do CAD acima) — se a foto
+          do Quimera parar de aparecer nas consultas, é sinal de que expirou: peça um código novo e cole aqui de
+          novo. Ao salvar, o login já é testado na hora — se der erro, é isso.</span>
+        </div>
         <label>Código de 6 dígitos:</label>
-        <input type="text" id="cip-mc-token-quimera" placeholder="000000" inputmode="numeric" maxlength="6"
+        <input type="text" id="cip-mc-token-quimera" class="cip-mc-token-field" placeholder="000000" inputmode="numeric" maxlength="6"
           oninput="this.value=this.value.replace(/\D/g,'')">
-        <div class="cip-mc-ajuda">Recebido por e-mail ("Aplicativo Quimera") a cada login novo — dura só algumas
-          horas. Deixe em branco pra não mexer no que já está configurado.</div>
 
         <div id="cip-mc-msg"></div>
       </div>
