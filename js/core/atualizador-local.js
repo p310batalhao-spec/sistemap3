@@ -150,6 +150,23 @@
         return resp.json();
     }
 
+    // 2ª fonte de foto na Consulta Integrada de Pessoas (ver
+    // page/consulta-pessoa.html) — {ok, configurado}.
+    async function idsegStatus() {
+        const resp = await fetch(`${URL_BASE}/cad/idseg-status`);
+        return resp.json();
+    }
+
+    // {ok, erro?}.
+    async function idsegConfigurar(token) {
+        const resp = await fetch(`${URL_BASE}/cad/idseg-configurar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: token }),
+        });
+        return resp.json();
+    }
+
     global.P3AtualizadorLocal = {
         URL_BASE: URL_BASE,
         disponivel: disponivel,
@@ -159,5 +176,7 @@
         configurarCad: configurarCad,
         consultarPessoaStream: consultarPessoaStream,
         ocorrenciaDetalhe: ocorrenciaDetalhe,
+        idsegStatus: idsegStatus,
+        idsegConfigurar: idsegConfigurar,
     };
 })(window);
