@@ -13,12 +13,12 @@
 // app desktop com esse nível — aqui é só a 1ª camada (nunca confiar só
 // no frontend, ver app.py:_autorizado).
 //
-// SIMPLIFICAÇÃO DELIBERADA (1ª versão) — mãe/pai em "Vínculos" aparecem
-// como texto, não clicáveis: o CAD não devolve o CPF da mãe/pai, só o
-// nome, e esta página só busca por CPF (ver cad_consulta.py). Abrir uma
-// consulta cruzada por NOME é uma extensão possível, não implementada
-// ainda de propósito (evita grafo complexo cedo demais, mesmo espírito
-// do pedido original: "não é necessário implementar grafo agora").
+// SIMPLIFICAÇÃO MANTIDA — mãe/pai em "Vínculos" (via CAD) aparecem como
+// texto, não clicáveis: o CAD não devolve o CPF da mãe/pai, só o nome.
+// (29/08/2026 — a busca por NOME/MÃE/PAI em si já existe agora, ver
+// modo "nome" abaixo/buscarPorNome — o que falta é achar o CPF exato
+// de quem aparece só como texto dentro de uma ocorrência/vínculo já
+// carregado, não a busca autônoma por nome, que já funciona.)
 
 (function () {
     'use strict';
@@ -126,11 +126,143 @@
     // pro CPF vinculado (autor/suspeito já cadastrado, quando o cruzamento
     // com autores/suspeitos achar CPF — ver renderVinculos).
     function consultarPorCpf(cpfLimpo) {
+        alternarModoBusca('cpf');
         document.getElementById('cip-input-cpf').value = formatarCpf(cpfLimpo);
         consultar();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     window.P3ConsultaPessoaAbrirCpf = consultarPorCpf;
+
+    // ────────────────────────────────────────────────────────────────
+    // MODO DE BUSCA — CPF | Nome/Mãe/Pai | Veículo (29/08/2026, pedido
+    // explícito: "faça a consulta também por NOME... igual ao CAD" e
+    // "pesquisar Veículos por PLACA, RENAVAM ou CHASSI... igual ao CAD").
+    // RENAVAM confirmado (via HAR real veiculos.al.gov.br.har) que NÃO
+    // é aceito como critério de busca pelo CAD — só placa/chassi — por
+    // isso não tem campo de RENAVAM aqui (só apareceria no resultado).
+    // ────────────────────────────────────────────────────────────────
+    function alternarModoBusca(modo) {
+        document.querySelectorAll('.cip-modo-btn').forEach(b => b.classList.toggle('cip-modo-ativo', b.dataset.modo === modo));
+        document.getElementById('cip-busca-cpf').style.display = modo === 'cpf' ? 'flex' : 'none';
+        document.getElementById('cip-busca-nome').style.display = modo === 'nome' ? 'flex' : 'none';
+        document.getElementById('cip-busca-veiculo').style.display = modo === 'veiculo' ? 'flex' : 'none';
+        document.getElementById('cip-lista-nome').style.display = 'none';
+        document.getElementById('cip-resultado-veiculo').style.display = 'none';
+        document.getElementById('cip-status-msg').textContent = '';
+    }
+
+    async function buscarPorNome() {
+        const nome = document.getElementById('cip-input-nome').value.trim();
+        const mae = document.getElementById('cip-input-mae').value.trim();
+        const pai = document.getElementById('cip-input-pai').value.trim();
+        const msg = document.getElementById('cip-status-msg');
+        const lista = document.getElementById('cip-lista-nome');
+
+        if (!nome && !mae && !pai) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Informe ao menos o nome, o nome da mãe ou o nome do pai.';
+            return;
+        }
+        if (!(await P3AtualizadorLocal.disponivel())) {
+            document.getElementById('cip-aviso-servidor').style.display = 'block';
+            return;
+        }
+        document.getElementById('cip-aviso-servidor').style.display = 'none';
+        lista.style.display = 'none';
+        msg.style.color = 'var(--p3-text-muted)';
+        msg.textContent = 'Buscando...';
+
+        try {
+            const r = await P3AtualizadorLocal.buscarPessoaPorNome(nome, mae, pai);
+            if (!r.ok) {
+                msg.style.color = 'var(--p3-danger)';
+                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
+                return;
+            }
+            const pessoas = r.pessoas || [];
+            if (pessoas.length === 0) {
+                msg.style.color = 'var(--p3-text-muted)';
+                msg.textContent = 'Nenhuma pessoa encontrada com esses critérios.';
+                return;
+            }
+            msg.style.color = '#1e6b34';
+            msg.textContent = `${pessoas.length} pessoa(s) encontrada(s) — clique numa pra abrir a consulta completa por CPF.`;
+            lista.innerHTML = pessoas.map((p, i) => {
+                const cpfLimpo = limparCpf(p.cpf);
+                const detalhes = [
+                    cpfLimpo ? 'CPF: ' + formatarCpf(cpfLimpo) : 'CPF não informado no CAD',
+                    p.dataNascimento ? 'Nasc.: ' + p.dataNascimento : '',
+                    p.mae ? 'Mãe: ' + p.mae : '',
+                    p.pai ? 'Pai: ' + p.pai : '',
+                ].filter(Boolean).join(' · ');
+                return `<div class="cip-lista-resultado-item" data-idx="${i}">
+                    <b>${esc(p.nome || 'Sem nome')}</b>
+                    <span>${esc(detalhes)}</span>
+                </div>`;
+            }).join('');
+            lista.style.display = 'block';
+            lista.querySelectorAll('.cip-lista-resultado-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const p = pessoas[Number(item.dataset.idx)];
+                    const cpfLimpo = limparCpf(p.cpf);
+                    if (!cpfLimpo) {
+                        msg.style.color = 'var(--p3-danger)';
+                        msg.textContent = 'Essa pessoa não tem CPF cadastrado no CAD — não é possível abrir a consulta completa.';
+                        return;
+                    }
+                    consultarPorCpf(cpfLimpo);
+                });
+            });
+        } catch (e) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Erro: ' + e.message;
+        }
+    }
+
+    async function buscarVeiculoAcao() {
+        const placa = document.getElementById('cip-input-placa').value.trim();
+        const chassi = document.getElementById('cip-input-chassi').value.trim();
+        const msg = document.getElementById('cip-status-msg');
+        const resultado = document.getElementById('cip-resultado-veiculo');
+
+        if (!placa && !chassi) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Informe a placa ou o chassi (o CAD não aceita busca de veículo por RENAVAM).';
+            return;
+        }
+        if (!(await P3AtualizadorLocal.disponivel())) {
+            document.getElementById('cip-aviso-servidor').style.display = 'block';
+            return;
+        }
+        document.getElementById('cip-aviso-servidor').style.display = 'none';
+        resultado.style.display = 'none';
+        msg.style.color = 'var(--p3-text-muted)';
+        msg.textContent = 'Buscando...';
+
+        try {
+            const r = await P3AtualizadorLocal.buscarVeiculo(placa, chassi);
+            if (!r.ok) {
+                msg.style.color = 'var(--p3-danger)';
+                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
+                return;
+            }
+            if (!r.encontrado) {
+                msg.style.color = 'var(--p3-text-muted)';
+                msg.textContent = 'Nenhum veículo encontrado com esses critérios.';
+                return;
+            }
+            msg.style.color = '#1e6b34';
+            msg.textContent = 'Veículo encontrado.';
+            const v = r.veiculo || {};
+            resultado.innerHTML = `<div class="cip-lista-resultado-item" style="cursor:default;">` +
+                Object.entries(v).map(([k, val]) => `<div><b>${esc(k)}:</b> ${esc(val)}</div>`).join('') +
+                `</div>`;
+            resultado.style.display = 'block';
+        } catch (e) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Erro: ' + e.message;
+        }
+    }
 
     // ────────────────────────────────────────────────────────────────
     // CABEÇALHO DA PESSOA
@@ -226,12 +358,14 @@
     const DEFINICAO_ABAS = [
         { id: 'visaogeral', label: '📊 Visão Geral', contar: r => null },
         { id: 'cnh', label: '🪪 CNH', contar: r => r.cnh ? 1 : 0 },
-        { id: 'vinculos', label: '👪 Vínculos', contar: r => ((r.pessoa && (r.pessoa.mae || r.pessoa.pai)) ? 1 : 0) + (r.vinculosOcorrencia || []).length },
+        { id: 'vinculos', label: '👪 Vínculos', contar: r => ((r.pessoa && (r.pessoa.mae || r.pessoa.pai)) ? 1 : 0) + (r.vinculosOcorrencia || []).length + ((r.inteligencia && r.inteligencia.vinculos) || []).length },
         { id: 'enderecos', label: '📍 Endereços', contar: r => montarEnderecos(r).length },
         { id: 'ocorrencias', label: '🚓 Ocorrências', contar: r => (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length },
         { id: 'mandados', label: '⛓️ BNMP', contar: r => (r.mandados && r.mandados.possuiMandado) ? 1 : 0 },
         { id: 'processos', label: '⚖️ Processos', contar: r => (r.processos || []).length },
         { id: 'veiculos', label: '🚗 Veículos', contar: r => (r.veiculos || []).length },
+        { id: 'inteligencia', label: '🕵️ Inteligência', contar: r => r.inteligencia ? 1 : 0 },
+        { id: 'relint', label: '📋 RELINT', contar: r => ((r.inteligencia && r.inteligencia.relint) || []).length },
         { id: 'timeline', label: '🕐 Linha do Tempo', contar: r => null },
         { id: 'fontes', label: '🔌 Fontes', contar: r => r.fontes.length },
     ];
@@ -256,11 +390,13 @@
         const renderers = {
             visaogeral: renderVisaoGeral, cnh: renderCnh, vinculos: renderVinculos,
             enderecos: renderEnderecos, ocorrencias: renderOcorrencias, mandados: renderMandados,
-            processos: renderProcessos, veiculos: renderVeiculos, timeline: renderTimeline, fontes: renderFontes,
+            processos: renderProcessos, veiculos: renderVeiculos, inteligencia: renderInteligencia,
+            relint: renderRelint, timeline: renderTimeline, fontes: renderFontes,
         };
         paineisEl.innerHTML = `<div class="cip-painel ativo">${(renderers[ABA_ATIVA] || (() => ''))(r)}</div>`;
         // Religa os cliques de detalhe/expand depois de re-renderizar (o innerHTML acima apaga listeners antigos).
         ligarEventosPainelAtivo(r);
+        if (ABA_ATIVA === 'ocorrencias') inicializarMapaOcorrencias(r);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -316,11 +452,49 @@
             <div class="cip-kv">${h}</div></div>`;
     }
 
+    // Diagrama de rede simples (SVG puro, sem biblioteca externa) —
+    // pessoa consultada no centro, vínculos cadastrados no Supabase ao
+    // redor, ligados por linha com o tipo do vínculo. Pedido explícito
+    // do usuário (29/08/2026): "vínculos... em modelo de rede ou árvore".
+    function primeiroNome(nomeCompleto) {
+        return String(nomeCompleto || '').trim().split(/\s+/)[0] || '?';
+    }
+    function montarRedeVinculosHtml(nomeCentral, vinculos) {
+        if (!vinculos || !vinculos.length) return '';
+        const n = vinculos.length;
+        const W = 640, H = Math.max(320, 130 + n * 40);
+        const cx = W / 2, cy = H / 2;
+        const R = Math.min(W, H) / 2 - 90;
+        let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:520px;display:block;" xmlns="http://www.w3.org/2000/svg">`;
+        vinculos.forEach((v, i) => {
+            const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+            const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
+            const mx = cx + (R * 0.55) * Math.cos(ang), my = cy + (R * 0.55) * Math.sin(ang);
+            svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--p3-border)" stroke-width="1.5" />`;
+            svg += `<rect x="${mx - 36}" y="${my - 9}" width="72" height="18" rx="9" fill="var(--p3-bg)" />`;
+            svg += `<text x="${mx}" y="${my + 4}" text-anchor="middle" font-size="9" fill="var(--p3-text-muted)">${esc((v.tipo || 'vínculo').slice(0, 14))}</text>`;
+        });
+        svg += `<circle cx="${cx}" cy="${cy}" r="34" fill="var(--p3-blue-700)" /><text x="${cx}" y="${cy + 4}" text-anchor="middle" font-size="10" font-weight="700" fill="#fff">${esc(primeiroNome(nomeCentral))}</text>`;
+        vinculos.forEach((v, i) => {
+            const ang = (2 * Math.PI * i) / n - Math.PI / 2;
+            const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
+            const clicavel = !!v.cpf;
+            svg += `<g style="cursor:${clicavel ? 'pointer' : 'default'};" ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')"` : ''}>
+                <title>${esc(v.nome)}${v.cpf ? ' — ' + esc(formatarCpf(v.cpf)) : ''}</title>
+                <circle cx="${x}" cy="${y}" r="26" fill="${clicavel ? 'var(--p3-surface)' : 'var(--p3-bg)'}" stroke="var(--p3-border)" stroke-width="1.5" />
+                <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="9" fill="var(--p3-text)">${esc(primeiroNome(v.nome).slice(0, 10))}</text>
+            </g>`;
+        });
+        svg += '</svg>';
+        return svg;
+    }
+
     // ────────────────────────────────────────────────────────────────
     // VÍNCULOS — filiação (mãe/pai, ver nota de simplificação no topo do
     // arquivo — sem CPF, não clicável) + vínculos por OCORRÊNCIA (outras
     // pessoas na(s) mesma(s) ocorrência(s), com CPF — essas sim
-    // clicáveis, ver P3ConsultaPessoaAbrirCpf).
+    // clicáveis, ver P3ConsultaPessoaAbrirCpf) + vínculos CADASTRADOS no
+    // Supabase (rede/árvore, ver montarRedeVinculosHtml).
     // ────────────────────────────────────────────────────────────────
     function renderVinculos(r) {
         const p = r.pessoa;
@@ -353,6 +527,17 @@
                 </tr>`;
             });
             h += '</tbody></table></div></div>';
+        }
+
+        const vinculosSb = (r.inteligencia && r.inteligencia.vinculos) || [];
+        if (vinculosSb.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Vínculos cadastrados — ${vinculosSb.length}</div>
+                <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                    Já investigados e registrados pela própria unidade — clique num nome com CPF pra consultar essa
+                    pessoa.
+                </p>
+                ${montarRedeVinculosHtml((r.pessoa && r.pessoa.nome) || esc(formatarCpf(r.cpf)), vinculosSb)}
+            </div>`;
         }
 
         if (!h) return '<div class="cip-vazio">Nenhum vínculo encontrado.</div>';
@@ -410,6 +595,78 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // MAPA DAS OCORRÊNCIAS — Leaflet + OpenStreetMap (mesma biblioteca
+    // já usada em page/mapaInteligencia.html — grátis, sem chave de
+    // API). Coordenadas vêm do detalhe já carregado automaticamente
+    // (r.detalhesOcorrencias[i].campos — "Latitude"/"Longitude", com
+    // fallback pras coordenadas "...pelo Quimera" quando as
+    // principais vêm vazias, confirmado em captura real).
+    // ────────────────────────────────────────────────────────────────
+    function _parseCoordBr(s) {
+        const n = parseFloat(String(s || '').replace(',', '.').trim());
+        return isFinite(n) && n !== 0 ? n : null;
+    }
+    function extrairCoordenadasOcorrencias(r) {
+        const despc = r.ocorrenciasDespacho || [];
+        const detalhesPorId = {};
+        (r.detalhesOcorrencias || []).forEach(d => { detalhesPorId[d.idOcorrencia] = d; });
+        const pontos = [];
+        despc.forEach(o => {
+            const det = detalhesPorId[o._id_ocor];
+            if (!det || !det.campos) return;
+            const c = det.campos;
+            const lat = _parseCoordBr(c['Latitude']) || _parseCoordBr(c['Latitude pelo Quimera']);
+            const lng = _parseCoordBr(c['Longitude']) || _parseCoordBr(c['Longitude pelo Quimera']);
+            if (lat === null || lng === null) return;
+            pontos.push({
+                lat, lng,
+                numero: o.id_ocor_fk || o._id_ocor || '—',
+                natureza: o.ds_ocor_sgrup || '—',
+                data: o.dt_ocor || '—',
+            });
+        });
+        return pontos;
+    }
+
+    let _mapaOcorrenciasCarregando = null;
+    function carregarLeafletSeNecessario(callback) {
+        if (window.L) { callback(); return; }
+        if (_mapaOcorrenciasCarregando) { _mapaOcorrenciasCarregando.then(callback); return; }
+        _mapaOcorrenciasCarregando = new Promise(resolve => {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.onload = resolve;
+            document.head.appendChild(script);
+        });
+        _mapaOcorrenciasCarregando.then(callback);
+    }
+    function inicializarMapaOcorrencias(r) {
+        const container = document.getElementById('cip-mapa-ocorrencias');
+        if (!container) return;
+        const pontos = extrairCoordenadasOcorrencias(r);
+        if (!pontos.length) return;
+        carregarLeafletSeNecessario(() => {
+            // A aba pode ter mudado enquanto o Leaflet carregava — confere de novo.
+            if (!document.getElementById('cip-mapa-ocorrencias')) return;
+            const mapa = L.map('cip-mapa-ocorrencias').setView([pontos[0].lat, pontos[0].lng], 12);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+            }).addTo(mapa);
+            const grupo = [];
+            pontos.forEach(p => {
+                const marcador = L.marker([p.lat, p.lng]).addTo(mapa);
+                marcador.bindPopup(`<b>${esc(p.numero)}</b><br>${esc(p.natureza)}<br><span style="color:#888;font-size:11px;">${esc(p.data)}</span>`);
+                grupo.push(marcador);
+            });
+            if (grupo.length > 1) mapa.fitBounds(L.featureGroup(grupo).getBounds().pad(0.2));
+        });
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // OCORRÊNCIAS — 3 fontes juntas, cada linha clicável (detalhe sob
     // demanda pra PPE/PC-antigo; SISPOL já tem detalhe pronto pras N
     // mais recentes — ver LIMITE_DETALHE_AUTOMATICO no Python).
@@ -423,6 +680,11 @@
         }
 
         let h = '';
+        const pontosMapa = extrairCoordenadasOcorrencias(r);
+        if (pontosMapa.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Mapa das ocorrências — ${pontosMapa.length} com localização</div>
+                <div id="cip-mapa-ocorrencias" style="height:320px;border-radius:10px;"></div></div>`;
+        }
         if (despc.length) {
             h += `<div class="cip-card"><div class="cip-card-titulo">Ocorrências — ${despc.length}</div>${tabelaOcorrenciasDespc(r, despc)}</div>`;
         }
@@ -548,6 +810,19 @@
                 });
             });
         });
+        document.querySelectorAll('.cip-linha-relint').forEach(tr => {
+            tr.addEventListener('click', () => {
+                const i = Number(tr.dataset.idx);
+                const detalheEl = document.getElementById('cip-det-relint-' + i);
+                if (!detalheEl) return;
+                const aberto = detalheEl.classList.contains('visivel');
+                document.querySelectorAll('.cip-detalhe-linha.visivel').forEach(d => d.classList.remove('visivel'));
+                if (aberto) return;
+                detalheEl.classList.add('visivel');
+                const rel = ((r.inteligencia && r.inteligencia.relint) || [])[i];
+                detalheEl.querySelector('td').innerHTML = rel ? montarCamposDetalheRelint(rel) : '';
+            });
+        });
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -612,6 +887,74 @@
                 <td><span style="color:${corRelacao};font-weight:700;">${v.relacao === 'PROPRIETARIO' ? 'PROPRIETÁRIO' : 'ENVOLVIDO'}</span></td>
                 <td>${esc(v.situacaoNaOcorrencia || '—')}</td>
             </tr>`;
+        });
+        h += '</tbody></table></div></div>';
+        return h;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // INTELIGÊNCIA — apelidos e observações já cadastrados pela própria
+    // unidade no Supabase (ver supabase_intel.py). Vínculos cadastrados
+    // ficam na aba Vínculos (rede/árvore, ver montarRedeVinculosHtml) —
+    // aqui só o que é específico da pessoa: apelido(s) e texto livre.
+    // ────────────────────────────────────────────────────────────────
+    function renderInteligencia(r) {
+        const inteligencia = r.inteligencia;
+        if (!inteligencia) {
+            return '<div class="cip-vazio">Nenhum registro de inteligência cadastrado pra este CPF.</div>';
+        }
+        let h = '<div class="cip-card"><div class="cip-card-titulo">Informações de Inteligência</div>';
+        if (inteligencia.apelidos && inteligencia.apelidos.length) {
+            h += `<div style="margin-bottom:10px;"><b>Apelido(s):</b> ${esc(inteligencia.apelidos.join(', '))}</div>`;
+        }
+        if (inteligencia.observacao) {
+            h += `<div style="font-size:13px;color:var(--p3-text);white-space:pre-wrap;">${esc(inteligencia.observacao)}</div>`;
+        } else if (!inteligencia.apelidos || !inteligencia.apelidos.length) {
+            h += '<div style="font-size:12.5px;color:var(--p3-text-muted);">Pessoa cadastrada, mas sem apelido nem observação registrados.</div>';
+        }
+        h += `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:10px;">Vínculos cadastrados desta pessoa ficam na aba <b>Vínculos</b> — relatórios de inteligência (RELINT), na aba <b>RELINT</b>.</div>`;
+        h += '</div>';
+        return h;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // RELINT — Relatórios de Inteligência cadastrados no Supabase que
+    // têm esta pessoa como envolvida (ver tb_relatorio_busca_pessoas /
+    // vw_relatorios_busca_detalhe em supabase_intel.py). Pedido
+    // explícito do usuário (29/08/2026): "Se houver relint... deve
+    // estar em uma aba separada, de forma clicável para ver os
+    // detalhes" — os dados já vêm todos na consulta (sem chamada extra
+    // ao clicar), então o clique só expande/recolhe o detalhe já em
+    // memória (mesmo componente visual — cip-detalhe-linha — das
+    // ocorrências, mas sem "Carregando...").
+    // ────────────────────────────────────────────────────────────────
+    function montarCamposDetalheRelint(rel) {
+        return montarHtmlDetalheCampos({
+            'Nº da Ordem de Busca vinculada': rel.ordemNumero,
+            'Assunto (Ordem de Busca)': rel.ordemAssunto,
+            'Cidade': rel.cidade,
+            'Nº Denúncia 181': rel.numeroDenuncia181,
+            'Redes sociais': rel.redesSociais,
+            'Câmeras no local': rel.camerasLocal ? 'Sim' : (rel.camerasLocal === false ? 'Não' : null),
+            'Observação do vínculo': rel.observacaoVinculo,
+            'Informações complementares': rel.informacoesComplementares,
+        });
+    }
+    function renderRelint(r) {
+        const lista = (r.inteligencia && r.inteligencia.relint) || [];
+        if (!lista.length) return '<div class="cip-vazio">Nenhum relatório de inteligência (RELINT) cadastrado pra este CPF.</div>';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Relatórios de Inteligência (RELINT) — ${lista.length}</div>
+            <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">Clique num relatório pra ver os detalhes completos.</p>`;
+        h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nº</th><th>Data</th><th>Assunto</th><th>Papel</th><th>Equipe</th><th>Status</th></tr></thead><tbody>';
+        lista.forEach((rel, i) => {
+            h += `<tr class="cip-linha-relint" data-idx="${i}" title="Clique pra ver os detalhes">
+                <td><b>${esc(rel.numero || '—')}</b></td>
+                <td style="white-space:nowrap;">${esc(rel.dataHora ? new Date(rel.dataHora).toLocaleDateString('pt-BR') : '—')}</td>
+                <td>${esc(rel.assunto || '—')}</td>
+                <td>${esc(rel.papel || '—')}</td>
+                <td>${esc(rel.equipeResponsavel || '—')}</td>
+                <td>${esc(rel.status || '—')}</td>
+            </tr><tr class="cip-detalhe-linha" id="cip-det-relint-${i}"><td colspan="6"></td></tr>`;
         });
         h += '</tbody></table></div></div>';
         return h;
@@ -724,6 +1067,24 @@
         return h;
     }
 
+    // Versão pra impressão do RELINT — o detalhe fica sempre ABERTO (no
+    // papel não existe clique), mesmo espírito de renderOcorrenciasParaImpressao.
+    function renderRelintParaImpressao(r) {
+        const lista = (r.inteligencia && r.inteligencia.relint) || [];
+        if (!lista.length) return '<div class="cip-vazio">Nenhum relatório de inteligência (RELINT) cadastrado pra este CPF.</div>';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Relatórios de Inteligência (RELINT) — ${lista.length}</div>`;
+        lista.forEach((rel, i) => {
+            h += `<div style="padding:10px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
+                <div style="font-size:12.5px;"><b>${esc(rel.numero || '—')}</b> — ${esc(rel.dataHora ? new Date(rel.dataHora).toLocaleDateString('pt-BR') : '—')}</div>
+                <div style="font-size:12px;color:var(--p3-text);margin-top:2px;">${esc(rel.assunto || '—')}</div>
+                <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">Papel: ${esc(rel.papel || '—')} · Equipe: ${esc(rel.equipeResponsavel || '—')} · Status: ${esc(rel.status || '—')}</div>
+                ${montarCamposDetalheRelint(rel)}
+            </div>`;
+        });
+        h += '</div>';
+        return h;
+    }
+
     function _cipMontarSecao(numero, titulo, htmlConteudo) {
         return `<div class="cpp-secao">
             <div class="cpp-secao-titulo"><div class="cpp-secao-numero">${numero}</div><div><h2>${esc(titulo)}</h2></div></div>
@@ -767,6 +1128,8 @@
         html += _cipMontarSecao(n++, 'Mandados', renderMandados(r));
         html += _cipMontarSecao(n++, 'Processos Judiciais', renderProcessos(r));
         html += _cipMontarSecao(n++, 'Veículos', renderVeiculos(r));
+        html += _cipMontarSecao(n++, 'Informações de Inteligência', renderInteligencia(r));
+        html += _cipMontarSecao(n++, 'RELINT', renderRelintParaImpressao(r));
         html += _cipMontarSecao(n++, 'Linha do Tempo', renderTimeline(r));
 
         html += `<div class="cpp-rodape">
@@ -878,6 +1241,24 @@
         });
         document.getElementById('cip-input-cpf').addEventListener('input', function (e) {
             e.target.value = e.target.value.replace(/[^\d.\-]/g, '');
+        });
+
+        document.querySelectorAll('.cip-modo-btn').forEach(function (b) {
+            b.addEventListener('click', () => alternarModoBusca(b.dataset.modo));
+        });
+
+        document.getElementById('cip-btn-buscar-nome').addEventListener('click', buscarPorNome);
+        ['cip-input-nome', 'cip-input-mae', 'cip-input-pai'].forEach(function (id) {
+            document.getElementById(id).addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') buscarPorNome();
+            });
+        });
+
+        document.getElementById('cip-btn-buscar-veiculo').addEventListener('click', buscarVeiculoAcao);
+        ['cip-input-placa', 'cip-input-chassi'].forEach(function (id) {
+            document.getElementById(id).addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') buscarVeiculoAcao();
+            });
         });
     });
 })();
