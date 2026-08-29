@@ -26,6 +26,18 @@
     let ULTIMO_RESULTADO = null;
     let ABA_ATIVA = '';
 
+    // Abas de consulta "estilo navegador" (29/08/2026, pedido explícito:
+    // "quando faço uma consulta muito próxima da outra... quero que crie
+    // uma nova aba... com a primeira pesquisa ainda visível enquanto a
+    // segunda carrega, quando a segunda carregar ficará nessa segunda
+    // aba, caso eu clique em outro vínculo clicável, abre outra aba").
+    // Cada item: {id, cpfLimpo, titulo, resultado, carregando, erro,
+    // progresso:{etapa,concluidas,total}} — ver criarAbaConsulta/
+    // executarConsultaEmAba/renderizarConsultaAtiva abaixo.
+    let ABAS_CONSULTA = [];
+    let ABA_CONSULTA_ATIVA_ID = null;
+    let PROX_ABA_CONSULTA_ID = 1;
+
     function esc(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
@@ -54,11 +66,174 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // ABAS DE CONSULTA — cada consulta (CPF) vira uma aba independente,
+    // igual a abas de navegador. A busca da barra principal ATIVA a aba
+    // na hora (é uma ação direta do usuário); clique em vínculo/rede
+    // (P3ConsultaPessoaAbrirCpf) cria a aba EM SEGUNDO PLANO — a aba
+    // atual continua visível/intacta enquanto a nova carrega — e só
+    // troca o foco pra ela quando terminar de carregar.
+    // ────────────────────────────────────────────────────────────────
+    function abaConsultaAtiva() {
+        return ABAS_CONSULTA.find(a => a.id === ABA_CONSULTA_ATIVA_ID) || null;
+    }
+
+    function criarAbaConsulta(cpfLimpo) {
+        const aba = {
+            id: PROX_ABA_CONSULTA_ID++, cpfLimpo, titulo: formatarCpf(cpfLimpo),
+            resultado: null, carregando: true, erro: null,
+            progresso: { etapa: 'Iniciando...', concluidas: 0, total: 0 },
+        };
+        ABAS_CONSULTA.push(aba);
+        return aba;
+    }
+
+    function ativarAbaConsulta(id) {
+        ABA_CONSULTA_ATIVA_ID = id;
+        const aba = abaConsultaAtiva();
+        document.getElementById('cip-input-cpf').value = aba ? formatarCpf(aba.cpfLimpo) : '';
+        renderAbasConsulta();
+        renderizarConsultaAtiva();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function fecharAbaConsulta(id) {
+        const idx = ABAS_CONSULTA.findIndex(a => a.id === id);
+        if (idx === -1) return;
+        ABAS_CONSULTA.splice(idx, 1);
+        if (ABA_CONSULTA_ATIVA_ID === id) {
+            const proxima = ABAS_CONSULTA[idx] || ABAS_CONSULTA[idx - 1] || null;
+            ABA_CONSULTA_ATIVA_ID = proxima ? proxima.id : null;
+            const inputCpf = document.getElementById('cip-input-cpf');
+            inputCpf.value = proxima ? formatarCpf(proxima.cpfLimpo) : '';
+        }
+        renderAbasConsulta();
+        renderizarConsultaAtiva();
+    }
+
+    function renderAbasConsulta() {
+        const cont = document.getElementById('cip-abas-consulta');
+        if (!cont) return;
+        if (!ABAS_CONSULTA.length) { cont.style.display = 'none'; cont.innerHTML = ''; return; }
+        cont.style.display = 'flex';
+        cont.innerHTML = ABAS_CONSULTA.map(a => {
+            const ativa = a.id === ABA_CONSULTA_ATIVA_ID;
+            const statusIcone = a.carregando ? '<span class="cip-aba-consulta-spinner" title="Carregando..."></span>'
+                : (a.erro ? '<span title="Falhou">⚠️</span>' : '');
+            return `<div class="cip-aba-consulta-btn${ativa ? ' ativa' : ''}" data-id="${a.id}" title="${esc(a.titulo)} — ${esc(formatarCpf(a.cpfLimpo))}">
+                ${statusIcone}<span class="cip-aba-consulta-titulo">${esc(a.titulo)}</span>
+                <button type="button" class="cip-aba-consulta-fechar" data-fechar-id="${a.id}" title="Fechar aba">✕</button>
+            </div>`;
+        }).join('');
+        cont.querySelectorAll('.cip-aba-consulta-btn').forEach(el => {
+            el.addEventListener('click', (e) => {
+                if (e.target.closest('.cip-aba-consulta-fechar')) return;
+                ativarAbaConsulta(Number(el.dataset.id));
+            });
+        });
+        cont.querySelectorAll('.cip-aba-consulta-fechar').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                fecharAbaConsulta(Number(btn.dataset.fecharId));
+            });
+        });
+    }
+
+    // Roda a consulta de verdade pra 1 aba — atualiza só o estado DELA;
+    // só mexe no DOM da consulta (progresso/cabeçalho/painéis) se essa
+    // aba ainda for a ativa no momento do evento (senão outra aba que o
+    // usuário esteja olhando "piscaria" com dado de uma consulta alheia).
+    async function executarConsultaEmAba(aba, ativarAoTerminar) {
+        try {
+            const r = await P3AtualizadorLocal.consultarPessoaStream(aba.cpfLimpo, function (evento) {
+                if (evento.tipo === 'progresso') {
+                    aba.progresso = { etapa: evento.etapa, concluidas: evento.concluidas, total: evento.total };
+                } else if (evento.tipo === 'aguardando') {
+                    // Outra consulta em andamento na mesma sessão do CAD —
+                    // ver CAD_LOCK em cad_alcatraz.py (nunca 2 ao mesmo
+                    // tempo, senão uma atropela o contexto da outra).
+                    aba.progresso = { ...aba.progresso, etapa: '⏳ ' + (evento.mensagem || 'Aguardando outra consulta terminar...') };
+                }
+                if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarConsultaAtiva();
+                renderAbasConsulta();
+            });
+            aba.resultado = r;
+            aba.carregando = false;
+            aba.titulo = (r.pessoa && r.pessoa.nome) ? r.pessoa.nome.trim().split(/\s+/).slice(0, 2).join(' ') : formatarCpf(aba.cpfLimpo);
+        } catch (e) {
+            aba.erro = e.message;
+            aba.carregando = false;
+        }
+        if (ativarAoTerminar) {
+            ativarAbaConsulta(aba.id);
+        } else {
+            renderAbasConsulta();
+            if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarConsultaAtiva();
+        }
+    }
+
+    // Reflete o estado da aba ATIVA na tela (progresso/cabeçalho/painéis)
+    // — chamada sempre que a aba ativa muda OU o estado dela muda.
+    function renderizarConsultaAtiva() {
+        const aba = abaConsultaAtiva();
+        const msg = document.getElementById('cip-status-msg');
+        const progWrap = document.getElementById('cip-progresso-wrap');
+        const progFill = document.getElementById('cip-progresso-fill');
+        const progEtapa = document.getElementById('cip-progresso-etapa');
+        const progTexto = document.getElementById('cip-progresso-texto');
+        const btnImprimir = document.getElementById('cip-btn-imprimir');
+
+        if (!aba) {
+            document.getElementById('cip-header-pessoa').classList.remove('visivel');
+            document.getElementById('cip-conteudo').style.display = 'none';
+            progWrap.style.display = 'none';
+            msg.textContent = '';
+            btnImprimir.disabled = true;
+            btnImprimir.title = 'Consulte uma pessoa primeiro';
+            return;
+        }
+
+        if (aba.carregando) {
+            document.getElementById('cip-header-pessoa').classList.remove('visivel');
+            document.getElementById('cip-conteudo').style.display = 'none';
+            progWrap.style.display = 'block';
+            const pct = aba.progresso.total ? Math.round((aba.progresso.concluidas / aba.progresso.total) * 100) : 0;
+            progFill.style.width = pct + '%';
+            progEtapa.textContent = aba.progresso.etapa || 'Iniciando...';
+            progTexto.textContent = aba.progresso.total ? `${aba.progresso.concluidas}/${aba.progresso.total} (${pct}%)` : '';
+            msg.style.color = 'var(--p3-text-muted)';
+            msg.textContent = 'Consultando — pode levar alguns segundos, várias etapas são checadas em sequência...';
+            btnImprimir.disabled = true;
+            btnImprimir.title = 'Consulte uma pessoa primeiro';
+            return;
+        }
+
+        if (aba.erro) {
+            document.getElementById('cip-header-pessoa').classList.remove('visivel');
+            document.getElementById('cip-conteudo').style.display = 'none';
+            progWrap.style.display = 'none';
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Erro: ' + aba.erro;
+            btnImprimir.disabled = true;
+            btnImprimir.title = 'Consulte uma pessoa primeiro';
+            return;
+        }
+
+        progWrap.style.display = 'none';
+        btnImprimir.disabled = false;
+        btnImprimir.title = '';
+        msg.style.color = '#1e6b34';
+        const r = aba.resultado;
+        ULTIMO_RESULTADO = r;
+        const okCount = r.fontes.filter(f => f.ok).length;
+        msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${okCount}/${r.fontes.length} etapa(s) concluídas.`;
+        renderizarTudo(r);
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // CONSULTA
     // ────────────────────────────────────────────────────────────────
     async function consultar() {
         const input = document.getElementById('cip-input-cpf');
-        const btn = document.getElementById('cip-btn-consultar');
         const msg = document.getElementById('cip-status-msg');
         const cpfLimpo = limparCpf(input.value);
 
@@ -74,62 +249,31 @@
         }
         document.getElementById('cip-aviso-servidor').style.display = 'none';
 
-        btn.disabled = true;
-        msg.style.color = 'var(--p3-text-muted)';
-        msg.textContent = 'Consultando — pode levar alguns segundos, várias etapas são checadas em sequência...';
-        document.getElementById('cip-header-pessoa').classList.remove('visivel');
-        document.getElementById('cip-conteudo').style.display = 'none';
+        // Aba já aberta pro mesmo CPF — só troca o foco pra ela em vez
+        // de duplicar/re-consultar.
+        const existente = ABAS_CONSULTA.find(a => a.cpfLimpo === cpfLimpo);
+        if (existente) { ativarAbaConsulta(existente.id); return; }
 
-        const progWrap = document.getElementById('cip-progresso-wrap');
-        const progFill = document.getElementById('cip-progresso-fill');
-        const progEtapa = document.getElementById('cip-progresso-etapa');
-        const progTexto = document.getElementById('cip-progresso-texto');
-        progWrap.style.display = 'block';
-        progFill.style.width = '0%';
-        progEtapa.textContent = 'Iniciando...';
-        progTexto.textContent = '';
-
-        try {
-            const r = await P3AtualizadorLocal.consultarPessoaStream(cpfLimpo, function (evento) {
-                if (evento.tipo === 'progresso') {
-                    const pct = Math.round((evento.concluidas / evento.total) * 100);
-                    progFill.style.width = pct + '%';
-                    progEtapa.textContent = evento.etapa;
-                    progTexto.textContent = `${evento.concluidas}/${evento.total} (${pct}%)`;
-                } else if (evento.tipo === 'aguardando') {
-                    // Outra consulta em andamento na mesma sessão do CAD —
-                    // ver CAD_LOCK em cad_alcatraz.py (nunca 2 ao mesmo
-                    // tempo, senão uma atropela o contexto da outra).
-                    progEtapa.textContent = '⏳ ' + (evento.mensagem || 'Aguardando outra consulta terminar...');
-                    progTexto.textContent = '';
-                }
-            });
-            progFill.style.width = '100%';
-            ULTIMO_RESULTADO = r;
-            const btnImprimir = document.getElementById('cip-btn-imprimir');
-            btnImprimir.disabled = false;
-            btnImprimir.title = '';
-            msg.style.color = '#1e6b34';
-            const okCount = r.fontes.filter(f => f.ok).length;
-            msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${okCount}/${r.fontes.length} etapa(s) concluídas.`;
-            renderizarTudo(r);
-        } catch (e) {
-            msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Erro: ' + e.message;
-        } finally {
-            btn.disabled = false;
-            setTimeout(() => { progWrap.style.display = 'none'; }, 1200);
-        }
+        const aba = criarAbaConsulta(cpfLimpo);
+        ativarAbaConsulta(aba.id); // busca feita direto na barra principal = foco imediato
+        executarConsultaEmAba(aba, false);
     }
 
-    // Reaproveitada pelos cliques em "Vínculos" — abre uma consulta NOVA
-    // pro CPF vinculado (autor/suspeito já cadastrado, quando o cruzamento
-    // com autores/suspeitos achar CPF — ver renderVinculos).
+    // Reaproveitada pelos cliques em "Vínculos"/rede de vínculos — abre
+    // uma consulta NOVA pro CPF vinculado (autor/suspeito já cadastrado)
+    // numa aba própria, EM SEGUNDO PLANO: a aba/consulta atual continua
+    // visível até a nova terminar de carregar, só então o foco troca pra
+    // ela — pedido explícito do usuário (29/08/2026): "quando faço uma
+    // consulta muito próxima da outra... a primeira retorna com a foto,
+    // a segunda não faz a consulta corretamente" / "crie uma nova aba...
+    // com a primeira pesquisa ainda visível enquanto a segunda carrega".
     function consultarPorCpf(cpfLimpo) {
         alternarModoBusca('cpf');
-        document.getElementById('cip-input-cpf').value = formatarCpf(cpfLimpo);
-        consultar();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const existente = ABAS_CONSULTA.find(a => a.cpfLimpo === cpfLimpo);
+        if (existente) { ativarAbaConsulta(existente.id); return; }
+        const aba = criarAbaConsulta(cpfLimpo);
+        renderAbasConsulta(); // mostra a aba nova (com spinner) sem tirar o foco da atual
+        executarConsultaEmAba(aba, true);
     }
     window.P3ConsultaPessoaAbrirCpf = consultarPorCpf;
 
@@ -399,6 +543,17 @@
         if (ABA_ATIVA === 'ocorrencias') inicializarMapaOcorrencias(r);
     }
 
+    // Devolve a mensagem de erro da etapa (ver r.fontes — "fonte" bate
+    // com o nome usado em consulta_pessoa_service.py), ou null se ela
+    // não rodou/deu certo. Usado pra avisar na tela QUANDO/POR QUE a 2ª
+    // fonte de foto (Quimera) não trouxe nada, em vez de só sumir sem
+    // explicação (pedido explícito do usuário, 29/08/2026: "verifique a
+    // questão da limitação de busca da imagem do idseg").
+    function _cipErroDaFonte(r, nomeFonte) {
+        const f = (r.fontes || []).find(x => x.fonte === nomeFonte);
+        return (f && !f.ok) ? (f.erro || 'falha desconhecida') : null;
+    }
+
     // ────────────────────────────────────────────────────────────────
     // VISÃO GERAL
     // ────────────────────────────────────────────────────────────────
@@ -416,6 +571,14 @@
               <div style="font-size:12px;color:var(--p3-text-muted);margin-top:3px;">CPF ${esc(formatarCpf(r.cpf))}${p.dataNascimento ? ' · Nascimento ' + esc(p.dataNascimento) : ''}</div>
               ${r.fotos && r.fotos.length > 1 ? `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:6px;">${r.fotos.length} fotos encontradas — clique pra ampliar</div>` : ''}</div>`;
         h += '</div>';
+
+        const erroIdseg = _cipErroDaFonte(r, 'Foto (2ª fonte)');
+        if (erroIdseg) {
+            h += `<div class="cip-card" style="border-color:#f0d98a;background:#fff8e6;color:#8a6100;font-size:12px;">
+                ⚠️ <b>2ª fonte de foto (Quimera) indisponível:</b> ${esc(erroIdseg)}
+                <div style="margin-top:4px;">Renove o código de 6 dígitos em <b>🔑 Configurar acesso</b> — ele expira em poucas horas.</div>
+            </div>`;
+        }
 
         const kpis = [
             ['🚓', totalOcor, 'Ocorrências'],
