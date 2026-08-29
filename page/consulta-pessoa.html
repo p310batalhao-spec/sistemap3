@@ -40,23 +40,83 @@
     }
     #cip-status-msg { font-size: 13px; color: var(--p3-text-muted); margin-bottom: 12px; }
 
-    #cip-idseg-link { font-size: 12px; color: var(--p3-blue-700); cursor: pointer; text-decoration: underline dotted; margin-bottom: 10px; display: inline-block; }
-    #cip-idseg-box {
-      display: none; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 8px;
-      padding: 12px 16px; margin-bottom: 14px; font-size: 12.5px; max-width: 460px;
+    #cip-config-link {
+      font-size: 12.5px; color: var(--p3-blue-700); cursor: pointer; text-decoration: underline dotted;
+      margin-bottom: 12px; display: inline-block; background: none; border: none; padding: 0; font-family: inherit;
     }
-    #cip-idseg-box.aberto { display: block; }
-    #cip-idseg-box p { color: var(--p3-text-muted); margin-bottom: 8px; }
-    #cip-idseg-box .cip-idseg-linha { display: flex; gap: 8px; align-items: center; }
-    #cip-idseg-box input {
-      flex: 1; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border);
-      background: var(--p3-bg); color: var(--p3-text); font-size: 13px;
+
+    /* Modal único — login CAD + token CAD (rastreamento) + token
+       Quimera (2ª fonte de foto), tudo numa tela só (pedido explícito
+       do usuário — antes era preciso ir noutra página pro CAD e tinha
+       uma caixinha separada só pro Quimera aqui). Mesmo visual dos
+       outros modais do sistema (ver #modal-token em page/autores.html). */
+    #cip-modal-config {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000;
+      align-items: center; justify-content: center; padding: 20px;
     }
-    #cip-idseg-box button {
-      padding: 8px 14px; border-radius: 6px; border: none; background: var(--p3-blue-700);
-      color: #fff; font-size: 12.5px; font-weight: 600; cursor: pointer;
+    #cip-modal-config.aberto { display: flex; }
+    .cip-mc-box {
+      background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 12px;
+      max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35); max-height: 90vh; overflow-y: auto;
     }
-    #cip-idseg-status { margin-top: 8px; font-size: 12px; }
+    .cip-mc-head {
+      background: var(--p3-blue-700); color: #fff; padding: 14px 18px; display: flex;
+      justify-content: space-between; align-items: center; font-weight: 700; font-size: .95rem; position: sticky; top: 0;
+    }
+    .cip-mc-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+    .cip-mc-body { padding: 18px; }
+    .cip-mc-secao-titulo { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--p3-text-muted); margin: 16px 0 8px; }
+    .cip-mc-secao-titulo:first-child { margin-top: 0; }
+    .cip-mc-body label { display: block; font-size: .75rem; font-weight: 700; text-transform: uppercase; color: var(--p3-text-muted); margin-bottom: 5px; }
+    .cip-mc-body input {
+      width: 100%; box-sizing: border-box; padding: 9px 10px; border: 2px solid var(--p3-border); border-radius: 6px;
+      font-size: .92rem; margin-bottom: 12px; background: var(--p3-bg); color: var(--p3-text);
+    }
+    .cip-mc-body input:focus { border-color: var(--p3-blue-700); outline: none; }
+    .cip-mc-ajuda { font-size: 11px; color: var(--p3-text-muted); margin: -8px 0 12px; }
+    #cip-mc-msg { font-size: .8rem; margin-top: 6px; min-height: 1.2em; }
+    .cip-mc-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+    .cip-mc-foot .cip-mc-cancelar {
+      background: var(--p3-bg); color: var(--p3-text); border: 1px solid var(--p3-border); border-radius: 5px;
+      padding: 8px 16px; cursor: pointer; font-size: .85rem;
+    }
+    .cip-mc-foot .cip-mc-salvar {
+      background: var(--p3-blue-700); color: #fff; border: none; border-radius: 5px;
+      padding: 8px 16px; cursor: pointer; font-size: .85rem; font-weight: 700;
+    }
+
+    /* Galeria de fotos (cabeçalho + Visão Geral) — todas as fotos
+       encontradas, clicáveis, ampliam no lightbox abaixo. */
+    .cip-foto-thumb {
+      border-radius: 10px; background: var(--p3-bg); border: 1px solid var(--p3-border);
+      overflow: hidden; flex-shrink: 0; cursor: pointer; transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .cip-foto-thumb:hover { transform: scale(1.03); box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+    .cip-foto-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    #cip-lightbox {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 9500;
+      align-items: center; justify-content: center; padding: 30px;
+    }
+    #cip-lightbox.aberto { display: flex; }
+    #cip-lightbox img { max-width: 90vw; max-height: 85vh; object-fit: contain; border-radius: 6px; }
+    #cip-lightbox-fechar {
+      position: absolute; top: 18px; right: 24px; background: rgba(255,255,255,.12); border: none; color: #fff;
+      font-size: 22px; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; line-height: 1;
+    }
+    #cip-lightbox-fechar:hover { background: rgba(255,255,255,.25); }
+    #cip-lightbox-prev, #cip-lightbox-next {
+      position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,255,255,.12); border: none;
+      color: #fff; font-size: 28px; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; line-height: 1;
+      align-items: center; justify-content: center;
+    }
+    #cip-lightbox-prev:hover, #cip-lightbox-next:hover { background: rgba(255,255,255,.25); }
+    #cip-lightbox-prev { left: 18px; }
+    #cip-lightbox-next { right: 18px; }
+    #cip-lightbox-contador {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,255,255,.8); font-size: 13px; background: rgba(0,0,0,.4); padding: 4px 14px; border-radius: 20px;
+    }
 
     /* Cabeçalho da pessoa */
     .cip-header-pessoa {
@@ -64,10 +124,7 @@
       padding: 18px 22px; margin-bottom: 18px; box-shadow: var(--p3-shadow-lg); gap: 18px; align-items: flex-start;
     }
     .cip-header-pessoa.visivel { display: flex; }
-    .cip-header-foto {
-      width: 140px; height: 140px; border-radius: 10px; background: var(--p3-bg); border: 1px solid var(--p3-border);
-      display: flex; align-items: center; justify-content: center; font-size: 52px; flex-shrink: 0; opacity: .5;
-    }
+    .cip-header-foto { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; max-width: 300px; }
     .cip-header-info h2 { font-size: 19px; color: var(--p3-text); margin-bottom: 6px; }
     .cip-header-grid {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 20px;
@@ -191,18 +248,7 @@
           recarregue.
         </div>
 
-        <span id="cip-idseg-link">🔑 Configurar 2ª fonte de foto</span>
-        <div id="cip-idseg-box">
-          <p>
-            Código de 6 dígitos recebido por e-mail ("Aplicativo Quimera") a cada login novo — dura só algumas
-            horas, precisa reconfigurar quando expirar.
-          </p>
-          <div class="cip-idseg-linha">
-            <input type="text" id="cip-idseg-input" placeholder="000000" inputmode="numeric" maxlength="6">
-            <button type="button" id="cip-idseg-salvar">Salvar</button>
-          </div>
-          <div id="cip-idseg-status"></div>
-        </div>
+        <button type="button" id="cip-config-link">🔑 Configurar acesso (CAD + Quimera)</button>
 
         <div class="cip-busca">
           <input type="text" id="cip-input-cpf" placeholder="CPF (só números ou com pontuação)" inputmode="numeric">
@@ -236,6 +282,48 @@
       </div>
     </main>
   </section>
+
+  <div id="cip-modal-config">
+    <div class="cip-mc-box">
+      <div class="cip-mc-head">
+        🔑 Configurar acesso ao CAD e à 2ª fonte de foto
+        <button type="button" onclick="P3ConsultaPessoaFecharModalConfig()" title="Fechar">✕</button>
+      </div>
+      <div class="cip-mc-body">
+        <div class="cip-mc-secao-titulo">Login no CAD</div>
+        <label>CPF de acesso (só números):</label>
+        <input type="text" id="cip-mc-login" placeholder="09089567461" inputmode="numeric"
+          oninput="this.value=this.value.replace(/\D/g,'')">
+        <label>Senha:</label>
+        <input type="password" id="cip-mc-senha" placeholder="Senha do CAD" autocomplete="off">
+        <label>Token de acesso (ex: TK2037113550):</label>
+        <input type="text" id="cip-mc-token-cad" placeholder="TK2037113550" oninput="this.value=this.value.toUpperCase()">
+        <div class="cip-mc-ajuda">O token expira em 24h — renove diariamente. Mesma credencial já usada em outras
+          telas do sistema (configurar aqui vale pras duas).</div>
+
+        <div class="cip-mc-secao-titulo">2ª fonte de foto (opcional)</div>
+        <label>Código de 6 dígitos:</label>
+        <input type="text" id="cip-mc-token-quimera" placeholder="000000" inputmode="numeric" maxlength="6"
+          oninput="this.value=this.value.replace(/\D/g,'')">
+        <div class="cip-mc-ajuda">Recebido por e-mail ("Aplicativo Quimera") a cada login novo — dura só algumas
+          horas. Deixe em branco pra não mexer no que já está configurado.</div>
+
+        <div id="cip-mc-msg"></div>
+      </div>
+      <div class="cip-mc-foot">
+        <button type="button" class="cip-mc-cancelar" onclick="P3ConsultaPessoaFecharModalConfig()">Cancelar</button>
+        <button type="button" class="cip-mc-salvar" id="cip-mc-salvar-btn">✅ Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cip-lightbox" onclick="if(event.target===this) P3ConsultaPessoaFecharLightbox()">
+    <button type="button" id="cip-lightbox-fechar" onclick="P3ConsultaPessoaFecharLightbox()" title="Fechar">✕</button>
+    <button type="button" id="cip-lightbox-prev" onclick="P3ConsultaPessoaNavegarLightbox(-1)" title="Anterior">‹</button>
+    <img id="cip-lightbox-img" src="" alt="Foto ampliada">
+    <button type="button" id="cip-lightbox-next" onclick="P3ConsultaPessoaNavegarLightbox(1)" title="Próxima">›</button>
+    <div id="cip-lightbox-contador"></div>
+  </div>
 
   <script src="../js/core/atualizador-local.js"></script>
   <script src="../js/consulta-pessoa.js"></script>
