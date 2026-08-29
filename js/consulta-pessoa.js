@@ -173,7 +173,7 @@
         { id: 'enderecos', label: '📍 Endereços', contar: r => montarEnderecos(r).length },
         { id: 'ocorrencias', label: '🚓 Ocorrências', contar: r => (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length },
         { id: 'mandados', label: '⛓️ BNMP', contar: r => (r.mandados && r.mandados.possuiMandado) ? 1 : 0 },
-        { id: 'processos', label: '⚖️ Processos TJAL', contar: r => (r.processos || []).length },
+        { id: 'processos', label: '⚖️ Processos', contar: r => (r.processos || []).length },
         { id: 'veiculos', label: '🚗 Veículos', contar: r => (r.veiculos || []).length },
         { id: 'timeline', label: '🕐 Linha do Tempo', contar: r => null },
         { id: 'fontes', label: '🔌 Fontes', contar: r => r.fontes.length },
@@ -229,7 +229,7 @@
 
         const kpis = [
             ['🚓', totalOcor, 'Ocorrências'],
-            ['⚖️', (r.processos || []).length, 'Processos TJAL'],
+            ['⚖️', (r.processos || []).length, 'Processos'],
             ['🚗', (r.veiculos || []).length, 'Veículos (via ocorrências)'],
             ['📍', montarEnderecos(r).length, 'Endereços'],
             ['🔌', r.fontes.filter(f => f.ok).length + '/' + r.fontes.length, 'Etapas concluídas'],
@@ -276,24 +276,33 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // ENDEREÇOS — consolidados do IDNET (único que traz endereço com
-    // data). Dedup simples por texto normalizado.
+    // ENDEREÇOS — consolidados de TODAS as fontes que trazem campo de
+    // endereço: identificação civil (com data — a mais completa) e CNH.
+    // Busca a CHAVE do campo por regex (contém "endere") em vez de um
+    // nome fixo — mais tolerante a variações de acento/grafia entre as
+    // fontes (ex.: "Endereço" vs "Endereco") do que comparar string
+    // exata. Dedup por texto normalizado.
     // ────────────────────────────────────────────────────────────────
     function normalizarEndereco(s) {
         return String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
     }
+    function extrairCampoEndereco(obj) {
+        if (!obj) return null;
+        const chave = Object.keys(obj).find(k => /endere/i.test(k));
+        return chave ? obj[chave] : null;
+    }
     function montarEnderecos(r) {
-        const idnet = r.idnet || [];
         const vistos = new Set();
         const lista = [];
-        idnet.forEach(reg => {
-            const end = reg['Endereço'];
+        function adicionar(end, data) {
             if (!end) return;
             const chave = normalizarEndereco(end);
             if (vistos.has(chave)) return;
             vistos.add(chave);
-            lista.push({ endereco: end, data: reg['Data de Atendimento no IC'] || null });
-        });
+            lista.push({ endereco: end, data: data || null });
+        }
+        (r.idnet || []).forEach(reg => adicionar(extrairCampoEndereco(reg), reg['Data de Atendimento no IC']));
+        adicionar(extrairCampoEndereco(r.cnh), null);
         return lista;
     }
     function renderEnderecos(r) {
@@ -469,16 +478,27 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // PROCESSOS TJAL
+    // PROCESSOS — TJAL (busca por nome) + TJSP (busca direta por CPF)
     // ────────────────────────────────────────────────────────────────
+    const DOMINIO_ESAJ_POR_TRIBUNAL = { TJAL: 'www2.tjal.jus.br', TJSP: 'esaj.tjsp.jus.br' };
+    const ORIGEM_LABEL = { nome_unico: 'Nome único', cpf_confirmado: 'CPF confirmado', cpf_direto: 'CPF direto' };
     function renderProcessos(r) {
         const lista = r.processos || [];
-        if (!lista.length) return '<div class="cip-vazio">Nenhum processo encontrado pelo nome desta pessoa.</div>';
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Processos judiciais</div>';
-        h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nº Processo</th><th>Origem do vínculo</th><th></th></tr></thead><tbody>';
+        if (!lista.length) return '<div class="cip-vazio">Nenhum processo encontrado (TJAL e TJSP) pra esta pessoa.</div>';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Processos judiciais</div>
+            <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                TJAL (por nome) e TJSP (direto por CPF) — classe/assunto/último andamento, quando disponíveis, vêm
+                do DataJud (CNJ), checado também em tribunais vizinhos, federal (TRF5) e militar.
+            </p>`;
+        h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Tribunal</th><th>Nº Processo</th><th>Origem do vínculo</th><th>Classe / Assunto</th><th>Último andamento</th><th></th></tr></thead><tbody>';
         lista.forEach(p => {
-            const link = `https://www2.tjal.jus.br/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.numeroProcesso)}&dadosConsulta.tipoNuProcesso=UNIFICADO`;
-            h += `<tr><td>${esc(p.numeroProcesso)}</td><td>${p.origem === 'cpf_confirmado' ? 'CPF confirmado' : 'Nome único'}</td>
+            const dominio = DOMINIO_ESAJ_POR_TRIBUNAL[p.tribunal] || DOMINIO_ESAJ_POR_TRIBUNAL.TJAL;
+            const link = `https://${dominio}/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado=${encodeURIComponent(p.numeroProcesso)}&dadosConsulta.tipoNuProcesso=UNIFICADO`;
+            const classeAssunto = [p.classe, p.assunto].filter(Boolean).join(' — ') || '—';
+            const mov = p.ultimoMovimento;
+            const movTexto = mov ? `${esc(mov.textoCompleto || mov.nome || '—')}${mov.dataHora ? ' <span style="color:var(--p3-text-muted);">(' + esc(new Date(mov.dataHora).toLocaleDateString('pt-BR')) + ')</span>' : ''}` : '—';
+            h += `<tr><td><b>${esc(p.tribunal || 'TJAL')}</b></td><td>${esc(p.numeroProcesso)}</td><td>${esc(ORIGEM_LABEL[p.origem] || p.origem || '—')}</td>
+                <td>${esc(classeAssunto)}</td><td>${movTexto}</td>
                 <td><a href="${link}" target="_blank" rel="noopener" style="color:var(--p3-blue-700);">Abrir no e-SAJ ↗</a></td></tr>`;
         });
         h += '</tbody></table></div></div>';
@@ -675,6 +695,54 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // 2ª FONTE DE FOTO — token de 6 dígitos do app oficial (ver
+    // idseg_quimera.py). Config isolada nesta página só (não é
+    // credencial nova — reaproveita login/senha do CAD já salvos no
+    // modal "🔑 Configurar acesso ao CAD"), por isso não usa o modal
+    // global — é 1 campo extra, específico daqui.
+    // ────────────────────────────────────────────────────────────────
+    async function atualizarStatusIdseg() {
+        const statusEl = document.getElementById('cip-idseg-status');
+        try {
+            const r = await P3AtualizadorLocal.idsegStatus();
+            statusEl.style.color = r.configurado ? '#1e6b34' : 'var(--p3-text-muted)';
+            statusEl.textContent = r.configurado ? '✅ Configurado — a 2ª fonte de foto será tentada nas consultas.' : '2ª fonte de foto ainda não configurada.';
+        } catch (e) {
+            statusEl.style.color = 'var(--p3-text-muted)';
+            statusEl.textContent = 'Servidor local não respondeu — abra-o pra configurar.';
+        }
+    }
+
+    async function salvarTokenIdseg() {
+        const input = document.getElementById('cip-idseg-input');
+        const statusEl = document.getElementById('cip-idseg-status');
+        const btn = document.getElementById('cip-idseg-salvar');
+        const token = input.value.replace(/\D/g, '');
+        if (token.length !== 6) {
+            statusEl.style.color = 'var(--p3-danger)';
+            statusEl.textContent = 'Informe os 6 dígitos do código.';
+            return;
+        }
+        btn.disabled = true;
+        try {
+            const r = await P3AtualizadorLocal.idsegConfigurar(token);
+            if (r.ok) {
+                statusEl.style.color = '#1e6b34';
+                statusEl.textContent = '✅ Salvo — a 2ª fonte de foto será tentada nas próximas consultas.';
+                input.value = '';
+            } else {
+                statusEl.style.color = 'var(--p3-danger)';
+                statusEl.textContent = r.erro || 'Falha ao salvar.';
+            }
+        } catch (e) {
+            statusEl.style.color = 'var(--p3-danger)';
+            statusEl.textContent = 'Erro de conexão: ' + e.message;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // BOOT
     // ────────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', async function () {
@@ -683,6 +751,16 @@
         if (!(await P3AtualizadorLocal.disponivel())) {
             document.getElementById('cip-aviso-servidor').style.display = 'block';
         }
+
+        document.getElementById('cip-idseg-link').addEventListener('click', function () {
+            const box = document.getElementById('cip-idseg-box');
+            box.classList.toggle('aberto');
+            if (box.classList.contains('aberto')) atualizarStatusIdseg();
+        });
+        document.getElementById('cip-idseg-salvar').addEventListener('click', salvarTokenIdseg);
+        document.getElementById('cip-idseg-input').addEventListener('input', function (e) {
+            e.target.value = e.target.value.replace(/\D/g, '');
+        });
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);
         document.getElementById('cip-btn-imprimir').addEventListener('click', imprimirConsultaCompleta);
@@ -694,4 +772,3 @@
         });
     });
 })();
-
