@@ -986,6 +986,16 @@
                 detalheEl.querySelector('td').innerHTML = rel ? montarCamposDetalheRelint(rel) : '';
             });
         });
+        document.querySelectorAll('.cip-denuncia-vermais').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const i = Number(btn.dataset.idx);
+                const d = ((r.inteligencia && r.inteligencia.denuncias) || [])[i];
+                if (!d) return;
+                const resumoEl = document.getElementById('cip-denuncia-resumo-' + i);
+                if (resumoEl) resumoEl.textContent = d.resumoBreve || d.narrativa || '';
+                btn.remove();
+            });
+        });
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -1061,7 +1071,7 @@
     // ficam na aba Vínculos (rede/árvore, ver montarRedeVinculosHtml) —
     // aqui só o que é específico da pessoa: apelido(s) e texto livre.
     // ────────────────────────────────────────────────────────────────
-    function renderInteligencia(r) {
+    function renderInteligencia(r, paraImpressao) {
         const inteligencia = r.inteligencia;
         if (!inteligencia) {
             return '<div class="cip-vazio">Nenhum registro de inteligência cadastrado pra este CPF.</div>';
@@ -1076,6 +1086,47 @@
             h += '<div style="font-size:12.5px;color:var(--p3-text-muted);">Pessoa cadastrada, mas sem apelido nem observação registrados.</div>';
         }
         h += `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:10px;">Vínculos cadastrados desta pessoa ficam na aba <b>Vínculos</b> — relatórios de inteligência (RELINT), na aba <b>RELINT</b>.</div>`;
+        h += '</div>';
+        h += montarDenunciasHtml(inteligencia.denuncias, !!paraImpressao);
+        return h;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // DISQUE DENÚNCIA — tb_denuncias no Supabase, ligada direto por
+    // pessoa_id (sem tabela de junção, diferente de RELINT). Pedido
+    // explícito do usuário (29/08/2026): "também quero que mostre o
+    // disk denúncia para a pessoa consultada caso tenha. tb_denuncias."
+    // Resumo vem truncado com "Ver mais" (pode ser um texto bem longo —
+    // ver dado real testado) — link pro PDF anexado usa URL ASSINADA
+    // (o bucket "denuncias" no Storage é privado, ver
+    // supabase_intel.py:_sb_storage_sign_url), gerada só na hora da
+    // consulta e válida por 1h.
+    // ────────────────────────────────────────────────────────────────
+    function _cipTruncar(s, n) {
+        s = String(s || '');
+        return s.length > n ? s.slice(0, n).trim() + '…' : s;
+    }
+    function montarDenunciasHtml(denuncias, paraImpressao) {
+        if (!denuncias || !denuncias.length) return '';
+        const STATUS_COR = { concluido: '#1e6b34', pendente: '#8a6100' };
+        let h = `<div class="cip-card"><div class="cip-card-titulo">📞 Disque Denúncia — ${denuncias.length}</div>`;
+        denuncias.forEach((d, i) => {
+            const statusCor = STATUS_COR[d.statusOperacional] || 'var(--p3-text-muted)';
+            const resumo = d.resumoBreve || d.narrativa || '';
+            const resumoCurto = paraImpressao ? resumo : _cipTruncar(resumo, 260);
+            const temMais = !paraImpressao && resumo.length > resumoCurto.length;
+            const dataFmt = d.dataDenuncia ? new Date(d.dataDenuncia + 'T00:00:00').toLocaleDateString('pt-BR') : '—';
+            h += `<div style="padding:10px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
+                <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;">
+                    <div><b>${esc(d.tipo || 'Denúncia')}</b> · nº ${esc(d.numero || '—')}</div>
+                    <div style="color:${statusCor};font-weight:700;text-transform:uppercase;font-size:11px;">${esc(d.statusOperacional || '—')}</div>
+                </div>
+                <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">${esc(dataFmt)}${d.cidade ? ' · ' + esc(d.cidade) : ''}</div>
+                ${resumo ? `<div class="cip-denuncia-resumo" id="cip-denuncia-resumo-${i}" style="font-size:12.5px;color:var(--p3-text);margin-top:6px;white-space:pre-wrap;">${esc(resumoCurto)}</div>` : ''}
+                ${temMais ? `<button type="button" class="cip-denuncia-vermais" data-idx="${i}" style="background:none;border:none;color:var(--p3-blue-700);font-size:11.5px;cursor:pointer;padding:2px 0;">Ver mais</button>` : ''}
+                ${d.arquivoUrl ? `<div style="margin-top:6px;"><a href="${d.arquivoUrl}" target="_blank" rel="noopener" style="color:var(--p3-blue-700);font-size:12px;">📄 ${esc(d.arquivoNome || 'Abrir PDF da denúncia')} ↗</a></div>` : ''}
+            </div>`;
+        });
         h += '</div>';
         return h;
     }
@@ -1291,7 +1342,7 @@
         html += _cipMontarSecao(n++, 'Mandados', renderMandados(r));
         html += _cipMontarSecao(n++, 'Processos Judiciais', renderProcessos(r));
         html += _cipMontarSecao(n++, 'Veículos', renderVeiculos(r));
-        html += _cipMontarSecao(n++, 'Informações de Inteligência', renderInteligencia(r));
+        html += _cipMontarSecao(n++, 'Informações de Inteligência', renderInteligencia(r, true));
         html += _cipMontarSecao(n++, 'RELINT', renderRelintParaImpressao(r));
         html += _cipMontarSecao(n++, 'Linha do Tempo', renderTimeline(r));
 
