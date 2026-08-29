@@ -96,6 +96,12 @@
                     progFill.style.width = pct + '%';
                     progEtapa.textContent = evento.etapa;
                     progTexto.textContent = `${evento.concluidas}/${evento.total} (${pct}%)`;
+                } else if (evento.tipo === 'aguardando') {
+                    // Outra consulta em andamento na mesma sessão do CAD —
+                    // ver CAD_LOCK em cad_alcatraz.py (nunca 2 ao mesmo
+                    // tempo, senão uma atropela o contexto da outra).
+                    progEtapa.textContent = '⏳ ' + (evento.mensagem || 'Aguardando outra consulta terminar...');
+                    progTexto.textContent = '';
                 }
             });
             progFill.style.width = '100%';
@@ -129,6 +135,56 @@
     // ────────────────────────────────────────────────────────────────
     // CABEÇALHO DA PESSOA
     // ────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────
+    // GALERIA DE FOTOS + LIGHTBOX — mostra TODAS as fotos encontradas
+    // (não só a 1ª), cada uma clicável pra ampliar. Reaproveitada no
+    // cabeçalho e na Visão Geral (mesmo HTML, tamanhos diferentes).
+    // ────────────────────────────────────────────────────────────────
+    function montarGaleriaFotosHtml(fotos, tamanhoPx) {
+        if (!fotos || !fotos.length) {
+            const fs = Math.round(tamanhoPx * 0.37);
+            return `<div class="cip-foto-thumb" style="width:${tamanhoPx}px;height:${tamanhoPx}px;display:flex;align-items:center;justify-content:center;font-size:${fs}px;opacity:.4;cursor:default;">👤</div>`;
+        }
+        return fotos.map((f, i) => `<div class="cip-foto-thumb" style="width:${tamanhoPx}px;height:${tamanhoPx}px;" onclick="P3ConsultaPessoaAbrirFoto(${i})"><img src="${f}" alt="Foto ${i + 1}"></div>`).join('');
+    }
+
+    let LIGHTBOX_INDICE = 0;
+    function atualizarLightbox() {
+        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        if (!fotos.length) return;
+        document.getElementById('cip-lightbox-img').src = fotos[LIGHTBOX_INDICE];
+        document.getElementById('cip-lightbox-contador').textContent = fotos.length > 1 ? `${LIGHTBOX_INDICE + 1} / ${fotos.length}` : '';
+        const mostraNav = fotos.length > 1 ? 'flex' : 'none';
+        document.getElementById('cip-lightbox-prev').style.display = mostraNav;
+        document.getElementById('cip-lightbox-next').style.display = mostraNav;
+    }
+    function abrirLightbox(idx) {
+        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        if (!fotos.length) return;
+        LIGHTBOX_INDICE = ((idx % fotos.length) + fotos.length) % fotos.length;
+        atualizarLightbox();
+        document.getElementById('cip-lightbox').classList.add('aberto');
+    }
+    function fecharLightbox() {
+        document.getElementById('cip-lightbox').classList.remove('aberto');
+    }
+    function navegarLightbox(delta) {
+        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        if (!fotos.length) return;
+        LIGHTBOX_INDICE = ((LIGHTBOX_INDICE + delta) % fotos.length + fotos.length) % fotos.length;
+        atualizarLightbox();
+    }
+    document.addEventListener('keydown', function (e) {
+        const lb = document.getElementById('cip-lightbox');
+        if (!lb || !lb.classList.contains('aberto')) return;
+        if (e.key === 'Escape') fecharLightbox();
+        else if (e.key === 'ArrowLeft') navegarLightbox(-1);
+        else if (e.key === 'ArrowRight') navegarLightbox(1);
+    });
+    window.P3ConsultaPessoaAbrirFoto = abrirLightbox;
+    window.P3ConsultaPessoaFecharLightbox = fecharLightbox;
+    window.P3ConsultaPessoaNavegarLightbox = navegarLightbox;
+
     function renderizarHeader(r) {
         const p = r.pessoa;
         const el = document.getElementById('cip-header-pessoa');
@@ -136,12 +192,7 @@
         el.classList.add('visivel');
         document.getElementById('cip-header-nome').textContent = p.nome || '(sem nome)';
 
-        const fotoEl = document.getElementById('cip-header-foto');
-        if (r.fotos && r.fotos.length) {
-            fotoEl.innerHTML = `<img src="${r.fotos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:10px;">`;
-        } else {
-            fotoEl.innerHTML = '👤';
-        }
+        document.getElementById('cip-header-foto').innerHTML = montarGaleriaFotosHtml(r.fotos, 140);
 
         const grid = document.getElementById('cip-header-grid');
         const linhas = [
@@ -169,7 +220,7 @@
     const DEFINICAO_ABAS = [
         { id: 'visaogeral', label: '📊 Visão Geral', contar: r => null },
         { id: 'cnh', label: '🪪 CNH', contar: r => r.cnh ? 1 : 0 },
-        { id: 'vinculos', label: '👪 Vínculos', contar: r => (r.pessoa && (r.pessoa.mae || r.pessoa.pai)) ? 1 : 0 },
+        { id: 'vinculos', label: '👪 Vínculos', contar: r => ((r.pessoa && (r.pessoa.mae || r.pessoa.pai)) ? 1 : 0) + (r.vinculosOcorrencia || []).length },
         { id: 'enderecos', label: '📍 Endereços', contar: r => montarEnderecos(r).length },
         { id: 'ocorrencias', label: '🚓 Ocorrências', contar: r => (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length },
         { id: 'mandados', label: '⛓️ BNMP', contar: r => (r.mandados && r.mandados.possuiMandado) ? 1 : 0 },
@@ -213,18 +264,15 @@
         const p = r.pessoa || {};
         const totalOcor = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
 
-        // Foto + nome completo (pedido explícito do usuário) — foto vem
-        // de r.fotos[0] quando disponível; sem foto ainda, fica um
-        // espaço reservado (ex.: fonte em depuração no momento) em vez
-        // de simplesmente não mostrar nada.
-        const temFoto = r.fotos && r.fotos.length;
-        let h = '<div class="cip-card" style="display:flex;gap:16px;align-items:center;">';
-        h += `<div style="width:140px;height:140px;border-radius:10px;background:var(--p3-bg);border:1px solid var(--p3-border);
-              display:flex;align-items:center;justify-content:center;font-size:52px;opacity:${temFoto ? '1' : '.4'};overflow:hidden;flex-shrink:0;">`;
-        h += temFoto ? `<img src="${r.fotos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤';
-        h += '</div>';
+        // Foto(s) + nome completo (pedido explícito do usuário) — TODAS
+        // as fotos encontradas (não só a 1ª), cada uma clicável pra
+        // ampliar (ver montarGaleriaFotosHtml/lightbox); sem foto
+        // nenhuma, fica um espaço reservado em vez de não mostrar nada.
+        let h = '<div class="cip-card" style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">';
+        h += `<div style="display:flex;gap:8px;flex-wrap:wrap;max-width:460px;">${montarGaleriaFotosHtml(r.fotos, 140)}</div>`;
         h += `<div><div style="font-size:17px;font-weight:700;color:var(--p3-text);">${esc(p.nome || '(nome não encontrado)')}</div>
-              <div style="font-size:12px;color:var(--p3-text-muted);margin-top:3px;">CPF ${esc(formatarCpf(r.cpf))}${p.dataNascimento ? ' · Nascimento ' + esc(p.dataNascimento) : ''}</div></div>`;
+              <div style="font-size:12px;color:var(--p3-text-muted);margin-top:3px;">CPF ${esc(formatarCpf(r.cpf))}${p.dataNascimento ? ' · Nascimento ' + esc(p.dataNascimento) : ''}</div>
+              ${r.fotos && r.fotos.length > 1 ? `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:6px;">${r.fotos.length} fotos encontradas — clique pra ampliar</div>` : ''}</div>`;
         h += '</div>';
 
         const kpis = [
@@ -263,15 +311,45 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // VÍNCULOS — mãe/pai (ver nota de simplificação no topo do arquivo)
+    // VÍNCULOS — filiação (mãe/pai, ver nota de simplificação no topo do
+    // arquivo — sem CPF, não clicável) + vínculos por OCORRÊNCIA (outras
+    // pessoas na(s) mesma(s) ocorrência(s), com CPF — essas sim
+    // clicáveis, ver P3ConsultaPessoaAbrirCpf).
     // ────────────────────────────────────────────────────────────────
     function renderVinculos(r) {
         const p = r.pessoa;
-        if (!p || (!p.mae && !p.pai)) return '<div class="cip-vazio">Nenhuma filiação encontrada.</div>';
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Filiação</div><div class="cip-kv">';
-        if (p.mae) h += `<div><b>Mãe:</b> ${esc(p.mae)}</div>`;
-        if (p.pai) h += `<div><b>Pai:</b> ${esc(p.pai)}</div>`;
-        h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CPF da mãe/pai não está disponível — pra consultar essa pessoa, é preciso pesquisar o CPF dela diretamente, se conhecido.</p></div>';
+        const vinculosOc = r.vinculosOcorrencia || [];
+        let h = '';
+
+        if (p && (p.mae || p.pai)) {
+            h += '<div class="cip-card"><div class="cip-card-titulo">Filiação</div><div class="cip-kv">';
+            if (p.mae) h += `<div><b>Mãe:</b> ${esc(p.mae)}</div>`;
+            if (p.pai) h += `<div><b>Pai:</b> ${esc(p.pai)}</div>`;
+            h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CPF da mãe/pai não está disponível — pra consultar essa pessoa, é preciso pesquisar o CPF dela diretamente, se conhecido.</p></div>';
+        }
+
+        if (vinculosOc.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Vínculos por ocorrência — ${vinculosOc.length}</div>
+                <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                    Pessoas que apareceram na(s) mesma(s) ocorrência(s) que esta — linhas com CPF são clicáveis pra
+                    consultar a pessoa diretamente. Só cobre as ocorrências que já tiveram o detalhe carregado
+                    automaticamente (as mais recentes).
+                </p>`;
+            h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome</th><th>Envolvimento</th><th>Nº Ocorrência</th><th>Data</th><th>Tipificação</th></tr></thead><tbody>';
+            vinculosOc.forEach(v => {
+                const clicavel = !!v.cpf;
+                h += `<tr ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')" title="Clique pra consultar essa pessoa"` : 'style="cursor:default;" title="CPF não disponível"'}>
+                    <td>${clicavel ? `<span class="cip-pessoa-link">${esc(v.nome)}</span>` : esc(v.nome)}</td>
+                    <td>${esc(v.tipoEnvolvimento || '—')}</td>
+                    <td>${esc(v.numeroOcorrencia || '—')}</td>
+                    <td style="white-space:nowrap;">${esc(v.data || '—')}</td>
+                    <td>${esc(v.tipificacao || '—')}</td>
+                </tr>`;
+            });
+            h += '</tbody></table></div></div>';
+        }
+
+        if (!h) return '<div class="cip-vazio">Nenhum vínculo encontrado.</div>';
         return h;
     }
 
@@ -695,52 +773,84 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // 2ª FONTE DE FOTO — token de 6 dígitos do app oficial (ver
-    // idseg_quimera.py). Config isolada nesta página só (não é
-    // credencial nova — reaproveita login/senha do CAD já salvos no
-    // modal "🔑 Configurar acesso ao CAD"), por isso não usa o modal
-    // global — é 1 campo extra, específico daqui.
+    // MODAL DE CONFIGURAÇÃO — CAD (login/senha/token) + 2ª fonte de
+    // foto (token do Quimera, ver idseg_quimera.py), tudo numa tela só
+    // (pedido explícito do usuário — antes precisava ir noutra página
+    // pro CAD). Salva os dois de uma vez: /cad/configurar (login/senha/
+    // token) e, só se o campo do Quimera vier preenchido,
+    // /cad/idseg-configurar (campo vazio = "não mexe no que já tá
+    // salvo" — evita forçar redigitar toda vez que só quer renovar o
+    // token do CAD, ou vice-versa).
     // ────────────────────────────────────────────────────────────────
-    async function atualizarStatusIdseg() {
-        const statusEl = document.getElementById('cip-idseg-status');
+    async function abrirModalConfig() {
+        document.getElementById('cip-modal-config').classList.add('aberto');
+        document.getElementById('cip-mc-senha').value = '';
+        document.getElementById('cip-mc-token-cad').value = '';
+        document.getElementById('cip-mc-token-quimera').value = '';
+        const msgEl = document.getElementById('cip-mc-msg');
+        msgEl.textContent = 'Carregando status atual...';
+        msgEl.style.color = 'var(--p3-text-muted)';
         try {
-            const r = await P3AtualizadorLocal.idsegStatus();
-            statusEl.style.color = r.configurado ? '#1e6b34' : 'var(--p3-text-muted)';
-            statusEl.textContent = r.configurado ? '✅ Configurado — a 2ª fonte de foto será tentada nas consultas.' : '2ª fonte de foto ainda não configurada.';
+            const [statusCad, statusIdseg] = await Promise.all([
+                P3AtualizadorLocal.statusCad(), P3AtualizadorLocal.idsegStatus(),
+            ]);
+            document.getElementById('cip-mc-login').value = statusCad.login || '';
+            const partes = [];
+            partes.push('CAD: ' + (statusCad.configurado ? '✅ configurado' : '⛔ não configurado'));
+            partes.push('2ª fonte de foto: ' + (statusIdseg.configurado ? '✅ configurada' : '➖ não configurada'));
+            msgEl.style.color = 'var(--p3-text-muted)';
+            msgEl.textContent = partes.join(' · ');
         } catch (e) {
-            statusEl.style.color = 'var(--p3-text-muted)';
-            statusEl.textContent = 'Servidor local não respondeu — abra-o pra configurar.';
+            msgEl.style.color = 'var(--p3-danger)';
+            msgEl.textContent = 'Servidor local não respondeu — abra-o pra configurar.';
         }
     }
+    function fecharModalConfig() {
+        document.getElementById('cip-modal-config').classList.remove('aberto');
+    }
 
-    async function salvarTokenIdseg() {
-        const input = document.getElementById('cip-idseg-input');
-        const statusEl = document.getElementById('cip-idseg-status');
-        const btn = document.getElementById('cip-idseg-salvar');
-        const token = input.value.replace(/\D/g, '');
-        if (token.length !== 6) {
-            statusEl.style.color = 'var(--p3-danger)';
-            statusEl.textContent = 'Informe os 6 dígitos do código.';
-            return;
-        }
+    async function salvarModalConfig() {
+        const login = document.getElementById('cip-mc-login').value.trim();
+        const senha = document.getElementById('cip-mc-senha').value;
+        const tokenCad = document.getElementById('cip-mc-token-cad').value.trim();
+        const tokenQuimera = document.getElementById('cip-mc-token-quimera').value.trim();
+        const msgEl = document.getElementById('cip-mc-msg');
+        const btn = document.getElementById('cip-mc-salvar-btn');
+
+        if (!login || login.length < 11) { msgEl.style.color = 'var(--p3-danger)'; msgEl.textContent = 'Informe o CPF de acesso ao CAD (11 dígitos).'; return; }
+        if (!tokenCad) { msgEl.style.color = 'var(--p3-danger)'; msgEl.textContent = 'Informe o token de acesso ao CAD.'; return; }
+
         btn.disabled = true;
+        const resultados = [];
         try {
-            const r = await P3AtualizadorLocal.idsegConfigurar(token);
-            if (r.ok) {
-                statusEl.style.color = '#1e6b34';
-                statusEl.textContent = '✅ Salvo — a 2ª fonte de foto será tentada nas próximas consultas.';
-                input.value = '';
-            } else {
-                statusEl.style.color = 'var(--p3-danger)';
-                statusEl.textContent = r.erro || 'Falha ao salvar.';
+            msgEl.style.color = 'var(--p3-text-muted)';
+            msgEl.textContent = 'Salvando login do CAD...';
+            const rCad = await P3AtualizadorLocal.configurarCad(login, senha, tokenCad);
+            resultados.push('CAD: ' + (rCad.ok ? '✅ ok' : '❌ ' + (rCad.erro || 'falhou')));
+
+            if (tokenQuimera) {
+                if (!/^\d{6}$/.test(tokenQuimera)) {
+                    resultados.push('2ª fonte de foto: ❌ código precisa ter 6 dígitos');
+                } else {
+                    msgEl.textContent = 'Salvando token da 2ª fonte de foto...';
+                    const rIdseg = await P3AtualizadorLocal.idsegConfigurar(tokenQuimera);
+                    resultados.push('2ª fonte de foto: ' + (rIdseg.ok ? '✅ ok' : '❌ ' + (rIdseg.erro || 'falhou')));
+                }
             }
+
+            const algumFalhou = resultados.some(r => r.includes('❌'));
+            msgEl.style.color = algumFalhou ? 'var(--p3-danger)' : '#1e6b34';
+            msgEl.textContent = resultados.join(' · ');
+            document.getElementById('cip-mc-senha').value = '';
+            if (!algumFalhou) setTimeout(fecharModalConfig, 2000);
         } catch (e) {
-            statusEl.style.color = 'var(--p3-danger)';
-            statusEl.textContent = 'Erro de conexão: ' + e.message;
+            msgEl.style.color = 'var(--p3-danger)';
+            msgEl.textContent = 'Erro de conexão: ' + e.message;
         } finally {
             btn.disabled = false;
         }
     }
+    window.P3ConsultaPessoaFecharModalConfig = fecharModalConfig;
 
     // ────────────────────────────────────────────────────────────────
     // BOOT
@@ -752,15 +862,8 @@
             document.getElementById('cip-aviso-servidor').style.display = 'block';
         }
 
-        document.getElementById('cip-idseg-link').addEventListener('click', function () {
-            const box = document.getElementById('cip-idseg-box');
-            box.classList.toggle('aberto');
-            if (box.classList.contains('aberto')) atualizarStatusIdseg();
-        });
-        document.getElementById('cip-idseg-salvar').addEventListener('click', salvarTokenIdseg);
-        document.getElementById('cip-idseg-input').addEventListener('input', function (e) {
-            e.target.value = e.target.value.replace(/\D/g, '');
-        });
+        document.getElementById('cip-config-link').addEventListener('click', abrirModalConfig);
+        document.getElementById('cip-mc-salvar-btn').addEventListener('click', salvarModalConfig);
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);
         document.getElementById('cip-btn-imprimir').addEventListener('click', imprimirConsultaCompleta);
