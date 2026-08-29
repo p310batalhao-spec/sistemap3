@@ -192,7 +192,13 @@
         el.classList.add('visivel');
         document.getElementById('cip-header-nome').textContent = p.nome || '(sem nome)';
 
-        document.getElementById('cip-header-foto').innerHTML = montarGaleriaFotosHtml(r.fotos, 140);
+        // Cabeçalho mostra só a foto PRINCIPAL (1ª — Quimera se achou,
+        // senão Alcatraz, ver _etapa_foto_idseg no Python) — a galeria
+        // com TODAS as fotos das duas fontes fica só na Visão Geral (ver
+        // renderVisaoGeral), pedido explícito do usuário. Clicar ainda
+        // abre o lightbox, que navega por todas (ULTIMO_RESULTADO.fotos
+        // inteiro, não só a que aparece aqui).
+        document.getElementById('cip-header-foto').innerHTML = montarGaleriaFotosHtml((r.fotos || []).slice(0, 1), 140);
 
         const grid = document.getElementById('cip-header-grid');
         const linhas = [
