@@ -219,8 +219,8 @@
         // de simplesmente não mostrar nada.
         const temFoto = r.fotos && r.fotos.length;
         let h = '<div class="cip-card" style="display:flex;gap:16px;align-items:center;">';
-        h += `<div style="width:72px;height:72px;border-radius:10px;background:var(--p3-bg);border:1px solid var(--p3-border);
-              display:flex;align-items:center;justify-content:center;font-size:30px;opacity:${temFoto ? '1' : '.4'};overflow:hidden;flex-shrink:0;">`;
+        h += `<div style="width:140px;height:140px;border-radius:10px;background:var(--p3-bg);border:1px solid var(--p3-border);
+              display:flex;align-items:center;justify-content:center;font-size:52px;opacity:${temFoto ? '1' : '.4'};overflow:hidden;flex-shrink:0;">`;
         h += temFoto ? `<img src="${r.fotos[0]}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '👤';
         h += '</div>';
         h += `<div><div style="font-size:17px;font-weight:700;color:var(--p3-text);">${esc(p.nome || '(nome não encontrado)')}</div>
