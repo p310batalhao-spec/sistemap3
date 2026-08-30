@@ -24,7 +24,6 @@
     'use strict';
 
     let ULTIMO_RESULTADO = null;
-    let ABA_ATIVA = '';
 
     // Abas de consulta "estilo navegador" (29/08/2026, pedido explícito:
     // "quando faço uma consulta muito próxima da outra... quero que crie
@@ -183,8 +182,7 @@
         const btnImprimir = document.getElementById('cip-btn-imprimir');
 
         if (!aba) {
-            document.getElementById('cip-header-pessoa').classList.remove('visivel');
-            document.getElementById('cip-conteudo').style.display = 'none';
+            document.getElementById('cip-shell').style.display = 'none';
             progWrap.style.display = 'none';
             msg.textContent = '';
             btnImprimir.disabled = true;
@@ -193,8 +191,7 @@
         }
 
         if (aba.carregando) {
-            document.getElementById('cip-header-pessoa').classList.remove('visivel');
-            document.getElementById('cip-conteudo').style.display = 'none';
+            document.getElementById('cip-shell').style.display = 'none';
             progWrap.style.display = 'block';
             const pct = aba.progresso.total ? Math.round((aba.progresso.concluidas / aba.progresso.total) * 100) : 0;
             progFill.style.width = pct + '%';
@@ -208,8 +205,7 @@
         }
 
         if (aba.erro) {
-            document.getElementById('cip-header-pessoa').classList.remove('visivel');
-            document.getElementById('cip-conteudo').style.display = 'none';
+            document.getElementById('cip-shell').style.display = 'none';
             progWrap.style.display = 'none';
             msg.style.color = 'var(--p3-danger)';
             msg.textContent = 'Erro: ' + aba.erro;
@@ -295,6 +291,89 @@
         document.getElementById('cip-status-msg').textContent = '';
     }
 
+    // Renderiza a lista de resultados de uma busca por nome (usada tanto
+    // pelo formulário "Nome / Mãe / Pai" quanto pelo clique num nome de
+    // mãe/pai dentro da aba Vínculos — ver buscarEAbrirPorNome abaixo).
+    function exibirResultadosNome(pessoas) {
+        const lista = document.getElementById('cip-lista-nome');
+        lista.innerHTML = pessoas.map((p, i) => {
+            const cpfLimpo = limparCpf(p.cpf);
+            const detalhes = [
+                cpfLimpo ? 'CPF: ' + formatarCpf(cpfLimpo) : 'CPF não informado no CAD',
+                p.dataNascimento ? 'Nasc.: ' + p.dataNascimento : '',
+                p.mae ? 'Mãe: ' + p.mae : '',
+                p.pai ? 'Pai: ' + p.pai : '',
+            ].filter(Boolean).join(' · ');
+            return `<div class="cip-lista-resultado-item" data-idx="${i}">
+                <b>${esc(p.nome || 'Sem nome')}</b>
+                <span>${esc(detalhes)}</span>
+            </div>`;
+        }).join('');
+        lista.style.display = 'block';
+        lista.querySelectorAll('.cip-lista-resultado-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const p = pessoas[Number(item.dataset.idx)];
+                const cpfLimpo = limparCpf(p.cpf);
+                if (!cpfLimpo) {
+                    const msg = document.getElementById('cip-status-msg');
+                    msg.style.color = 'var(--p3-danger)';
+                    msg.textContent = 'Essa pessoa não tem CPF cadastrado no CAD — não é possível abrir a consulta completa.';
+                    return;
+                }
+                consultarPorCpf(cpfLimpo);
+            });
+        });
+    }
+
+    // Clique num nome de MÃE/PAI dentro da aba Vínculos (ver renderVinculos)
+    // — o CAD não devolve o CPF da mãe/pai, só o nome (ver nota de
+    // simplificação no topo do arquivo), mas já existe busca por nome
+    // (ver buscarPorNome/exibirResultadosNome acima), então dá pra
+    // aproveitar: busca essa pessoa PELO PRÓPRIO NOME dela (não como
+    // "mãe de"/"pai de" ninguém) e já abre direto se achar 1 resultado
+    // só com CPF; se achar mais de 1 (homônimos), muda pro modo "Nome"
+    // e mostra a lista pra escolher — pedido explícito do usuário
+    // (30/08/2026): "os vínculos de pai e mãe... todos clicáveis para
+    // novas consultas se possível".
+    async function buscarEAbrirPorNome(nome) {
+        const msg = document.getElementById('cip-status-msg');
+        if (!(await P3AtualizadorLocal.disponivel())) {
+            document.getElementById('cip-aviso-servidor').style.display = 'block';
+            return;
+        }
+        document.getElementById('cip-aviso-servidor').style.display = 'none';
+        alternarModoBusca('nome');
+        document.getElementById('cip-input-nome').value = nome;
+        msg.style.color = 'var(--p3-text-muted)';
+        msg.textContent = `Buscando "${nome}"...`;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        try {
+            const r = await P3AtualizadorLocal.buscarPessoaPorNome(nome, '', '');
+            if (!r.ok) {
+                msg.style.color = 'var(--p3-danger)';
+                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
+                return;
+            }
+            const pessoas = r.pessoas || [];
+            if (pessoas.length === 0) {
+                msg.style.color = 'var(--p3-text-muted)';
+                msg.textContent = `Nenhuma pessoa encontrada no CAD com o nome "${nome}".`;
+                return;
+            }
+            if (pessoas.length === 1 && limparCpf(pessoas[0].cpf)) {
+                consultarPorCpf(limparCpf(pessoas[0].cpf));
+                return;
+            }
+            msg.style.color = '#1e6b34';
+            msg.textContent = `${pessoas.length} pessoa(s) encontrada(s) pra "${nome}" — clique numa pra abrir a consulta completa por CPF.`;
+            exibirResultadosNome(pessoas);
+        } catch (e) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Erro: ' + e.message;
+        }
+    }
+    window.P3ConsultaPessoaAbrirPorNome = buscarEAbrirPorNome;
+
     async function buscarPorNome() {
         const nome = document.getElementById('cip-input-nome').value.trim();
         const mae = document.getElementById('cip-input-mae').value.trim();
@@ -331,32 +410,7 @@
             }
             msg.style.color = '#1e6b34';
             msg.textContent = `${pessoas.length} pessoa(s) encontrada(s) — clique numa pra abrir a consulta completa por CPF.`;
-            lista.innerHTML = pessoas.map((p, i) => {
-                const cpfLimpo = limparCpf(p.cpf);
-                const detalhes = [
-                    cpfLimpo ? 'CPF: ' + formatarCpf(cpfLimpo) : 'CPF não informado no CAD',
-                    p.dataNascimento ? 'Nasc.: ' + p.dataNascimento : '',
-                    p.mae ? 'Mãe: ' + p.mae : '',
-                    p.pai ? 'Pai: ' + p.pai : '',
-                ].filter(Boolean).join(' · ');
-                return `<div class="cip-lista-resultado-item" data-idx="${i}">
-                    <b>${esc(p.nome || 'Sem nome')}</b>
-                    <span>${esc(detalhes)}</span>
-                </div>`;
-            }).join('');
-            lista.style.display = 'block';
-            lista.querySelectorAll('.cip-lista-resultado-item').forEach(item => {
-                item.addEventListener('click', () => {
-                    const p = pessoas[Number(item.dataset.idx)];
-                    const cpfLimpo = limparCpf(p.cpf);
-                    if (!cpfLimpo) {
-                        msg.style.color = 'var(--p3-danger)';
-                        msg.textContent = 'Essa pessoa não tem CPF cadastrado no CAD — não é possível abrir a consulta completa.';
-                        return;
-                    }
-                    consultarPorCpf(cpfLimpo);
-                });
-            });
+            exibirResultadosNome(pessoas);
         } catch (e) {
             msg.style.color = 'var(--p3-danger)';
             msg.textContent = 'Erro: ' + e.message;
@@ -461,43 +515,44 @@
     window.P3ConsultaPessoaFecharLightbox = fecharLightbox;
     window.P3ConsultaPessoaNavegarLightbox = navegarLightbox;
 
+    // ────────────────────────────────────────────────────────────────
+    // LAYOUT — "ficha lateral" (30/08/2026, escolha do usuário entre 3
+    // opções apresentadas: sidebar fixa com identidade+navegação à
+    // esquerda, todas as seções empilhadas e ancoradas à direita — ver
+    // artefato "Layouts da Ficha Policial"). Sem abas escondendo
+    // conteúdo: tudo fica no DOM ao mesmo tempo, a navegação lateral só
+    // rola até a âncora (por isso ligarEventosPainelAtivo/
+    // inicializarMapaOcorrencias agora rodam sempre, não só "se a aba X
+    // estiver ativa" — não existe mais aba ativa).
+    // ────────────────────────────────────────────────────────────────
     function renderizarHeader(r) {
         const p = r.pessoa;
-        const el = document.getElementById('cip-header-pessoa');
-        if (!p) { el.classList.remove('visivel'); return; }
-        el.classList.add('visivel');
-        document.getElementById('cip-header-nome').textContent = p.nome || '(sem nome)';
+        document.getElementById('cip-side-nome').textContent = (p && p.nome) || '(nome não encontrado)';
+        document.getElementById('cip-side-cpf').textContent = 'CPF ' + formatarCpf(r.cpf);
+        document.getElementById('cip-side-foto').innerHTML = montarGaleriaFotosHtml((r.fotos || []).slice(0, 1), 96);
 
-        // Cabeçalho mostra só a foto PRINCIPAL (1ª — Quimera se achou,
-        // senão Alcatraz, ver _etapa_foto_idseg no Python) — a galeria
-        // com TODAS as fotos das duas fontes fica só na Visão Geral (ver
-        // renderVisaoGeral), pedido explícito do usuário. Clicar ainda
-        // abre o lightbox, que navega por todas (ULTIMO_RESULTADO.fotos
-        // inteiro, não só a que aparece aqui).
-        document.getElementById('cip-header-foto').innerHTML = montarGaleriaFotosHtml((r.fotos || []).slice(0, 1), 140);
-
-        const grid = document.getElementById('cip-header-grid');
+        const factsEl = document.getElementById('cip-side-facts');
         const linhas = [
-            ['CPF', formatarCpf(r.cpf)],
-            ['Nascimento', p.dataNascimento || '—'],
-            ['Mãe', p.mae || '—'],
-            ['Pai', p.pai || '—'],
-            ['RG', p.rg || '—'],
-            ['Alcunha', p.alcunha || '—'],
+            ['Nascimento', (p && p.dataNascimento) || '—'],
+            ['Mãe', (p && p.mae) || '—'],
+            ['Pai', (p && p.pai) || '—'],
+            ['RG', (p && p.rg) || '—'],
+            ['Alcunha', (p && p.alcunha) || '—'],
         ];
-        grid.innerHTML = linhas.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('');
+        factsEl.innerHTML = linhas.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('');
 
-        const alertasEl = document.getElementById('cip-header-alertas');
+        const alertasEl = document.getElementById('cip-side-alertas');
         const alertas = [];
-        if (r.mandados && r.mandados.possuiMandado) alertas.push('🚨 MANDADO DE PRISÃO ATIVO (BNMP)');
+        if (r.mandados && r.mandados.possuiMandado) alertas.push('🚨 Mandado de prisão ativo');
         if (r.pessoasEncontradas && r.pessoasEncontradas.length > 1) {
-            alertas.push(`⚠️ ${r.pessoasEncontradas.length} registros encontrados pra este CPF — possível duplicidade cadastral`);
+            alertas.push(`⚠️ ${r.pessoasEncontradas.length} registros — possível duplicidade`);
         }
-        alertasEl.innerHTML = alertas.map(a => `<span class="cip-header-alerta">${esc(a)}</span>`).join(' ');
+        alertasEl.innerHTML = alertas.map(a => `<div class="cip-side-alerta">${esc(a)}</div>`).join('');
     }
 
     // ────────────────────────────────────────────────────────────────
-    // ABAS
+    // SEÇÕES — cada item vira 1 link na navegação lateral + 1 bloco
+    // ancorado na coluna principal (ver renderizarTudo abaixo).
     // ────────────────────────────────────────────────────────────────
     const DEFINICAO_ABAS = [
         { id: 'visaogeral', label: '📊 Visão Geral', contar: r => null },
@@ -515,21 +570,17 @@
     ];
 
     function renderizarTudo(r) {
-        document.getElementById('cip-conteudo').style.display = 'block';
+        document.getElementById('cip-shell').style.display = 'flex';
         renderizarHeader(r);
 
-        const abasEl = document.getElementById('cip-abas');
-        const paineisEl = document.getElementById('cip-paineis');
-        if (!ABA_ATIVA) ABA_ATIVA = 'visaogeral';
+        const navEl = document.getElementById('cip-side-nav');
+        const mainEl = document.getElementById('cip-main');
 
-        abasEl.innerHTML = DEFINICAO_ABAS.map(a => {
+        navEl.innerHTML = DEFINICAO_ABAS.map(a => {
             const n = a.contar(r);
-            const badge = (n !== null) ? `<span class="cip-badge-contagem">${n}</span>` : '';
-            return `<button type="button" class="cip-aba-btn${a.id === ABA_ATIVA ? ' ativa' : ''}" data-aba="${a.id}">${a.label}${badge}</button>`;
+            const badge = (n !== null) ? `<span class="cip-side-nav-badge">${n}</span>` : '';
+            return `<a href="#cip-sec-${a.id}">${a.label}${badge}</a>`;
         }).join('');
-        abasEl.querySelectorAll('.cip-aba-btn').forEach(btn => {
-            btn.addEventListener('click', () => { ABA_ATIVA = btn.dataset.aba; renderizarTudo(r); });
-        });
 
         const renderers = {
             visaogeral: renderVisaoGeral, cnh: renderCnh, vinculos: renderVinculos,
@@ -537,10 +588,17 @@
             processos: renderProcessos, veiculos: renderVeiculos, inteligencia: renderInteligencia,
             relint: renderRelint, timeline: renderTimeline, fontes: renderFontes,
         };
-        paineisEl.innerHTML = `<div class="cip-painel ativo">${(renderers[ABA_ATIVA] || (() => ''))(r)}</div>`;
-        // Religa os cliques de detalhe/expand depois de re-renderizar (o innerHTML acima apaga listeners antigos).
+        mainEl.innerHTML = DEFINICAO_ABAS.map(a => `
+            <section class="cip-sec" id="cip-sec-${a.id}">
+                <h3 class="cip-sec-header">${a.label}</h3>
+                ${(renderers[a.id] || (() => ''))(r)}
+            </section>
+        `).join('');
+
+        // Religa os cliques de detalhe/expand depois de re-renderizar (o innerHTML acima apaga listeners antigos)
+        // — agora sempre, pra TODAS as seções (não existe mais "só a aba ativa": tudo está no DOM ao mesmo tempo).
         ligarEventosPainelAtivo(r);
-        if (ABA_ATIVA === 'ocorrencias') inicializarMapaOcorrencias(r);
+        inicializarMapaOcorrencias(r);
     }
 
     // Devolve a mensagem de erro da etapa (ver r.fontes — "fonte" bate
@@ -712,10 +770,16 @@
         let h = '';
 
         if (p && (p.mae || p.pai)) {
+            // Mãe/pai clicáveis (30/08/2026, pedido explícito do usuário)
+            // — o CAD não devolve o CPF deles, só o nome, então o clique
+            // busca essa pessoa PELO NOME (ver buscarEAbrirPorNome) em vez
+            // de abrir direto por CPF — se achar 1 só com CPF, já abre a
+            // consulta completa; se achar mais de 1 (homônimos), mostra a
+            // lista pra escolher.
             h += '<div class="cip-card"><div class="cip-card-titulo">Filiação</div><div class="cip-kv">';
-            if (p.mae) h += `<div><b>Mãe:</b> ${esc(p.mae)}</div>`;
-            if (p.pai) h += `<div><b>Pai:</b> ${esc(p.pai)}</div>`;
-            h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CPF da mãe/pai não está disponível — pra consultar essa pessoa, é preciso pesquisar o CPF dela diretamente, se conhecido.</p></div>';
+            if (p.mae) h += `<div><b>Mãe:</b> <span class="cip-pessoa-link" onclick="P3ConsultaPessoaAbrirPorNome('${esc(p.mae).replace(/'/g, "\\'")}')" title="Buscar essa pessoa pelo nome">${esc(p.mae)}</span></div>`;
+            if (p.pai) h += `<div><b>Pai:</b> <span class="cip-pessoa-link" onclick="P3ConsultaPessoaAbrirPorNome('${esc(p.pai).replace(/'/g, "\\'")}')" title="Buscar essa pessoa pelo nome">${esc(p.pai)}</span></div>`;
+            h += '</div><p style="font-size:11.5px;color:var(--p3-text-muted);margin-top:10px;">O CAD não devolve o CPF da mãe/pai — clicar no nome faz uma busca por nome (pode haver homônimos).</p></div>';
         }
 
         if (vinculosOc.length) {
@@ -725,11 +789,12 @@
                     consultar a pessoa diretamente. Só cobre as ocorrências que já tiveram o detalhe carregado
                     automaticamente (as mais recentes).
                 </p>`;
-            h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome</th><th>Envolvimento</th><th>Nº Ocorrência</th><th>Data</th><th>Tipificação</th></tr></thead><tbody>';
+            h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome completo</th><th>CPF</th><th>Envolvimento</th><th>Nº COP</th><th>Data</th><th>Tipificação</th></tr></thead><tbody>';
             vinculosOc.forEach(v => {
                 const clicavel = !!v.cpf;
                 h += `<tr ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')" title="Clique pra consultar essa pessoa"` : 'style="cursor:default;" title="CPF não disponível"'}>
                     <td>${clicavel ? `<span class="cip-pessoa-link">${esc(v.nome)}</span>` : esc(v.nome)}</td>
+                    <td style="white-space:nowrap;">${v.cpf ? esc(formatarCpf(limparCpf(v.cpf))) : '—'}</td>
                     <td>${esc(v.tipoEnvolvimento || '—')}</td>
                     <td>${esc(v.numeroOcorrencia || '—')}</td>
                     <td style="white-space:nowrap;">${esc(v.data || '—')}</td>
