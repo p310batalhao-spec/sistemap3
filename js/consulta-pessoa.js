@@ -838,35 +838,88 @@
     function montarEnderecos(r) {
         const vistos = new Set();
         const lista = [];
-        function adicionar(end, data) {
+        function adicionar(end, data, extra) {
             if (!end) return;
             const chave = normalizarEndereco(end);
             if (vistos.has(chave)) return;
             vistos.add(chave);
-            lista.push({ endereco: end, data: data || null });
+            lista.push(Object.assign({ endereco: end, data: data || null }, extra || {}));
         }
         (r.idnet || []).forEach(reg => adicionar(extrairCampoEndereco(reg), reg['Data de Atendimento no IC']));
         adicionar(extrairCampoEndereco(r.cnh), null);
+        // Equatorial Alagoas (30/08/2026, ver buscarEquatorialAcao) — só
+        // populado depois que o usuário usa o botão "Buscar unidade
+        // consumidora" nessa mesma aba, então normalmente vem vazio.
+        (r.enderecosEquatorial || []).forEach(e => adicionar(e.endereco, null, { origem: 'Equatorial', uc: e.uc, pontoReferencia: e.pontoReferencia }));
         return lista;
     }
     function renderEnderecos(r) {
         const lista = montarEnderecos(r);
-        if (!lista.length) return '<div class="cip-vazio">Nenhum endereço encontrado.</div>';
         // Mais recente primeiro — data no formato DD/MM/AAAA HH:MM:SS
         lista.sort((a, b) => {
             const da = a.data ? a.data.split(' ')[0].split('/').reverse().join('') : '';
             const db = b.data ? b.data.split(' ')[0].split('/').reverse().join('') : '';
             return db.localeCompare(da);
         });
-        let h = '<div class="cip-card"><div class="cip-card-titulo">Endereços</div>';
+
+        let h = '<div class="cip-card">';
+        h += `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:${lista.length ? '12px' : '0'};">
+            <div class="cip-card-titulo" style="margin:0;">Endereços</div>
+            <div>
+                <button type="button" id="cip-btn-equatorial" style="padding:7px 14px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">🔌 Buscar unidade consumidora (Equatorial)</button>
+                <div id="cip-equatorial-status" style="font-size:11px;color:var(--p3-text-muted);margin-top:5px;text-align:right;"></div>
+            </div>
+        </div>`;
+        if (!lista.length) {
+            h += '<div class="cip-vazio" style="padding:14px 0;">Nenhum endereço encontrado.</div>';
+        }
         lista.forEach((e, i) => {
+            let rodape;
+            if (e.origem === 'Equatorial') {
+                rodape = 'Fonte: Equatorial Alagoas' + (e.uc ? ' · UC ' + esc(e.uc) : '') + (e.pontoReferencia ? ' · Ref.: ' + esc(e.pontoReferencia) : '');
+            } else {
+                rodape = e.data ? 'Identificado em ' + esc(e.data) : 'Sem data';
+            }
             h += `<div style="padding:8px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
                 <div style="font-size:13px;color:var(--p3-text);">${esc(e.endereco)}</div>
-                <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">${e.data ? 'Identificado em ' + esc(e.data) : 'Sem data'}</div>
+                <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">${rodape}</div>
             </div>`;
         });
         h += '</div>';
         return h;
+    }
+
+    // Botão "Buscar unidade consumidora (Equatorial)" na aba Endereços
+    // (30/08/2026, pedido explícito do usuário) — abre uma janela de
+    // navegador de VERDADE (ver equatorial_popup.py, só funciona dentro
+    // do app desktop) já com CPF/data de nascimento preenchidos; o
+    // próprio usuário clica em "Entrar" na janela e resolve o captcha lá
+    // se aparecer — esta função só espera o resultado (pode levar
+    // minutos, dependendo de quando o usuário terminar) e soma os
+    // endereços encontrados à lista já existente.
+    async function buscarEquatorialAcao(r) {
+        const btn = document.getElementById('cip-btn-equatorial');
+        const status = document.getElementById('cip-equatorial-status');
+        if (!btn || !status) return;
+        btn.disabled = true;
+        status.style.color = 'var(--p3-text-muted)';
+        status.textContent = '🪟 Abrindo janela da Equatorial — clique em "Entrar" lá quando estiver pronto...';
+        try {
+            const dataNasc = (r.pessoa && r.pessoa.dataNascimento) || '';
+            const resp = await P3AtualizadorLocal.equatorialConsultar(r.cpf, dataNasc);
+            if (!resp.ok) {
+                btn.disabled = false;
+                status.style.color = 'var(--p3-danger)';
+                status.textContent = 'Erro: ' + (resp.erro || 'falha desconhecida.');
+                return;
+            }
+            r.enderecosEquatorial = (r.enderecosEquatorial || []).concat(resp.enderecos || []);
+            renderizarTudo(r); // reconstrói a seção já com os endereços novos na lista
+        } catch (e) {
+            btn.disabled = false;
+            status.style.color = 'var(--p3-danger)';
+            status.textContent = 'Erro de conexão: ' + e.message;
+        }
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -1111,6 +1164,10 @@
                 if (btnConsultar) btnConsultar.addEventListener('click', () => P3ConsultaPessoaAbrirCpf(btnConsultar.dataset.cpf));
             });
         });
+        const btnEquatorial = document.getElementById('cip-btn-equatorial');
+        if (btnEquatorial) {
+            btnEquatorial.addEventListener('click', () => buscarEquatorialAcao(r));
+        }
         document.querySelectorAll('.cip-denuncia-vermais').forEach(btn => {
             btn.addEventListener('click', () => {
                 const i = Number(btn.dataset.idx);
