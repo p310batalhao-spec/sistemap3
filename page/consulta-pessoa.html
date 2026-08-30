@@ -179,39 +179,48 @@
       color: rgba(255,255,255,.8); font-size: 13px; background: rgba(0,0,0,.4); padding: 4px 14px; border-radius: 20px;
     }
 
-    /* Cabeçalho da pessoa */
-    .cip-header-pessoa {
-      display: none; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 10px;
-      padding: 18px 22px; margin-bottom: 18px; box-shadow: var(--p3-shadow-lg); gap: 18px; align-items: flex-start;
+    /* ── Ficha lateral (30/08/2026 — layout escolhido pelo usuário entre
+       3 opções apresentadas, ver artefato "Layouts da Ficha Policial")
+       — sidebar fixa com identidade+navegação à esquerda, TODAS as
+       seções empilhadas (com âncora) na coluna principal à direita.
+       Substitui o antigo cabeçalho + abas horizontais + 1 painel visível
+       por vez. ── */
+    .cip-shell {
+      display: none; gap: 22px; align-items: flex-start;
     }
-    .cip-header-pessoa.visivel { display: flex; }
-    .cip-header-foto { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; max-width: 300px; }
-    .cip-header-info h2 { font-size: 19px; color: var(--p3-text); margin-bottom: 6px; }
-    .cip-header-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 20px;
-      font-size: 12.5px; color: var(--p3-text-muted);
+    .cip-side {
+      position: sticky; top: 14px; width: 280px; flex-shrink: 0; background: var(--p3-surface);
+      border: 1px solid var(--p3-border); border-radius: 12px; padding: 18px; box-shadow: var(--p3-shadow-lg);
+      display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 28px); overflow-y: auto;
     }
-    .cip-header-grid b { color: var(--p3-text); font-weight: 600; }
-    .cip-header-alerta {
-      display: inline-block; margin-top: 8px; padding: 4px 12px; border-radius: 20px;
-      background: var(--p3-danger); color: #fff; font-size: 12px; font-weight: 700;
+    .cip-side-foto { display: flex; }
+    .cip-side h2 { font-size: 17px; color: var(--p3-text); margin: 0 0 3px; }
+    .cip-side-cpf { font-size: 12.5px; color: var(--p3-text-muted); }
+    .cip-side-alerta {
+      padding: 6px 10px; border-radius: 7px; background: var(--p3-danger); color: #fff; font-size: 11.5px;
+      font-weight: 700; margin-bottom: 4px;
     }
-
-    /* Abas */
-    .cip-abas {
-      display: flex; gap: 4px; border-bottom: 2px solid var(--p3-border); margin-bottom: 16px; flex-wrap: wrap;
+    .cip-side-facts { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--p3-text-muted); }
+    .cip-side-facts b { color: var(--p3-text); font-weight: 600; }
+    .cip-side-nav {
+      display: flex; flex-direction: column; gap: 2px; border-top: 1px solid var(--p3-border); padding-top: 12px;
     }
-    .cip-aba-btn {
-      padding: 9px 16px; border: none; background: none; cursor: pointer; font-size: 13px; font-weight: 600;
-      color: var(--p3-text-muted); border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 6px;
+    .cip-side-nav a {
+      text-decoration: none; color: var(--p3-text-muted); font-size: 12.5px; font-weight: 600; padding: 7px 9px;
+      border-radius: 7px; display: flex; justify-content: space-between; align-items: center;
     }
-    .cip-aba-btn.ativa { color: var(--p3-blue-700); border-bottom-color: var(--p3-blue-700); }
-    .cip-aba-btn .cip-badge-contagem {
-      background: var(--p3-border); color: var(--p3-text-muted); border-radius: 20px; padding: 1px 8px; font-size: 11px;
+    .cip-side-nav a:hover { background: var(--p3-bg); color: var(--p3-blue-700); }
+    .cip-side-nav-badge {
+      background: var(--p3-border); color: var(--p3-text-muted); border-radius: 20px; padding: 1px 8px; font-size: 10.5px;
     }
-    .cip-aba-btn.ativa .cip-badge-contagem { background: var(--p3-blue-700); color: #fff; }
-    .cip-painel { display: none; }
-    .cip-painel.ativo { display: block; }
+    .cip-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .cip-sec { scroll-margin-top: 14px; }
+    .cip-sec:not(:first-child) { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--p3-border); }
+    .cip-sec-header { font-size: 18px; font-weight: 700; color: var(--p3-text); margin: 0 0 12px; }
+    @media (max-width: 900px) {
+      .cip-shell { flex-direction: column; }
+      .cip-side { position: static; width: 100%; max-height: none; }
+    }
 
     .cip-card {
       background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 10px;
@@ -351,18 +360,18 @@
 
         <div class="cip-abas-consulta" id="cip-abas-consulta"></div>
 
-        <div class="cip-header-pessoa" id="cip-header-pessoa">
-          <div class="cip-header-foto" id="cip-header-foto">👤</div>
-          <div class="cip-header-info">
-            <h2 id="cip-header-nome">—</h2>
-            <div class="cip-header-grid" id="cip-header-grid"></div>
-            <div id="cip-header-alertas"></div>
-          </div>
-        </div>
-
-        <div id="cip-conteudo" style="display:none;">
-          <div class="cip-abas" id="cip-abas"></div>
-          <div id="cip-paineis"></div>
+        <div class="cip-shell" id="cip-shell">
+          <aside class="cip-side">
+            <div class="cip-side-foto" id="cip-side-foto">👤</div>
+            <div>
+              <h2 id="cip-side-nome">—</h2>
+              <div class="cip-side-cpf" id="cip-side-cpf"></div>
+            </div>
+            <div id="cip-side-alertas"></div>
+            <div class="cip-side-facts" id="cip-side-facts"></div>
+            <nav class="cip-side-nav" id="cip-side-nav"></nav>
+          </aside>
+          <div class="cip-main" id="cip-main"></div>
         </div>
       </div>
     </main>
