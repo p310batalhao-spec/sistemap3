@@ -158,7 +158,6 @@
             aba.resultado = r;
             aba.carregando = false;
             aba.titulo = (r.pessoa && r.pessoa.nome) ? r.pessoa.nome.trim().split(/\s+/).slice(0, 2).join(' ') : formatarCpf(aba.cpfLimpo);
-            dispararEquatorialAutomatico(aba);
         } catch (e) {
             aba.erro = e.message;
             aba.carregando = false;
@@ -890,35 +889,14 @@
         return h;
     }
 
-    // Disparo AUTOMÁTICO da consulta Equatorial (30/08/2026, pedido
-    // explícito do usuário: "ao consultar o cpf, o cad/quimera
-    // retornará com a data de nascimento, automaticamente já deverá
-    // abrir o popup... todas as vezes que consultar deve abrir esse
-    // popup") — roda sozinho assim que UMA consulta (qualquer aba,
-    // ativa ou em segundo plano) termina com data de nascimento
-    // disponível, sem precisar do botão manual (que continua existindo
-    // em renderEnderecos/buscarEquatorialAcao, pra repetir/tentar de
-    // novo se o usuário fechar a janela sem terminar). Silencioso em
-    // caso de erro/timeout/cancelamento — é automático e em segundo
-    // plano, não deve interromper nem incomodar quem está usando outra
-    // aba nesse meio tempo.
-    function dispararEquatorialAutomatico(aba) {
-        const r = aba.resultado;
-        if (!r || aba._equatorialAutoDisparado) return;
-        if (!r.cpf || !(r.pessoa && r.pessoa.dataNascimento)) return;
-        aba._equatorialAutoDisparado = true;
-        P3AtualizadorLocal.equatorialConsultar(r.cpf, r.pessoa.dataNascimento).then(resp => {
-            if (!resp.ok) return;
-            r.enderecosEquatorial = (r.enderecosEquatorial || []).concat(resp.enderecos || []);
-            if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarConsultaAtiva();
-        }).catch(() => {});
-    }
-
     // Botão "Buscar unidade consumidora (Equatorial)" na aba Endereços
-    // — repete/tenta de novo manualmente (ex.: se o disparo automático
-    // acima falhou, foi cancelado, ou a data de nascimento só ficou
-    // disponível depois). Abre uma janela de navegador de VERDADE (ver
-    // equatorial_popup.py, só funciona dentro do app desktop) já com
+    // (30/08/2026) — SÓ manual, de propósito: um disparo automático a
+    // cada consulta chegou a deixar uma janela presa/invisível numa
+    // sessão real (travando a trava global do lado do Python — ver
+    // _LOCK_JANELA em equatorial_popup.py — sem nenhuma janela visível
+    // pra fechar), pedido explícito do usuário: "não abra
+    // automaticamente, deixe somente quando clicar". Abre uma janela de
+    // navegador de VERDADE (só funciona dentro do app desktop) já com
     // CPF/data de nascimento preenchidos; o próprio usuário clica em
     // "Entrar" na janela e resolve o captcha lá se aparecer — esta
     // função só espera o resultado (pode levar minutos) e soma os
