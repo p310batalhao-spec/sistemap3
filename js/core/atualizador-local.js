@@ -169,6 +169,25 @@
         return resp.json();
     }
 
+    // Consulta SEMI-automática de unidade consumidora na Equatorial
+    // Alagoas (30/08/2026, pedido explícito do usuário) — abre uma
+    // janela de navegador de verdade (só funciona dentro do app
+    // desktop, ver equatorial_popup.py) já com CPF/data de nascimento
+    // preenchidos; o usuário clica em "Entrar" e resolve o captcha lá
+    // mesmo se aparecer. Essa chamada FICA PENDENTE (sem timeout do lado
+    // do fetch) até o usuário terminar, cancelar ou o servidor desistir
+    // sozinho depois de 10 min — ver _TIMEOUT_ESPERA_S em
+    // equatorial_popup.py. Devolve {ok, enderecos:[{endereco,uc,
+    // pontoReferencia}], erro?}.
+    async function equatorialConsultar(cpf, dataNascimentoBr) {
+        const resp = await fetch(`${URL_BASE}/pessoa/equatorial-consultar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cpf: cpf || '', dataNascimento: dataNascimentoBr || '' }),
+        });
+        return resp.json();
+    }
+
     // 2ª fonte de foto na Consulta Integrada de Pessoas (ver
     // page/consulta-pessoa.html) — {ok, configurado}.
     async function idsegStatus() {
@@ -197,6 +216,7 @@
         ocorrenciaDetalhe: ocorrenciaDetalhe,
         buscarPessoaPorNome: buscarPessoaPorNome,
         buscarVeiculo: buscarVeiculo,
+        equatorialConsultar: equatorialConsultar,
         idsegStatus: idsegStatus,
         idsegConfigurar: idsegConfigurar,
     };
