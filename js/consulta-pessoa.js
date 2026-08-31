@@ -769,6 +769,22 @@
                 ⚠️ <b>2ª fonte de foto (Quimera) indisponível:</b> ${esc(erroIdseg)}
                 <div style="margin-top:4px;">Renove o código de 6 dígitos em <b>🔑 Configurar acesso</b> — ele expira em poucas horas.</div>
             </div>`;
+        } else if (r.fotoQuimera && r.fotoQuimera.consultado && !r.fotoQuimera.temFoto) {
+            // INFORMA explicitamente quando não há foto (31/08/2026,
+            // pedido explícito do usuário: "caso não haja foto registrada
+            // informe") — antes disso, esse caso era IDÊNTICO na tela a
+            // "nem consultou" (as duas situações mostravam nada). O
+            // resultado final da consulta SÓ chega aqui depois que o
+            // Quimera já respondeu (a consulta inteira é 1 stream que só
+            // resolve no fim — ver consultarPessoaStream em
+            // atualizador-local.js), então nunca mostra a tela "cedo
+            // demais", antes do Quimera terminar de responder.
+            const motivo = r.fotoQuimera.motivo === 'pessoa_nao_encontrada'
+                ? 'esta pessoa não foi encontrada no cadastro do Quimera.'
+                : 'a pessoa foi encontrada no Quimera, mas não tem foto cadastrada lá.';
+            h += `<div class="cip-card" style="font-size:12px;color:var(--p3-text-muted);">
+                ℹ️ <b>2ª fonte de foto (Quimera) consultada:</b> ${motivo}
+            </div>`;
         }
 
         const kpis = [
