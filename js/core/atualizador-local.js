@@ -195,12 +195,15 @@
                 return resp.json();
             }
 
-            // {ok, erro?}.
-            async function idsegConfigurar(token) {
+            // senha é OPCIONAL (31/08/2026, pedido explícito do usuário:
+            // "alguns usuários utilizam o mesmo login (CPF) mas a senha
+            // diferente") — em branco, o servidor mantém o comportamento
+            // de sempre (usa a senha do CAD). {ok, erro?}.
+            async function idsegConfigurar(token, senha) {
                 const resp = await fetch(`${URL_BASE}/cad/idseg-configurar`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: token }),
+                    body: JSON.stringify({ token: token, senha: senha || '' }),
                 });
                 return resp.json();
             }
