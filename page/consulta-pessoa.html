@@ -179,6 +179,28 @@
       color: rgba(255,255,255,.8); font-size: 13px; background: rgba(0,0,0,.4); padding: 4px 14px; border-radius: 20px;
     }
 
+    /* Modal de endereço — mapa + rede de pessoas (30/08/2026, pedido
+       explícito do usuário: "mapa em modal com o endereço e todas as
+       pessoas vinculadas em nós"). Mesmo visual dos outros modais desta
+       página (ver #cip-modal-config acima). */
+    #cip-modal-endereco {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #cip-modal-endereco.aberto { display: flex; }
+    .cip-me-box {
+      background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 12px;
+      max-width: 720px; width: 100%; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35);
+      max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .cip-me-head {
+      background: var(--p3-blue-700); color: #fff; padding: 14px 18px; display: flex;
+      justify-content: space-between; align-items: center; font-weight: 700; font-size: .95rem; gap: 12px;
+    }
+    .cip-me-head span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cip-me-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; flex-shrink: 0; }
+    .cip-me-body { padding: 18px; overflow-y: auto; }
+
     /* ── Ficha lateral (30/08/2026 — layout escolhido pelo usuário entre
        3 opções apresentadas, ver artefato "Layouts da Ficha Policial")
        — sidebar fixa com identidade+navegação à esquerda, TODAS as
@@ -324,6 +346,7 @@
           <button type="button" class="cip-modo-btn cip-modo-ativo" data-modo="cpf">CPF</button>
           <button type="button" class="cip-modo-btn" data-modo="nome">Nome / Mãe / Pai</button>
           <button type="button" class="cip-modo-btn" data-modo="veiculo">🚗 Veículo</button>
+          <button type="button" class="cip-modo-btn" data-modo="cnpj">🏢 CNPJ</button>
         </div>
 
         <div class="cip-busca" id="cip-busca-cpf">
@@ -346,6 +369,12 @@
           <button type="button" id="cip-btn-buscar-veiculo">Buscar</button>
         </div>
         <div class="cip-lista-resultado" id="cip-resultado-veiculo"></div>
+
+        <div class="cip-busca" id="cip-busca-cnpj" style="display:none;">
+          <input type="text" id="cip-input-cnpj" placeholder="CNPJ (só números ou com pontuação)" inputmode="numeric">
+          <button type="button" id="cip-btn-buscar-cnpj">Buscar</button>
+        </div>
+        <div class="cip-lista-resultado" id="cip-resultado-cnpj"></div>
 
         <div id="cip-status-msg"></div>
         <div id="cip-progresso-wrap" style="display:none;margin-bottom:14px;">
@@ -414,11 +443,37 @@
         <input type="text" id="cip-mc-token-quimera" class="cip-mc-token-field" placeholder="000000" inputmode="numeric" maxlength="6"
           oninput="this.value=this.value.replace(/\D/g,'')">
 
+        <div class="cip-mc-secao-titulo">Busca na web por nome (opcional)</div>
+        <div class="cip-mc-instrucao">
+          <strong>Pra que serve?</strong><br>
+          Depois de identificar o nome completo, a consulta também busca esse nome na web (editais, diários
+          oficiais, notícias, redes sociais). Usa um navegador próprio que precisa ser baixado 1 VEZ nesta
+          máquina (~190MB) — depois disso funciona normalmente, sem baixar de novo.
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <button type="button" id="cip-mc-btn-webmii"
+            style="padding:8px 14px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">⬇️ Preparar busca web</button>
+          <span id="cip-mc-webmii-status" style="font-size:12px;color:var(--p3-text-muted);"></span>
+        </div>
+
         <div id="cip-mc-msg"></div>
       </div>
       <div class="cip-mc-foot">
         <button type="button" class="cip-mc-cancelar" onclick="P3ConsultaPessoaFecharModalConfig()">Cancelar</button>
         <button type="button" class="cip-mc-salvar" id="cip-mc-salvar-btn">✅ Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cip-modal-endereco" onclick="if(event.target===this) P3ConsultaPessoaFecharModalEndereco()">
+    <div class="cip-me-box">
+      <div class="cip-me-head">
+        <span id="cip-me-titulo">📍 Endereço</span>
+        <button type="button" onclick="P3ConsultaPessoaFecharModalEndereco()" title="Fechar">✕</button>
+      </div>
+      <div class="cip-me-body">
+        <div id="cip-me-mapa"></div>
+        <div id="cip-me-rede"></div>
       </div>
     </div>
   </div>
