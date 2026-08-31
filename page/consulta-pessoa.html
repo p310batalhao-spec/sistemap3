@@ -464,8 +464,13 @@
           Quimera. Deixe em branco pra não mexer no que já está salvo.<br>
           <span style="color:#b46400">⚠️ Dura só ALGUMAS HORAS (bem menos que o token do CAD acima) — se a foto
           do Quimera parar de aparecer nas consultas, é sinal de que expirou: peça um código novo e cole aqui de
-          novo. Ao salvar, o login já é testado na hora — se der erro, é isso.</span>
+          novo. Ao salvar, o login já é testado na hora — se der erro, é isso.</span><br>
+          <span style="color:#b46400">⚠️ O login do Quimera usa o MESMO CPF do CAD acima, mas a senha pode ser
+          diferente — se for esse o seu caso, preencha "Senha do Quimera" abaixo. Deixe em branco se a senha for
+          igual à do CAD.</span>
         </div>
+        <label>Senha do Quimera (só se for diferente da senha do CAD):</label>
+        <input type="password" id="cip-mc-senha-quimera" placeholder="Deixe em branco se for a mesma senha do CAD" autocomplete="off">
         <label>Código de 6 dígitos:</label>
         <input type="text" id="cip-mc-token-quimera" class="cip-mc-token-field" placeholder="000000" inputmode="numeric" maxlength="6"
           oninput="this.value=this.value.replace(/\D/g,'')">
@@ -545,7 +550,7 @@
        foi pedido antes. BUMPE ESSE NÚMERO sempre que consulta-pessoa.js
        ou atualizador-local.js mudar (senão o cache-busting não busta
        nada). -->
-  <script src="../js/core/atualizador-local.js?v=20260831-3"></script>
-  <script src="../js/consulta-pessoa.js?v=20260831-3"></script>
+  <script src="../js/core/atualizador-local.js?v=20260831-4"></script>
+  <script src="../js/consulta-pessoa.js?v=20260831-4"></script>
 </body>
 </html>
