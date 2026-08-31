@@ -486,7 +486,19 @@
     <div id="cip-lightbox-contador"></div>
   </div>
 
-  <script src="../js/core/atualizador-local.js"></script>
-  <script src="../js/consulta-pessoa.js"></script>
+  <!-- CACHE-BUSTING (31/08/2026) — mesmo bug já documentado em
+       desktop_app.py:principal() (WebView2 do .exe guarda cache de disco
+       dos JS entre uma abertura e outra — já causou antes o app rodar
+       código antigo mesmo com o GitHub Pages já atualizado). A mitigação
+       de lá (WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disk-cache-size=1)
+       não bastou desta vez (achado real: correção no renderWebmii não
+       apareceu no .exe mesmo depois de publicado e reaberto). Query
+       string ?v=AAAAMMDD-N força uma URL DIFERENTE a cada versão — não
+       tem cache (disco, memória, CDN, ETag) que segure algo que nunca
+       foi pedido antes. BUMPE ESSE NÚMERO sempre que consulta-pessoa.js
+       ou atualizador-local.js mudar (senão o cache-busting não busta
+       nada). -->
+  <script src="../js/core/atualizador-local.js?v=20260831-1"></script>
+  <script src="../js/consulta-pessoa.js?v=20260831-1"></script>
 </body>
 </html>
