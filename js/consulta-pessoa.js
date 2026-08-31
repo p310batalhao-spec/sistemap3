@@ -2022,7 +2022,16 @@
             msgEl.style.color = algumFalhou ? 'var(--p3-danger)' : '#1e6b34';
             msgEl.textContent = resultados.join(' · ');
             document.getElementById('cip-mc-senha').value = '';
-            if (!algumFalhou) setTimeout(fecharModalConfig, 2000);
+            // RECARREGA A PÁGINA (31/08/2026, pedido explícito do usuário:
+            // "quando eu colocar os dados do cad/quimera e ele autenticar,
+            // atualize a página") — em vez de só fechar o modal, dá um
+            // reload completo: garante que qualquer estado que dependia do
+            // login antigo (ex.: consulta que já tinha falhado por falta de
+            // credencial) já nasce de novo com a sessão nova, sem precisar
+            // fechar/reabrir o app manualmente. Mensagem de sucesso fica
+            // visível 1,5s antes de recarregar, senão some rápido demais
+            // pra ler.
+            if (!algumFalhou) setTimeout(() => location.reload(), 1500);
         } catch (e) {
             msgEl.style.color = 'var(--p3-danger)';
             msgEl.textContent = 'Erro de conexão: ' + e.message;
