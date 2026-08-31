@@ -1847,9 +1847,69 @@
         </div>`;
     }
 
-    function imprimirConsultaCompleta() {
+    // SELEÇÃO DE MÓDULOS NA IMPRESSÃO (31/08/2026, pedido explícito do
+    // usuário: "quero que cada módulo... seja separado na hora de
+    // imprimir, podendo selecionar o que quer que entre... pois podem
+    // ter dados que eu não queria colocar na lista"). 1 entrada por
+    // seção que a impressão já sabia montar (mesmas funções render*
+    // que existiam, só que agora cada uma some sozinha do relatório se
+    // desmarcada, em vez de ser tudo-ou-nada). "Fontes" fica de fora —
+    // nunca fez parte da impressão (é só um log técnico da consulta).
+    const CIP_SECOES_IMPRESSAO = [
+        { id: 'visaogeral', titulo: 'Visão Geral', label: '📊 Visão Geral', render: r => renderVisaoGeral(r) },
+        { id: 'cnh', titulo: 'CNH', label: '🪪 CNH', render: r => renderCnh(r) },
+        { id: 'vinculos', titulo: 'Vínculos', label: '👪 Vínculos', render: r => renderVinculos(r) },
+        { id: 'enderecos', titulo: 'Endereços', label: '📍 Endereços', render: r => renderEnderecos(r) },
+        { id: 'ocorrencias', titulo: 'Ocorrências', label: '🚓 Ocorrências', render: r => renderOcorrenciasParaImpressao(r) },
+        { id: 'mandados', titulo: 'Mandados', label: '⛓️ Mandados', render: r => renderMandados(r) },
+        { id: 'processos', titulo: 'Processos Judiciais', label: '⚖️ Processos', render: r => renderProcessos(r) },
+        { id: 'veiculos', titulo: 'Veículos', label: '🚗 Veículos', render: r => renderVeiculos(r) },
+        { id: 'inteligencia', titulo: 'Informações de Inteligência', label: '🕵️ Inteligência', render: r => renderInteligencia(r, true) },
+        { id: 'orcrim', titulo: 'ORCRIM', label: '🎯 ORCRIM', render: r => renderOrcrim(r) },
+        { id: 'relint', titulo: 'RELINT', label: '📋 RELINT', render: r => renderRelintParaImpressao(r) },
+        { id: 'webmii', titulo: 'Busca na Web', label: '🌐 Busca na Web', render: r => renderWebmii(r) },
+        { id: 'timeline', titulo: 'Linha do Tempo', label: '🕐 Linha do Tempo', render: r => renderTimeline(r) },
+    ];
+    const CIP_IMPRESSAO_LOCALSTORAGE_KEY = 'p3_cip_secoes_impressao';
+
+    // Abre o modal de seleção — cada consulta impressa lembra da ÚLTIMA
+    // escolha (localStorage, por navegador/máquina — nunca envia nada
+    // pra lugar nenhum), pra não precisar desmarcar as mesmas seções
+    // toda vez. Na 1ª vez (nada salvo ainda), tudo vem marcado — mesmo
+    // comportamento de "imprimir tudo" que já existia.
+    function abrirModalImprimir() {
+        if (!ULTIMO_RESULTADO) { alert('Consulte uma pessoa primeiro.'); return; }
+        let selecaoSalva = null;
+        try {
+            const bruto = localStorage.getItem(CIP_IMPRESSAO_LOCALSTORAGE_KEY);
+            if (bruto) selecaoSalva = new Set(JSON.parse(bruto));
+        } catch (e) { /* localStorage indisponível/corrompido — cai no padrão (tudo marcado) */ }
+
+        const lista = document.getElementById('cip-mi-lista');
+        lista.innerHTML = CIP_SECOES_IMPRESSAO.map(s => {
+            const marcado = !selecaoSalva || selecaoSalva.has(s.id);
+            return `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;cursor:pointer;">
+                <input type="checkbox" class="cip-mi-check" value="${s.id}" ${marcado ? 'checked' : ''}>
+                <span style="font-size:13px;color:var(--p3-text);">${s.label}</span>
+            </label>`;
+        }).join('');
+
+        document.getElementById('cip-modal-imprimir').classList.add('aberto');
+    }
+    function fecharModalImprimir() {
+        document.getElementById('cip-modal-imprimir').classList.remove('aberto');
+    }
+    window.P3ConsultaPessoaFecharModalImprimir = fecharModalImprimir;
+
+    function imprimirConsultaCompleta(idsSelecionados) {
         const r = ULTIMO_RESULTADO;
         if (!r) { alert('Consulte uma pessoa primeiro.'); return; }
+        // Sem seleção nenhuma passada (ex.: chamada antiga/direta) —
+        // imprime tudo, mesmo comportamento de antes.
+        const secoes = idsSelecionados
+            ? CIP_SECOES_IMPRESSAO.filter(s => idsSelecionados.has(s.id))
+            : CIP_SECOES_IMPRESSAO;
+        if (!secoes.length) { alert('Selecione ao menos 1 módulo pra imprimir.'); return; }
 
         _cipGarantirDomImpressao();
         const raiz = document.getElementById('cip-print-raiz');
@@ -1875,19 +1935,7 @@
         </div>`;
 
         let n = 1;
-        html += _cipMontarSecao(n++, 'Visão Geral', renderVisaoGeral(r));
-        html += _cipMontarSecao(n++, 'CNH', renderCnh(r));
-        html += _cipMontarSecao(n++, 'Vínculos', renderVinculos(r));
-        html += _cipMontarSecao(n++, 'Endereços', renderEnderecos(r));
-        html += _cipMontarSecao(n++, 'Ocorrências', renderOcorrenciasParaImpressao(r));
-        html += _cipMontarSecao(n++, 'Mandados', renderMandados(r));
-        html += _cipMontarSecao(n++, 'Processos Judiciais', renderProcessos(r));
-        html += _cipMontarSecao(n++, 'Veículos', renderVeiculos(r));
-        html += _cipMontarSecao(n++, 'Informações de Inteligência', renderInteligencia(r, true));
-        html += _cipMontarSecao(n++, 'ORCRIM', renderOrcrim(r));
-        html += _cipMontarSecao(n++, 'RELINT', renderRelintParaImpressao(r));
-        html += _cipMontarSecao(n++, 'Busca na Web', renderWebmii(r));
-        html += _cipMontarSecao(n++, 'Linha do Tempo', renderTimeline(r));
+        secoes.forEach(s => { html += _cipMontarSecao(n++, s.titulo, s.render(r)); });
 
         html += `<div class="cpp-rodape">
             <div><strong>Sistema P3</strong> — 10º Batalhão de Polícia Militar<br>Seção de Planejamento, Ensino e Instrução — P3/10ºBPM</div>
@@ -1896,6 +1944,19 @@
 
         raiz.innerHTML = html;
         window.print();
+    }
+
+    // Botão "🖨️ Imprimir selecionados" dentro do modal — lê os
+    // checkboxes marcados, salva a escolha (pra lembrar da próxima vez)
+    // e dispara a impressão de verdade.
+    function confirmarImprimir() {
+        const idsSelecionados = new Set(
+            Array.from(document.querySelectorAll('.cip-mi-check:checked')).map(el => el.value)
+        );
+        try { localStorage.setItem(CIP_IMPRESSAO_LOCALSTORAGE_KEY, JSON.stringify([...idsSelecionados])); }
+        catch (e) { /* localStorage indisponível — só não lembra da próxima vez, sem quebrar a impressão */ }
+        fecharModalImprimir();
+        imprimirConsultaCompleta(idsSelecionados);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -2056,7 +2117,14 @@
         document.getElementById('cip-mc-btn-webmii').addEventListener('click', instalarWebmiiAcao);
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);
-        document.getElementById('cip-btn-imprimir').addEventListener('click', imprimirConsultaCompleta);
+        document.getElementById('cip-btn-imprimir').addEventListener('click', abrirModalImprimir);
+        document.getElementById('cip-mi-confirmar-btn').addEventListener('click', confirmarImprimir);
+        document.getElementById('cip-mi-marcar-todos').addEventListener('click', () => {
+            document.querySelectorAll('.cip-mi-check').forEach(el => { el.checked = true; });
+        });
+        document.getElementById('cip-mi-desmarcar-todos').addEventListener('click', () => {
+            document.querySelectorAll('.cip-mi-check').forEach(el => { el.checked = false; });
+        });
         document.getElementById('cip-input-cpf').addEventListener('keydown', function (e) {
             if (e.key === 'Enter') consultar();
         });
