@@ -1974,6 +1974,7 @@
         document.getElementById('cip-mc-senha').value = '';
         document.getElementById('cip-mc-token-cad').value = '';
         document.getElementById('cip-mc-token-quimera').value = '';
+        document.getElementById('cip-mc-senha-quimera').value = '';
         const msgEl = document.getElementById('cip-mc-msg');
         msgEl.textContent = 'Carregando status atual...';
         msgEl.style.color = 'var(--p3-text-muted)';
@@ -2055,6 +2056,7 @@
         const senha = document.getElementById('cip-mc-senha').value;
         const tokenCad = document.getElementById('cip-mc-token-cad').value.trim();
         const tokenQuimera = document.getElementById('cip-mc-token-quimera').value.trim();
+        const senhaQuimera = document.getElementById('cip-mc-senha-quimera').value;
         const msgEl = document.getElementById('cip-mc-msg');
         const btn = document.getElementById('cip-mc-salvar-btn');
 
@@ -2074,7 +2076,7 @@
                     resultados.push('2ª fonte de foto: ❌ código precisa ter 6 dígitos');
                 } else {
                     msgEl.textContent = 'Salvando token da 2ª fonte de foto...';
-                    const rIdseg = await P3AtualizadorLocal.idsegConfigurar(tokenQuimera);
+                    const rIdseg = await P3AtualizadorLocal.idsegConfigurar(tokenQuimera, senhaQuimera);
                     resultados.push('2ª fonte de foto: ' + (rIdseg.ok ? '✅ ok' : '❌ ' + (rIdseg.erro || 'falhou')));
                 }
             }
@@ -2083,6 +2085,7 @@
             msgEl.style.color = algumFalhou ? 'var(--p3-danger)' : '#1e6b34';
             msgEl.textContent = resultados.join(' · ');
             document.getElementById('cip-mc-senha').value = '';
+            document.getElementById('cip-mc-senha-quimera').value = '';
             // RECARREGA A PÁGINA (31/08/2026, pedido explícito do usuário:
             // "quando eu colocar os dados do cad/quimera e ele autenticar,
             // atualize a página") — em vez de só fechar o modal, dá um
