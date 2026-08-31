@@ -201,6 +201,33 @@
     .cip-me-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; flex-shrink: 0; }
     .cip-me-body { padding: 18px; overflow-y: auto; }
 
+    /* Modal "escolher o que entra na impressão" (31/08/2026, pedido
+       explícito do usuário: "cada módulo... seja separado na hora de
+       imprimir, podendo selecionar o que quer que entre"). Mesmo visual
+       dos outros modais desta página. */
+    #cip-modal-imprimir {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #cip-modal-imprimir.aberto { display: flex; }
+    .cip-mi-box {
+      background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 12px;
+      max-width: 420px; width: 100%; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35);
+      max-height: 90vh; display: flex; flex-direction: column;
+    }
+    .cip-mi-head {
+      background: var(--p3-blue-700); color: #fff; padding: 14px 18px; display: flex;
+      justify-content: space-between; align-items: center; font-weight: 700; font-size: .95rem; gap: 12px;
+    }
+    .cip-mi-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; flex-shrink: 0; }
+    .cip-mi-body { padding: 14px 18px; overflow-y: auto; }
+    .cip-mi-link-btn {
+      background: none; border: none; color: var(--p3-blue-700); font-size: 12px; font-weight: 600;
+      cursor: pointer; padding: 0; text-decoration: underline dotted;
+    }
+    #cip-mi-lista label:hover { background: var(--p3-bg); }
+    .cip-mi-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
+
     /* ── Ficha lateral (30/08/2026 — layout escolhido pelo usuário entre
        3 opções apresentadas, ver artefato "Layouts da Ficha Policial")
        — sidebar fixa com identidade+navegação à esquerda, TODAS as
@@ -465,6 +492,26 @@
     </div>
   </div>
 
+  <div id="cip-modal-imprimir" onclick="if(event.target===this) P3ConsultaPessoaFecharModalImprimir()">
+    <div class="cip-mi-box">
+      <div class="cip-mi-head">
+        <span>🖨️ Escolher o que entra na impressão</span>
+        <button type="button" onclick="P3ConsultaPessoaFecharModalImprimir()" title="Fechar">✕</button>
+      </div>
+      <div class="cip-mi-body">
+        <div style="display:flex;gap:14px;margin-bottom:10px;">
+          <button type="button" id="cip-mi-marcar-todos" class="cip-mi-link-btn">Marcar todos</button>
+          <button type="button" id="cip-mi-desmarcar-todos" class="cip-mi-link-btn">Desmarcar todos</button>
+        </div>
+        <div id="cip-mi-lista"></div>
+      </div>
+      <div class="cip-mi-foot">
+        <button type="button" class="cip-mc-cancelar" onclick="P3ConsultaPessoaFecharModalImprimir()">Cancelar</button>
+        <button type="button" class="cip-mc-salvar" id="cip-mi-confirmar-btn">🖨️ Imprimir selecionados</button>
+      </div>
+    </div>
+  </div>
+
   <div id="cip-modal-endereco" onclick="if(event.target===this) P3ConsultaPessoaFecharModalEndereco()">
     <div class="cip-me-box">
       <div class="cip-me-head">
@@ -498,7 +545,7 @@
        foi pedido antes. BUMPE ESSE NÚMERO sempre que consulta-pessoa.js
        ou atualizador-local.js mudar (senão o cache-busting não busta
        nada). -->
-  <script src="../js/core/atualizador-local.js?v=20260831-2"></script>
-  <script src="../js/consulta-pessoa.js?v=20260831-2"></script>
+  <script src="../js/core/atualizador-local.js?v=20260831-3"></script>
+  <script src="../js/consulta-pessoa.js?v=20260831-3"></script>
 </body>
 </html>
