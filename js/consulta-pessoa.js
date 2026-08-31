@@ -286,8 +286,10 @@
         document.getElementById('cip-busca-cpf').style.display = modo === 'cpf' ? 'flex' : 'none';
         document.getElementById('cip-busca-nome').style.display = modo === 'nome' ? 'flex' : 'none';
         document.getElementById('cip-busca-veiculo').style.display = modo === 'veiculo' ? 'flex' : 'none';
+        document.getElementById('cip-busca-cnpj').style.display = modo === 'cnpj' ? 'flex' : 'none';
         document.getElementById('cip-lista-nome').style.display = 'none';
         document.getElementById('cip-resultado-veiculo').style.display = 'none';
+        document.getElementById('cip-resultado-cnpj').style.display = 'none';
         document.getElementById('cip-status-msg').textContent = '';
     }
 
@@ -463,6 +465,134 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // CNPJ — 31/08/2026, pedido explícito do usuário: "módulo de consulta
+    // de cnpj devolvendo todos os dados... através do Brasilapi". API
+    // pública/gratuita, sem CAD envolvido (ver brasilapi_cnpj.py) — por
+    // isso não passa pela verificação de credenciais do CAD que os outros
+    // modos fazem. Mostra TODOS os campos que a BrasilAPI devolve,
+    // organizados em grupos (não é um resumo — é o dado completo, só
+    // agrupado pra não virar uma parede de texto).
+    // ────────────────────────────────────────────────────────────────
+    function _cnpjFormatar(cnpj) {
+        const d = String(cnpj || '').replace(/\D/g, '');
+        return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : (cnpj || '—');
+    }
+    function _cnpjTelefone(numero) {
+        const d = String(numero || '').replace(/\D/g, '');
+        if (!d) return null;
+        return d.length > 8 ? `(${d.slice(0, 2)}) ${d.slice(2)}` : d;
+    }
+    function montarResultadoCnpjHtml(d) {
+        let h = '<div class="cip-card">';
+        h += `<div style="font-size:16px;font-weight:700;color:var(--p3-text);">${esc(d.razao_social || 'Sem razão social')}</div>`;
+        if (d.nome_fantasia) h += `<div style="font-size:13px;color:var(--p3-text-muted);margin-top:2px;">${esc(d.nome_fantasia)}</div>`;
+        h += `<div style="font-size:12.5px;color:var(--p3-text-muted);margin-top:6px;">CNPJ ${esc(_cnpjFormatar(d.cnpj))}${d.descricao_identificador_matriz_filial ? ' · ' + esc(d.descricao_identificador_matriz_filial) : ''}</div>`;
+        h += '</div>';
+
+        const corSituacao = (d.descricao_situacao_cadastral || '').toUpperCase() === 'ATIVA' ? '#1e6b34' : 'var(--p3-danger)';
+        h += `<div class="cip-card"><div class="cip-card-titulo">Situação cadastral</div><div class="cip-kv">` +
+            Object.entries({
+                'Situação': `<span style="color:${corSituacao};font-weight:700;">${esc(d.descricao_situacao_cadastral || '—')}</span>`,
+                'Data da situação': d.data_situacao_cadastral,
+                'Motivo': d.descricao_motivo_situacao_cadastral,
+                'Natureza jurídica': d.natureza_juridica,
+                'Porte': d.porte,
+                'Capital social': (d.capital_social || d.capital_social === 0) ? 'R$ ' + Number(d.capital_social).toLocaleString('pt-BR') : null,
+                'Início de atividade': d.data_inicio_atividade,
+                'Optante pelo Simples': d.opcao_pelo_simples === true ? 'Sim' : (d.opcao_pelo_simples === false ? 'Não' : null),
+                'Optante pelo MEI': d.opcao_pelo_mei === true ? 'Sim' : (d.opcao_pelo_mei === false ? 'Não' : null),
+            }).filter(([, v]) => v).map(([k, v]) => `<div><b>${esc(k)}:</b> ${v.startsWith && v.startsWith('<span') ? v : esc(v)}</div>`).join('')
+            + '</div></div>';
+
+        h += `<div class="cip-card"><div class="cip-card-titulo">Atividade econômica (CNAE)</div>
+            <div style="font-size:13px;color:var(--p3-text);"><b>${esc(d.cnae_fiscal || '—')}</b> — ${esc(d.cnae_fiscal_descricao || '—')} <span class="cip-fonte-tag">principal</span></div>`;
+        (d.cnaes_secundarios || []).forEach(c => {
+            h += `<div style="font-size:12.5px;color:var(--p3-text-muted);margin-top:4px;">${esc(c.codigo)} — ${esc(c.descricao)}</div>`;
+        });
+        h += '</div>';
+
+        const endereco = [d.descricao_tipo_de_logradouro, d.logradouro].filter(Boolean).join(' ') +
+            (d.numero ? ', ' + d.numero : '') + (d.complemento ? ' (' + d.complemento + ')' : '');
+        h += `<div class="cip-card"><div class="cip-card-titulo">Endereço e contato</div><div class="cip-kv">` +
+            Object.entries({
+                'Endereço': endereco || null,
+                'Bairro': d.bairro,
+                'Município/UF': [d.municipio, d.uf].filter(Boolean).join('/'),
+                'CEP': d.cep,
+                'Telefone 1': _cnpjTelefone(d.ddd_telefone_1),
+                'Telefone 2': _cnpjTelefone(d.ddd_telefone_2),
+                'Fax': _cnpjTelefone(d.ddd_fax),
+                'E-mail': d.email,
+            }).filter(([, v]) => v).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('')
+            + '</div></div>';
+
+        const qsa = d.qsa || [];
+        if (qsa.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Sócios (QSA) — ${qsa.length}</div>
+                <div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome</th><th>Qualificação</th><th>Entrada</th><th>Faixa etária</th></tr></thead><tbody>`;
+            qsa.forEach(s => {
+                h += `<tr style="cursor:default;"><td>${esc(s.nome_socio || '—')}</td><td>${esc(s.qualificacao_socio || '—')}</td>
+                    <td style="white-space:nowrap;">${esc(s.data_entrada_sociedade || '—')}</td><td>${esc(s.faixa_etaria || '—')}</td></tr>`;
+            });
+            h += '</tbody></table></div></div>';
+        }
+
+        const regimes = d.regime_tributario || [];
+        if (regimes.length) {
+            h += `<div class="cip-card"><div class="cip-card-titulo">Regime tributário por ano</div>
+                <div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Ano</th><th>Forma de tributação</th></tr></thead><tbody>`;
+            regimes.slice().sort((a, b) => (b.ano || 0) - (a.ano || 0)).forEach(rt => {
+                h += `<tr style="cursor:default;"><td>${esc(rt.ano)}</td><td>${esc(rt.forma_de_tributacao || '—')}</td></tr>`;
+            });
+            h += '</tbody></table></div></div>';
+        }
+
+        h += `<div style="font-size:11px;color:var(--p3-text-muted);padding:0 4px;">Fonte: BrasilAPI (dados públicos da Receita Federal).</div>`;
+        return h;
+    }
+    async function buscarCnpjAcao() {
+        const cnpj = document.getElementById('cip-input-cnpj').value.trim();
+        const msg = document.getElementById('cip-status-msg');
+        const resultado = document.getElementById('cip-resultado-cnpj');
+
+        if (!cnpj) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Informe o CNPJ.';
+            return;
+        }
+        if (!(await P3AtualizadorLocal.disponivel())) {
+            document.getElementById('cip-aviso-servidor').style.display = 'block';
+            return;
+        }
+        document.getElementById('cip-aviso-servidor').style.display = 'none';
+        resultado.style.display = 'none';
+        resultado.innerHTML = '';
+        msg.style.color = 'var(--p3-text-muted)';
+        msg.textContent = 'Buscando na BrasilAPI...';
+
+        try {
+            const r = await P3AtualizadorLocal.consultarCnpj(cnpj);
+            if (!r.ok) {
+                msg.style.color = 'var(--p3-danger)';
+                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
+                return;
+            }
+            if (!r.encontrado) {
+                msg.style.color = 'var(--p3-text-muted)';
+                msg.textContent = 'Nenhum CNPJ encontrado com esse número.';
+                return;
+            }
+            msg.style.color = '#1e6b34';
+            msg.textContent = 'CNPJ encontrado.';
+            resultado.style.cssText = 'display:block;border:none;padding:0;background:none;';
+            resultado.innerHTML = montarResultadoCnpjHtml(r.dados || {});
+        } catch (e) {
+            msg.style.color = 'var(--p3-danger)';
+            msg.textContent = 'Erro: ' + e.message;
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────
     // CABEÇALHO DA PESSOA
     // ────────────────────────────────────────────────────────────────
     // ────────────────────────────────────────────────────────────────
@@ -564,7 +694,9 @@
         { id: 'processos', label: '⚖️ Processos', contar: r => (r.processos || []).length },
         { id: 'veiculos', label: '🚗 Veículos', contar: r => (r.veiculos || []).length },
         { id: 'inteligencia', label: '🕵️ Inteligência', contar: r => r.inteligencia ? 1 : 0 },
+        { id: 'orcrim', label: '🎯 ORCRIM', contar: r => ((r.inteligencia && r.inteligencia.orcrim) || []).length },
         { id: 'relint', label: '📋 RELINT', contar: r => ((r.inteligencia && r.inteligencia.relint) || []).length },
+        { id: 'webmii', label: '🌐 Busca Web', contar: r => (r.webmii && r.webmii.resultados && r.webmii.resultados.length) || 0 },
         { id: 'timeline', label: '🕐 Linha do Tempo', contar: r => null },
         { id: 'fontes', label: '🔌 Fontes', contar: r => r.fontes.length },
     ];
@@ -586,7 +718,8 @@
             visaogeral: renderVisaoGeral, cnh: renderCnh, vinculos: renderVinculos,
             enderecos: renderEnderecos, ocorrencias: renderOcorrencias, mandados: renderMandados,
             processos: renderProcessos, veiculos: renderVeiculos, inteligencia: renderInteligencia,
-            relint: renderRelint, timeline: renderTimeline, fontes: renderFontes,
+            orcrim: renderOrcrim, relint: renderRelint, webmii: renderWebmii,
+            timeline: renderTimeline, fontes: renderFontes,
         };
         mainEl.innerHTML = DEFINICAO_ABAS.map(a => `
             <section class="cip-sec" id="cip-sec-${a.id}">
@@ -758,6 +891,107 @@
     }
 
     // ────────────────────────────────────────────────────────────────
+    // MODAL DE ENDEREÇO — mapa + rede de pessoas (30/08/2026, pedido
+    // explícito do usuário: "crie... um mapa em modal com o endereço e
+    // todas as pessoas vinculadas em nós", depois ajustado pra incluir
+    // TODAS as pessoas que bateram no mesmo endereço aproximado, não só
+    // a pessoa consultada — ver buscar_enderecos_aproximados_pessoa em
+    // supabase_intel.py. Reaproveita o MESMO padrão de rede (ângulo de
+    // ouro) de montarRedeVinculosHtml acima, só que o nó central é o
+    // 📍 endereço em vez da pessoa, e o mapa é o mesmo Leaflet da aba
+    // Ocorrências (ver carregarLeafletSeNecessario/inicializarMapaOcorrencias
+    // mais abaixo no arquivo).
+    // ────────────────────────────────────────────────────────────────
+    let CIP_ENDERECO_MODAL_ATUAL = null;
+    function montarRedeEnderecoHtml(pessoas) {
+        if (!pessoas || !pessoas.length) {
+            return '<div style="font-size:12px;color:var(--p3-text-muted);">Nenhuma pessoa encontrada nesse endereço.</div>';
+        }
+        const n = pessoas.length;
+        const W = 640, H = Math.max(320, 120 + n * 40);
+        const cx = W / 2, cy = H / 2;
+        const R = Math.min(W, H) / 2 - 80;
+        let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:460px;display:block;" xmlns="http://www.w3.org/2000/svg">`;
+        pessoas.forEach((p, i) => {
+            const ang = i * _CIP_ANGULO_OURO;
+            const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
+            svg += `<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--p3-border)" stroke-width="1.5" />`;
+        });
+        svg += `<circle cx="${cx}" cy="${cy}" r="30" fill="var(--p3-blue-700)" /><text x="${cx}" y="${cy + 6}" text-anchor="middle" font-size="18">📍</text>`;
+        pessoas.forEach((p, i) => {
+            const ang = i * _CIP_ANGULO_OURO;
+            const x = cx + R * Math.cos(ang), y = cy + R * Math.sin(ang);
+            svg += `<g class="cip-rede-no cip-rede-endereco-no" data-idx="${i}" style="cursor:pointer;">
+                <title>${esc(p.nome)} — clique pra ver os detalhes</title>
+                <circle cx="${x}" cy="${y}" r="26" fill="var(--p3-surface)" stroke="var(--p3-border)" stroke-width="1.5" />
+                <text x="${x}" y="${y + 4}" text-anchor="middle" font-size="9" fill="var(--p3-text)">${esc(primeiroNome(p.nome).slice(0, 10))}</text>
+            </g>`;
+        });
+        svg += '</svg>';
+        return `<div>${svg}<div id="cip-me-detalhe" style="margin-top:8px;padding:12px 14px;border:1px dashed var(--p3-border);border-radius:8px;font-size:12px;color:var(--p3-text-muted);">👆 Clique num nome do diagrama pra ver os detalhes.</div></div>`;
+    }
+
+    function _cipMontarDetalhePessoaEndereco(p) {
+        const cpfLimpo = limparCpf(p.cpf);
+        let h = `<div style="font-weight:700;font-size:14px;color:var(--p3-text);margin-bottom:6px;">${esc(p.nome || 'Sem nome')}</div>`;
+        h += montarHtmlDetalheCampos({
+            'CPF': cpfLimpo ? formatarCpf(cpfLimpo) : 'Não informado',
+            'Encontrado por': p.correspondenciaPor,
+            'Tipo de denúncia': p.tipoDenuncia,
+            'Data da denúncia': p.dataDenuncia,
+        });
+        if (cpfLimpo) {
+            h += `<button type="button" class="cip-rede-btn-consultar" data-cpf="${esc(cpfLimpo)}"
+                style="margin-top:10px;padding:7px 14px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">
+                🔍 Consultar este CPF
+            </button>`;
+        } else {
+            h += '<div style="font-size:11px;color:var(--p3-text-muted);margin-top:8px;">Sem CPF cadastrado — não é possível abrir a consulta completa dessa pessoa.</div>';
+        }
+        return h;
+    }
+
+    function abrirModalEndereco(e) {
+        CIP_ENDERECO_MODAL_ATUAL = e;
+        document.getElementById('cip-me-titulo').textContent = e.endereco || 'Endereço';
+        document.getElementById('cip-me-rede').innerHTML = montarRedeEnderecoHtml(e.pessoas);
+        document.getElementById('cip-modal-endereco').classList.add('aberto');
+
+        const mapaEl = document.getElementById('cip-me-mapa');
+        const lat = _parseCoordBr(e.latitude), lng = _parseCoordBr(e.longitude);
+        if (lat !== null && lng !== null) {
+            mapaEl.style.cssText = 'height:280px;border-radius:10px;margin-bottom:14px;';
+            carregarLeafletSeNecessario(() => {
+                mapaEl.innerHTML = '';
+                const mapa = L.map('cip-me-mapa').setView([lat, lng], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(mapa);
+                L.marker([lat, lng]).addTo(mapa).bindPopup(esc(e.endereco)).openPopup();
+                setTimeout(() => mapa.invalidateSize(), 80); // modal recém aberto — tamanho pode vir errado sem isso
+            });
+        } else {
+            mapaEl.innerHTML = 'Sem coordenadas cadastradas pra este endereço.';
+            mapaEl.style.cssText = 'height:120px;border-radius:10px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;background:var(--p3-bg);color:var(--p3-text-muted);font-size:12.5px;text-align:center;padding:0 20px;';
+        }
+
+        document.querySelectorAll('.cip-rede-endereco-no').forEach(no => {
+            no.addEventListener('click', () => {
+                const i = Number(no.dataset.idx);
+                const p = ((CIP_ENDERECO_MODAL_ATUAL && CIP_ENDERECO_MODAL_ATUAL.pessoas) || [])[i];
+                const detalheEl = document.getElementById('cip-me-detalhe');
+                if (!detalheEl || !p) return;
+                detalheEl.style.border = 'none';
+                detalheEl.innerHTML = _cipMontarDetalhePessoaEndereco(p);
+                const btnConsultar = detalheEl.querySelector('.cip-rede-btn-consultar');
+                if (btnConsultar) btnConsultar.addEventListener('click', () => P3ConsultaPessoaAbrirCpf(btnConsultar.dataset.cpf));
+            });
+        });
+    }
+    function fecharModalEndereco() {
+        document.getElementById('cip-modal-endereco').classList.remove('aberto');
+    }
+    window.P3ConsultaPessoaFecharModalEndereco = fecharModalEndereco;
+
+    // ────────────────────────────────────────────────────────────────
     // VÍNCULOS — filiação (mãe/pai, ver nota de simplificação no topo do
     // arquivo — sem CPF, não clicável) + vínculos por OCORRÊNCIA (outras
     // pessoas na(s) mesma(s) ocorrência(s), com CPF — essas sim
@@ -853,6 +1087,33 @@
         (r.enderecosEquatorial || []).forEach(e => adicionar(e.endereco, null, { origem: 'Equatorial', uc: e.uc, pontoReferencia: e.pontoReferencia }));
         return lista;
     }
+    // Endereços APROXIMADOS (Supabase, ver buscar_enderecos_aproximados_pessoa
+    // em supabase_intel.py) — correspondência por TEXTO entre o nome/apelido
+    // desta pessoa e denúncias que citam um endereço catalogado, nunca uma
+    // FK direta (o schema não tem uma). Cada item abre o modal de mapa+rede
+    // (ver abrirModalEndereco acima) com TODAS as pessoas encontradas nesse
+    // MESMO endereço — pedido explícito do usuário (30/08/2026): "lembrando
+    // de colocar também nesse mesmo mapa os vínculos, ou seja, outras
+    // pessoas que tenham o endereço aproximado também tenham aparecido."
+    function renderEnderecosAproximados(r) {
+        const lista = (r.inteligencia && r.inteligencia.enderecosAproximados) || [];
+        if (!lista.length) return '';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Endereços aproximados (Supabase) — ${lista.length}</div>
+            <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                Correspondência POR TEXTO entre o nome/apelido desta pessoa e denúncias que citam um endereço — não é
+                um vínculo formal no banco. Clique num endereço pra ver o mapa e as outras pessoas encontradas na(s)
+                mesma(s) denúncia(s).
+            </p>`;
+        lista.forEach((e, i) => {
+            h += `<div class="cip-endereco-aprox" data-idx="${i}" style="padding:10px 12px;border-radius:8px;cursor:pointer;background:var(--p3-bg);${i > 0 ? 'margin-top:6px;' : ''}" title="Clique pra ver no mapa">
+                <div style="font-size:13px;color:var(--p3-blue-700);font-weight:600;">📍 ${esc(e.endereco)}</div>
+                <div style="font-size:11px;color:var(--p3-text-muted);margin-top:2px;">${e.pessoas.length} pessoa(s) encontrada(s) nesse endereço</div>
+            </div>`;
+        });
+        h += '</div>';
+        return h;
+    }
+
     function renderEnderecos(r) {
         const lista = montarEnderecos(r);
         // Mais recente primeiro — data no formato DD/MM/AAAA HH:MM:SS
@@ -886,6 +1147,7 @@
             </div>`;
         });
         h += '</div>';
+        h += renderEnderecosAproximados(r);
         return h;
     }
 
@@ -1155,7 +1417,16 @@
                 detalheEl.querySelector('td').innerHTML = rel ? montarCamposDetalheRelint(rel) : '';
             });
         });
-        document.querySelectorAll('.cip-rede-no').forEach(no => {
+        // Escopado a #cip-sec-vinculos (não só ".cip-rede-no") DE PROPÓSITO —
+        // os nós do modal de endereço (abrirModalEndereco) usam a MESMA
+        // classe só pra herdar o hover do CSS (.cip-rede-no:hover circle),
+        // mas têm seu próprio listener (.cip-rede-endereco-no, ligado direto
+        // em abrirModalEndereco) — sem esse escopo, reabrir esta seção
+        // (ligarEventosPainelAtivo roda de novo a cada renderizarTudo, ex.:
+        // depois de buscar endereço na Equatorial) ligaria os nós do modal
+        // de endereço (se já tiver sido aberto antes) neste handler também,
+        // lendo o índice errado de r.inteligencia.vinculos.
+        document.querySelectorAll('#cip-sec-vinculos .cip-rede-no').forEach(no => {
             no.addEventListener('click', () => {
                 const i = Number(no.dataset.idx);
                 const v = ((r.inteligencia && r.inteligencia.vinculos) || [])[i];
@@ -1180,6 +1451,13 @@
                 const resumoEl = document.getElementById('cip-denuncia-resumo-' + i);
                 if (resumoEl) resumoEl.textContent = d.resumoBreve || d.narrativa || '';
                 btn.remove();
+            });
+        });
+        document.querySelectorAll('.cip-endereco-aprox').forEach(div => {
+            div.addEventListener('click', () => {
+                const i = Number(div.dataset.idx);
+                const e = ((r.inteligencia && r.inteligencia.enderecosAproximados) || [])[i];
+                if (e) abrirModalEndereco(e);
             });
         });
     }
@@ -1271,9 +1549,74 @@
         } else if (!inteligencia.apelidos || !inteligencia.apelidos.length) {
             h += '<div style="font-size:12.5px;color:var(--p3-text-muted);">Pessoa cadastrada, mas sem apelido nem observação registrados.</div>';
         }
-        h += `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:10px;">Vínculos cadastrados desta pessoa ficam na aba <b>Vínculos</b> — relatórios de inteligência (RELINT), na aba <b>RELINT</b>.</div>`;
+        h += `<div style="font-size:11px;color:var(--p3-text-muted);margin-top:10px;">Vínculos cadastrados desta pessoa ficam na aba <b>Vínculos</b>, facção/organização criminosa na aba <b>ORCRIM</b> — relatórios de inteligência (RELINT), na aba <b>RELINT</b>.</div>`;
         h += '</div>';
         h += montarDenunciasHtml(inteligencia.denuncias, !!paraImpressao);
+        return h;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // ORCRIM/FACÇÃO — 30/08/2026, pedido explícito do usuário: "crie o
+    // campo ORCRIM". Dado vem de tb_faccao_pessoas (ver comentário
+    // grande em supabase_intel.py:buscar_orcrim_pessoa sobre por que não
+    // é tb_orcrim_pessoas, que está vazia no banco).
+    // ────────────────────────────────────────────────────────────────
+    function renderOrcrim(r) {
+        const lista = (r.inteligencia && r.inteligencia.orcrim) || [];
+        if (!lista.length) return '<div class="cip-vazio">Nenhum vínculo com organização criminosa/facção cadastrado pra este CPF.</div>';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">ORCRIM / Facção — ${lista.length}</div>
+            <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                Vínculo cadastrado pela própria unidade — não representa condenação nem confirmação judicial.
+            </p>`;
+        lista.forEach((v, i) => {
+            const corAtiva = v.ativa ? '#8f1f1f' : 'var(--p3-text-muted)';
+            h += `<div style="padding:10px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <span style="font-weight:700;font-size:14px;color:${corAtiva};">${esc(v.faccao || '—')}</span>
+                    ${v.ativa ? '<span class="cip-fonte-tag" style="background:#f6d3d3;color:#8f1f1f;">ATIVO</span>' : '<span class="cip-fonte-tag">inativo/encerrado</span>'}
+                </div>
+                <div style="font-size:12px;color:var(--p3-text-muted);margin-top:3px;">
+                    ${esc(v.funcao || 'Função não definida')}${v.dataInicio ? ' · desde ' + esc(v.dataInicio) : ''}${v.dataFim ? ' até ' + esc(v.dataFim) : ''}
+                </div>
+                ${v.observacao ? `<div style="font-size:12.5px;color:var(--p3-text);white-space:pre-wrap;margin-top:6px;">${esc(v.observacao)}</div>` : ''}
+            </div>`;
+        });
+        h += '</div>';
+        return h;
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // BUSCA WEB (Webmii) — 30/08/2026, pedido explícito do usuário:
+    // "após a consulta do CPF, utilize o nome completo e faça essa busca
+    // web e mostre junto aos dados." Ver webmii_busca.py — os resultados
+    // vêm do MESMO Google CSE que o Webmii usa (não é um cadastro
+    // verificado, é busca aberta na web pelo nome completo).
+    // ────────────────────────────────────────────────────────────────
+    function renderWebmii(r) {
+        const w = r.webmii;
+        if (!w) {
+            return '<div class="cip-vazio">Busca na web não foi executada pra este CPF (sem nome completo consolidado).</div>';
+        }
+        if (!w.ok) {
+            return `<div class="cip-card" style="border-color:#f0d98a;background:#fff8e6;color:#8a6100;font-size:12.5px;">
+                ⚠️ Busca na web indisponível: ${esc(w.erro || 'falha desconhecida')}
+            </div>`;
+        }
+        const lista = w.resultados || [];
+        if (!lista.length) return '<div class="cip-vazio">Nenhum resultado encontrado na web pra este nome.</div>';
+        let h = `<div class="cip-card"><div class="cip-card-titulo">Busca na web — ${lista.length} resultado(s)${w.totalResultados ? ' de ' + esc(String(w.totalResultados)) : ''}</div>
+            <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
+                Páginas públicas que mencionam este nome completo (editais, diários oficiais, redes sociais,
+                notícias) — busca aberta na web, não é um cadastro verificado.
+            </p>`;
+        lista.forEach((item, i) => {
+            h += `<div style="padding:10px 0;${i > 0 ? 'border-top:1px dashed var(--p3-border);' : ''}">
+                <a href="${esc(item.url || '')}" target="_blank" rel="noopener" style="color:var(--p3-blue-700);font-weight:600;font-size:13px;">${esc(item.titulo || item.url || 'Sem título')}</a>
+                <div style="font-size:11px;color:var(--p3-text-muted);margin:2px 0 4px;">${esc(item.urlVisivel || item.url || '')}</div>
+                <div style="font-size:12.5px;color:var(--p3-text);">${esc(item.resumo || '')}</div>
+            </div>`;
+        });
+        h += '</div>';
         return h;
     }
 
@@ -1529,7 +1872,9 @@
         html += _cipMontarSecao(n++, 'Processos Judiciais', renderProcessos(r));
         html += _cipMontarSecao(n++, 'Veículos', renderVeiculos(r));
         html += _cipMontarSecao(n++, 'Informações de Inteligência', renderInteligencia(r, true));
+        html += _cipMontarSecao(n++, 'ORCRIM', renderOrcrim(r));
         html += _cipMontarSecao(n++, 'RELINT', renderRelintParaImpressao(r));
+        html += _cipMontarSecao(n++, 'Busca na Web', renderWebmii(r));
         html += _cipMontarSecao(n++, 'Linha do Tempo', renderTimeline(r));
 
         html += `<div class="cpp-rodape">
@@ -1573,9 +1918,63 @@
             msgEl.style.color = 'var(--p3-danger)';
             msgEl.textContent = 'Servidor local não respondeu — abra-o pra configurar.';
         }
+        atualizarStatusWebmii();
     }
     function fecharModalConfig() {
         document.getElementById('cip-modal-config').classList.remove('aberto');
+    }
+
+    // "Preparar busca web" (Webmii, ver webmii_busca.py) — Chromium é
+    // baixado sob demanda, não vem no .exe (ver comentário grande em
+    // webmii_busca.py). Botão fica desabilitado com "✅ já instalado"
+    // quando o servidor confirma que já tem o Chromium nesta máquina.
+    async function atualizarStatusWebmii() {
+        const btn = document.getElementById('cip-mc-btn-webmii');
+        const status = document.getElementById('cip-mc-webmii-status');
+        if (!btn || !status) return;
+        status.style.color = 'var(--p3-text-muted)';
+        status.textContent = 'Verificando...';
+        try {
+            const r = await P3AtualizadorLocal.webmiiStatus();
+            if (r.instalado) {
+                btn.disabled = true;
+                btn.textContent = '✅ Já instalado';
+                status.style.color = '#1e6b34';
+                status.textContent = 'Pronto — a busca na web já funciona nas próximas consultas.';
+            } else {
+                btn.disabled = false;
+                btn.textContent = '⬇️ Preparar busca web';
+                status.style.color = 'var(--p3-text-muted)';
+                status.textContent = 'Ainda não baixado nesta máquina.';
+            }
+        } catch (e) {
+            status.style.color = 'var(--p3-danger)';
+            status.textContent = 'Erro ao verificar: ' + e.message;
+        }
+    }
+    async function instalarWebmiiAcao() {
+        const btn = document.getElementById('cip-mc-btn-webmii');
+        const status = document.getElementById('cip-mc-webmii-status');
+        if (!btn || !status) return;
+        btn.disabled = true;
+        status.style.color = 'var(--p3-text-muted)';
+        status.textContent = '⏳ Baixando (~190MB, pode levar alguns minutos)...';
+        try {
+            const r = await P3AtualizadorLocal.webmiiInstalar();
+            if (r.ok) {
+                status.style.color = '#1e6b34';
+                status.textContent = '✅ ' + (r.mensagem || 'Instalado com sucesso.');
+                btn.textContent = '✅ Já instalado';
+            } else {
+                btn.disabled = false;
+                status.style.color = 'var(--p3-danger)';
+                status.textContent = '❌ ' + (r.mensagem || 'Falha ao instalar.');
+            }
+        } catch (e) {
+            btn.disabled = false;
+            status.style.color = 'var(--p3-danger)';
+            status.textContent = 'Erro de conexão: ' + e.message;
+        }
     }
 
     async function salvarModalConfig() {
@@ -1633,6 +2032,7 @@
 
         document.getElementById('cip-config-link').addEventListener('click', abrirModalConfig);
         document.getElementById('cip-mc-salvar-btn').addEventListener('click', salvarModalConfig);
+        document.getElementById('cip-mc-btn-webmii').addEventListener('click', instalarWebmiiAcao);
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);
         document.getElementById('cip-btn-imprimir').addEventListener('click', imprimirConsultaCompleta);
@@ -1659,6 +2059,11 @@
             document.getElementById(id).addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') buscarVeiculoAcao();
             });
+        });
+
+        document.getElementById('cip-btn-buscar-cnpj').addEventListener('click', buscarCnpjAcao);
+        document.getElementById('cip-input-cnpj').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') buscarCnpjAcao();
         });
     });
 })();
