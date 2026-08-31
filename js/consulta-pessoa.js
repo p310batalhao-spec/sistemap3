@@ -1595,6 +1595,18 @@
     function renderWebmii(r) {
         const w = r.webmii;
         if (!w) {
+            // CORREÇÃO (31/08/2026, achado testando no .exe de verdade) —
+            // r.webmii fica null tanto quando não tinha nome pra buscar
+            // QUANTO quando a etapa deu erro (exceção capturada em
+            // consulta_pessoa_service.py) — os dois casos pareciam a MESMA
+            // mensagem genérica antes, escondendo o motivo real (que já
+            // ficava certinho em r.fontes, só não era mostrado aqui).
+            const erroFonte = _cipErroDaFonte(r, 'Busca web (nome)');
+            if (erroFonte) {
+                return `<div class="cip-card" style="border-color:#f0d98a;background:#fff8e6;color:#8a6100;font-size:12.5px;">
+                    ⚠️ Busca na web indisponível: ${esc(erroFonte)}
+                </div>`;
+            }
             return '<div class="cip-vazio">Busca na web não foi executada pra este CPF (sem nome completo consolidado).</div>';
         }
         if (!w.ok) {
