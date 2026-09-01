@@ -30,6 +30,37 @@
         catch (e) { return iso; }
     }
 
+    function rotuloOrigem(origemMatch) {
+        if (origemMatch === 'autores') return 'Autores (Hostinger)';
+        if (origemMatch === 'texto_cpf') return 'CPF citado no texto';
+        return 'Supabase';
+    }
+
+    // "🔍 Detalhes" — 01/09/2026, pedido explícito do usuário: "ao clicar
+    // em detalhes virá todo o cruzamento CAD/IDNET, SUPABASE detalhado
+    // como uma ficha do alvo, semelhante à impressão da consulta
+    // detalhada". O `resultado` salvo aqui é o MESMO objeto completo que
+    // consultar_pessoa_stream produz (CAD, IDNET, ocorrências,
+    // processos, inteligência do Supabase — tudo já salvo na varredura,
+    // nada precisou ser salvo "a mais"). Reaproveita 100% a renderização
+    // e a impressão já existentes em page/consulta-pessoa.html, sem
+    // gastar uma nova consulta real no CAD — o resultado só viaja por
+    // sessionStorage (grande demais pra URL) até a aba nova ler e
+    // descartar a chave (ver handoff em js/consulta-pessoa.js).
+    function abrirFichaCompleta(alvo) {
+        if (!alvo.resultado) {
+            alert('Esta varredura ainda não tem o resultado completo salvo — rode "Rodar nova varredura" de novo.');
+            return;
+        }
+        try {
+            sessionStorage.setItem('p3_cip_resultado_salvo_handoff', JSON.stringify(alvo.resultado));
+        } catch (e) {
+            alert('Não foi possível preparar a ficha (resultado grande demais pro navegador): ' + e.message);
+            return;
+        }
+        window.open('consulta-pessoa.html?abrirResultadoSalvo=1', '_blank');
+    }
+
     function montarLinhaDetalhe(alvo, colspan) {
         const r = alvo.resultado || {};
         const pessoa = r.pessoa || {};
@@ -52,7 +83,7 @@
         td.colSpan = colspan;
         td.innerHTML = `<div class="dr-detalhe-conteudo">
             ${itens.map(([label, valor]) => `<div class="dr-detalhe-item"><span>${esc(label)}</span><span>${esc(valor)}</span></div>`).join('')}
-            <div class="dr-detalhe-item"><span>Consulta completa</span><span>abra a Consulta Integrada de Pessoas e busque por este CPF</span></div>
+            <div class="dr-detalhe-item"><span>Ficha completa</span><span>clique em "🔍 Detalhes" nessa linha pra ver o cruzamento CAD/IDNET/Supabase inteiro</span></div>
         </div>`;
         tr.appendChild(td);
         return tr;
@@ -65,7 +96,7 @@
 
         if (!alvos || !alvos.length) {
             resumo.textContent = 'Nenhum alvo confirmado salvo ainda — clique em "Rodar nova varredura".';
-            corpo.innerHTML = '<tr><td colspan="6" class="dr-vazio">Nada a exibir.</td></tr>';
+            corpo.innerHTML = '<tr><td colspan="7" class="dr-vazio">Nada a exibir.</td></tr>';
             return;
         }
 
@@ -78,14 +109,19 @@
                 <td>${esc(alvo.nome)}</td>
                 <td>${esc(formatarCpf(alvo.cpf))}</td>
                 <td>${esc(alvo.enderecoGrupo)}</td>
-                <td class="dr-origem">${alvo.origemMatch === 'autores' ? 'Autores (Hostinger)' : 'Supabase'}</td>
+                <td class="dr-origem">${esc(rotuloOrigem(alvo.origemMatch))}</td>
                 <td><span class="dr-badge">${alvo.totalDenunciasGrupo}</span></td>
                 <td>${esc(formatarDataHora(alvo.atualizadoEm))}</td>
+                <td><button type="button" class="dr-btn-ficha" ${alvo.resultado ? '' : 'disabled'} title="${alvo.resultado ? 'Ver ficha completa (CAD/IDNET/Supabase)' : 'Sem resultado completo salvo'}">🔍 Detalhes</button></td>
             `;
+            linha.querySelector('.dr-btn-ficha').addEventListener('click', function (e) {
+                e.stopPropagation();
+                abrirFichaCompleta(alvo);
+            });
             let linhaDetalhe = null;
             linha.addEventListener('click', function () {
                 if (linhaDetalhe) { linhaDetalhe.remove(); linhaDetalhe = null; return; }
-                linhaDetalhe = montarLinhaDetalhe(alvo, 6);
+                linhaDetalhe = montarLinhaDetalhe(alvo, 7);
                 linha.after(linhaDetalhe);
             });
             corpo.appendChild(linha);
@@ -97,7 +133,7 @@
         const resumo = document.getElementById('dr-resumo');
         const corpo = document.getElementById('dr-corpo-tabela');
         resumo.textContent = '';
-        corpo.innerHTML = '<tr><td colspan="6" class="dr-vazio">Carregando…</td></tr>';
+        corpo.innerHTML = '<tr><td colspan="7" class="dr-vazio">Carregando…</td></tr>';
 
         if (!(await P3AtualizadorLocal.disponivel())) {
             avisoServidor.style.display = 'block';
@@ -109,12 +145,12 @@
         try {
             const resultado = await P3AtualizadorLocal.alvosDenunciaSalvos();
             if (!resultado.ok) {
-                corpo.innerHTML = `<tr><td colspan="6" class="dr-erro">${esc(resultado.erro || 'Não foi possível carregar os alvos salvos.')}</td></tr>`;
+                corpo.innerHTML = `<tr><td colspan="7" class="dr-erro">${esc(resultado.erro || 'Não foi possível carregar os alvos salvos.')}</td></tr>`;
                 return;
             }
             renderizar(resultado.alvos);
         } catch (e) {
-            corpo.innerHTML = `<tr><td colspan="6" class="dr-erro">Erro ao carregar: ${esc(e.message)}</td></tr>`;
+            corpo.innerHTML = `<tr><td colspan="7" class="dr-erro">Erro ao carregar: ${esc(e.message)}</td></tr>`;
         }
     }
 
