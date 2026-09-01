@@ -29,6 +29,11 @@
         .dr-vazio, .dr-erro { padding: 1.5rem; text-align: center; color: var(--p3-text-muted); font-size: .88rem; }
         .dr-erro { color: var(--p3-danger); }
         .dr-linha { cursor: pointer; }
+        .dr-btn-ficha {
+            background: var(--p3-blue-700); color: #fff; border: none; padding: .3rem .6rem;
+            border-radius: var(--p3-radius-sm); font-size: .8rem; cursor: pointer;
+        }
+        .dr-btn-ficha:disabled { opacity: .5; cursor: default; }
         .dr-linha:hover td { background-color: var(--p3-blue-100); }
         .dr-badge {
             display: inline-block; background: var(--p3-blue-700); color: #fff; font-weight: 700;
@@ -89,6 +94,7 @@
                             <th>Origem</th>
                             <th>Denúncias no grupo</th>
                             <th>Atualizado em</th>
+                            <th>Ficha</th>
                         </tr>
                     </thead>
                     <tbody id="dr-corpo-tabela"></tbody>
