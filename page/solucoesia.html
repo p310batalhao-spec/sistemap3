@@ -121,13 +121,15 @@
                     <p>Consulta Integrada de Pessoas</p>
                 </a>
 
-                <!-- Denúncias Recorrentes (31/08/2026) — pedido explícito do
-                     usuário: cruzamento de quantas denúncias (tb_denuncias,
-                     Supabase) se repetem para o MESMO local E o MESMO alvo,
-                     via correspondência de texto (ver
-                     supabase_intel.buscar_denuncias_recorrentes). Visão geral
-                     do sistema, sem trava de nível. -->
-                <a class="btn" href="denunciasRecorrentes.html" title="Denúncias que se repetem para o mesmo local e o mesmo alvo">
+                <!-- Denúncias Recorrentes (31/08/2026, redesenhada em
+                     01/09/2026) — pedido explícito do usuário: agrupa
+                     denúncias (tb_denuncias, Supabase) por endereço
+                     semelhante, extrai candidatos a alvo do texto, cruza
+                     contra cadastro (Supabase/Autores) e roda a busca
+                     completa (CAD/TJAL/BNMP) pros confirmados, salvando na
+                     Hostinger (ver tools/atualizador-local/alvos_denuncia.py).
+                     Visão geral do sistema, sem trava de nível. -->
+                <a class="btn" href="denunciasRecorrentes.html" title="Denúncias que se repetem para o mesmo local, cruzadas contra cadastro">
                     <img width="64" height="64" src="https://img.icons8.com/ios/50/repeat.png" alt="denuncias recorrentes"/>
                     <p>Denúncias Recorrentes</p>
                 </a>

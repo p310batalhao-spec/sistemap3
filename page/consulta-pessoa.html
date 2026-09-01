@@ -88,55 +88,22 @@
     }
     @keyframes cip-spin { to { transform: rotate(360deg); } }
 
-    /* Modal único — login CAD + token CAD (rastreamento) + token
-       Quimera (2ª fonte de foto), tudo numa tela só (pedido explícito
-       do usuário — antes era preciso ir noutra página pro CAD e tinha
-       uma caixinha separada só pro Quimera aqui). Mesmo visual dos
-       outros modais do sistema (ver #modal-token em page/autores.html). */
-    #cip-modal-config {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000;
-      align-items: center; justify-content: center; padding: 20px;
-    }
-    #cip-modal-config.aberto { display: flex; }
-    .cip-mc-box {
-      background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 12px;
-      max-width: 520px; width: 100%; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35); max-height: 90vh; overflow-y: auto;
-    }
-    .cip-mc-head {
-      background: var(--p3-blue-700); color: #fff; padding: 14px 18px; display: flex;
-      justify-content: space-between; align-items: center; font-weight: 700; font-size: .95rem; position: sticky; top: 0;
-    }
-    .cip-mc-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; }
-    .cip-mc-body { padding: 18px; }
-    .cip-mc-secao-titulo { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--p3-text-muted); margin: 16px 0 8px; }
-    .cip-mc-secao-titulo:first-child { margin-top: 0; }
-    .cip-mc-body label { display: block; font-size: .75rem; font-weight: 700; text-transform: uppercase; color: var(--p3-text-muted); margin-bottom: 5px; }
-    .cip-mc-body input {
-      width: 100%; box-sizing: border-box; padding: 9px 10px; border: 2px solid var(--p3-border); border-radius: 6px;
-      font-size: .92rem; margin-bottom: 12px; background: var(--p3-bg); color: var(--p3-text);
-    }
-    .cip-mc-body input:focus { border-color: var(--p3-blue-700); outline: none; }
-    .cip-mc-ajuda { font-size: 11px; color: var(--p3-text-muted); margin: -8px 0 12px; }
-    /* Mesmo visual do modal de token em page/autores.html (#modal-token
-       .token-instrucao) — pedido explícito do usuário: "quero também
-       que a aba... seja igual ao design que tem em autores". */
+    /* Modal de login CAD+Quimera foi centralizado em
+       js/core/cad-login-modal.js (01/09/2026) — sobrou só o que NÃO é
+       login (instrução da busca web) e os botões cip-mc-cancelar/
+       cip-mc-salvar, que o modal de impressão (#cip-modal-imprimir)
+       também reaproveita. */
     .cip-mc-instrucao {
       background: var(--p3-bg); border-left: 3px solid var(--p3-blue-700); padding: 10px 14px;
       border-radius: 0 6px 6px 0; font-size: 12px; line-height: 1.7; margin-bottom: 14px; color: var(--p3-text);
     }
     .cip-mc-instrucao strong { color: var(--p3-text); }
-    /* Campos de código/token — monoespaçado, centralizado, espaçado
-       (mesmo tratamento visual do textarea de token em autores.html). */
-    .cip-mc-body input.cip-mc-token-field {
-      height: 46px; font-size: 1.05rem; text-align: center; letter-spacing: 3px; font-family: monospace;
-    }
-    #cip-mc-msg { font-size: .8rem; margin-top: 6px; min-height: 1.2em; }
     .cip-mc-foot { padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end; }
-    .cip-mc-foot .cip-mc-cancelar {
+    .cip-mc-foot .cip-mc-cancelar, .cip-mi-foot .cip-mc-cancelar {
       background: var(--p3-bg); color: var(--p3-text); border: 1px solid var(--p3-border); border-radius: 5px;
       padding: 8px 16px; cursor: pointer; font-size: .85rem;
     }
-    .cip-mc-foot .cip-mc-salvar {
+    .cip-mc-foot .cip-mc-salvar, .cip-mi-foot .cip-mc-salvar {
       background: var(--p3-blue-700); color: #fff; border: none; border-radius: 5px;
       padding: 8px 16px; cursor: pointer; font-size: .85rem; font-weight: 700;
     }
@@ -182,7 +149,7 @@
     /* Modal de endereço — mapa + rede de pessoas (30/08/2026, pedido
        explícito do usuário: "mapa em modal com o endereço e todas as
        pessoas vinculadas em nós"). Mesmo visual dos outros modais desta
-       página (ver #cip-modal-config acima). */
+       página (ver #cip-modal-imprimir abaixo). */
     #cip-modal-endereco {
       display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9000;
       align-items: center; justify-content: center; padding: 20px;
@@ -367,7 +334,17 @@
           recarregue.
         </div>
 
-        <button type="button" id="cip-config-link">🔑 Configurar acesso (CAD + Quimera)</button>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:12px;">
+          <button type="button" id="cip-config-link" style="font-size:12.5px;color:var(--p3-blue-700);cursor:pointer;text-decoration:underline dotted;background:none;border:none;padding:0;font-family:inherit;">🔑 Configurar acesso (CAD + Quimera)</button>
+          <div id="clm-badge-container"></div>
+        </div>
+
+        <div class="cip-mc-instrucao" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span><strong>Busca na web por nome (opcional):</strong> usa um navegador próprio, baixado 1 vez nesta máquina (~190MB).</span>
+          <button type="button" id="cip-mc-btn-webmii"
+            style="padding:6px 12px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">⬇️ Preparar busca web</button>
+          <span id="cip-mc-webmii-status" style="font-size:12px;color:var(--p3-text-muted);"></span>
+        </div>
 
         <div class="cip-modo-busca" id="cip-modo-busca">
           <button type="button" class="cip-modo-btn cip-modo-ativo" data-modo="cpf">CPF</button>
@@ -433,70 +410,6 @@
     </main>
   </section>
 
-  <div id="cip-modal-config">
-    <div class="cip-mc-box">
-      <div class="cip-mc-head">
-        🔑 Login CAD SEDS/AL — CNH, ocorrências, foto (Alcatraz e Quimera)
-        <button type="button" onclick="P3ConsultaPessoaFecharModalConfig()" title="Fechar">✕</button>
-      </div>
-      <div class="cip-mc-body">
-        <div class="cip-mc-secao-titulo">Login no CAD</div>
-        <div class="cip-mc-instrucao">
-          <strong>Por que login e senha, além do token?</strong><br>
-          A consulta é liberada pela SUA conta pessoal (CPF+senha), não só pelo token — o token sozinho só
-          autentica o rastreamento de viaturas. É a MESMA sessão usada em Autores/Suspeitos e na Análise Preditiva —
-          configurar aqui ou lá vale pra todas as telas.<br>
-          <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente.</span>
-        </div>
-        <label>CPF de acesso (só números):</label>
-        <input type="text" id="cip-mc-login" placeholder="09089567461" inputmode="numeric"
-          oninput="this.value=this.value.replace(/\D/g,'')">
-        <label>Senha:</label>
-        <input type="password" id="cip-mc-senha" placeholder="Senha do CAD" autocomplete="off">
-        <label>Token de acesso (ex: TK2037113550):</label>
-        <input type="text" id="cip-mc-token-cad" class="cip-mc-token-field" placeholder="TK2037113550"
-          oninput="this.value=this.value.toUpperCase()">
-
-        <div class="cip-mc-secao-titulo">2ª fonte de foto — Quimera (opcional)</div>
-        <div class="cip-mc-instrucao">
-          <strong>De onde vem esse código?</strong><br>
-          Chega por e-mail ("Aplicativo Quimera &lt;naoresponda@seguranca.al.gov.br&gt;") a cada login novo no app
-          Quimera. Deixe em branco pra não mexer no que já está salvo.<br>
-          <span style="color:#b46400">⚠️ Dura só ALGUMAS HORAS (bem menos que o token do CAD acima) — se a foto
-          do Quimera parar de aparecer nas consultas, é sinal de que expirou: peça um código novo e cole aqui de
-          novo. Ao salvar, o login já é testado na hora — se der erro, é isso.</span><br>
-          <span style="color:#b46400">⚠️ O login do Quimera usa o MESMO CPF do CAD acima, mas a senha pode ser
-          diferente — se for esse o seu caso, preencha "Senha do Quimera" abaixo. Deixe em branco se a senha for
-          igual à do CAD.</span>
-        </div>
-        <label>Senha do Quimera (só se for diferente da senha do CAD):</label>
-        <input type="password" id="cip-mc-senha-quimera" placeholder="Deixe em branco se for a mesma senha do CAD" autocomplete="off">
-        <label>Código de 6 dígitos:</label>
-        <input type="text" id="cip-mc-token-quimera" class="cip-mc-token-field" placeholder="000000" inputmode="numeric" maxlength="6"
-          oninput="this.value=this.value.replace(/\D/g,'')">
-
-        <div class="cip-mc-secao-titulo">Busca na web por nome (opcional)</div>
-        <div class="cip-mc-instrucao">
-          <strong>Pra que serve?</strong><br>
-          Depois de identificar o nome completo, a consulta também busca esse nome na web (editais, diários
-          oficiais, notícias, redes sociais). Usa um navegador próprio que precisa ser baixado 1 VEZ nesta
-          máquina (~190MB) — depois disso funciona normalmente, sem baixar de novo.
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-          <button type="button" id="cip-mc-btn-webmii"
-            style="padding:8px 14px;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;">⬇️ Preparar busca web</button>
-          <span id="cip-mc-webmii-status" style="font-size:12px;color:var(--p3-text-muted);"></span>
-        </div>
-
-        <div id="cip-mc-msg"></div>
-      </div>
-      <div class="cip-mc-foot">
-        <button type="button" class="cip-mc-cancelar" onclick="P3ConsultaPessoaFecharModalConfig()">Cancelar</button>
-        <button type="button" class="cip-mc-salvar" id="cip-mc-salvar-btn">✅ Salvar</button>
-      </div>
-    </div>
-  </div>
-
   <div id="cip-modal-imprimir" onclick="if(event.target===this) P3ConsultaPessoaFecharModalImprimir()">
     <div class="cip-mi-box">
       <div class="cip-mi-head">
@@ -550,7 +463,8 @@
        foi pedido antes. BUMPE ESSE NÚMERO sempre que consulta-pessoa.js
        ou atualizador-local.js mudar (senão o cache-busting não busta
        nada). -->
-  <script src="../js/core/atualizador-local.js?v=20260831-5"></script>
-  <script src="../js/consulta-pessoa.js?v=20260831-5"></script>
+  <script src="../js/core/atualizador-local.js?v=20260901-1"></script>
+  <script src="../js/core/cad-login-modal.js?v=20260901-1"></script>
+  <script src="../js/consulta-pessoa.js?v=20260901-1"></script>
 </body>
 </html>

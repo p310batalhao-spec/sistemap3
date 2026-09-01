@@ -174,73 +174,6 @@
 
         .rg-status-item { font-size: .8rem; color: var(--p3-text-muted, #666); }
 
-        /* ── Token GEO ── */
-        .token-banner {
-            display: flex; align-items: center; gap: 10px;
-            padding: 8px 14px; border-radius: 8px; font-size: .83rem;
-            font-weight: 600; margin-bottom: .8rem; flex-wrap: wrap;
-        }
-        .token-ok   { background: rgba(0,100,50,.1);  color: #006432; border: 1px solid #006432; }
-        .token-warn { background: rgba(180,100,0,.1); color: #b46400; border: 1px solid #b46400; }
-        .token-err  { background: rgba(180,0,0,.1);   color: #b40000; border: 1px solid #b40000; }
-        .token-banner button {
-            margin-left: auto; padding: 4px 12px;
-            background: #003366; color: white; border: none;
-            border-radius: 5px; font-size: .78rem; cursor: pointer; font-weight: 700;
-        }
-
-        /* ── Modal token ── */
-        #modal-token {
-            display: none; position: fixed; inset: 0;
-            background: rgba(0,0,0,.55); z-index: 9000;
-            align-items: center; justify-content: center;
-        }
-        #modal-token.aberto { display: flex; }
-        .modal-token-box {
-            background: var(--p3-surface, #fff);
-            border: 1px solid var(--p3-border, #ddd);
-            border-radius: 12px; max-width: 530px; width: 95%;
-            overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.35);
-        }
-        .modal-token-head {
-            background: #003366; color: white;
-            padding: 14px 18px; display: flex;
-            justify-content: space-between; align-items: center;
-            font-weight: 700; font-size: .95rem;
-        }
-        .modal-token-head button {
-            background: none; border: none; color: rgba(255,255,255,.7);
-            font-size: 1.3rem; cursor: pointer; line-height: 1;
-        }
-        .modal-token-body { padding: 18px; }
-        .token-instrucao {
-            background: var(--p3-surface-alt, #f5f5f5);
-            border-left: 3px solid #003366;
-            padding: 10px 14px; border-radius: 0 6px 6px 0;
-            font-size: .8rem; line-height: 1.75; margin-bottom: 14px;
-            color: var(--p3-text, #333);
-        }
-        .modal-token-body label {
-            display: block; font-size: .75rem; font-weight: 700;
-            text-transform: uppercase; color: var(--p3-text-muted, #666); margin-bottom: 5px;
-        }
-        .modal-token-body textarea {
-            width: 100%; height: 80px; padding: 8px;
-            border: 2px solid #003366; border-radius: 6px;
-            font-size: .78rem; font-family: monospace;
-            resize: vertical; background: var(--p3-surface,#fff);
-            color: var(--p3-text,#333);
-        }
-        .modal-token-foot {
-            padding: 0 18px 18px; display: flex; gap: 8px; justify-content: flex-end;
-        }
-        .modal-token-foot .rg-btn-cancel {
-            background: var(--p3-surface-alt,#eee); color: var(--p3-text,#333);
-            border: 1px solid var(--p3-border,#ccc); border-radius: 5px;
-            padding: 7px 16px; cursor: pointer; font-size: .85rem;
-        }
-        .msg-token { font-size: .78rem; color: #b40000; min-height: 16px; margin-top: 6px; font-weight: 600; }
-
         /* ── Countdown ── */
         #rg-countdown {
             font-size: .78rem; color: var(--p3-text-muted,#666);
@@ -290,6 +223,8 @@
 
 <body>
     <script src="../js/core/session.js"></script>
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/core/cad-login-modal.js"></script>
     <script src="../js/cumprimento-core.js"></script>
     <script src="../js/core/header-nav.js" data-active="rastreamento" data-extra='[{"id":"nav-ia-xerife","href":"page/ia_xerife.html","label":"IA Xerife","icone":"../img/xerife-logo.png","w":48,"h":48,"titulo":"IA Xerife — voz, mapa tático, apresentações","depoisDe":"chat-xerife"}]'></script>
 
@@ -300,10 +235,8 @@
                 <p>Posição das guarnições — última atualização da planilha (Google Sheets) — e trajeto histórico por dia.</p>
             </div>
 
-            <!-- Banner de status do token -->
-            <div id="token-banner" class="token-banner token-err" style="display:none">
-                <span id="token-banner-texto">Token não configurado</span>
-                <button onclick="abrirModalToken()">🔑 Configurar token</button>
+            <!-- Status do login CAD/Quimera (modal único) -->
+            <div id="clm-badge-container" style="margin-bottom:.8rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <span id="rg-countdown"></span>
             </div>
 
@@ -422,36 +355,6 @@
         </div>
         <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
-
-    <!-- MODAL TOKEN GEO -->
-    <div id="modal-token">
-        <div class="modal-token-box">
-            <div class="modal-token-head">
-                🔑 Token de Acesso — GEO SEDS/AL
-                <button onclick="fecharModalToken()" title="Fechar">✕</button>
-            </div>
-            <div class="modal-token-body">
-                <div class="token-instrucao">
-                    <strong>Como obter o token de acesso:</strong><br>
-                    1. Acesse o GEO normalmente pelo navegador<br>
-                    2. Na tela de <strong>Validação de Token</strong>, anote o token exibido<br>
-                    3. O formato é <code>TK</code> seguido de números — ex: <code>TK2037113550</code><br>
-                    4. Cole o token abaixo — o sistema faz o login automaticamente<br>
-                    <span style="color:#b46400">⚠️ O token expira em 24h — renove diariamente.</span>
-                </div>
-                <label>Token de acesso GEO (ex: TK2037113550):</label>
-                <textarea id="input-token-geo"
-                    placeholder="TK2037113550"
-                    style="height:54px;font-size:1.1rem;text-align:center;letter-spacing:3px;font-family:monospace"
-                    oninput="this.value=this.value.toUpperCase()"></textarea>
-                <div class="msg-token" id="msg-token-geo"></div>
-            </div>
-            <div class="modal-token-foot">
-                <button class="rg-btn-cancel" onclick="fecharModalToken()">Cancelar</button>
-                <button class="rg-btn" onclick="salvarTokenGEO()">✅ Salvar e iniciar coleta</button>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Relógio, "Bem-vindo(a)" e botão Sair já são centralizados por
@@ -1314,7 +1217,7 @@
         document.getElementById('rg-btn-buscar-perimetro').addEventListener('click', buscarPerimetroFiltrado);
         document.getElementById('rg-btn-limpar-perimetros').addEventListener('click', () => { limparPerimetros(); cartaoPerimetroAtual = null; atualizarCardSelecionado(); document.getElementById('rg-perimetro-resultado').innerHTML = ''; });
         document.getElementById('rg-btn-gas').addEventListener('click', () => {
-            if (!verificarTokenGEO()) { abrirModalToken(); return; }
+            if (!tokenValido()) { CadLoginModal.abrir(); return; }
             dispararColetaGAS().then(() => atualizarViaturasGAS());
         });
 
@@ -1458,124 +1361,32 @@
         // realmente mudarem, então não "zera" ao atualizar a página.
         let _ultimaColetaReal = null;
 
-        function verificarTokenGEO() {
+        // Checagem PURA (sem tocar em banner — o status visual agora é o
+        // badge de CadLoginModal, ver #clm-badge-container) — usada só pra
+        // decidir se dispara/continua a atualização automática da tela.
+        // Token é salvo pelo modal único (js/core/cad-login-modal.js), que
+        // faz o dual-save Apps Script + servidor local; aqui só lemos as
+        // MESMAS chaves de localStorage que ele grava.
+        function tokenValido() {
             const token = localStorage.getItem(TOKEN_GEO_KEY);
-            const ts    = parseInt(localStorage.getItem(TOKEN_GEO_TS_KEY) || '0');
-            const banner = document.getElementById('token-banner');
-            const texto  = document.getElementById('token-banner-texto');
-            banner.style.display = '';
-
-            if (!token) {
-                banner.className = 'token-banner token-err';
-                texto.textContent = '⛔ Token não configurado — o mapa ao vivo não funcionará';
-                pararAtualizacaoAutomatica();
-                return false;
-            }
-
-            const idadeMs = Date.now() - ts;
-            if (idadeMs > TOKEN_TTL_MS) {
-                banner.className = 'token-banner token-err';
-                texto.textContent = '⛔ Token expirado — renove agora para continuar';
-                pararAtualizacaoAutomatica();
-                return false;
-            }
-
-            const horas = Math.floor(idadeMs / 3600000);
-            const mins  = Math.floor((idadeMs % 3600000) / 60000);
-            const restH = Math.floor((TOKEN_TTL_MS - idadeMs) / 3600000);
-
-            if (idadeMs > TOKEN_TTL_MS - 2 * 3600000) {
-                banner.className = 'token-banner token-warn';
-                texto.textContent = '⚠️ Token expira em ~' + restH + 'h — renove em breve';
-            } else {
-                banner.className = 'token-banner token-ok';
-                texto.textContent = '✅ Token ativo — ' + horas + 'h' + mins + 'min de uso';
-            }
+            const ts = parseInt(localStorage.getItem(TOKEN_GEO_TS_KEY) || '0');
+            if (!token) { pararAtualizacaoAutomatica(); return false; }
+            if (Date.now() - ts > TOKEN_TTL_MS) { pararAtualizacaoAutomatica(); return false; }
             return true;
         }
 
         function inicializarTokenGEO() {
-            if (verificarTokenGEO()) {
+            CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
+            if (tokenValido()) {
                 // Só ATUALIZA a tela — não dispara coleta aqui (o Apps
                 // Script já coleta sozinho via gatilho de tempo).
                 atualizarViaturasGAS();
                 iniciarAtualizacaoAutomatica();
             } else {
-                setTimeout(abrirModalToken, 600);
+                setTimeout(() => CadLoginModal.abrir(), 600);
             }
             // Reverifica a cada minuto (detecta expiração)
-            setInterval(verificarTokenGEO, 60000);
-        }
-
-        function abrirModalToken() {
-            document.getElementById('modal-token').classList.add('aberto');
-            document.getElementById('input-token-geo').value = localStorage.getItem(TOKEN_GEO_KEY) || '';
-            document.getElementById('msg-token-geo').textContent = '';
-        }
-
-        function fecharModalToken() {
-            document.getElementById('modal-token').classList.remove('aberto');
-        }
-
-        async function salvarTokenGEO() {
-            const token = document.getElementById('input-token-geo').value.trim().toUpperCase();
-            const msgEl = document.getElementById('msg-token-geo');
-
-            if (!token) {
-                msgEl.textContent = 'Informe o token de acesso.';
-                return;
-            }
-            if (!/^TK\d+$/.test(token) && !/^\d+$/.test(token)) {
-                msgEl.textContent = 'Formato inválido. Use TK seguido de números (ex: TK2037113550).';
-                return;
-            }
-
-            msgEl.style.color = '#555';
-            msgEl.textContent = 'Validando token com o GEO...';
-
-            // GAS não aceita POST com Content-Type JSON por CORS.
-            // Solução: envia o token como parâmetro GET na URL (seguro pois é HTTPS)
-            // e verifica o status logo depois.
-            try {
-                const tokenParam = encodeURIComponent(token);
-                const urlComToken = GAS_RASTREAMENTO_URL + '?acao=definir_token&token=' + tokenParam;
-                const resp = await fetch(urlComToken, { redirect: 'follow' });
-                const texto = await resp.text().catch(() => '{}');
-                console.log('[GAS token] resposta:', texto.substring(0, 200));
-                const data = JSON.parse(texto.trim());
-                if (data.ok === false) {
-                    msgEl.style.color = '#b40000';
-                    msgEl.textContent = '❌ ' + (data.erro || 'Token inválido ou expirado.');
-                    if (data.logs) console.warn('[GAS logs]', data.logs);
-                    return;
-                }
-            } catch(e) {
-                console.warn('[GAS] erro:', e.message);
-                // Se não conseguiu ler a resposta mas o fetch não lançou erro de CORS,
-                // assume que o GAS recebeu e continua
-                if (e.message.includes('Failed to fetch')) {
-                    msgEl.style.color = '#b40000';
-                    msgEl.textContent = '❌ Erro de conexão com o GAS. Verifique a URL.';
-                    return;
-                }
-            }
-
-            localStorage.setItem(TOKEN_GEO_KEY,    token);
-            localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
-
-            msgEl.style.color = '#006432';
-            msgEl.textContent = '✅ Token validado! Iniciando coleta...';
-
-            setTimeout(() => {
-                fecharModalToken();
-                verificarTokenGEO();
-                iniciarAtualizacaoAutomatica();
-                // Só aqui faz sentido disparar 1 coleta manual: acabou de
-                // trocar o token, então vale a pena confirmar na hora que
-                // funcionou, em vez de esperar o próximo gatilho de tempo do
-                // Apps Script (até 5min).
-                dispararColetaGAS().then(() => atualizarViaturasGAS());
-            }, 900);
+            setInterval(tokenValido, 60000);
         }
 
         // Só pro botão "🔄 Atualizar" (força 1 coleta extra sob demanda) e
@@ -1594,7 +1405,7 @@
         function iniciarAtualizacaoAutomatica() {
             pararAtualizacaoAutomatica();
             _atualizacaoTimer = setInterval(async () => {
-                if (!verificarTokenGEO()) { pararAtualizacaoAutomatica(); return; }
+                if (!tokenValido()) { pararAtualizacaoAutomatica(); return; }
                 await atualizarViaturasGAS();
             }, COLETA_INTERVALO);
             _countdownTimer = setInterval(atualizarLinhaUltimaColeta, 1000);

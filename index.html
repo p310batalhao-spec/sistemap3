@@ -24,6 +24,18 @@
                 <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
             </div>
 
+            <!-- Login único CAD/Quimera (01/09/2026) — local central de onde
+                 configurar as credenciais usadas por Autores, Preditiva CAD,
+                 Rastreamento de guarnição e Consulta Integrada de Pessoas
+                 (ver js/core/cad-login-modal.js). -->
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:1rem;">
+                <button type="button" id="index-btn-cad-login"
+                    style="padding:.5rem 1rem;border:none;border-radius:6px;background:var(--p3-blue-700);color:#fff;font-size:.85rem;font-weight:600;cursor:pointer;">
+                    🔑 Login CAD / Quimera
+                </button>
+                <div id="clm-badge-container"></div>
+            </div>
+
             <section class="dashboard">
 
                 <!-- MVI -->
@@ -140,6 +152,14 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
         integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="js/core/iris-panico-client.js"></script>
+    <script src="js/core/atualizador-local.js"></script>
+    <script src="js/core/cad-login-modal.js"></script>
     <script src="js/index.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
+            document.getElementById('index-btn-cad-login').addEventListener('click', () => CadLoginModal.abrir());
+        });
+    </script>
 </body>
 </html>
