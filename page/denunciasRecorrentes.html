@@ -49,6 +49,24 @@
             padding: .75rem 1rem; font-size: .78rem; font-family: monospace; max-height: 14rem; overflow-y: auto; margin-bottom: 1.1rem;
             white-space: pre-wrap; color: var(--p3-text-muted);
         }
+        #dr-modal-ficha {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 9200;
+            align-items: center; justify-content: center; padding: 1.5rem;
+        }
+        #dr-modal-ficha.aberto { display: flex; }
+        .dr-modal-ficha-caixa {
+            background: var(--p3-surface); border-radius: var(--p3-radius-md); box-shadow: 0 1rem 3rem rgba(0,0,0,.35);
+            width: 100%; height: 100%; max-width: 87.5rem; display: flex; flex-direction: column; overflow: hidden;
+        }
+        .dr-modal-ficha-topo {
+            background: var(--p3-blue-700); color: #fff; padding: .7rem 1rem; display: flex;
+            justify-content: space-between; align-items: center; font-weight: 700; font-size: .9rem; flex-shrink: 0;
+        }
+        .dr-modal-ficha-topo button {
+            background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; opacity: .85;
+        }
+        .dr-modal-ficha-topo button:hover { opacity: 1; }
+        #dr-modal-ficha-iframe { flex: 1; border: none; width: 100%; }
     </style>
 </head>
 
@@ -103,6 +121,21 @@
             </div>
         </main>
     </section>
+
+    <!-- Modal da ficha completa (01/09/2026, pedido explícito do usuário:
+         "eu quero que abra em um modal") — iframe da própria
+         consulta-pessoa.html, alimentado via sessionStorage (mesma
+         origem/mesma aba, então o handoff funciona igual a uma aba nova
+         — ver abrirFichaCompleta em js/denunciasRecorrentes.js). -->
+    <div id="dr-modal-ficha">
+        <div class="dr-modal-ficha-caixa">
+            <div class="dr-modal-ficha-topo">
+                <span>Ficha completa do alvo</span>
+                <button type="button" id="dr-modal-ficha-fechar" title="Fechar">✕</button>
+            </div>
+            <iframe id="dr-modal-ficha-iframe" src="about:blank"></iframe>
+        </div>
+    </div>
 
     <script src="../js/core/atualizador-local.js"></script>
     <script src="../js/core/cad-login-modal.js"></script>
