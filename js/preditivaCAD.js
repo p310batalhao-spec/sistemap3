@@ -35,17 +35,6 @@
     // de ocorrências/envolvidos foram adicionadas nesse MESMO projeto.
     const GAS_CAD_URL = 'https://script.google.com/macros/s/AKfycbwuyKpN4AbmV_CmQfZr2olClY1JveArwKEcJE3__DFf74xfnd3AlhXqnde7RPkXDlqx/exec';
 
-    // Mesmas chaves de localStorage do rastreamento-guarnicao.html —
-    // token compartilhado (mesma sessão CAD), então se o usuário já
-    // configurou lá, chega aqui já autenticado, sem pedir de novo.
-    const TOKEN_GEO_KEY    = 'geo_cookie_p3';
-    const TOKEN_GEO_TS_KEY = 'geo_cookie_ts_p3';
-    const TOKEN_TTL_MS     = 23 * 60 * 60 * 1000; // 23h
-
-    // Só o CPF fica em localStorage (prefill de conveniência) — a senha
-    // NUNCA é persistida no navegador, só enviada uma vez pro Apps Script.
-    const CAD_LOGIN_KEY = 'cad_login_p3';
-
     window._cadOcorrencias = [];
     window._cadEnvolvidos  = [];
     window._cadValidas     = [];
@@ -150,7 +139,7 @@
         window._cadFirebaseUrl = (cfg && cfg.firebase && cfg.firebase.databaseURL) || null;
 
         configurarDatasPadrao();
-        inicializarTokenGEO();
+        CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
 
         document.getElementById('btn-atualizar-cad').addEventListener('click', () => carregarDadosCAD());
         document.getElementById('btn-diagnostico').addEventListener('click', rodarDiagnostico);
@@ -2280,119 +2269,4 @@
         }
     }
 
-    // ────────────────────────────────────────────────────────────────
-    // TOKEN GEO — idêntico a page/rastreamento-guarnicao.html (mesmas
-    // chaves de localStorage, mesma rota ?acao=definir_token, mesmo Apps
-    // Script) — token configurado aqui ou lá vale para os dois, é a
-    // mesma sessão CAD.
-    // ────────────────────────────────────────────────────────────────
-    function verificarTokenGEO() {
-        const token = localStorage.getItem(TOKEN_GEO_KEY);
-        const ts = parseInt(localStorage.getItem(TOKEN_GEO_TS_KEY) || '0');
-        const banner = document.getElementById('token-banner');
-        const texto = document.getElementById('token-banner-texto');
-        banner.style.display = '';
-
-        if (!token) {
-            banner.className = 'token-banner token-err';
-            texto.textContent = '⛔ Token não configurado — a Análise Preditiva do CAD não funcionará';
-            return false;
-        }
-        const idadeMs = Date.now() - ts;
-        if (idadeMs > TOKEN_TTL_MS) {
-            banner.className = 'token-banner token-err';
-            texto.textContent = '⛔ Token expirado — renove agora para continuar';
-            return false;
-        }
-        const horas = Math.floor(idadeMs / 3600000);
-        const mins = Math.floor((idadeMs % 3600000) / 60000);
-        const restH = Math.floor((TOKEN_TTL_MS - idadeMs) / 3600000);
-        if (idadeMs > TOKEN_TTL_MS - 2 * 3600000) {
-            banner.className = 'token-banner token-warn';
-            texto.textContent = '⚠️ Token expira em ~' + restH + 'h — renove em breve';
-        } else {
-            banner.className = 'token-banner token-ok';
-            texto.textContent = '✅ Token ativo — ' + horas + 'h' + mins + 'min de uso';
-        }
-        return true;
-    }
-
-    function inicializarTokenGEO() {
-        verificarTokenGEO();
-        setInterval(verificarTokenGEO, 60000);
-    }
-
-    window.abrirModalToken = function () {
-        document.getElementById('modal-token').classList.add('aberto');
-        document.getElementById('input-token-geo').value = localStorage.getItem(TOKEN_GEO_KEY) || '';
-        document.getElementById('input-cad-login').value = localStorage.getItem(CAD_LOGIN_KEY) || '';
-        document.getElementById('input-cad-senha').value = '';
-        document.getElementById('msg-token-geo').textContent = '';
-    };
-    window.fecharModalToken = function () {
-        document.getElementById('modal-token').classList.remove('aberto');
-    };
-
-    window.salvarTokenGEO = async function () {
-        const token = document.getElementById('input-token-geo').value.trim().toUpperCase();
-        const login = document.getElementById('input-cad-login').value.trim();
-        const senha = document.getElementById('input-cad-senha').value;
-        const msgEl = document.getElementById('msg-token-geo');
-
-        if (!login || login.length < 11) { msgEl.style.color = '#b40000'; msgEl.textContent = 'Informe o CPF de acesso ao CAD (11 dígitos).'; return; }
-        if (!senha) { msgEl.style.color = '#b40000'; msgEl.textContent = 'Informe a senha de acesso ao CAD.'; return; }
-        if (!token) { msgEl.style.color = '#b40000'; msgEl.textContent = 'Informe o token de acesso.'; return; }
-        if (!/^TK\d+$/.test(token) && !/^\d+$/.test(token)) {
-            msgEl.style.color = '#b40000';
-            msgEl.textContent = 'Formato de token inválido. Use TK seguido de números (ex: TK2037113550).';
-            return;
-        }
-
-        msgEl.style.color = '#555';
-        msgEl.textContent = 'Salvando credenciais no Apps Script...';
-
-        try {
-            const dataCred = await fetchCAD('definir_credenciais_cad', { login: login, senha: senha });
-            if (dataCred.ok === false) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ ' + (dataCred.erro || 'Falha ao salvar CPF/senha.');
-                return;
-            }
-
-            msgEl.textContent = 'Validando token com o CAD...';
-            const dataToken = await fetchCAD('definir_token', { token: token });
-            if (dataToken.ok === false) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ ' + (dataToken.erro || 'Token inválido ou expirado.');
-                return;
-            }
-
-            msgEl.textContent = 'Testando login completo (CPF+senha+token) no CAD — pode levar alguns segundos...';
-            const dataAuth = await fetchCAD('diagnostico_auth', {});
-            const trace = dataAuth && dataAuth.trace;
-            if (dataAuth.ok === false || !trace || trace.erro || !trace.sessidFinal) {
-                msgEl.style.color = '#b40000';
-                msgEl.textContent = '❌ Login completo falhou: ' + ((trace && trace.erro) || dataAuth.erro || 'sessão final não obtida') +
-                    ' — use "🔧 Diagnóstico CAD" para ver o detalhe.';
-                return;
-            }
-        } catch (e) {
-            msgEl.style.color = '#b40000';
-            msgEl.textContent = '❌ Erro de conexão com o Apps Script: ' + e.message;
-            return;
-        }
-
-        localStorage.setItem(TOKEN_GEO_KEY, token);
-        localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
-        localStorage.setItem(CAD_LOGIN_KEY, login);
-        document.getElementById('input-cad-senha').value = '';
-        msgEl.style.color = '#006432';
-        msgEl.textContent = '✅ Login completo validado!';
-
-        setTimeout(function () {
-            fecharModalToken();
-            verificarTokenGEO();
-            carregarDadosCAD();
-        }, 700);
-    };
 })();

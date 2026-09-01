@@ -1976,44 +1976,6 @@
     }
 
     // ────────────────────────────────────────────────────────────────
-    // MODAL DE CONFIGURAÇÃO — CAD (login/senha/token) + 2ª fonte de
-    // foto (token do Quimera, ver idseg_quimera.py), tudo numa tela só
-    // (pedido explícito do usuário — antes precisava ir noutra página
-    // pro CAD). Salva os dois de uma vez: /cad/configurar (login/senha/
-    // token) e, só se o campo do Quimera vier preenchido,
-    // /cad/idseg-configurar (campo vazio = "não mexe no que já tá
-    // salvo" — evita forçar redigitar toda vez que só quer renovar o
-    // token do CAD, ou vice-versa).
-    // ────────────────────────────────────────────────────────────────
-    async function abrirModalConfig() {
-        document.getElementById('cip-modal-config').classList.add('aberto');
-        document.getElementById('cip-mc-senha').value = '';
-        document.getElementById('cip-mc-token-cad').value = '';
-        document.getElementById('cip-mc-token-quimera').value = '';
-        document.getElementById('cip-mc-senha-quimera').value = '';
-        const msgEl = document.getElementById('cip-mc-msg');
-        msgEl.textContent = 'Carregando status atual...';
-        msgEl.style.color = 'var(--p3-text-muted)';
-        try {
-            const [statusCad, statusIdseg] = await Promise.all([
-                P3AtualizadorLocal.statusCad(), P3AtualizadorLocal.idsegStatus(),
-            ]);
-            document.getElementById('cip-mc-login').value = statusCad.login || '';
-            const partes = [];
-            partes.push('CAD: ' + (statusCad.configurado ? '✅ configurado' : '⛔ não configurado'));
-            partes.push('2ª fonte de foto: ' + (statusIdseg.configurado ? '✅ configurada' : '➖ não configurada'));
-            msgEl.style.color = 'var(--p3-text-muted)';
-            msgEl.textContent = partes.join(' · ');
-        } catch (e) {
-            msgEl.style.color = 'var(--p3-danger)';
-            msgEl.textContent = 'Servidor local não respondeu — abra-o pra configurar.';
-        }
-        atualizarStatusWebmii();
-    }
-    function fecharModalConfig() {
-        document.getElementById('cip-modal-config').classList.remove('aberto');
-    }
-
     // "Preparar busca web" (Webmii, ver webmii_busca.py) — Chromium é
     // baixado sob demanda, não vem no .exe (ver comentário grande em
     // webmii_busca.py). Botão fica desabilitado com "✅ já instalado"
@@ -2067,60 +2029,6 @@
         }
     }
 
-    async function salvarModalConfig() {
-        const login = document.getElementById('cip-mc-login').value.trim();
-        const senha = document.getElementById('cip-mc-senha').value;
-        const tokenCad = document.getElementById('cip-mc-token-cad').value.trim();
-        const tokenQuimera = document.getElementById('cip-mc-token-quimera').value.trim();
-        const senhaQuimera = document.getElementById('cip-mc-senha-quimera').value;
-        const msgEl = document.getElementById('cip-mc-msg');
-        const btn = document.getElementById('cip-mc-salvar-btn');
-
-        if (!login || login.length < 11) { msgEl.style.color = 'var(--p3-danger)'; msgEl.textContent = 'Informe o CPF de acesso ao CAD (11 dígitos).'; return; }
-        if (!tokenCad) { msgEl.style.color = 'var(--p3-danger)'; msgEl.textContent = 'Informe o token de acesso ao CAD.'; return; }
-
-        btn.disabled = true;
-        const resultados = [];
-        try {
-            msgEl.style.color = 'var(--p3-text-muted)';
-            msgEl.textContent = 'Salvando login do CAD...';
-            const rCad = await P3AtualizadorLocal.configurarCad(login, senha, tokenCad);
-            resultados.push('CAD: ' + (rCad.ok ? '✅ ok' : '❌ ' + (rCad.erro || 'falhou')));
-
-            if (tokenQuimera) {
-                if (!/^\d{6}$/.test(tokenQuimera)) {
-                    resultados.push('2ª fonte de foto: ❌ código precisa ter 6 dígitos');
-                } else {
-                    msgEl.textContent = 'Salvando token da 2ª fonte de foto...';
-                    const rIdseg = await P3AtualizadorLocal.idsegConfigurar(tokenQuimera, senhaQuimera);
-                    resultados.push('2ª fonte de foto: ' + (rIdseg.ok ? '✅ ok' : '❌ ' + (rIdseg.erro || 'falhou')));
-                }
-            }
-
-            const algumFalhou = resultados.some(r => r.includes('❌'));
-            msgEl.style.color = algumFalhou ? 'var(--p3-danger)' : '#1e6b34';
-            msgEl.textContent = resultados.join(' · ');
-            document.getElementById('cip-mc-senha').value = '';
-            document.getElementById('cip-mc-senha-quimera').value = '';
-            // RECARREGA A PÁGINA (31/08/2026, pedido explícito do usuário:
-            // "quando eu colocar os dados do cad/quimera e ele autenticar,
-            // atualize a página") — em vez de só fechar o modal, dá um
-            // reload completo: garante que qualquer estado que dependia do
-            // login antigo (ex.: consulta que já tinha falhado por falta de
-            // credencial) já nasce de novo com a sessão nova, sem precisar
-            // fechar/reabrir o app manualmente. Mensagem de sucesso fica
-            // visível 1,5s antes de recarregar, senão some rápido demais
-            // pra ler.
-            if (!algumFalhou) setTimeout(() => location.reload(), 1500);
-        } catch (e) {
-            msgEl.style.color = 'var(--p3-danger)';
-            msgEl.textContent = 'Erro de conexão: ' + e.message;
-        } finally {
-            btn.disabled = false;
-        }
-    }
-    window.P3ConsultaPessoaFecharModalConfig = fecharModalConfig;
-
     // ────────────────────────────────────────────────────────────────
     // BOOT
     // ────────────────────────────────────────────────────────────────
@@ -2131,8 +2039,9 @@
             document.getElementById('cip-aviso-servidor').style.display = 'block';
         }
 
-        document.getElementById('cip-config-link').addEventListener('click', abrirModalConfig);
-        document.getElementById('cip-mc-salvar-btn').addEventListener('click', salvarModalConfig);
+        CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
+        document.getElementById('cip-config-link').addEventListener('click', () => CadLoginModal.abrir());
+        atualizarStatusWebmii();
         document.getElementById('cip-mc-btn-webmii').addEventListener('click', instalarWebmiiAcao);
 
         document.getElementById('cip-btn-consultar').addEventListener('click', consultar);

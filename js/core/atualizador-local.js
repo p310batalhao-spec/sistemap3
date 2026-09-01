@@ -235,14 +235,37 @@
                 return resp.json();
             }
 
-            // Denúncias Recorrentes (31/08/2026, pedido explícito do usuário) —
-            // pares (endereço, pessoa) com 2+ denúncias distintas casadas por
-            // texto (ver supabase_intel.buscar_denuncias_recorrentes). Visão
-            // geral do sistema, não amarrada a 1 CPF. {ok, pares:[...]}.
-            async function denunciasRecorrentes(minOcorrencias) {
-                const qs = new URLSearchParams({ min: String(minOcorrencias || 2) }).toString();
-                const resp = await fetch(`${URL_BASE}/supabase/denuncias-recorrentes?${qs}`);
+            // Denúncias Recorrentes (01/09/2026, redesenho) — ver
+            // tools/atualizador-local/alvos_denuncia.py. {ok, alvos:[...]}.
+            async function alvosDenunciaSalvos() {
+                const resp = await fetch(`${URL_BASE}/supabase/denuncias-recorrentes/salvos`);
                 return resp.json();
+            }
+
+            // Dispara o pipeline inteiro (agrupar endereços → extrair
+            // candidatos → cruzar Supabase/Autores → busca completa no CAD
+            // pros confirmados → salvar na Hostinger) — streaming NDJSON,
+            // mesmo padrão de consultarPessoaStream/atualizarMovimentacoes
+            // acima. Pode levar minutos (login real do CAD, 1 pessoa por
+            // vez). onProgresso(obj) por evento {tipo:'inicio'|'progresso'|
+            // 'aviso', ...}; devolve o `resumo` final ({totalGrupos,
+            // totalCandidatos, totalInvestigados, totalSalvos}).
+            async function rodarVarreduraDenunciasRecorrentes(onProgresso) {
+                const resp = await fetch(`${URL_BASE}/supabase/denuncias-recorrentes/varredura`, { method: 'POST' });
+                if (!resp.ok) {
+                    let detalhe = '';
+                    try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+                    throw new Error(detalhe || `Varredura respondeu HTTP ${resp.status}`);
+                }
+                let resumoFinal = null;
+                let erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resumoFinal = obj.resumo;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                return resumoFinal;
             }
 
             global.P3AtualizadorLocal = {
@@ -262,6 +285,7 @@
                 webmiiStatus: webmiiStatus,
                 webmiiInstalar: webmiiInstalar,
                 consultarCnpj: consultarCnpj,
-                denunciasRecorrentes: denunciasRecorrentes,
+                alvosDenunciaSalvos: alvosDenunciaSalvos,
+                rodarVarreduraDenunciasRecorrentes: rodarVarreduraDenunciasRecorrentes,
             };
         })(window);
