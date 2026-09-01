@@ -39,14 +39,17 @@
     // "🔍 Detalhes" — 01/09/2026, pedido explícito do usuário: "ao clicar
     // em detalhes virá todo o cruzamento CAD/IDNET, SUPABASE detalhado
     // como uma ficha do alvo, semelhante à impressão da consulta
-    // detalhada". O `resultado` salvo aqui é o MESMO objeto completo que
-    // consultar_pessoa_stream produz (CAD, IDNET, ocorrências,
-    // processos, inteligência do Supabase — tudo já salvo na varredura,
-    // nada precisou ser salvo "a mais"). Reaproveita 100% a renderização
-    // e a impressão já existentes em page/consulta-pessoa.html, sem
-    // gastar uma nova consulta real no CAD — o resultado só viaja por
-    // sessionStorage (grande demais pra URL) até a aba nova ler e
-    // descartar a chave (ver handoff em js/consulta-pessoa.js).
+    // detalhada" — depois ajustado pra abrir em MODAL em vez de aba nova
+    // ("eu quero que abra em um modal"). O `resultado` salvo aqui é o
+    // MESMO objeto completo que consultar_pessoa_stream produz (CAD,
+    // IDNET, ocorrências, processos, inteligência do Supabase — tudo já
+    // salvo na varredura, nada precisou ser salvo "a mais"). Reaproveita
+    // 100% a renderização e a impressão já existentes em
+    // page/consulta-pessoa.html: o modal é só um iframe dela, e o
+    // resultado viaja por sessionStorage (grande demais pra URL) — como
+    // o iframe é MESMA ORIGEM/MESMA ABA, ele enxerga o mesmo
+    // sessionStorage do documento pai (ver handoff em
+    // js/consulta-pessoa.js), sem precisar de postMessage.
     function abrirFichaCompleta(alvo) {
         if (!alvo.resultado) {
             alert('Esta varredura ainda não tem o resultado completo salvo — rode "Rodar nova varredura" de novo.');
@@ -58,7 +61,16 @@
             alert('Não foi possível preparar a ficha (resultado grande demais pro navegador): ' + e.message);
             return;
         }
-        window.open('consulta-pessoa.html?abrirResultadoSalvo=1', '_blank');
+        document.getElementById('dr-modal-ficha-iframe').src = 'consulta-pessoa.html?abrirResultadoSalvo=1';
+        document.getElementById('dr-modal-ficha').classList.add('aberto');
+    }
+
+    function fecharModalFicha() {
+        document.getElementById('dr-modal-ficha').classList.remove('aberto');
+        // Reseta o iframe (não só esconde) — evita que a ficha antiga
+        // ainda esteja carregada em memória na próxima abertura e garante
+        // que o boot de consulta-pessoa.js roda de novo do zero sempre.
+        document.getElementById('dr-modal-ficha-iframe').src = 'about:blank';
     }
 
     function montarLinhaDetalhe(alvo, colspan) {
@@ -196,6 +208,13 @@
         if (!P3.requireAuth()) return;
         document.getElementById('dr-btn-varredura').addEventListener('click', rodarVarredura);
         document.getElementById('dr-btn-atualizar').addEventListener('click', carregarSalvos);
+        document.getElementById('dr-modal-ficha-fechar').addEventListener('click', fecharModalFicha);
+        document.getElementById('dr-modal-ficha').addEventListener('click', function (e) {
+            if (e.target.id === 'dr-modal-ficha') fecharModalFicha();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') fecharModalFicha();
+        });
         carregarSalvos();
     });
 })();
