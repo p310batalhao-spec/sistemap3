@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Denúncias Recorrentes</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        .dr-intro { max-width: 62rem; color: var(--p3-text-muted); font-size: .9rem; margin: .25rem 0 1.25rem; }
+        .dr-aviso-servidor {
+            display: none; background: var(--p3-blue-100); border: .0625rem solid var(--p3-border);
+            border-radius: var(--p3-radius-md); padding: .9rem 1.1rem; margin-bottom: 1.1rem;
+            font-size: .85rem; color: var(--p3-text);
+        }
+        .dr-barra {
+            display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem;
+        }
+        .dr-barra label { font-size: .8rem; color: var(--p3-text-muted); }
+        .dr-barra input[type="number"] {
+            width: 4.5rem; padding: .4rem .5rem; border: .0625rem solid var(--p3-border);
+            border-radius: var(--p3-radius-sm); font-size: .85rem; font-family: var(--p3-font);
+        }
+        .dr-barra button {
+            background: var(--p3-blue-700); color: #fff; border: none; padding: .5rem 1rem;
+            border-radius: var(--p3-radius-sm); font-size: .85rem; font-weight: 600; cursor: pointer;
+        }
+        .dr-barra button:disabled { opacity: .6; cursor: default; }
+        .dr-resumo { font-size: .82rem; color: var(--p3-text-muted); margin-bottom: .75rem; }
+        .dr-vazio, .dr-erro { padding: 1.5rem; text-align: center; color: var(--p3-text-muted); font-size: .88rem; }
+        .dr-erro { color: var(--p3-danger); }
+        .dr-linha-par { cursor: pointer; }
+        .dr-linha-par:hover td { background-color: var(--p3-blue-100); }
+        .dr-badge {
+            display: inline-block; background: var(--p3-blue-700); color: #fff; font-weight: 700;
+            font-size: .78rem; padding: .15rem .55rem; border-radius: 1rem; min-width: 1.6rem; text-align: center;
+        }
+        .dr-detalhe td { padding: 0 !important; border-bottom: .0625rem solid var(--p3-border); }
+        .dr-detalhe-conteudo { padding: .75rem 1.5rem; background: var(--p3-bg); }
+        .dr-detalhe-item {
+            display: flex; justify-content: space-between; gap: 1rem; font-size: .8rem;
+            padding: .35rem 0; border-bottom: .0625rem dashed var(--p3-border);
+        }
+        .dr-detalhe-item:last-child { border-bottom: none; }
+        .dr-correspondencia { font-size: .72rem; color: var(--p3-text-muted); }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="denuncias-recorrentes"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="saudacao">
+                <h2>Denúncias Recorrentes</h2>
+                <p>Pares de local + alvo com 2 ou mais denúncias (Disque Denúncia) distintas casadas por
+                    correspondência de nome/apelido no texto — panorama geral do sistema, não amarrado a 1 CPF.</p>
+            </div>
+
+            <div class="dr-intro">
+                A correspondência é feita por texto (nome completo ou apelido/alcunha cadastrado, dentro do resumo
+                ou narrativa da denúncia) — não existe, hoje, um vínculo direto entre pessoa e endereço catalogado
+                nos dados de origem.
+            </div>
+
+            <div id="dr-aviso-servidor" class="dr-aviso-servidor">
+                O servidor local (Atualizador Local) não está respondendo. Abra o programa
+                <b>Atualizador Local do Sistema P3</b> no seu computador e tente novamente.
+            </div>
+
+            <div class="dr-barra">
+                <label for="dr-min">Mínimo de denúncias por par:</label>
+                <input type="number" id="dr-min" min="2" value="2">
+                <button type="button" id="dr-btn-buscar">Buscar</button>
+            </div>
+
+            <div id="dr-resumo" class="dr-resumo"></div>
+
+            <div class="tabela-container">
+                <table id="dr-tabela">
+                    <thead>
+                        <tr>
+                            <th>Local</th>
+                            <th>Pessoa</th>
+                            <th>CPF</th>
+                            <th>Nº de Denúncias</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dr-corpo-tabela"></tbody>
+                </table>
+            </div>
+        </main>
+    </section>
+
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/denunciasRecorrentes.js"></script>
+</body>
+
+</html>
