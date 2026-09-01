@@ -273,6 +273,29 @@
     }
     window.P3ConsultaPessoaAbrirCpf = consultarPorCpf;
 
+    // Abre uma aba com um resultado JÁ salvo (não roda o CAD de novo) —
+    // 01/09/2026, pedido explícito do usuário: "ao clicar em detalhes
+    // virá todo o cruzamento CAD/IDNET, SUPABASE detalhado como uma
+    // ficha do alvo, semelhante à impressão da consulta detalhada".
+    // Usado pela "🔍 Detalhes" de page/denunciasRecorrentes.html — o
+    // resultado completo já foi salvo na Hostinger na varredura, então
+    // só precisa ser EXIBIDO, reaproveitando 100% da mesma
+    // renderização/impressão desta tela (ver
+    // criarAbaConsulta/renderizarTudo/imprimirConsultaCompleta), sem
+    // gastar uma nova consulta real no CAD.
+    function abrirResultadoSalvoEmAba(resultado) {
+        const cpfLimpo = limparCpf(resultado.cpf);
+        const existente = ABAS_CONSULTA.find(a => a.cpfLimpo === cpfLimpo);
+        if (existente) { existente.resultado = resultado; existente.erro = null; existente.carregando = false; ativarAbaConsulta(existente.id); return; }
+        const aba = criarAbaConsulta(cpfLimpo);
+        aba.resultado = resultado;
+        aba.carregando = false;
+        aba.titulo = (resultado.pessoa && resultado.pessoa.nome)
+            ? resultado.pessoa.nome.trim().split(/\s+/).slice(0, 2).join(' ') : formatarCpf(cpfLimpo);
+        ativarAbaConsulta(aba.id);
+    }
+    window.P3ConsultaPessoaAbrirResultadoSalvo = abrirResultadoSalvoEmAba;
+
     // ────────────────────────────────────────────────────────────────
     // MODO DE BUSCA — CPF | Nome/Mãe/Pai | Veículo (29/08/2026, pedido
     // explícito: "faça a consulta também por NOME... igual ao CAD" e
@@ -1007,11 +1030,63 @@
     }
     window.P3ConsultaPessoaFecharModalEndereco = fecharModalEndereco;
 
+    // Agrupa vínculos de ocorrência pelo papel (campo "Envolvimento" do
+    // próprio CAD) — 01/09/2026, pedido explícito do usuário: "vinculos
+    // (ocorrências) esses vinculos são os descritos nas ocorrências:
+    // vítima, testemunha, autor, outros, condutor do veiculo". O CAD não
+    // garante que o texto exato seja sempre uma dessas 5 palavras (pode
+    // vir "Autor(a)", "Condutor do Veículo", etc.), então a ordenação
+    // abaixo só usa essa lista como PRIORIDADE de exibição (por
+    // correspondência parcial, sem acento) — o rótulo original do CAD é
+    // sempre preservado no título do grupo, nunca reescrito/adivinhado.
+    const _PRIORIDADE_ENVOLVIMENTO = ['VITIMA', 'TESTEMUNHA', 'AUTOR', 'CONDUTOR', 'OUTROS'];
+    function _cipSemAcento(s) {
+        return String(s || '').toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    }
+    function _cipPrioridadeEnvolvimento(tipo) {
+        const norm = _cipSemAcento(tipo) || 'OUTROS';
+        const idx = _PRIORIDADE_ENVOLVIMENTO.findIndex(p => norm.includes(p));
+        return idx === -1 ? _PRIORIDADE_ENVOLVIMENTO.length : idx;
+    }
+    function montarVinculosOcorrenciaAgrupadosHtml(vinculosOc) {
+        const grupos = new Map(); // rótulo original do CAD -> [vínculos]
+        vinculosOc.forEach(v => {
+            const rotulo = v.tipoEnvolvimento || 'Outros';
+            if (!grupos.has(rotulo)) grupos.set(rotulo, []);
+            grupos.get(rotulo).push(v);
+        });
+        const rotulosOrdenados = Array.from(grupos.keys()).sort((a, b) => {
+            const dif = _cipPrioridadeEnvolvimento(a) - _cipPrioridadeEnvolvimento(b);
+            return dif !== 0 ? dif : a.localeCompare(b, 'pt-BR');
+        });
+        let h = '';
+        rotulosOrdenados.forEach(rotulo => {
+            const lista = grupos.get(rotulo);
+            h += `<div class="cip-vinculos-grupo" style="margin-bottom:14px;">
+                <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--p3-text-muted);margin-bottom:6px;">${esc(rotulo)} — ${lista.length}</div>
+                <div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome completo</th><th>CPF</th><th>Nº COP</th><th>Data</th><th>Tipificação</th></tr></thead><tbody>`;
+            lista.forEach(v => {
+                const clicavel = !!v.cpf;
+                h += `<tr ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')" title="Clique pra consultar essa pessoa"` : 'style="cursor:default;" title="CPF não disponível"'}>
+                    <td>${clicavel ? `<span class="cip-pessoa-link">${esc(v.nome)}</span>` : esc(v.nome)}</td>
+                    <td style="white-space:nowrap;">${v.cpf ? esc(formatarCpf(limparCpf(v.cpf))) : '—'}</td>
+                    <td>${esc(v.numeroOcorrencia || '—')}</td>
+                    <td style="white-space:nowrap;">${esc(v.data || '—')}</td>
+                    <td>${esc(v.tipificacao || '—')}</td>
+                </tr>`;
+            });
+            h += '</tbody></table></div></div>';
+        });
+        return h;
+    }
+
     // ────────────────────────────────────────────────────────────────
     // VÍNCULOS — filiação (mãe/pai, ver nota de simplificação no topo do
     // arquivo — sem CPF, não clicável) + vínculos por OCORRÊNCIA (outras
     // pessoas na(s) mesma(s) ocorrência(s), com CPF — essas sim
-    // clicáveis, ver P3ConsultaPessoaAbrirCpf) + vínculos CADASTRADOS no
+    // clicáveis, ver P3ConsultaPessoaAbrirCpf), agrupados por papel
+    // (Vítima/Testemunha/Autor/Condutor/Outros, ver
+    // montarVinculosOcorrenciaAgrupadosHtml) + vínculos CADASTRADOS no
     // Supabase (rede/árvore, ver montarRedeVinculosHtml).
     // ────────────────────────────────────────────────────────────────
     function renderVinculos(r) {
@@ -1035,23 +1110,13 @@
         if (vinculosOc.length) {
             h += `<div class="cip-card"><div class="cip-card-titulo">Vínculos por ocorrência — ${vinculosOc.length}</div>
                 <p style="font-size:11.5px;color:var(--p3-text-muted);margin-bottom:10px;">
-                    Pessoas que apareceram na(s) mesma(s) ocorrência(s) que esta — linhas com CPF são clicáveis pra
-                    consultar a pessoa diretamente. Só cobre as ocorrências que já tiveram o detalhe carregado
-                    automaticamente (as mais recentes).
+                    Pessoas que apareceram na(s) mesma(s) ocorrência(s) que esta, agrupadas pelo papel que tiveram
+                    (Envolvimento, campo do próprio CAD) — linhas com CPF são clicáveis pra consultar a pessoa
+                    diretamente. Só cobre as ocorrências que já tiveram o detalhe carregado automaticamente (as
+                    mais recentes).
                 </p>`;
-            h += '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nome completo</th><th>CPF</th><th>Envolvimento</th><th>Nº COP</th><th>Data</th><th>Tipificação</th></tr></thead><tbody>';
-            vinculosOc.forEach(v => {
-                const clicavel = !!v.cpf;
-                h += `<tr ${clicavel ? `onclick="P3ConsultaPessoaAbrirCpf('${v.cpf}')" title="Clique pra consultar essa pessoa"` : 'style="cursor:default;" title="CPF não disponível"'}>
-                    <td>${clicavel ? `<span class="cip-pessoa-link">${esc(v.nome)}</span>` : esc(v.nome)}</td>
-                    <td style="white-space:nowrap;">${v.cpf ? esc(formatarCpf(limparCpf(v.cpf))) : '—'}</td>
-                    <td>${esc(v.tipoEnvolvimento || '—')}</td>
-                    <td>${esc(v.numeroOcorrencia || '—')}</td>
-                    <td style="white-space:nowrap;">${esc(v.data || '—')}</td>
-                    <td>${esc(v.tipificacao || '—')}</td>
-                </tr>`;
-            });
-            h += '</tbody></table></div></div>';
+            h += montarVinculosOcorrenciaAgrupadosHtml(vinculosOc);
+            h += '</div>';
         }
 
         const vinculosSb = (r.inteligencia && r.inteligencia.vinculos) || [];
@@ -2082,5 +2147,20 @@
         document.getElementById('cip-input-cnpj').addEventListener('keydown', function (e) {
             if (e.key === 'Enter') buscarCnpjAcao();
         });
+
+        // Handoff de "🔍 Detalhes" vindo de page/denunciasRecorrentes.html
+        // (ver abrirResultadoSalvoEmAba acima) — o resultado completo é
+        // grande demais pra ir numa URL, então viaja por sessionStorage;
+        // a chave some logo em seguida (é um handoff de 1 uso só, não um
+        // cache — recarregar esta página não deve reabrir sozinha).
+        if (new URLSearchParams(location.search).get('abrirResultadoSalvo') === '1') {
+            try {
+                const bruto = sessionStorage.getItem('p3_cip_resultado_salvo_handoff');
+                sessionStorage.removeItem('p3_cip_resultado_salvo_handoff');
+                if (bruto) abrirResultadoSalvoEmAba(JSON.parse(bruto));
+            } catch (e) {
+                console.warn('[consulta-pessoa] falha ao abrir resultado salvo:', e.message);
+            }
+        }
     });
 })();
