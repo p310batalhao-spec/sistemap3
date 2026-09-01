@@ -235,6 +235,16 @@
                 return resp.json();
             }
 
+            // Denúncias Recorrentes (31/08/2026, pedido explícito do usuário) —
+            // pares (endereço, pessoa) com 2+ denúncias distintas casadas por
+            // texto (ver supabase_intel.buscar_denuncias_recorrentes). Visão
+            // geral do sistema, não amarrada a 1 CPF. {ok, pares:[...]}.
+            async function denunciasRecorrentes(minOcorrencias) {
+                const qs = new URLSearchParams({ min: String(minOcorrencias || 2) }).toString();
+                const resp = await fetch(`${URL_BASE}/supabase/denuncias-recorrentes?${qs}`);
+                return resp.json();
+            }
+
             global.P3AtualizadorLocal = {
                 URL_BASE: URL_BASE,
                 disponivel: disponivel,
@@ -252,5 +262,6 @@
                 webmiiStatus: webmiiStatus,
                 webmiiInstalar: webmiiInstalar,
                 consultarCnpj: consultarCnpj,
+                denunciasRecorrentes: denunciasRecorrentes,
             };
         })(window);
