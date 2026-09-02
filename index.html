@@ -19,16 +19,22 @@
            js/core/notificacoes.js:obterResumoRiscoPorLocal), só que mostra
            o ranking sempre, sem o limiar de 50% que a notificação usa (um
            resumo informativo não deve ficar mudo só porque nada é
-           "urgente" hoje). Override SÓ nesta página — .saudacao continua
-           column em todo o resto do sistema.
-        */
-        .saudacao { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 1.5rem; }
-        .saudacao-texto { display: flex; flex-direction: column; gap: .5rem; flex: 1 1 18rem; }
-        #resumo-preditivo { flex: 1 1 20rem; max-width: 26rem; font-size: .82rem; }
-        #resumo-preditivo-titulo { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--p3-text-muted); margin-bottom: .5rem; }
+           "urgente" hoje).
+           02/09/2026 (ajuste): 1ª versão ficava dentro de .saudacao, ao
+           lado do texto de boas-vindas — pedido do usuário pra mover pra
+           BAIXO dos botões de login do CAD, com os itens lado a lado (linha,
+           não empilhados) pra não ocupar espaço vertical. */
+        #resumo-preditivo {
+            padding: .9rem 1.1rem; border-radius: var(--p3-radius-lg);
+            background: var(--p3-surface); border: .0625rem solid var(--p3-border);
+            margin-bottom: 1rem; font-size: .82rem;
+        }
+        #resumo-preditivo-titulo { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--p3-text-muted); margin-bottom: .6rem; }
+        #resumo-preditivo-conteudo { display: flex; flex-direction: row; flex-wrap: wrap; gap: .6rem; align-items: stretch; }
         .resumo-preditivo-item {
             display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border-radius: .4rem;
-            background: var(--p3-bg); border: .0625rem solid var(--p3-border); margin-bottom: .4rem;
+            background: var(--p3-bg); border: .0625rem solid var(--p3-border);
+            flex: 1 1 16rem; min-width: 14rem;
         }
         .resumo-preditivo-badge {
             flex-shrink: 0; font-weight: 700; font-size: .75rem; padding: .1rem .5rem; border-radius: 1rem; min-width: 3rem; text-align: center;
@@ -40,7 +46,7 @@
         :root[data-p3-theme="dark"] .resumo-preditivo-badge.medio { background: rgba(255,179,71,.18); color: #ffcb80; }
         :root[data-p3-theme="dark"] .resumo-preditivo-badge.baixo { background: rgba(43,227,166,.16); color: #7be0c2; }
         #resumo-preditivo-vazio { color: var(--p3-text-muted); font-size: .8rem; }
-        @media (max-width: 640px) { .saudacao { flex-direction: column; } #resumo-preditivo { max-width: none; width: 100%; } }
+        #resumo-preditivo-rodape { flex-basis: 100%; font-size: .7rem; color: var(--p3-text-muted); margin-top: .2rem; }
     </style>
 </head>
 
@@ -51,14 +57,8 @@
     <section class="pagecomplete">
         <main>
             <div class="saudacao">
-                <div class="saudacao-texto">
-                    <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
-                    <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
-                </div>
-                <div id="resumo-preditivo">
-                    <div id="resumo-preditivo-titulo">🎯 Resumo Preditivo</div>
-                    <div id="resumo-preditivo-conteudo"><div id="resumo-preditivo-vazio">Analisando dados recentes…</div></div>
-                </div>
+                <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
+                <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
             </div>
 
             <!-- Login único CAD/Quimera (01/09/2026) — local central de onde
@@ -71,6 +71,13 @@
                     🔑 Login CAD / Quimera
                 </button>
                 <div id="clm-badge-container"></div>
+            </div>
+
+            <!-- Resumo Preditivo — abaixo do login, itens lado a lado (ver
+                 comentário no <style> acima). -->
+            <div id="resumo-preditivo">
+                <div id="resumo-preditivo-titulo">🎯 Resumo Preditivo</div>
+                <div id="resumo-preditivo-conteudo"><div id="resumo-preditivo-vazio">Analisando dados recentes…</div></div>
             </div>
 
             <section class="dashboard">
@@ -236,7 +243,7 @@
                         '<span>' + (item.cidade || 'N/D') + ' — ' + (item.bairro || 'N/D') + ': <strong>' + pct + '%</strong> de CVLI/MVI nos próximos ' + resultado.janelaDias + ' dias</span>' +
                         '</div>';
                 }).join('') +
-                    '<div style="font-size:.7rem;color:var(--p3-text-muted);margin-top:.3rem;">Modelo automático (regressão logística leve) — apoio ao planejamento, não decisão isolada.</div>';
+                    '<div id="resumo-preditivo-rodape">Modelo automático (regressão logística leve) — apoio ao planejamento, não decisão isolada.</div>';
             } catch (e) {
                 conteudo.innerHTML = '<div id="resumo-preditivo-vazio">Erro ao calcular o resumo preditivo: ' + e.message + '</div>';
             }
