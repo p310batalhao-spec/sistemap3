@@ -1,4 +1,4 @@
-﻿// ════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
 // ANÁLISE PREDITIVA — CAD (Sistema P3, 10º BPM)
 // ════════════════════════════════════════════════════════════════════
 // Consome o MESMO Apps Script já usado por page/rastreamento-guarnicao.html
@@ -137,6 +137,9 @@
         // buscarPrevisaoRegistrada_) pra gravar/conferir no Firebase da
         // unidade sem precisar re-buscar cfg em cada função.
         window._cadFirebaseUrl = (cfg && cfg.firebase && cfg.firebase.databaseURL) || null;
+        // Mesmo espírito — usado por capturarClimaHistoricoSeNecessario_
+        // pra montar a URL/chave da Hostinger sem re-buscar cfg.
+        window._cadUnidadeConfig = cfg;
 
         configurarDatasPadrao();
         CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
@@ -436,6 +439,8 @@
                 window._cadArrMVI = cvliMviBruto.filter(isMVI);
                 window._cadClassificacaoRapida = true;
                 renderClassificacaoRisco();
+                capturarClimaHistoricoSeNecessario_(window._cadArrCVP, window._cadArrCVLI, window._cadArrMVI);
+                carregarPopulacoesCidades_(window._cadArrCVP, window._cadArrCVLI, window._cadArrMVI);
                 if (respClass.truncadoCVP || respClass.truncadoCVLIMVI) {
                     mostrarAlerta(
                         'Classificação rápida incompleta — dados truncados',
@@ -530,6 +535,9 @@
         // com a classificação client-side mais lenta/genérica.
         if (!window._cadClassificacaoRapida) {
             renderClassificacaoRisco();
+            const _cvpFallback = window._cadOcorrencias.filter(isCVP), _cvliFallback = window._cadOcorrencias.filter(isCVLI), _mviFallback = window._cadOcorrencias.filter(isMVI);
+            capturarClimaHistoricoSeNecessario_(_cvpFallback, _cvliFallback, _mviFallback);
+            carregarPopulacoesCidades_(_cvpFallback, _cvliFallback, _mviFallback);
         }
         renderTabelaOcorrencias();
         renderTabelaEnvolvidos();
@@ -548,78 +556,15 @@
     function normRisco(str) {
         return String(str || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     }
-    function tipificacaoDe(item) {
-        return normRisco((item.TIPIFICACAO_GERAL || '') + ' ' + (item.TIPIFICACAO || ''));
-    }
-    function ehTipoCVLI(t) {
-        return t.includes('HOMICIDIO') || t.includes('FEMINICIDIO') || t.includes('LATROCINIO');
-    }
-
-    // ── SUBNOTIFICAÇÃO DO CAD — a grade não tem campo "Óbito" explícito,
-    // então uma "TENTATIVA DE HOMICÍDIO" que na verdade terminou em morte
-    // (a tipificação do boletim às vezes não é atualizada a tempo) ficava
-    // presa em CVLI, nunca virando MVI. Como paliativo, procura indícios
-    // de óbito nos campos de texto que JÁ vêm na grade (Solução/Situação/
-    // Tipificação) — se achar, reclassifica pra MVI mesmo com a
-    // tipificação ainda dizendo "tentativa". Regex conforme especificado:
-    // cobre "óbito"/"obito" (com/sem acento), confirmação do SAMU e
-    // encaminhamento ao IML — sinais fortes de morte já constatada.
-    const REGEX_INDICIO_OBITO = /(óbito|obito|constatado óbito|samu atestou|iml)/i;
-    function textoRelatoDe(item) {
-        return [item.SOLUCAO, item['SOLUÇÃO'], item.SITUACAO, item.TIPIFICACAO, item.TIPIFICACAO_GERAL]
-            .filter(Boolean).join(' ');
-    }
-    function temIndicioDeObitoNoRelato(item) {
-        return REGEX_INDICIO_OBITO.test(textoRelatoDe(item));
-    }
-
-    // "Tentativa" no VOCABULÁRIO PRÓPRIO do CAD nem sempre usa a palavra
-    // "TENTATIVA" — a própria grade tem uma tipificação real chamada
-    // "LATROCINIO TENTADO" (confirmado por captura real, id 735), que
-    // não contém "TENTATIVA" e por isso escapava dessa checagem: caía no
-    // ramo "direto" de isMVI e era contada como MVI incondicionalmente,
-    // sem nenhuma evidência de óbito — mesmo bug que a verificação
-    // abaixo corrige. "TENTADO" cobre esse caso (e qualquer outro rótulo
-    // do CAD com a mesma construção).
-    function ehTentativa_(t) {
-        return t.includes('TENTATIVA') || t.includes('TENTADO');
-    }
-    // Mesma regra de js/analisePreditiva.js:isMVI — só entram no MVI as
-    // ocorrências CONSUMADAS de homicídio/feminicídio/latrocínio, OU uma
-    // tentativa que teve óbito confirmado depois (ali, via campo OBITO
-    // real do cadastro manual; aqui, via indício de óbito no relato —
-    // ver temIndicioDeObitoNoRelato acima, já que a grade do CAD não
-    // expõe um campo de óbito explícito).
-    function isMVI(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
-        if (ehTentativa_(t)) {
-            // Só reclassifica tentativa->MVI se (a) o tipo de base já é
-            // homicídio/feminicídio/latrocínio E (b) há indício real de
-            // óbito no texto disponível — nunca promove uma tentativa de
-            // furto ou qualquer outra coisa só por bater a regex à toa.
-            return ehTipoCVLI(t) && temIndicioDeObitoNoRelato(item);
-        }
-        return ehTipoCVLI(t);
-    }
-    function isCVLI(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
-        return ehTipoCVLI(t);
-    }
-    // Mesma regra de js/analisePreditiva.js:isCVP — uma tentativa com
-    // óbito confirmado sai do CVP (deixa de ser só "crime contra o
-    // patrimônio" — virou MVI, ver isMVI acima). Sem isso o mesmo caso
-    // contaria como CVP E MVI ao mesmo tempo por acidente (diferente do
-    // latrocínio consumado, que conta como as duas categorias DE
-    // PROPÓSITO — ver ehTipoCVLI/isCVP abaixo, comportamento já validado
-    // nesta sessão).
-    function isCVP(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('APOIO') || t.includes('OUTRAS')) return false;
-        if (ehTentativa_(t) && temIndicioDeObitoNoRelato(item)) return false;
-        return t.includes('ROUBO') || t.includes('EXTORSAO');
-    }
+    // Classificação CVP/CVLI/MVI — MOVIDA pra js/core/previsaoMensalCad.js
+    // (02/09/2026) pra virar fonte única, compartilhada com o lembrete
+    // automático de fim de mês (js/core/notificacoes.js, que roda sem
+    // esta página estar aberta e precisa da MESMA regra de classificação
+    // pra nunca divergir do que a tela mostraria). Ver ali o histórico de
+    // bugs já corrigidos (subnotificação de óbito, "LATROCINIO TENTADO").
+    const isMVI = window.PrevisaoMensalCAD.isMVI;
+    const isCVLI = window.PrevisaoMensalCAD.isCVLI;
+    const isCVP = window.PrevisaoMensalCAD.isCVP;
 
     function parseHoraCAD(item) {
         const h = String(item.HORA || '').trim();
@@ -1085,6 +1030,324 @@
         });
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // CLIMA (CPTEC via BrasilAPI) — 02/09/2026, pedido explícito do
+    // usuário: mostrar a previsão do tempo ao lado das cidades de maior
+    // risco, como CONTEXTO operacional pra quem for planejar
+    // patrulhamento (ex.: "vai chover amanhã em X"). Deliberadamente
+    // NÃO entra como peso/coeficiente na probabilidade calculada pelo
+    // MLLeve — a CPTEC só devolve previsão FUTURA, não um histórico de
+    // clima passado, então não dá pra cruzar contra as ocorrências já
+    // registradas e validar um coeficiente de verdade; melhor mostrar o
+    // dado bruto do que fingir um ajuste não validado.
+    //
+    // BrasilAPI (brasilapi.com.br) tem CORS aberto (confirmado:
+    // access-control-allow-origin: *) — chamado direto do navegador,
+    // sem servidor local envolvido, igual ao Google Maps já é aqui.
+    // Fluxo: nome da cidade → GET /api/cptec/v1/cidade/{nome} (acha o
+    // id do CPTEC, cacheado em localStorage por 30 dias — a lista de
+    // cidades quase nunca muda) → GET /api/cptec/v1/clima/previsao/{id}
+    // (previsão dos próximos dias, usa só o 1º = amanhã).
+    //
+    // LACUNA REAL DE COBERTURA confirmada testando cidades da área do
+    // 10º BPM: "Palmeira dos Índios" (uma das mais citadas na base) não
+    // existe na base do CPTEC em nenhuma grafia testada — por isso todo
+    // o fluxo abaixo trata "não encontrada" como caso normal (remove o
+    // badge daquele item, não quebra o resto da tela).
+    // ════════════════════════════════════════════════════════════════
+    const CPTEC_CACHE_ID_KEY = 'cad_cptec_id_cidade_v1';
+    const CPTEC_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias
+
+    function _cptecCacheIdCarregar() {
+        try { return JSON.parse(localStorage.getItem(CPTEC_CACHE_ID_KEY) || '{}'); }
+        catch (e) { return {}; }
+    }
+    function _cptecCacheIdSalvar(cache) {
+        try { localStorage.setItem(CPTEC_CACHE_ID_KEY, JSON.stringify(cache)); }
+        catch (e) { /* localStorage indisponível/cheio — sem cache, sem problema, só perde a otimização */ }
+    }
+
+    // Cidades da área do 10º BPM sem cobertura confirmada no CPTEC →
+    // cidade vizinha usada como substituta (02/09/2026, decisão
+    // explícita do usuário: "busque os dados de tempo em igaci... e
+    // replique em palmeira" — "Palmeira dos Índios" não existe na base
+    // do CPTEC em nenhuma grafia testada). Nunca finge que é dado
+    // direto da própria cidade — cptecResolverIdCidade_ devolve também
+    // `cidadeReal` sempre que usa uma substituta, e isso é propagado
+    // até o badge/tooltip e até o registro salvo na Hostinger
+    // (coluna cidade_substituta).
+    const CPTEC_CIDADE_SUBSTITUTA_ = {
+        'PALMEIRA DOS INDIOS': 'Igaci',
+    };
+
+    // id pode ser `null` no cache — significa "já sabemos que essa
+    // cidade não existe no CPTEC (nem tem substituta)", evita
+    // reconsultar toda hora. Devolve {id, cidadeReal} — cidadeReal é
+    // null quando o id já é da própria cidade pedida (sem substituição).
+    async function cptecResolverIdCidade_(nomeCidade) {
+        const chave = normRisco(nomeCidade);
+        const cache = _cptecCacheIdCarregar();
+        const entrada = cache[chave];
+        if (entrada && (Date.now() - entrada.ts) < CPTEC_CACHE_TTL_MS) {
+            return { id: entrada.id, cidadeReal: entrada.cidadeReal || null };
+        }
+
+        async function buscarIdDireto(nome) {
+            const resp = await fetch('https://brasilapi.com.br/api/cptec/v1/cidade/' + encodeURIComponent(nome));
+            if (!resp.ok) return null;
+            const lista = await resp.json();
+            // Homônimos entre estados são comuns (ex.: "Belém" existe em
+            // PA/PB/AL/PE) — prioriza o de Alagoas quando houver mais de 1.
+            const doAL = lista.find(function (c) { return c.estado === 'AL'; });
+            const escolhido = doAL || lista[0];
+            return escolhido ? escolhido.id : null;
+        }
+
+        let id = null, cidadeReal = null;
+        try {
+            id = await buscarIdDireto(nomeCidade);
+            if (id == null && CPTEC_CIDADE_SUBSTITUTA_[chave]) {
+                cidadeReal = CPTEC_CIDADE_SUBSTITUTA_[chave];
+                id = await buscarIdDireto(cidadeReal);
+                if (id == null) cidadeReal = null; // substituta também não encontrada — desiste mesmo
+            }
+        } catch (e) {
+            return { id: null, cidadeReal: null }; // rede indisponível agora — não grava no cache, tenta de novo na próxima
+        }
+        cache[chave] = { id: id, cidadeReal: cidadeReal, ts: Date.now() };
+        _cptecCacheIdSalvar(cache);
+        return { id: id, cidadeReal: cidadeReal };
+    }
+
+    // numDias: 1 (só amanhã, usado pro badge na tela) ou até 6 (usado
+    // na captura histórica, ver capturarClimaHistoricoSeNecessario_).
+    async function cptecPrevisao_(nomeCidade, numDias) {
+        const resolvido = await cptecResolverIdCidade_(nomeCidade);
+        if (resolvido.id == null) return null;
+        try {
+            const sufixo = numDias && numDias > 1 ? '/' + numDias : '';
+            const resp = await fetch('https://brasilapi.com.br/api/cptec/v1/clima/previsao/' + resolvido.id + sufixo);
+            if (!resp.ok) return null;
+            const dados = await resp.json();
+            const dias = (dados.clima || []).map(function (dia) {
+                return { condicaoCod: dia.condicao, condicaoDesc: dia.condicao_desc, min: dia.min, max: dia.max, indiceUv: dia.indice_uv, data: dia.data };
+            });
+            return { dias: dias, cidadeReal: resolvido.cidadeReal };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const CPTEC_ICONES_ = {
+        ec: '☀️', pn: '⛅', cl: '🌤️', nu: '☁️', pc: '🌦️', ps: '🌦️', cm: '🌧️',
+        ch: '🌧️', tc: '⛈️', pt: '⛈️', ne: '🌫️', ge: '🌨️', vn: '💨',
+    };
+    function cptecIcone_(codigo) {
+        return CPTEC_ICONES_[String(codigo || '').toLowerCase()] || '🌡️';
+    }
+
+    // Progressive enhancement — roda DEPOIS do render síncrono de
+    // renderizarBlocoOndeQuando_, injeta o badge de clima em cada item
+    // sem bloquear/atrasar o render principal (as chamadas à CPTEC são
+    // assíncronas e podem demorar/falhar). Só usada na tela ao vivo —
+    // de propósito NÃO é chamada no fluxo do relatório impresso
+    // (atualizarDadosRelatorioCAD_): o PDF é um registro do que já
+    // aconteceu, previsão de clima do dia seguinte não faz sentido lá,
+    // e mantém o relatório rápido/sem depender de rede externa.
+    async function anexarClimaAoRanking_(box) {
+        const itens = Array.prototype.slice.call(box.querySelectorAll('.previsao-item[data-cidade-clima]'));
+        for (const item of itens) {
+            const cidade = item.getAttribute('data-cidade-clima');
+            const alvo = item.querySelector('.previsao-clima');
+            if (!alvo) continue;
+            const previsao = await cptecPrevisao_(cidade, 1);
+            const dia = previsao && previsao.dias[0];
+            if (!dia) { alvo.remove(); continue; }
+            alvo.textContent = cptecIcone_(dia.condicaoCod) + ' ' + dia.min + '°–' + dia.max + '°';
+            const origem = previsao.cidadeReal ? ' (réplica de ' + previsao.cidadeReal + ', cidade mais próxima com cobertura CPTEC)' : '';
+            alvo.title = 'Previsão CPTEC pra amanhã em ' + cidade + origem + ': ' + dia.condicaoDesc + ' (dado bruto, contexto operacional — não entra no cálculo de risco)';
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // CAPTURA E ARMAZENAMENTO DE HISTÓRICO DE CLIMA — 02/09/2026,
+    // pedido explícito do usuário: "faça a captura desses dados e
+    // armazene na hostinger para poder lembrar desses dados e utilizar
+    // também nas análises preditivas". Dispara 1x por CARGA REAL de
+    // dados do CAD (chamada nos 2 pontos de carregarDadosCAD onde dado
+    // novo de verdade chega — nunca a cada toggle de filtro), no máximo
+    // 1x por dia por navegador (guard em localStorage) — captura TODAS
+    // as cidades do período carregado, não só as 5 do ranking de risco:
+    // uma amostra enviesada só nos dias/locais de maior risco
+    // inviabilizaria qualquer correlação clima×crime no futuro.
+    //
+    // CPTEC devolve até 6 dias de previsão por chamada — cada captura
+    // grava/atualiza TODOS eles (upsert por cidade+data, ver
+    // hostinger-api/clima_historico.php): o valor salvo pra uma data
+    // converge pro mais preciso à medida que a captura acontece mais
+    // perto da própria data (a mais recente sempre sobrescreve a mais
+    // antiga pra aquele dia).
+    // ════════════════════════════════════════════════════════════════
+    const CLIMA_HISTORICO_GUARD_KEY = 'cad_clima_historico_capturado_em';
+    const CLIMA_DIAS_PREVISAO_HISTORICO = 6;
+
+    function _cidadesDistintasDoPeriodo_(arrCVP, arrCVLI, arrMVI) {
+        const vistos = new Set();
+        const cidades = [];
+        [].concat(arrCVP || [], arrCVLI || [], arrMVI || []).forEach(function (it) {
+            const cidade = (it.CIDADE || '').trim();
+            if (!cidade) return;
+            const chave = normRisco(cidade);
+            if (vistos.has(chave)) return;
+            vistos.add(chave);
+            cidades.push(cidade);
+        });
+        return cidades;
+    }
+
+    async function capturarClimaHistoricoSeNecessario_(arrCVP, arrCVLI, arrMVI) {
+        const hoje = new Date().toISOString().slice(0, 10);
+        if (localStorage.getItem(CLIMA_HISTORICO_GUARD_KEY) === hoje) return; // já capturou hoje neste navegador
+        const cfg = window._cadUnidadeConfig;
+        if (!cfg || !cfg.apiPhp || !cfg.apiPhp.url) return; // recurso só existe pro 10º BPM (mesma trava de P3.Autores)
+
+        const cidades = _cidadesDistintasDoPeriodo_(arrCVP, arrCVLI, arrMVI);
+        if (!cidades.length) return;
+
+        const registros = [];
+        for (const cidade of cidades) {
+            const previsao = await cptecPrevisao_(cidade, CLIMA_DIAS_PREVISAO_HISTORICO);
+            if (!previsao) continue; // cidade sem cobertura nem substituta — pula, não trava as outras
+            previsao.dias.forEach(function (dia) {
+                registros.push({
+                    cidade: cidade, data: dia.data, condicaoCod: dia.condicaoCod, condicaoDesc: dia.condicaoDesc,
+                    min: dia.min, max: dia.max, indiceUv: dia.indiceUv, cidadeSubstituta: previsao.cidadeReal || null,
+                });
+            });
+        }
+        if (!registros.length) return;
+
+        try {
+            const base = /\.php$/i.test(cfg.apiPhp.url) ? cfg.apiPhp.url.replace(/autores\.php$/i, 'clima_historico.php') : cfg.apiPhp.url + '/clima_historico.php';
+            const resp = await fetch(base + '?action=importar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+                body: JSON.stringify({ registros: registros }),
+            });
+            if (resp.ok) localStorage.setItem(CLIMA_HISTORICO_GUARD_KEY, hoje);
+        } catch (e) {
+            console.warn('[preditivaCAD] falha ao salvar histórico de clima na Hostinger:', e.message);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════
+    // POPULAÇÃO (IBGE, via BrasilAPI + SIDRA/Agregados) — 02/09/2026,
+    // pedido explícito do usuário: normalizar o ranking de hotspots por
+    // habitante, não só contagem bruta — uma cidade grande sempre
+    // aparece "pior" só por ter mais gente, mesmo sem ser
+    // proporcionalmente mais perigosa. Diferente do clima, população
+    // NÃO precisa de histórico acumulado — já entra em uso direto.
+    //
+    // Fluxo: nome da cidade → tabela de municípios de AL inteira (1
+    // chamada só, BrasilAPI, cacheada por 30 dias) → código IBGE →
+    // população (IBGE Agregados/SIDRA, agregado 6579 "População
+    // residente estimada", TODOS os códigos numa chamada só — testado
+    // ao vivo, funciona em lote com N6[cod1,cod2,...]).
+    // ════════════════════════════════════════════════════════════════
+    const IBGE_CACHE_MUNICIPIOS_KEY = 'cad_ibge_municipios_al_v1';
+    const IBGE_CACHE_POP_KEY = 'cad_ibge_populacao_v1';
+    const IBGE_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 dias — população não muda de um dia pro outro
+
+    async function ibgeMapaMunicipiosAL_() {
+        try {
+            const cache = JSON.parse(localStorage.getItem(IBGE_CACHE_MUNICIPIOS_KEY) || 'null');
+            if (cache && (Date.now() - cache.ts) < IBGE_CACHE_TTL_MS) return cache.mapa;
+        } catch (e) { /* cache corrompido — ignora e busca de novo */ }
+
+        let mapa = {};
+        try {
+            const resp = await fetch('https://brasilapi.com.br/api/ibge/municipios/v1/AL');
+            if (resp.ok) {
+                const lista = await resp.json();
+                lista.forEach(function (m) { mapa[normRisco(m.nome)] = m.codigo_ibge; });
+            }
+        } catch (e) {
+            return {}; // rede indisponível agora — não cacheia, tenta de novo na próxima
+        }
+        try { localStorage.setItem(IBGE_CACHE_MUNICIPIOS_KEY, JSON.stringify({ mapa: mapa, ts: Date.now() })); }
+        catch (e) { /* localStorage indisponível/cheio — sem cache, sem problema */ }
+        return mapa;
+    }
+
+    function _ibgeCachePopCarregar() {
+        try { return JSON.parse(localStorage.getItem(IBGE_CACHE_POP_KEY) || '{}'); }
+        catch (e) { return {}; }
+    }
+    function _ibgeCachePopSalvar(cache) {
+        try { localStorage.setItem(IBGE_CACHE_POP_KEY, JSON.stringify(cache)); }
+        catch (e) { /* localStorage indisponível/cheio — sem cache, sem problema */ }
+    }
+
+    // Preenche window._cadPopulacoes (objeto {cidadeNormalizada: população})
+    // com as cidades do período carregado e re-renderiza o card de
+    // Hotspots quando terminar (mesmo espírito "progressive enhancement"
+    // do clima) — computarHotspots_ já lê window._cadPopulacoes de forma
+    // síncrona, então a 1ª renderização (antes disso terminar) sai igual
+    // a antes (só contagem bruta), e a taxa/10k aparece assim que chega.
+    async function carregarPopulacoesCidades_(arrCVP, arrCVLI, arrMVI) {
+        const cidades = _cidadesDistintasDoPeriodo_(arrCVP, arrCVLI, arrMVI);
+        if (!cidades.length) return;
+
+        const mapaMunicipios = await ibgeMapaMunicipiosAL_();
+        const cachePop = _ibgeCachePopCarregar();
+        const populacoes = {};
+        const codigosParaBuscar = [];
+        const codigoParaChaveCidade = {};
+
+        cidades.forEach(function (cidade) {
+            const chave = normRisco(cidade);
+            const cod = mapaMunicipios[chave];
+            if (!cod) return; // nome não bateu com a lista do IBGE — fica sem taxa pra essa cidade, não trava as outras
+            const entrada = cachePop[cod];
+            if (entrada && (Date.now() - entrada.ts) < IBGE_CACHE_TTL_MS) {
+                populacoes[chave] = entrada.populacao;
+            } else {
+                codigosParaBuscar.push(cod);
+                codigoParaChaveCidade[cod] = chave;
+            }
+        });
+
+        if (codigosParaBuscar.length) {
+            try {
+                const url = 'https://servicodados.ibge.gov.br/api/v3/agregados/6579/periodos/-1/variaveis/9324?localidades='
+                    + encodeURIComponent('N6[' + codigosParaBuscar.join(',') + ']');
+                const resp = await fetch(url);
+                if (resp.ok) {
+                    const dados = await resp.json();
+                    const series = (dados[0] && dados[0].resultados[0] && dados[0].resultados[0].series) || [];
+                    series.forEach(function (s) {
+                        const cod = s.localidade.id;
+                        const valoresAno = Object.values(s.serie || {});
+                        const pop = valoresAno.length ? parseInt(valoresAno[valoresAno.length - 1], 10) : null;
+                        if (!pop) return;
+                        const chave = codigoParaChaveCidade[cod];
+                        if (!chave) return;
+                        populacoes[chave] = pop;
+                        cachePop[cod] = { populacao: pop, ts: Date.now() };
+                    });
+                    _ibgeCachePopSalvar(cachePop);
+                }
+            } catch (e) {
+                console.warn('[preditivaCAD] falha ao buscar população IBGE:', e.message);
+            }
+        }
+
+        if (Object.keys(populacoes).length) {
+            window._cadPopulacoes = Object.assign({}, window._cadPopulacoes, populacoes);
+            if (window._cadBaseCVP) renderClassificacaoRisco(); // reaplica com a taxa/10k já disponível
+        }
+    }
+
     // Cálculo puro (sem DOM) de "Previsão de Risco — Onde e Quando" pra
     // UMA categoria (geral/cvp/cvli/mvi) — extraído de
     // renderPrevisaoOndeQuando pra ser reaproveitado também na coleta de
@@ -1252,11 +1515,18 @@
             const linhaAtiva = cidadeAtiva === chave ? ' style="outline:2px solid var(--cad);outline-offset:-2px"' : '';
             const classeClicavel = opts.clicavel ? ' linha-clicavel' : '';
             const dataChave = opts.clicavel ? ' data-chave="' + escapeHtml(chave) + '"' : '';
-            return '<div class="previsao-item' + classeClicavel + '"' + dataChave + linhaAtiva + '>' +
+            // Badge de clima (CPTEC) — só na tela ao vivo (opts.clicavel),
+            // preenchido depois por anexarClimaAoRanking_ (assíncrono,
+            // ver comentário grande acima). No relatório impresso não
+            // existe esse atributo/span, de propósito.
+            const dataCidadeClima = opts.clicavel ? ' data-cidade-clima="' + escapeHtml(g.cidade) + '"' : '';
+            const climaSpan = opts.clicavel ? '<span class="previsao-clima" title="Carregando previsão do tempo (CPTEC)...">🌡️ …</span>' : '';
+            return '<div class="previsao-item' + classeClicavel + '"' + dataChave + dataCidadeClima + linhaAtiva + '>' +
                 '<div class="previsao-pos">' + (i + 1) + 'º</div>' +
                 '<div class="previsao-detalhe">' +
                 '<strong>' + escapeHtml(g.cidade) + ' / ' + bairroLabel + '</strong>' +
                 '<span class="risco-badge risco-' + risco + '">' + rlabel + '</span>' +
+                climaSpan +
                 '<div class="previsao-sub">' + probTxt + g.total + ' ocorrência(s) (' + pct + '% do total classificado) · maior risco ' + detalhesDia + ', ' + detalhesHora + '</div>' +
                 '</div></div>';
         }).join('');
@@ -1272,6 +1542,7 @@
         const r = computarPrevisaoOndeQuando_(arrCVP, arrCVLI, arrMVI, cat);
         const notaFiltroCruzado = !!(window._cadCross.tip || window._cadCross.dia !== null || window._cadCross.hora !== null || window._cadCross.cidade);
         box.innerHTML = renderizarBlocoOndeQuando_(r, nomeCategoria, { cidadeAtiva: window._cadCross.cidade, clicavel: true, notaFiltroCruzado: notaFiltroCruzado });
+        anexarClimaAoRanking_(box); // assíncrono, de propósito não bloqueia o render acima (ver comentário grande)
     }
 
     // ════════════════════════════════════════════════════════════════
@@ -1554,41 +1825,18 @@
         return chaveMes(d);
     }
 
-    // Monta a previsão PARA o próximo mês (previsaoMensal via o mesmo
-    // ensemble do bloco preservado + zonasRisco via identificarZonasRisco_)
-    // — não grava nada sozinha, só calcula. arrCVP/arrCVLI/arrMVI: bases
-    // (sem cross-filter), mesmas usadas em renderClassificacaoRisco.
+    // computarPrevisaoProximoMes_/buscarPrevisaoRegistrada_/
+    // salvarPrevisaoSeNecessario_ — MOVIDOS pra
+    // js/core/previsaoMensalCad.js (02/09/2026), mesmo motivo da
+    // classificação acima: precisam ser IDÊNTICOS ao que o lembrete
+    // automático de fim de mês usa (js/core/notificacoes.js), senão as
+    // duas fontes podem gravar previsões diferentes pro mesmo mês.
+    // Ficam só wrappers finos aqui — mesmo nome/assinatura de sempre,
+    // então nenhum outro lugar deste arquivo precisou mudar.
     function computarPrevisaoProximoMes_(arrCVP, arrCVLI, arrMVI) {
         const dataIni = document.getElementById('data-ini').value;
         const dataFim = document.getElementById('data-fim').value;
-        const sCVP = serieMensalCompleta(arrCVP, dataIni, dataFim);
-        const sCVLI = serieMensalCompleta(arrCVLI, dataIni, dataFim);
-        const sMVI = serieMensalCompleta(arrMVI, dataIni, dataFim);
-        if (!sCVP.chaves.length) return null;
-
-        const chaveAtual = sCVP.chaves[sCVP.chaves.length - 1];
-        const mesAlvo = proximaChaveMes_(chaveAtual);
-
-        const todos = arrCVP.concat(arrCVLI, arrMVI);
-        const porMes = agruparPorMes_(todos);
-        const chaves = Array.from(porMes.keys()).sort();
-        const mesesBaseline = chaves.slice(-JANELA_MESES_BASELINE_ACURACIA);
-        const itensBaseline = [];
-        mesesBaseline.forEach(function (k) { itensBaseline.push.apply(itensBaseline, porMes.get(k)); });
-        if (!itensBaseline.length) return null;
-
-        return {
-            mesAlvo: mesAlvo,
-            criadoComDadosAte: chaveAtual,
-            previsaoMensal: {
-                cvp: preverComEnsemble(sCVP.valores),
-                cvli: preverComEnsemble(sCVLI.valores),
-                mvi: preverComEnsemble(sMVI.valores),
-            },
-            zonasRisco: Array.from(identificarZonasRisco_(itensBaseline)),
-            mesesBaseline: mesesBaseline,
-            totalBaseline: itensBaseline.length,
-        };
+        return window.PrevisaoMensalCAD.computarPrevisaoProximoMes(arrCVP, arrCVLI, arrMVI, dataIni, dataFim);
     }
 
     // Cache em memória — evita reconsultar o Firebase a cada re-render
@@ -1599,37 +1847,29 @@
     async function buscarPrevisaoRegistrada_(chaveMesAlvo) {
         if (chaveMesAlvo in window._cadPrevisoesCache) return window._cadPrevisoesCache[chaveMesAlvo];
         if (!window._cadFirebaseUrl) { window._cadPrevisoesCache[chaveMesAlvo] = false; return false; }
-        try {
-            const resp = await fetch(window._cadFirebaseUrl + '/' + NO_PREVISOES_FIREBASE + '/' + chaveMesAlvo + '.json');
-            const dados = resp.ok ? await resp.json() : null;
-            window._cadPrevisoesCache[chaveMesAlvo] = dados || false;
-            return window._cadPrevisoesCache[chaveMesAlvo];
-        } catch (e) {
-            console.warn('[preditivaCAD] falha ao buscar previsão registrada:', e);
-            return false;
-        }
+        const dados = await window.PrevisaoMensalCAD.buscarPrevisaoRegistrada(window._cadFirebaseUrl, chaveMesAlvo);
+        window._cadPrevisoesCache[chaveMesAlvo] = dados || false;
+        return window._cadPrevisoesCache[chaveMesAlvo];
     }
 
     // Calcula (se ainda não existir) e grava no Firebase a previsão pro
     // PRÓXIMO mês — idempotente: se já existe algo gravado nesse nó,
     // NUNCA sobrescreve (a previsão fica congelada no que foi calculado
-    // da primeira vez que alguém abriu a página naquele mês). Chamada
-    // uma única vez por sessão (ver renderClassificacaoRisco), não a
-    // cada re-render — evita ficar batendo no Firebase à toa.
+    // da primeira vez que alguém abriu a página naquele mês, OU pelo
+    // lembrete automático — ver js/core/notificacoes.js). Chamada uma
+    // única vez por sessão (ver renderClassificacaoRisco), não a cada
+    // re-render — evita ficar batendo no Firebase à toa.
     async function salvarPrevisaoSeNecessario_(arrCVP, arrCVLI, arrMVI) {
         if (!window._cadFirebaseUrl) return;
         try {
-            const previsao = computarPrevisaoProximoMes_(arrCVP, arrCVLI, arrMVI);
-            if (!previsao) return;
-            const jaExiste = await buscarPrevisaoRegistrada_(previsao.mesAlvo);
-            if (jaExiste) return; // já tem uma previsão congelada pra esse mês — não mexe
-            const registro = Object.assign({ criadoEm: new Date().toISOString() }, previsao);
-            const resp = await fetch(window._cadFirebaseUrl + '/' + NO_PREVISOES_FIREBASE + '/' + previsao.mesAlvo + '.json', {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registro),
-            });
-            if (resp.ok) {
-                window._cadPrevisoesCache[previsao.mesAlvo] = registro;
-                console.log('[preditivaCAD] previsão gravada pra ' + previsao.mesAlvo + ':', registro);
+            const dataIni = document.getElementById('data-ini').value;
+            const dataFim = document.getElementById('data-fim').value;
+            const resultado = await window.PrevisaoMensalCAD.registrarPrevisaoProximoMesSeNecessario(window._cadFirebaseUrl, { dataIni: dataIni, dataFim: dataFim });
+            if (resultado.status === 'gravada') {
+                window._cadPrevisoesCache[resultado.mesAlvo] = resultado;
+                console.log('[preditivaCAD] previsão gravada pra ' + resultado.mesAlvo + ':', resultado);
+            } else if (resultado.status === 'ja_existia') {
+                window._cadPrevisoesCache[resultado.mesAlvo] = resultado;
             }
         } catch (e) {
             console.warn('[preditivaCAD] falha ao gravar previsão:', e);
@@ -1873,16 +2113,39 @@
 
         const confiaveis = boletinsComCoordenadaConfiavel_(arrCVP.concat(arrCVLI, arrMVI));
         const totalGeral = arrCVP.length + arrCVLI.length + arrMVI.length;
+        // População (IBGE) — lida de forma SÍNCRONA de window._cadPopulacoes,
+        // preenchida à parte por carregarPopulacoesCidades_ (assíncrona, ver
+        // comentário grande acima). Antes dela terminar, o objeto está vazio
+        // e o comportamento é IDÊNTICO a antes (ordena só por contagem
+        // bruta) — assim que a população chega, um re-render troca pra
+        // ordenar por taxa/10k, sem travar a 1ª exibição esperando rede.
+        const populacoes = window._cadPopulacoes || {};
+        const temPopulacao = Object.keys(populacoes).length > 0;
         const linhas = Array.from(mapa.values()).map(function (r) {
             r.total = r.cvp + r.cvli + r.mvi;
             r.coord = coordenadaMaisFrequente_(r.itens, confiaveis);
             r.pct = totalGeral ? Math.round((r.total / totalGeral) * 100) : 0;
             r.risco = r.pct >= 20 ? 'alto' : r.pct >= 8 ? 'medio' : 'baixo';
+            const pop = populacoes[normRisco(r.cidade)] || null;
+            r.populacao = pop;
+            r.taxa10k = pop ? (r.total / pop) * 10000 : null;
             delete r.itens; // não precisa seguir adiante — só servia pra achar a coordenada
             return r;
-        }).sort(function (a, b) { return b.total - a.total; }).slice(0, 15);
+        }).sort(function (a, b) {
+            // Sem população carregada ainda: contagem bruta, igual sempre foi.
+            // Com população: taxa por habitante manda (uma cidade pequena com
+            // taxa alta não pode ficar de fora do topo só por ter contagem
+            // bruta menor que uma cidade grande) — quem não tem taxa (nome
+            // não bateu no IBGE) cai pro fim, nunca antes de quem tem.
+            if (temPopulacao) {
+                if (a.taxa10k != null && b.taxa10k != null) return b.taxa10k - a.taxa10k;
+                if (a.taxa10k != null) return -1;
+                if (b.taxa10k != null) return 1;
+            }
+            return b.total - a.total;
+        }).slice(0, 15);
 
-        return { linhas: linhas, totalGeral: totalGeral };
+        return { linhas: linhas, totalGeral: totalGeral, temPopulacao: temPopulacao };
     }
 
     function renderHotspotRisco(arrCVP, arrCVLI, arrMVI) {
@@ -1897,10 +2160,16 @@
                 ? '<a class="link-mapa-cad" href="https://www.google.com/maps?q=' + r.coord + '" target="_blank" rel="noopener">📍 ' + r.coord + '</a>'
                 : '<span style="color:var(--sub)">—</span>';
             const linhaAtiva = cidadeAtiva === chave ? ' style="outline:2px solid var(--cad);outline-offset:-2px"' : '';
+            // Taxa/10k habitantes (IBGE) — "—" quando a população ainda não
+            // chegou ou o nome da cidade não bateu com a lista do IBGE
+            // (não trava a linha, só fica sem essa métrica).
+            const taxaTd = r.taxa10k != null
+                ? '<td>' + r.taxa10k.toFixed(1) + '<span style="color:var(--sub);font-size:.68rem;"> /10k</span></td>'
+                : '<td style="color:var(--sub)" title="População do município não encontrada no IBGE">—</td>';
             return '<tr class="linha-clicavel" data-chave="' + escapeHtml(chave) + '"' + linhaAtiva + '><td>' + (i + 1) + '</td><td>' + escapeHtml(r.cidade) + '</td><td><strong>' + escapeHtml(r.bairro) + '</strong></td>' +
-                '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' +
+                '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' + taxaTd +
                 '<td><span class="risco-badge risco-' + r.risco + '">' + rlabel + '</span></td><td>' + coordTd + '</td></tr>';
-        }).join('') || '<tr><td colspan="9" class="modal-vazio">Sem dados suficientes.</td></tr>';
+        }).join('') || '<tr><td colspan="10" class="modal-vazio">Sem dados suficientes.</td></tr>';
     }
 
     // ════════════════════════════════════════════════════════════════
