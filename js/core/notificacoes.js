@@ -82,7 +82,11 @@
     // isso aqui só reduz o atraso do polling ao mínimo razoável).
     const INTERVALO_MIN_VERIFICACAO_PANICO_MS = 2 * 60 * 1000;
     const CHAVE_RISCO_LOCAL_ULTIMA_VERIFICACAO = 'p3_notif_risco_ultima_verificacao';
-    const CHAVE_RISCO_LOCAL_ULTIMAS_NOTIF = 'p3_notif_risco_ultimas';
+    // Ranking BRUTO (top 3, sem limiar) — a notificação do sino (fonte 6)
+    // deriva o que precisa disso na hora, em vez de cachear separado; o
+    // card "Resumo Preditivo" da home (index.html, 02/09/2026) usa o
+    // mesmo cache, sem limiar de alarme nenhum (mostra o panorama sempre).
+    const CHAVE_RISCO_LOCAL_RESULTADO = 'p3_notif_risco_resultado_bruto';
     // Cálculo mais pesado que os outros (2 fetches de nós que podem ser
     // grandes + treino de regressão logística) e "risco por local nos
     // próximos dias" não muda de hora em hora — 6h é generoso o
@@ -506,15 +510,22 @@
     function _prefixoPaginaRisco() {
         return /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
     }
-    async function obterRiscoLocalPrevisto(cfg) {
-        if (!cfg || !cfg.firebase || !cfg.firebase.databaseURL) return [];
-        if (typeof global.MLLeve === 'undefined' || !global.MLLeve) return [];
+    // Cálculo BRUTO (fetch + classificação leve + MLLeve) — extraído de
+    // obterRiscoLocalPrevisto (02/09/2026) pra virar a base compartilhada
+    // entre a notificação do sino (fonte 6, só o top1 SE passar de 50%) e
+    // o card "Resumo Preditivo" da home (index.html, mostra até top3
+    // SEMPRE, mesmo sem passar de limiar nenhum — ver
+    // window.P3Notificacoes.obterResumoRiscoPorLocal). topN:3 sempre
+    // calculado aqui; cada consumidor decide quanto do ranking usar.
+    async function _calcularRiscoPorLocal(cfg) {
+        if (!cfg || !cfg.firebase || !cfg.firebase.databaseURL) return null;
+        if (typeof global.MLLeve === 'undefined' || !global.MLLeve) return null;
 
         const agora = Date.now();
         const ultima = parseInt(localStorage.getItem(CHAVE_RISCO_LOCAL_ULTIMA_VERIFICACAO) || '0', 10);
         if (agora - ultima < INTERVALO_MIN_VERIFICACAO_RISCO_MS) {
-            try { return JSON.parse(localStorage.getItem(CHAVE_RISCO_LOCAL_ULTIMAS_NOTIF) || '[]'); }
-            catch (e) { return []; }
+            try { return JSON.parse(localStorage.getItem(CHAVE_RISCO_LOCAL_RESULTADO) || 'null'); }
+            catch (e) { return null; }
         }
 
         try {
@@ -554,31 +565,51 @@
                 flat.push({ cidade: item.CIDADE, bairro: item.BAIRRO, data, grave: false });
             });
 
-            const resultado = global.MLLeve.preverRiscoPorLocal(flat, { janelaDias: 7, topN: 1 });
+            const resultado = global.MLLeve.preverRiscoPorLocal(flat, { janelaDias: 7, topN: 3 });
             localStorage.setItem(CHAVE_RISCO_LOCAL_ULTIMA_VERIFICACAO, String(agora));
+            localStorage.setItem(CHAVE_RISCO_LOCAL_RESULTADO, JSON.stringify(resultado));
+            return resultado;
+        } catch (e) {
+            console.warn('[P3Notificacoes] Risco por local:', e.message);
+            return null;
+        }
+    }
 
-            const notificacoes = [];
-            // Só notifica quando o modelo teve dado suficiente pra
-            // calibrar E o local no topo do ranking passa de um limiar
-            // razoável — um ranking com o "mais provável" em 8% não
-            // merece empurrar uma notificação, é só ruído estatístico.
-            const LIMIAR_NOTIFICAVEL = 0.5;
-            if (resultado.calibrado && resultado.ranking.length && resultado.ranking[0].probabilidade >= LIMIAR_NOTIFICAVEL) {
-                const top = resultado.ranking[0];
-                const hojeStr = new Date().toISOString().slice(0, 10);
-                notificacoes.push({
-                    id: 'risco-local:' + top.cidade + '|' + top.bairro + ':' + hojeStr,
-                    categoria: 'outros',
-                    icone: '🎯',
-                    titulo: 'Risco elevado de CVLI/MVI previsto',
-                    texto: `${top.cidade} — ${top.bairro}: ${Math.round(top.probabilidade * 100)}% de probabilidade nos próximos ${resultado.janelaDias} dias (previsão automática, modelo leve).`,
-                    link: _prefixoPaginaRisco() + 'page/analisePreditiva.html#secao-risco-local',
-                });
-            }
+    async function obterRiscoLocalPrevisto(cfg) {
+        const resultado = await _calcularRiscoPorLocal(cfg);
+        if (!resultado) return [];
 
-            localStorage.setItem(CHAVE_RISCO_LOCAL_ULTIMAS_NOTIF, JSON.stringify(notificacoes));
-            return notificacoes;
-        } catch (e) { console.warn('[P3Notificacoes] Risco por local:', e.message); return []; }
+        const notificacoes = [];
+        // Só notifica quando o modelo teve dado suficiente pra calibrar E
+        // o local no topo do ranking passa de um limiar razoável — um
+        // ranking com o "mais provável" em 8% não merece empurrar uma
+        // notificação, é só ruído estatístico.
+        const LIMIAR_NOTIFICAVEL = 0.5;
+        if (resultado.calibrado && resultado.ranking.length && resultado.ranking[0].probabilidade >= LIMIAR_NOTIFICAVEL) {
+            const top = resultado.ranking[0];
+            const hojeStr = new Date().toISOString().slice(0, 10);
+            notificacoes.push({
+                id: 'risco-local:' + top.cidade + '|' + top.bairro + ':' + hojeStr,
+                categoria: 'outros',
+                icone: '🎯',
+                titulo: 'Risco elevado de CVLI/MVI previsto',
+                texto: `${top.cidade} — ${top.bairro}: ${Math.round(top.probabilidade * 100)}% de probabilidade nos próximos ${resultado.janelaDias} dias (previsão automática, modelo leve).`,
+                link: _prefixoPaginaRisco() + 'page/analisePreditiva.html#secao-risco-local',
+            });
+        }
+        return notificacoes;
+    }
+
+    // Exposta publicamente (ver global.P3Notificacoes no fim do arquivo)
+    // — usada pelo card "Resumo Preditivo" da home (index.html,
+    // 02/09/2026, pedido explícito do usuário: "quero que sempre analise
+    // e informe se algo pode acontecer em alguma cidade"). Diferente de
+    // obterRiscoLocalPrevisto (só notifica acima de 50%), esta devolve o
+    // ranking (até 3 locais) SEMPRE que o modelo conseguiu calibrar —
+    // um resumo informativo não deveria ficar mudo só porque nada é
+    // "urgente" hoje.
+    async function obterResumoRiscoPorLocal(cfg) {
+        return await _calcularRiscoPorLocal(cfg);
     }
 
     // ── 7) Movimentação no processo E-SAJ de um autor (só papéis 'p2' e
@@ -993,7 +1024,10 @@
         if (document.getElementById('notif-items')) renderizar(mesclada);
     }
 
-    global.P3Notificacoes = { coletarTodas: coletarTodas, iniciar: iniciar, adicionarNotificacoes: adicionarNotificacoes };
+    global.P3Notificacoes = {
+        coletarTodas: coletarTodas, iniciar: iniciar, adicionarNotificacoes: adicionarNotificacoes,
+        obterResumoRiscoPorLocal: obterResumoRiscoPorLocal,
+    };
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', iniciar);
     } else {
