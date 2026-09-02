@@ -309,6 +309,10 @@
                     <button type="button" class="aba-btn ativa" id="aba-btn-autores" data-aba="autores">👤 Autores</button>
                     <button type="button" class="aba-btn" id="aba-btn-suspeitos" data-aba="suspeitos">🕵️ Suspeitos</button>
                     <button type="button" class="aba-btn" id="aba-btn-facial" data-aba="facial">🔎 Reconhecimento facial</button>
+                    <!-- Só visível pra P2/admin (ver js/cerbero.js) — dado de
+                         inteligência sob controle restrito, pedido explícito
+                         do usuário. -->
+                    <button type="button" class="aba-btn" id="aba-btn-cerbero" data-aba="cerbero" style="display:none;">🐕 Cérbero</button>
                 </div>
 
                 <div id="painel-autores" class="tab-painel">
@@ -521,6 +525,54 @@
                     <div class="rf-resultados" id="rf-resultados"></div>
                 </div>
 
+                <!-- Cérbero (02/09/2026, pedido explícito do usuário) — base
+                     de inteligência da PM-AL (cerimonial.pm.al.gov.br),
+                     importada por captura .har (não é busca ao vivo — ver
+                     comentário grande em tools/atualizador-local/cerbero_har.py
+                     sobre reCAPTCHA+2FA no login de lá). Sob controle da P2:
+                     só visível/utilizável pra sessão nível p2/admin. -->
+                <div id="painel-cerbero" class="tab-painel" style="display:none;">
+                    <h3>🐕 Cérbero — Base de Inteligência (PM-AL)</h3>
+                    <div class="rf-aviso">
+                        ⚠️ Dado importado de uma captura (.har) feita por você navegando o Cérbero — não é uma busca
+                        ao vivo (login de lá exige reCAPTCHA + autenticação de dois fatores, não automatizamos isso).
+                        Só reflete o que foi visitado/exportado na última captura. Reimporte um .har novo todo mês
+                        (ou sempre que quiser) pra atualizar — nunca duplica, atualiza por ID do próprio Cérbero.
+                    </div>
+
+                    <div class="rf-upload-area">
+                        <input type="file" id="cerbero-input-har" accept=".har">
+                        <button type="button" id="cerbero-btn-importar" disabled>Importar captura (.har)</button>
+                        <span id="cerbero-status-msg"></span>
+                    </div>
+                    <div class="p3-progress-wrap" id="cerbero-progresso-wrap" style="display:none;">
+                        <div class="p3-progress-label">
+                            <span>Importando captura do Cérbero</span>
+                            <span id="cerbero-progresso-texto"></span>
+                        </div>
+                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="cerbero-progresso-fill"></div></div>
+                    </div>
+
+                    <h4 style="margin-top:22px;">Pessoas</h4>
+                    <input type="text" id="cerbero-filtro-pessoas" placeholder="Filtrar por nome, vulgo ou CPF..." style="max-width:400px;margin-bottom:10px;">
+                    <table class="tabela-autores" id="cerbero-tabela-pessoas">
+                        <thead>
+                            <tr>
+                                <th>Foto</th><th>Nome</th><th>Vulgos</th><th>CPF</th><th>Filiação</th>
+                                <th>Nascimento</th><th>Sexo</th><th>Situação</th><th>Facção</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cerbero-corpo-pessoas"></tbody>
+                    </table>
+
+                    <h4 style="margin-top:22px;">Endereços</h4>
+                    <input type="text" id="cerbero-filtro-enderecos" placeholder="Filtrar endereço..." style="max-width:400px;margin-bottom:10px;">
+                    <table class="tabela-autores" id="cerbero-tabela-enderecos">
+                        <thead><tr><th>Endereço</th></tr></thead>
+                        <tbody id="cerbero-corpo-enderecos"></tbody>
+                    </table>
+                </div>
+
             </div>
         </main>
     </section>
@@ -573,6 +625,7 @@
     <script src="../js/autores.js"></script>
     <script src="../js/suspeitos.js"></script>
     <script src="../js/autores-reconhecimento-facial.js"></script>
+    <script src="../js/cerbero.js"></script>
     <script>
         document.querySelectorAll('.aba-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -581,6 +634,8 @@
                 document.getElementById('painel-autores').style.display = btn.dataset.aba === 'autores' ? '' : 'none';
                 document.getElementById('painel-suspeitos').style.display = btn.dataset.aba === 'suspeitos' ? '' : 'none';
                 document.getElementById('painel-facial').style.display = btn.dataset.aba === 'facial' ? '' : 'none';
+                document.getElementById('painel-cerbero').style.display = btn.dataset.aba === 'cerbero' ? '' : 'none';
+                if (btn.dataset.aba === 'cerbero' && window.P3Cerbero) window.P3Cerbero.carregarSeNecessario();
             });
         });
         document.addEventListener('DOMContentLoaded', function () {
