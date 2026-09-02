@@ -360,12 +360,14 @@
     // carregamento tardio já usado em outros módulos do sistema (ex.:
     // carregarCumprimentoCore em js/xerife.js).
     //
-    // iris-panico-client.js e machineLearningLeve.js vão ANTES —
-    // notificacoes.js usa window.IrisPanico (fonte 5, botão do pânico) e
-    // window.MLLeve (fonte 6, previsão de risco por local — ver
-    // obterRiscoLocalPrevisto em notificacoes.js). async=false garante
-    // ordem de execução mesmo sendo <script> criado dinamicamente (que
-    // por padrão executa fora de ordem).
+    // iris-panico-client.js, machineLearningLeve.js e previsaoMensalCad.js
+    // vão ANTES — notificacoes.js usa window.IrisPanico (fonte 5, botão do
+    // pânico), window.MLLeve (fonte 6, previsão de risco por local) e
+    // window.PrevisaoMensalCAD (fonte 9, lembrete/registro automático de
+    // fim de mês do Preditiva CAD, 02/09/2026 — ver
+    // obterRiscoLocalPrevisto/obterERegistrarPrevisaoMensalCad em
+    // notificacoes.js). async=false garante ordem de execução mesmo sendo
+    // <script> criado dinamicamente (que por padrão executa fora de ordem).
     (function () {
         var prefixo = estaEmSubpasta() ? '../' : '';
         var sPanico = document.createElement('script');
@@ -377,6 +379,11 @@
         sML.src = prefixo + 'js/machineLearningLeve.js';
         sML.async = false;
         document.body.appendChild(sML);
+
+        var sPrevCad = document.createElement('script');
+        sPrevCad.src = prefixo + 'js/core/previsaoMensalCad.js';
+        sPrevCad.async = false;
+        document.body.appendChild(sPrevCad);
 
         var s = document.createElement('script');
         s.src = prefixo + 'js/core/notificacoes.js';
