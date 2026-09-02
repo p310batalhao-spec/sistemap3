@@ -273,10 +273,17 @@ window.addEventListener('DOMContentLoaded', function () {
         const coordTd = r.coord
             ? '<a href="https://www.google.com/maps?q=' + r.coord + '" target="_blank" style="color:#00695c;font-weight:600;text-decoration:none;">📍 ' + r.coord + '</a>'
             : '<span style="color:#9ea3b5;">—</span>';
+        // Taxa/10k habitantes (IBGE) — mesmo campo que a tela ao vivo já
+        // calcula em computarHotspots_ (ver js/preditivaCAD.js); "—" quando
+        // a população não chegou a tempo do relatório ser gerado ou o nome
+        // da cidade não bateu com a lista do IBGE.
+        const taxaTd = r.taxa10k != null
+            ? '<td>' + r.taxa10k.toFixed(1) + '<span style="color:#9ea3b5;font-size:.68rem;"> /10k</span></td>'
+            : '<td style="color:#9ea3b5;">—</td>';
         return '<tr><td style="color:#9ea3b5;font-weight:bold;">' + (i + 1) + '</td><td>' + r.cidade + '</td><td><strong>' + r.bairro + '</strong></td>' +
-            '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' +
+            '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' + taxaTd +
             '<td><span class="badge-risco risco-' + r.risco + '">' + rlabel + '</span></td><td>' + coordTd + '</td></tr>';
-    }).join('') || '<tr><td colspan="9" style="text-align:center;color:#9ea3b5;padding:1rem;">Sem dados suficientes.</td></tr>';
+    }).join('') || '<tr><td colspan="10" style="text-align:center;color:#9ea3b5;padding:1rem;">Sem dados suficientes.</td></tr>';
     const topHotspot = (HS.linhas || [])[0];
     document.getElementById('comentario-hotspots').innerHTML = topHotspot
         ? '<div class="insight"><i class="fas fa-map-marker-alt"></i><span>Maior concentração: <strong>' + topHotspot.bairro + ' (' + topHotspot.cidade + ')</strong>, ' + topHotspot.total + ' ocorrência(s) (' + topHotspot.pct + '% do total classificado). A coordenada mostrada é a mais frequente do local, já filtrada contra "pinos fixos" da geocodificação (mesma validação de bounding box de Alagoas do módulo de Machine Learning).</span></div>'
