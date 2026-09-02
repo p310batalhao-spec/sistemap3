@@ -307,22 +307,23 @@ document.getElementById('input-xls').onchange = function(e) {
 // ─────────────────────────────────────────────
 // SALVAR NO FIREBASE
 // ─────────────────────────────────────────────
-document.getElementById('btn-save-cloud').onclick = async function() {
-    const btn = this;
-    const tipo = document.getElementById('tipo-colecao').value;
+// EXTRAÍDO (02/09/2026) do antigo onclick do botão pra virar uma função
+// reutilizável — o mesmo caminho de gravação (cruzamento com /geral,
+// classificação TCO/VD/CVP/CVLI, dedup determinístico por tipo, lotes de
+// 100 no Firebase, autores pro PHP/MySQL da Hostinger) agora também é
+// usado pela sincronização DIRETA do CAD (ver
+// "SINCRONIZAÇÃO DIRETA DO CAD" mais abaixo) — sem duplicar essa lógica
+// delicada/já testada. `buffer` é o equivalente do antigo `bufferDados`
+// global (agora passado por parâmetro); `onProgresso` (opcional) recebe
+// uma string de status a cada lote gravado, pra quem chamar decidir onde
+// mostrar (botão, painel de sincronização do CAD etc.).
+async function sincronizarBufferComNuvem(tipo, buffer, unidadeRelatorioAutor, onProgresso) {
     const updates = {};
     const autoresParaApi = []; // tipo 'autor' no 10º BPM vai pra API PHP/MySQL, não pro objeto `updates` acima
     const agora = new Date().toISOString();
-    // Fallback SÓ pra quando a planilha de autores não tiver a coluna
-    // "Unidade" (a maioria já tem — ver coluna UNIDADE em MAPA_AUTOR e
-    // normalizarUnidadeAutor) — usado linha a linha só se d.UNIDADE vier
-    // vazio, ver mais abaixo.
-    const unidadeRelatorioAutor = normalizarUnidadeAutor(document.getElementById('input-unidade-relatorio').value);
+    const bufferDados = buffer || [];
 
-    btn.disabled = true;
-    btn.innerText = "SINCRONIZANDO...";
-
-    try {
+    {
         // 1. Busca nó 'geral' para cruzamento
         const snapshotGeral = await db.ref('geral').once('value');
         const dadosGerais = snapshotGeral.val() || {};
@@ -518,23 +519,44 @@ document.getElementById('btn-save-cloud').onclick = async function() {
             chaves.slice(i, i + LOTE).forEach(k => { lote[k] = updates[k]; });
             await db.ref().update(lote);
             salvos += Object.keys(lote).length;
-            btn.innerText = `SINCRONIZANDO… ${Math.round(salvos / totalGeral * 100)}%`;
+            if (onProgresso && totalGeral) onProgresso(`SINCRONIZANDO… ${Math.round(salvos / totalGeral * 100)}%`);
         }
 
         // ── ENVIO PARA A API PHP/MySQL (autores do 10º BPM) ─────────────────────
         let salvosApi = 0;
         if (autoresParaApi.length) {
-            btn.innerText = `SINCRONIZANDO AUTORES (HOSTINGER)…`;
+            if (onProgresso) onProgresso('SINCRONIZANDO AUTORES (HOSTINGER)…');
             const resultado = await P3.Autores.importarLote(cfgUnidade, autoresParaApi);
             salvosApi = resultado.gravados || 0;
         }
 
+        return { salvos, salvosApi };
+    }
+}
+
+// Wrapper do botão manual (upload de .xls) — lê tipo/unidade da própria
+// tela, chama sincronizarBufferComNuvem com o `bufferDados` global
+// (preenchido por LEITURA DO ARQUIVO XLS acima) e cuida da UI (texto do
+// botão, alert, reload) — igual sempre se comportou.
+document.getElementById('btn-save-cloud').onclick = async function() {
+    const btn = this;
+    const tipo = document.getElementById('tipo-colecao').value;
+    // Fallback SÓ pra quando a planilha de autores não tiver a coluna
+    // "Unidade" (a maioria já tem — ver coluna UNIDADE em MAPA_AUTOR e
+    // normalizarUnidadeAutor) — usado linha a linha só se d.UNIDADE vier
+    // vazio (ver sincronizarBufferComNuvem).
+    const unidadeRelatorioAutor = normalizarUnidadeAutor(document.getElementById('input-unidade-relatorio').value);
+
+    btn.disabled = true;
+    btn.innerText = "SINCRONIZANDO...";
+
+    try {
+        const { salvos, salvosApi } = await sincronizarBufferComNuvem(tipo, bufferDados, unidadeRelatorioAutor, txt => { btn.innerText = txt; });
         const partes = [];
         if (salvos) partes.push(`${salvos} escrita(s) no Firebase`);
         if (salvosApi) partes.push(`${salvosApi} autor(es) na Hostinger`);
         alert(`Sincronização concluída! ${partes.join(' + ') || 'nada a gravar'}.`);
         location.reload();
-
     } catch (err) {
         console.error("Erro na sincronização:", err);
         alert("Erro crítico: " + err.message);
@@ -542,6 +564,306 @@ document.getElementById('btn-save-cloud').onclick = async function() {
         btn.innerText = "SALVAR NA NUVEM";
     }
 };
+
+// ─────────────────────────────────────────────────────────────────────
+// SINCRONIZAÇÃO DIRETA DO CAD (02/09/2026, pedido explícito do usuário:
+// "quero que faça um botão no cadastro de ocorrências para realizar
+// automaticamente a busca dos dados de ocorrencias diretamente do CAD e
+// sincronizá-las com o firebase e a hostinger como já está sendo feito
+// manualmente") — busca 4 grades do CAD (ocorrências geral, envolvidos,
+// armas, drogas) via o mesmo Apps Script já usado pelo Preditiva CAD
+// (js/preditivaCAD.js:GAS_CAD_URL — ver apps-script/rastreamento.gs,
+// ações 'ocorrencias'/'envolvidos'/'armas'/'drogas'), converte cada
+// grade pro MESMO formato que sincronizarBufferComNuvem já espera (o
+// formato que antes só vinha do upload manual de .xls) e reaproveita
+// EXATAMENTE aquela função de gravação — nenhuma lógica de cruzamento/
+// classificação/dedup foi duplicada.
+//
+// Um único grid de "envolvidos" cobre TANTO Autores quanto Pessoas
+// (Óbito) — o CAD não separa isso em 2 buscas diferentes como a
+// planilha manual fazia; aqui é 1 busca só, convertida pros 2 formatos
+// (autor filtra só ENVOLVIMENTO=AUTOR; pessoa usa TODAS as linhas, já
+// que "Óbito?" pode se aplicar a vítima/testemunha também).
+// ─────────────────────────────────────────────────────────────────────
+
+// Mesmo projeto/URL Apps Script já usado por js/preditivaCAD.js,
+// js/core/previsaoMensalCad.js, js/core/cad-login-modal.js etc. — um
+// login/token só, configurado 1x em qualquer uma dessas telas.
+const GAS_CAD_URL_SYNC_ = 'https://script.google.com/macros/s/AKfycbwuyKpN4AbmV_CmQfZr2olClY1JveArwKEcJE3__DFf74xfnd3AlhXqnde7RPkXDlqx/exec';
+
+async function _fetchCadSync_(acao, params) {
+    const qs = new URLSearchParams(Object.assign({ acao: acao }, params || {})).toString();
+    const resp = await fetch(GAS_CAD_URL_SYNC_ + '?' + qs, { redirect: 'follow' });
+    const texto = await resp.text();
+    try { return JSON.parse(texto); }
+    catch (e) { throw new Error('Resposta do Apps Script não é JSON válido: ' + texto.substring(0, 200)); }
+}
+
+// Mesmo mecanismo de retomada de js/preditivaCAD.js:buscarOcorrenciasComRetomada_
+// (períodos grandes não cabem no teto de ~6min de 1 execução do Apps
+// Script — cada resposta truncada por tempo/páginas vem com
+// `proximoOffset`, usado como offsetInicial da PRÓXIMA chamada, uma
+// execução nova com teto fresco), generalizado pra qualquer uma das 4
+// ações (acao: 'ocorrencias' | 'envolvidos' | 'armas' | 'drogas').
+const MAX_PARTES_RETOMADA_SYNC_ = 6;
+async function _buscarGradeCadComRetomada_(acao, dataIni, dataFim, statusFn) {
+    let parte = 1;
+    let resp = await _fetchCadSync_(acao, { dataIni: dataIni, dataFim: dataFim });
+    if (resp.ok === false) return resp;
+    let dadosAcumulados = resp.dados || [];
+
+    while (resp.truncado && resp.proximoOffset && parte < MAX_PARTES_RETOMADA_SYNC_) {
+        parte++;
+        if (statusFn) statusFn(`⏳ ${acao}: parte ${parte} — ${dadosAcumulados.length} de ${resp.totalRelatadoPeloCAD || '?'} já carregada(s)…`);
+        resp = await _fetchCadSync_(acao, {
+            dataIni: dataIni, dataFim: dataFim,
+            offsetInicial: String(resp.proximoOffset),
+            totalConhecido: String(resp.totalRelatadoPeloCAD || ''),
+            parte: String(parte),
+        });
+        if (resp.ok === false) {
+            return { ok: true, dados: dadosAcumulados, totalRelatadoPeloCAD: resp.totalRelatadoPeloCAD, truncado: true, motivoTruncamento: 'falha ao retomar (parte ' + parte + '): ' + (resp.erro || 'erro desconhecido') };
+        }
+        // Dedup por linha inteira (BOLETIM sozinho não é único em
+        // armas/drogas/envolvidos — mesmo cuidado do backend, ver
+        // _buscarGradeGenericaCAD_ em rastreamento.gs) — protege contra
+        // sobreposição acidental de offset entre partes.
+        const vistos = {};
+        dadosAcumulados.forEach(function (it) { vistos[JSON.stringify(it)] = true; });
+        (resp.dados || []).forEach(function (it) {
+            const chave = JSON.stringify(it);
+            if (!vistos[chave]) { vistos[chave] = true; dadosAcumulados.push(it); }
+        });
+    }
+    return { ok: true, dados: dadosAcumulados, totalRelatadoPeloCAD: resp.totalRelatadoPeloCAD, truncado: resp.truncado, motivoTruncamento: resp.motivoTruncamento };
+}
+
+// Troca "" (campo vazio/só &nbsp; já limpo pelo Apps Script) por "---" —
+// mesmo sentinela de "sem valor" usado pelo fluxo de upload manual (ver
+// buscarValor: `(v || "---")`), pra dedup/exibição ficarem consistentes
+// entre um registro importado via .xls e um sincronizado direto do CAD.
+function _semVazios_(obj) {
+    const out = {};
+    Object.keys(obj).forEach(function (k) {
+        const v = obj[k];
+        out[k] = (v === undefined || v === null || v === '') ? '---' : v;
+    });
+    return out;
+}
+
+// "DD/MM/AAAA HH:MM:SS" (formato de ocor_dt_ocor no CAD, armas/drogas/
+// envolvidos) -> {data, hora} — mesma convenção DATA/HORA separadas que
+// o fluxo de upload manual sempre usou (ver LEITURA DO ARQUIVO XLS acima).
+function _dividirDataHoraCad_(dataCompleta) {
+    const s = (dataCompleta || '').toString().trim();
+    const m = s.match(/^(\d{2}\/\d{2}\/\d{4})[ T]?(\d{2}:\d{2})?/);
+    if (!m) return { data: s || '---', hora: '00:00' };
+    return { data: m[1], hora: m[2] || '00:00' };
+}
+
+// ── Conversores — grade do CAD (Apps Script) -> mesmo formato de item
+// que sincronizarBufferComNuvem já recebe do upload manual de .xls.
+// Nomes de chave espelham EXATAMENTE os alvos de MAPA_GERAL/MAPA_ARMA/
+// MAPA_DROGA/MAPA_AUTOR/MAPA_PESSOA acima — não são coincidência.
+function converterGeralParaBuffer(dadosCad) {
+    return (dadosCad || []).filter(function (it) { return it.BOLETIM; }).map(function (it) {
+        return _semVazios_({
+            BOLETIM: it.BOLETIM,
+            DATA: it.DATA,
+            HORA: it.HORA,
+            // ATENÇÃO: chave com acento de propósito — sincronizarBufferComNuvem
+            // lê `d.SOLUÇÃO` (não SOLUCAO) pra detectar TCO (ver "FLUXO
+            // PADRÃO" mais acima) — mesma grafia usada pelo cabeçalho
+            // "Solução" da planilha do CAD, reproduzida aqui.
+            'SOLUÇÃO': it.SOLUCAO,
+            TIPIFICACAO: it.TIPIFICACAO,
+            TIPIFICACAO_GERAL: it.TIPIFICACAO_GERAL,
+            ATENDIMENTO_INICIAL: '---', // não extraído pelo backend ainda (ver extrairCamposLinha_)
+            TEXTO_DESPACHANTE: '---',
+            BAIRRO: it.BAIRRO,
+            LOGRADOURO: '---',
+            SOLICITANTE: it.SOLICITANTE,
+            LATITUDE: it.LATITUDE,
+            LONGITUDE: it.LONGITUDE,
+            CIDADE: it.CIDADE,
+            ESTABELECIMENTO: '---',
+            ATENDENTE: it.ATENDENTE,
+        });
+    });
+}
+
+function converterArmasParaBuffer(dadosCad) {
+    return (dadosCad || []).filter(function (it) { return it.BOLETIM; }).map(function (it) {
+        const dh = _dividirDataHoraCad_(it.DATA);
+        return _semVazios_(Object.assign({}, it, { DATA: dh.data, HORA: dh.hora }));
+    });
+}
+
+function converterDrogasParaBuffer(dadosCad) {
+    return (dadosCad || []).filter(function (it) { return it.BOLETIM; }).map(function (it) {
+        const dh = _dividirDataHoraCad_(it.DATA);
+        return _semVazios_(Object.assign({}, it, { DATA: dh.data, HORA: dh.hora }));
+    });
+}
+
+// Só as linhas com ENVOLVIMENTO=AUTOR — mesmo recorte que a planilha
+// "Relatório de Autores" já representava.
+function converterEnvolvidosParaBufferAutor(dadosCad) {
+    return (dadosCad || [])
+        .filter(function (it) { return it.BOLETIM && (it.ENVOLVIMENTO || '').toUpperCase().trim() === 'AUTOR'; })
+        .map(function (it) {
+            const dh = _dividirDataHoraCad_(it.DATA);
+            // MES/ANO_OCORRENCIA (mes_ocor/ano_ocor no CAD) dependem da
+            // seleção de colunas persistida na conta do CAD (ver aviso em
+            // rastreamento.gs) — se vier vazio, deriva da própria data.
+            const mesFallback = dh.data !== '---' ? dh.data.split('/')[1] : '---';
+            const anoFallback = dh.data !== '---' ? dh.data.split('/')[2] : '---';
+            return _semVazios_({
+                BOLETIM: it.BOLETIM,
+                DATA: dh.data, HORA: dh.hora,
+                NOME: it.NOME,
+                SITUACAO: it.SITUACAO,
+                NARRATIVA: '---', // não selecionado nesta grade (ver aviso em rastreamento.gs)
+                NATUREZA: it.NATUREZA,
+                TIPIFICACAO: it.TIPIFICACAO,
+                BAIRRO: it.BAIRRO,
+                CIDADE: it.CIDADE,
+                LOGRADOURO: it.LOGRADOURO,
+                MES: it.MES_OCORRENCIA || mesFallback,
+                ANO: it.ANO_OCORRENCIA || anoFallback,
+                ENVOLVIMENTO: it.ENVOLVIMENTO,
+                CPF: it.CPF,
+                UNIDADE: it.UNIDADE,
+            });
+        });
+}
+
+// TODAS as linhas (não só AUTOR) — "Óbito?" vale pra qualquer papel na
+// ocorrência (vítima, testemunha etc.), mesmo espírito de MAPA_PESSOA.
+function converterEnvolvidosParaBufferPessoa(dadosCad) {
+    return (dadosCad || []).filter(function (it) { return it.BOLETIM; }).map(function (it) {
+        // Mesma normalização que a LEITURA DO ARQUIVO XLS já aplicava —
+        // reproduzida aqui porque este caminho não passa por ela.
+        const raw = (it.OBITO || '').toString().trim().toUpperCase();
+        const obito = (raw === 'S' || raw === 'SIM' || raw === '1') ? 'S' : 'N';
+        return _semVazios_({
+            BOLETIM: it.BOLETIM,
+            NOME: it.NOME,
+            OBITO: obito,
+            SITUACAO: it.SITUACAO,
+            NATUREZA: it.NATUREZA,
+            SEXO: it.SEXO,
+            IDADE: it.IDADE,
+            TIPIFICACAO: it.TIPIFICACAO,
+        });
+    });
+}
+
+// Orquestra as 4 buscas + 5 gravações (geral, autor, pessoa, arma,
+// droga) em sequência — sequencial de propósito, não Promise.all: cada
+// busca no CAD usa a MESMA sessão (LockService do lado do Apps Script já
+// rejeitaria chamadas concorrentes) e a gravação de 'geral' precisa
+// terminar ANTES das demais, que cruzam contra /geral já atualizado.
+async function sincronizarDiretoDoCad(dataIni, dataFim, statusFn) {
+    // TRAVA (02/09/2026, achado durante revisão com o usuário) — os
+    // templates de busca (CAD_BODY_TEMPLATE_ARMAS_/DROGAS_/ENVOLVIDOS_/
+    // CAD_BODY_TEMPLATE_ em rastreamento.gs) têm o filtro de Unidade
+    // FIXO em "10º BPM" (mesma credencial única do CAD, compartilhada
+    // por todo o Apps Script — não por unidade logada no P3). Cada
+    // unidade do P3 já tem seu PRÓPRIO Firebase isolado (confirmado:
+    // 10º BPM e 11º BPM são projetos Firebase diferentes, não dá pra um
+    // sobrescrever o outro) — mas sem esta trava, uma unidade que NÃO
+    // seja o 10º BPM clicando neste botão gravaria as ocorrências do
+    // 10º BPM dentro do PRÓPRIO banco dela (dado errado pra ela, mesmo
+    // não tocando no banco do 10º BPM). Reaproveita a checagem já usada
+    // em page/solucoesia.html pro card "Preditiva CAD".
+    const sessao = (window.P3 && window.P3.getSession) ? window.P3.getSession() : null;
+    if (!sessao || sessao.unidadeId !== '10bpm') {
+        throw new Error('A sincronização direta do CAD só está disponível pro 10º BPM (login/credenciais do CAD configurados são específicos desta unidade).');
+    }
+    const unidadeRelatorioAutor = normalizarUnidadeAutor(document.getElementById('input-unidade-relatorio').value) || '10bpm';
+    const resumo = [];
+    function status(txt) { if (statusFn) statusFn(txt); }
+
+    status('⏳ Buscando ocorrências gerais no CAD…');
+    const respGeral = await _buscarGradeCadComRetomada_('ocorrencias', dataIni, dataFim, status);
+    if (respGeral.ok === false) throw new Error('Ocorrências gerais: ' + (respGeral.erro || 'falha desconhecida'));
+    const bufGeral = converterGeralParaBuffer(respGeral.dados);
+    status(`💾 Gravando ${bufGeral.length} ocorrência(s) geral(is)…`);
+    await sincronizarBufferComNuvem('geral', bufGeral, unidadeRelatorioAutor, status);
+    resumo.push(`Geral: ${bufGeral.length}${respGeral.truncado ? ' (parcial — ' + respGeral.motivoTruncamento + ')' : ''}`);
+
+    status('⏳ Buscando envolvidos no CAD…');
+    const respEnv = await _buscarGradeCadComRetomada_('envolvidos', dataIni, dataFim, status);
+    if (respEnv.ok === false) throw new Error('Envolvidos: ' + (respEnv.erro || 'falha desconhecida'));
+    const bufAutor = converterEnvolvidosParaBufferAutor(respEnv.dados);
+    const bufPessoa = converterEnvolvidosParaBufferPessoa(respEnv.dados);
+    status(`💾 Gravando ${bufAutor.length} autor(es)…`);
+    const rAutor = await sincronizarBufferComNuvem('autor', bufAutor, unidadeRelatorioAutor, status);
+    resumo.push(`Autores: ${bufAutor.length} (${(rAutor.salvos || 0) + (rAutor.salvosApi || 0)} gravação(ões))`);
+    status(`💾 Gravando ${bufPessoa.length} pessoa(s) (óbito)…`);
+    await sincronizarBufferComNuvem('pessoa', bufPessoa, unidadeRelatorioAutor, status);
+    resumo.push(`Pessoas: ${bufPessoa.length}${respEnv.truncado ? ' (parcial — ' + respEnv.motivoTruncamento + ')' : ''}`);
+
+    status('⏳ Buscando armas no CAD…');
+    const respArmas = await _buscarGradeCadComRetomada_('armas', dataIni, dataFim, status);
+    if (respArmas.ok === false) throw new Error('Armas: ' + (respArmas.erro || 'falha desconhecida'));
+    const bufArmas = converterArmasParaBuffer(respArmas.dados);
+    status(`💾 Gravando ${bufArmas.length} arma(s)…`);
+    await sincronizarBufferComNuvem('arma', bufArmas, unidadeRelatorioAutor, status);
+    resumo.push(`Armas: ${bufArmas.length}${respArmas.truncado ? ' (parcial — ' + respArmas.motivoTruncamento + ')' : ''}`);
+
+    status('⏳ Buscando drogas no CAD…');
+    const respDrogas = await _buscarGradeCadComRetomada_('drogas', dataIni, dataFim, status);
+    if (respDrogas.ok === false) throw new Error('Drogas: ' + (respDrogas.erro || 'falha desconhecida'));
+    const bufDrogas = converterDrogasParaBuffer(respDrogas.dados);
+    status(`💾 Gravando ${bufDrogas.length} droga(s)…`);
+    await sincronizarBufferComNuvem('droga', bufDrogas, unidadeRelatorioAutor, status);
+    resumo.push(`Drogas: ${bufDrogas.length}${respDrogas.truncado ? ' (parcial — ' + respDrogas.motivoTruncamento + ')' : ''}`);
+
+    return resumo;
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const btnCad = document.getElementById('btn-sync-cad');
+    if (!btnCad) return;
+
+    // Só mostra a seção pro 10º BPM — ver comentário grande em
+    // sincronizarDiretoDoCad (a checagem de verdade é lá; esta aqui só
+    // evita mostrar um botão que vai dar erro de propósito pra quem não
+    // é do 10º BPM).
+    const secaoSyncCad = document.getElementById('secao-sync-cad');
+    const sessaoAtual = (window.P3 && window.P3.getSession) ? window.P3.getSession() : null;
+    if (secaoSyncCad) secaoSyncCad.style.display = (sessaoAtual && sessaoAtual.unidadeId === '10bpm') ? '' : 'none';
+    if (!sessaoAtual || sessaoAtual.unidadeId !== '10bpm') return;
+
+    btnCad.addEventListener('click', async function () {
+        const dataIni = document.getElementById('sync-cad-data-ini').value;
+        const dataFim = document.getElementById('sync-cad-data-fim').value;
+        const statusEl = document.getElementById('sync-cad-status');
+        if (!dataIni || !dataFim) { alert('Escolha a data inicial e final do período.'); return; }
+        if (!confirm(`Buscar e sincronizar automaticamente ocorrências/envolvidos/armas/drogas do CAD entre ${dataIni} e ${dataFim}? Isso pode levar alguns minutos.`)) return;
+
+        btnCad.disabled = true;
+        const textoOriginal = btnCad.innerText;
+        try {
+            await _ensureFirebase();
+            const resumo = await sincronizarDiretoDoCad(dataIni, dataFim, function (txt) {
+                if (statusEl) statusEl.textContent = txt;
+                btnCad.innerText = 'SINCRONIZANDO…';
+            });
+            if (statusEl) statusEl.textContent = '✅ ' + resumo.join(' · ');
+            alert('Sincronização direta do CAD concluída!\n\n' + resumo.join('\n'));
+        } catch (err) {
+            console.error('Erro na sincronização direta do CAD:', err);
+            if (statusEl) statusEl.textContent = '⚠️ Erro: ' + err.message;
+            alert('Erro na sincronização direta do CAD: ' + err.message);
+        } finally {
+            btnCad.disabled = false;
+            btnCad.innerText = textoOriginal;
+        }
+    });
+});
 
 // ─────────────────────────────────────────────
 // INTERFACE: Relógio e Login
