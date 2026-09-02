@@ -268,6 +268,37 @@
                 return resumoFinal;
             }
 
+            // Sincronização Direta do CAD (02/09/2026) — busca 1 grade
+            // (ocorrencias|armas|drogas|envolvidos) direto no CAD, sem os
+            // tetos de tempo/tamanho do Apps Script (ver
+            // tools/atualizador-local/cad_grades.py e a rota
+            // /cad/sincronizar-grade). Streaming NDJSON, mesmo padrão de
+            // consultarPessoaStream acima — onProgresso(obj) recebe
+            // {tipo:'progresso', pagina, totalPaginas, registros,
+            // totalReal} a cada página buscada. Devolve o MESMO formato
+            // de `resultado` que o Apps Script já devolvia ({ok, dados,
+            // total, totalRelatadoPeloCAD, truncado, motivoTruncamento})
+            // — js/cadastroocorrencias.js usa isso pra não precisar de
+            // nenhuma lógica separada por origem (Python vs Apps Script).
+            async function buscarGradeCad(grade, dataIni, dataFim, onProgresso) {
+                const qs = new URLSearchParams({ grade: grade, dataIni: dataIni, dataFim: dataFim }).toString();
+                const resp = await fetch(`${URL_BASE}/cad/sincronizar-grade?${qs}`);
+                if (!resp.ok) {
+                    let detalhe = '';
+                    try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+                    throw new Error(detalhe || `Sincronização (${grade}) respondeu HTTP ${resp.status}`);
+                }
+                let resultadoFinal = null;
+                let erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                return resultadoFinal;
+            }
+
             global.P3AtualizadorLocal = {
                 URL_BASE: URL_BASE,
                 disponivel: disponivel,
@@ -287,5 +318,6 @@
                 consultarCnpj: consultarCnpj,
                 alvosDenunciaSalvos: alvosDenunciaSalvos,
                 rodarVarreduraDenunciasRecorrentes: rodarVarreduraDenunciasRecorrentes,
+                buscarGradeCad: buscarGradeCad,
             };
         })(window);
