@@ -299,6 +299,32 @@
                 return resultadoFinal;
             }
 
+            // Cérbero (02/09/2026) — importa uma captura .har (arquivo File,
+            // vindo de <input type="file">) pro servidor local processar e
+            // subir pra Hostinger. Streaming NDJSON, mesmo padrão das demais
+            // rotas longas — onProgresso(obj) recebe {tipo:'progresso',
+            // mensagem}. Devolve o `resultado` final ({pessoas, enderecos,
+            // fotosEnviadas, fotosJaExistentes, fotosComErro}).
+            async function importarHarCerbero(arquivoHar, onProgresso) {
+                const formData = new FormData();
+                formData.append('har', arquivoHar, arquivoHar.name);
+                const resp = await fetch(`${URL_BASE}/cerbero/importar-har`, { method: 'POST', body: formData });
+                if (!resp.ok) {
+                    let detalhe = '';
+                    try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+                    throw new Error(detalhe || `Importação respondeu HTTP ${resp.status}`);
+                }
+                let resultadoFinal = null;
+                let erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                return resultadoFinal;
+            }
+
             global.P3AtualizadorLocal = {
                 URL_BASE: URL_BASE,
                 disponivel: disponivel,
@@ -319,5 +345,6 @@
                 alvosDenunciaSalvos: alvosDenunciaSalvos,
                 rodarVarreduraDenunciasRecorrentes: rodarVarreduraDenunciasRecorrentes,
                 buscarGradeCad: buscarGradeCad,
+                importarHarCerbero: importarHarCerbero,
             };
         })(window);
