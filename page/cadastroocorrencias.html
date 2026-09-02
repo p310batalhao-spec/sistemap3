@@ -77,6 +77,39 @@
                         <i class="fas fa-sync"></i> PROCESSAR E SALVAR NO FIREBASE
                     </button>
                 </section>
+
+                <!-- Sincronização direta do CAD (02/09/2026, pedido explícito do
+                     usuário: "quero que faça um botão no cadastro de ocorrências
+                     para realizar automaticamente a busca dos dados de ocorrencias
+                     diretamente do CAD e sincronizá-las com o firebase e a
+                     hostinger como já está sendo feito manualmente") — busca
+                     ocorrências geral/envolvidos/armas/drogas direto no CAD (via
+                     o mesmo Apps Script do Preditiva CAD) e sincroniza sem
+                     precisar baixar/subir planilha nenhuma. Ver js/cadastroocorrencias.js
+                     (seção "SINCRONIZAÇÃO DIRETA DO CAD"). Exige login do CAD já
+                     configurado em "🔑 Login CAD / Quimera" (index.html). -->
+                <section id="secao-sync-cad" class="import-section" style="padding: 20px; background: #fff; border-radius: 8px; margin-top: 20px; display:none;">
+                    <h3>🔗 Sincronização Direta do CAD</h3>
+                    <p style="margin-bottom: 20px;">Busca ocorrências gerais, envolvidos (autores/vítimas/óbitos),
+                        armas e drogas direto no CAD, para o período abaixo, e sincroniza automaticamente com o
+                        Firebase e a Hostinger — sem precisar exportar/importar planilha.</p>
+
+                    <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px;">
+                        <div>
+                            <label for="sync-cad-data-ini" style="display:block;margin-bottom:6px;font-weight:600;font-size:.9rem;">Data inicial</label>
+                            <input type="date" id="sync-cad-data-ini" class="select-p3" style="padding:10px;">
+                        </div>
+                        <div>
+                            <label for="sync-cad-data-fim" style="display:block;margin-bottom:6px;font-weight:600;font-size:.9rem;">Data final</label>
+                            <input type="date" id="sync-cad-data-fim" class="select-p3" style="padding:10px;">
+                        </div>
+                        <button id="btn-sync-cad" type="button" class="btn-primary"
+                            style="background:#1a237e;color:#fff;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;">
+                            <i class="fas fa-cloud-download-alt"></i> BUSCAR E SINCRONIZAR DO CAD
+                        </button>
+                    </div>
+                    <p id="sync-cad-status" style="font-size:.85rem;color:#555;min-height:1.2em;"></p>
+                </section>
             </div>
         </main>
     </section>
