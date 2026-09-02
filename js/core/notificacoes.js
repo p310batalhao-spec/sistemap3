@@ -36,6 +36,12 @@
 //   8) Mesma coisa que a fonte 7, só que pra SUSPEITOS (P3.Suspeitos) —
 //      uma pessoa pode ter vários processos, então percorre o array
 //      `processos` de cada suspeito.
+//   9) Registro AUTOMÁTICO da previsão mensal do Preditiva CAD, faltando
+//      5, 3, 2 ou 1 dia(s) pro fim do mês (só 10º BPM) — diferente das
+//      demais, essa fonte AGE (busca no CAD, classifica CVP/CVLI/MVI e
+//      grava no Firebase via js/core/previsaoMensalCad.js), não só
+//      detecta algo pra avisar; só notifica de verdade se falhar (login
+//      do CAD ausente/expirado) ou quando consegue gravar com sucesso.
 //
 // MINI-ABAS no dropdown (#notif-tabs) — cada notificação carrega um
 // campo `categoria` ('tco' | 'autores' | 'eventos' | 'outros') definido
@@ -89,6 +95,11 @@
     // cada carregamento). Agora só some quando o usuário clica no "×" ou
     // depois desse prazo bem largo.
     const RETENCAO_DIAS = 30;
+    // Registro automático da previsão mensal do Preditiva CAD (fonte 9,
+    // 02/09/2026) — só tenta 1x por dia por navegador (a tentativa em si
+    // já é idempotente do lado do Firebase, mas não há motivo pra bater
+    // no CAD de novo a cada navegação de página no mesmo dia).
+    const CHAVE_PREVISAO_CAD_PREFIXO = 'p3_notif_previsao_cad_tentativa:';
 
     function lerVistas() {
         try { return new Set(JSON.parse(localStorage.getItem(CHAVE_VISTAS) || '[]')); }
@@ -357,6 +368,77 @@
             titulo: 'Preparar cartão-programa',
             texto: `Faltam ${diasRestantes} dia(s) pro fim de ${mesLabel} — hora de preparar o cartão-programa do mês seguinte.`,
         }];
+    }
+
+    // ── 9) Registro automático da previsão mensal do Preditiva CAD —
+    // 02/09/2026, pedido explícito do usuário: "quero que faltando 5, 3,
+    // 2 e 1 dia avise que o mês está finalizando e precisa de uma nova
+    // análise preditiva ou faça isso automaticamente quando abrir o exe
+    // com os dados do CAD" — escolheu a opção automática.
+    //
+    // Diferente das outras 8 fontes (que só LEEM/detectam algo pra
+    // avisar), esta AGE de verdade: busca no CAD, classifica CVP/CVLI/MVI
+    // e grava a previsão do PRÓXIMO mês no Firebase (mesmo mecanismo de
+    // js/preditivaCAD.js, compartilhado via js/core/previsaoMensalCad.js)
+    // — sem precisar a página Preditiva CAD estar aberta. Rodar isso
+    // ANTES do mês virar (faltando 5/3/2/1 dia(s)) evita o problema real
+    // já relatado pelo usuário: se ninguém abrir a tela até o mês virar,
+    // o mês corrente "contamina" o cálculo do que deveria ser uma
+    // previsão às cegas.
+    //
+    // Só pro 10º BPM (mesmo recurso do Preditiva CAD). Exige login no
+    // CAD (Apps Script, mesmo token do modal único, ver
+    // js/core/cad-login-modal.js) já configurado — se a tentativa falhar
+    // (token ausente/expirado), avisa pra configurar em vez de tentar de
+    // novo em silêncio pra sempre sem ninguém saber que nunca funcionou.
+    async function obterERegistrarPrevisaoMensalCad(cfg, sessao) {
+        if (!sessao || sessao.unidadeId !== '10bpm') return [];
+        if (typeof global.PrevisaoMensalCAD === 'undefined') return [];
+        if (!cfg || !cfg.firebase || !cfg.firebase.databaseURL) return [];
+
+        const hoje = new Date();
+        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        const diasRestantes = Math.round((fimMes - hoje) / 86400000);
+        if ([5, 3, 2, 1].indexOf(diasRestantes) === -1) return [];
+
+        const hojeStr = hoje.toISOString().slice(0, 10);
+        const chaveTentativa = CHAVE_PREVISAO_CAD_PREFIXO + hojeStr;
+        try {
+            const jaTentado = localStorage.getItem(chaveTentativa);
+            if (jaTentado) return JSON.parse(jaTentado);
+        } catch (e) { /* cache corrompido — tenta de novo */ }
+
+        const mesLabel = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        let resultado;
+        try {
+            resultado = await global.PrevisaoMensalCAD.registrarPrevisaoProximoMesSeNecessario(cfg.firebase.databaseURL);
+        } catch (e) {
+            resultado = { status: 'erro', mensagem: e.message };
+        }
+
+        let notif;
+        if (resultado.status === 'gravada') {
+            const p = resultado.previsaoMensal || {};
+            notif = [{
+                id: 'previsao-cad:' + resultado.mesAlvo,
+                categoria: 'outros', icone: '🎯',
+                titulo: 'Previsão preditiva registrada',
+                texto: `Previsão de ${mesLabel} registrada automaticamente (CVP ${p.cvp} · CVLI ${p.cvli} · MVI ${p.mvi}) — ${diasRestantes} dia(s) antes do fim do mês.`,
+            }];
+        } else if (resultado.status === 'ja_existia' || resultado.status === 'sem_dados') {
+            notif = []; // já tinha previsão gravada (manual ou automática), ou não há dado suficiente ainda — nada a avisar
+        } else {
+            notif = [{
+                id: 'previsao-cad-falha:' + hoje.getFullYear() + '-' + (hoje.getMonth() + 1) + '-' + diasRestantes,
+                categoria: 'outros', icone: '⚠️',
+                titulo: 'Previsão preditiva NÃO registrada',
+                texto: `Faltam ${diasRestantes} dia(s) pro fim de ${mesLabel} e o sistema não conseguiu registrar a previsão automaticamente (${resultado.mensagem || 'falha desconhecida'}) — abra "🔑 Login CAD / Quimera" pra renovar o token e depois o Preditiva CAD.`,
+            }];
+        }
+
+        try { localStorage.setItem(chaveTentativa, JSON.stringify(notif)); }
+        catch (e) { /* sem cache, sem problema — só tenta de novo no próximo carregamento hoje */ }
+        return notif;
     }
 
     // ── 5) Novos acionamentos do Botão do Pânico (Patrulha Maria da
@@ -705,6 +787,7 @@
             Promise.resolve(obterLembreteCartaoPrograma()),
             obterAcionamentosPanico(),
             obterRiscoLocalPrevisto(cfg),
+            obterERegistrarPrevisaoMensalCad(cfg, sessao),
         ];
         // admin: mantém tudo que já tinha E ganha as fontes 7 e 8 também.
         if (sessao.nivel === 'admin') {
