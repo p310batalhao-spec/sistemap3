@@ -368,25 +368,34 @@
     // obterRiscoLocalPrevisto/obterERegistrarPrevisaoMensalCad em
     // notificacoes.js). async=false garante ordem de execução mesmo sendo
     // <script> criado dinamicamente (que por padrão executa fora de ordem).
+    // Cache-busting (02/09/2026) — estes 4 são injetados dinamicamente,
+    // então nunca tinham a proteção "?v=..." que outras páginas já usam
+    // em <script src> estático (ver page/consulta-pessoa.html) — um
+    // WebView2/CDN cacheando a versão antiga desses arquivos por trás
+    // fazia mudança nova parecer "não aplicada" mesmo depois de
+    // reenviado pro GitHub Pages (bug real relatado: notificacoes.js
+    // antigo servido em cache, função nova inexistente pro index.html
+    // novo). Subir esse número toda vez que qualquer um dos 4 mudar.
+    var VERSAO_SCRIPTS_DINAMICOS = '20260902-1';
     (function () {
         var prefixo = estaEmSubpasta() ? '../' : '';
         var sPanico = document.createElement('script');
-        sPanico.src = prefixo + 'js/core/iris-panico-client.js';
+        sPanico.src = prefixo + 'js/core/iris-panico-client.js?v=' + VERSAO_SCRIPTS_DINAMICOS;
         sPanico.async = false;
         document.body.appendChild(sPanico);
 
         var sML = document.createElement('script');
-        sML.src = prefixo + 'js/machineLearningLeve.js';
+        sML.src = prefixo + 'js/machineLearningLeve.js?v=' + VERSAO_SCRIPTS_DINAMICOS;
         sML.async = false;
         document.body.appendChild(sML);
 
         var sPrevCad = document.createElement('script');
-        sPrevCad.src = prefixo + 'js/core/previsaoMensalCad.js';
+        sPrevCad.src = prefixo + 'js/core/previsaoMensalCad.js?v=' + VERSAO_SCRIPTS_DINAMICOS;
         sPrevCad.async = false;
         document.body.appendChild(sPrevCad);
 
         var s = document.createElement('script');
-        s.src = prefixo + 'js/core/notificacoes.js';
+        s.src = prefixo + 'js/core/notificacoes.js?v=' + VERSAO_SCRIPTS_DINAMICOS;
         s.async = false;
         document.body.appendChild(s);
     })();
