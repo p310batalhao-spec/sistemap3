@@ -281,6 +281,14 @@
         .previsao-item.linha-clicavel { cursor:pointer; }
         .coord-rural { font-weight:normal; font-size:.82em; color:var(--cad); text-decoration:none; }
         .coord-rural:hover { text-decoration:underline; }
+        /* Badge de clima (CPTEC, 02/09/2026) — contexto operacional pra
+           amanhã, ao lado do badge de risco. Neutro de propósito (não
+           usa cor de risco-alto/médio/baixo — é dado bruto, não um
+           fator já incorporado ao cálculo). */
+        .previsao-clima {
+            display:inline-block; margin-left:.4rem; padding:.15rem .5rem; border-radius:20px;
+            font-size:.68rem; background:var(--bg); border:1px solid var(--borda); color:var(--sub);
+        }
 
         /* ── Filtro Geral/CVP/CVLI/MVI do card de Previsão de Risco ───── */
         .filtro-categoria-risco {
@@ -605,10 +613,10 @@
                 <div class="tabela-scroll">
                     <table class="tabela-cad">
                         <thead>
-                            <tr><th>#</th><th>Cidade</th><th>Bairro</th><th>CVP</th><th>CVLI</th><th>MVI</th><th>Total</th><th>Risco</th><th>Coordenadas</th></tr>
+                            <tr><th>#</th><th>Cidade</th><th>Bairro</th><th>CVP</th><th>CVLI</th><th>MVI</th><th>Total</th><th title="Ocorrências por 10 mil habitantes do município (IBGE) — normaliza a comparação entre cidades de tamanhos diferentes">Taxa/10k hab.</th><th>Risco</th><th>Coordenadas</th></tr>
                         </thead>
                         <tbody id="tbody-hotspot">
-                            <tr><td colspan="9" class="modal-vazio">Aguardando dados do CAD…</td></tr>
+                            <tr><td colspan="10" class="modal-vazio">Aguardando dados do CAD…</td></tr>
                         </tbody>
                     </table>
                 </div>
