@@ -70,7 +70,10 @@
             fotosSuspeitosBaseUrl: 'https://irispmal.io/api-p3/fotos_suspeitos/',
             // Pessoas sincronizadas do echelonx (Supabase) — ver
             // hostinger-api/pessoas_echelonx.php e tools/sincronizar-echelonx/.
-            fotosEchelonxBaseUrl: 'https://irispmal.io/api-p3/fotos_echelonx/'
+            fotosEchelonxBaseUrl: 'https://irispmal.io/api-p3/fotos_echelonx/',
+            // Cérbero (02/09/2026) — ver hostinger-api/cerbero.php e js/cerbero.js.
+            cerberoUrl: 'https://irispmal.io/api-p3/cerbero.php',
+            fotosCerberoBaseUrl: 'https://irispmal.io/api-p3/fotos_cerbero/'
         }
     };
 
