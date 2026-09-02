@@ -11,6 +11,37 @@
     <link rel="stylesheet" href="css/style.css">
     <title>Sistema de Gerenciamento P3</title>
     <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
+    <style>
+        /* Resumo Preditivo (02/09/2026, pedido explícito do usuário: "quero
+           que crie algo que resuma a previsão, para que sempre analise e
+           informe se algo pode acontecer em alguma cidade") — reaproveita
+           EXATAMENTE o mesmo cálculo da notificação do sino (fonte 6,
+           js/core/notificacoes.js:obterResumoRiscoPorLocal), só que mostra
+           o ranking sempre, sem o limiar de 50% que a notificação usa (um
+           resumo informativo não deve ficar mudo só porque nada é
+           "urgente" hoje). Override SÓ nesta página — .saudacao continua
+           column em todo o resto do sistema.
+        */
+        .saudacao { flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 1.5rem; }
+        .saudacao-texto { display: flex; flex-direction: column; gap: .5rem; flex: 1 1 18rem; }
+        #resumo-preditivo { flex: 1 1 20rem; max-width: 26rem; font-size: .82rem; }
+        #resumo-preditivo-titulo { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--p3-text-muted); margin-bottom: .5rem; }
+        .resumo-preditivo-item {
+            display: flex; align-items: center; gap: .6rem; padding: .45rem .6rem; border-radius: .4rem;
+            background: var(--p3-bg); border: .0625rem solid var(--p3-border); margin-bottom: .4rem;
+        }
+        .resumo-preditivo-badge {
+            flex-shrink: 0; font-weight: 700; font-size: .75rem; padding: .1rem .5rem; border-radius: 1rem; min-width: 3rem; text-align: center;
+        }
+        .resumo-preditivo-badge.alto { background: #ffebee; color: #c62828; }
+        .resumo-preditivo-badge.medio { background: #fff3e0; color: #e65100; }
+        .resumo-preditivo-badge.baixo { background: #e8f5e9; color: #2e7d32; }
+        :root[data-p3-theme="dark"] .resumo-preditivo-badge.alto { background: rgba(255,93,78,.18); color: #ff9a8f; }
+        :root[data-p3-theme="dark"] .resumo-preditivo-badge.medio { background: rgba(255,179,71,.18); color: #ffcb80; }
+        :root[data-p3-theme="dark"] .resumo-preditivo-badge.baixo { background: rgba(43,227,166,.16); color: #7be0c2; }
+        #resumo-preditivo-vazio { color: var(--p3-text-muted); font-size: .8rem; }
+        @media (max-width: 640px) { .saudacao { flex-direction: column; } #resumo-preditivo { max-width: none; width: 100%; } }
+    </style>
 </head>
 
 <body>
@@ -20,8 +51,14 @@
     <section class="pagecomplete">
         <main>
             <div class="saudacao">
-                <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
-                <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
+                <div class="saudacao-texto">
+                    <h2>Bem-vindo ao Sistema de Gerenciamento P3</h2>
+                    <p>Utilize o menu lateral para navegar entre as seções do sistema.</p>
+                </div>
+                <div id="resumo-preditivo">
+                    <div id="resumo-preditivo-titulo">🎯 Resumo Preditivo</div>
+                    <div id="resumo-preditivo-conteudo"><div id="resumo-preditivo-vazio">Analisando dados recentes…</div></div>
+                </div>
             </div>
 
             <!-- Login único CAD/Quimera (01/09/2026) — local central de onde
@@ -160,6 +197,52 @@
             CadLoginModal.montarBadge(document.getElementById('clm-badge-container'));
             document.getElementById('index-btn-cad-login').addEventListener('click', () => CadLoginModal.abrir());
         });
+
+        // Resumo Preditivo — P3Notificacoes é carregado de forma ASSÍNCRONA
+        // por js/core/header-nav.js (script injetado dinamicamente), então
+        // pode ainda não existir no DOMContentLoaded desta página; espera
+        // aparecer (até 8s) em vez de simplesmente desistir na 1ª checagem.
+        function aguardarP3Notificacoes(tentativasRestantes) {
+            if (window.P3Notificacoes) { montarResumoPreditivo(); return; }
+            if (tentativasRestantes <= 0) {
+                document.getElementById('resumo-preditivo-conteudo').innerHTML =
+                    '<div id="resumo-preditivo-vazio">Não foi possível carregar o resumo preditivo agora.</div>';
+                return;
+            }
+            setTimeout(function () { aguardarP3Notificacoes(tentativasRestantes - 1); }, 200);
+        }
+
+        async function montarResumoPreditivo() {
+            const conteudo = document.getElementById('resumo-preditivo-conteudo');
+            try {
+                const sessao = P3.requireAuth();
+                if (!sessao) return;
+                const cfg = await P3.loadUnidadeConfig();
+                const resultado = await P3Notificacoes.obterResumoRiscoPorLocal(cfg);
+
+                if (!resultado || !resultado.calibrado || !resultado.ranking || !resultado.ranking.length) {
+                    conteudo.innerHTML = '<div id="resumo-preditivo-vazio">' +
+                        (resultado && resultado.motivo ? resultado.motivo : 'Sem histórico suficiente ainda pra prever risco por local.') +
+                        '</div>';
+                    return;
+                }
+
+                conteudo.innerHTML = resultado.ranking.map(function (item) {
+                    const pct = Math.round(item.probabilidade * 100);
+                    const nivel = pct >= 50 ? 'alto' : pct >= 25 ? 'medio' : 'baixo';
+                    const rotulo = { alto: 'Alto', medio: 'Médio', baixo: 'Baixo' }[nivel];
+                    return '<div class="resumo-preditivo-item">' +
+                        '<span class="resumo-preditivo-badge ' + nivel + '">' + rotulo + '</span>' +
+                        '<span>' + (item.cidade || 'N/D') + ' — ' + (item.bairro || 'N/D') + ': <strong>' + pct + '%</strong> de CVLI/MVI nos próximos ' + resultado.janelaDias + ' dias</span>' +
+                        '</div>';
+                }).join('') +
+                    '<div style="font-size:.7rem;color:var(--p3-text-muted);margin-top:.3rem;">Modelo automático (regressão logística leve) — apoio ao planejamento, não decisão isolada.</div>';
+            } catch (e) {
+                conteudo.innerHTML = '<div id="resumo-preditivo-vazio">Erro ao calcular o resumo preditivo: ' + e.message + '</div>';
+            }
+        }
+
+        aguardarP3Notificacoes(40); // até 40 x 200ms = 8s
     </script>
 </body>
 </html>
