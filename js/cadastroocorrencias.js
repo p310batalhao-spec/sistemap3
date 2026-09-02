@@ -606,7 +606,38 @@ async function _fetchCadSync_(acao, params) {
 // execução nova com teto fresco), generalizado pra qualquer uma das 4
 // ações (acao: 'ocorrencias' | 'envolvidos' | 'armas' | 'drogas').
 const MAX_PARTES_RETOMADA_SYNC_ = 6;
+
+// PONTO DE ENTRADA (02/09/2026) — prefere o atualizador-local (Python,
+// ver tools/atualizador-local/cad_grades.py) quando ele estiver
+// rodando: sem os tetos de tempo/tamanho de execução do Apps Script
+// que causaram "Resposta do Apps Script não é JSON válido" num período
+// grande (pedido explícito do usuário depois desse erro: "veja a
+// possibilidade de migrar essa coleta para o python para poder ser
+// mais rápido"). Só cai pro Apps Script (função abaixo) se o servidor
+// local não estiver disponível, OU se a chamada ao Python falhar no
+// meio do caminho — mesmo espírito de fallback já usado por
+// cad-busca-foto.js/autores.js com P3AtualizadorLocal.
 async function _buscarGradeCadComRetomada_(acao, dataIni, dataFim, statusFn) {
+    if (window.P3AtualizadorLocal) {
+        let disponivelLocal = false;
+        try { disponivelLocal = await window.P3AtualizadorLocal.disponivel(); } catch (e) { disponivelLocal = false; }
+        if (disponivelLocal) {
+            try {
+                if (statusFn) statusFn(`⏳ ${acao}: buscando via atualizador local (Python)…`);
+                const resultado = await window.P3AtualizadorLocal.buscarGradeCad(acao, dataIni, dataFim, function (evt) {
+                    if (statusFn) statusFn(`⏳ ${acao}: página ${evt.pagina}/${evt.totalPaginas} — ${evt.registros} de ${evt.totalReal} já carregado(s)…`);
+                });
+                if (resultado) return resultado;
+            } catch (e) {
+                console.warn('[cadastroocorrencias] atualizador local falhou em ' + acao + ', caindo pro Apps Script:', e.message);
+                if (statusFn) statusFn(`⚠️ Atualizador local falhou (${e.message}) — tentando via Apps Script…`);
+            }
+        }
+    }
+    return _buscarGradeCadViaAppsScript_(acao, dataIni, dataFim, statusFn);
+}
+
+async function _buscarGradeCadViaAppsScript_(acao, dataIni, dataFim, statusFn) {
     let parte = 1;
     let resp = await _fetchCadSync_(acao, { dataIni: dataIni, dataFim: dataFim });
     if (resp.ok === false) return resp;
