@@ -153,6 +153,7 @@ function rfMontarUrlFoto(resultado) {
     if (!apiPhp || !resultado.fotoArquivo) return null;
     const base = resultado.tipo === 'suspeito' ? apiPhp.fotosSuspeitosBaseUrl
         : resultado.tipo === 'echelonx' ? apiPhp.fotosEchelonxBaseUrl
+        : resultado.tipo === 'cerbero' ? apiPhp.fotosCerberoBaseUrl
         : apiPhp.fotosAutoresBaseUrl;
     if (!base) return null;
     return base.replace(/\/+$/, '') + '/' + resultado.fotoArquivo;
@@ -161,6 +162,7 @@ function rfMontarUrlFoto(resultado) {
 function rfRotuloTipo(tipo) {
     if (tipo === 'suspeito') return 'Suspeito';
     if (tipo === 'echelonx') return 'Echelonx';
+    if (tipo === 'cerbero') return 'Cérbero';
     return 'Autor';
 }
 
@@ -198,21 +200,26 @@ async function rfBuscarCompatibilidade() {
     rfSetStatus('Comparando com autores e suspeitos cadastrados...');
 
     try {
-        // Echelonx é opcional/best-effort — se pessoas_echelonx.php ainda
-        // não foi implantado no servidor (ou a ferramenta de sincronização
-        // nunca rodou), não pode derrubar a busca em autores/suspeitos.
-        const [vetoresAutores, vetoresSuspeitos, vetoresEchelonx] = await Promise.all([
+        // Echelonx/Cérbero são opcionais/best-effort — se a API ainda não
+        // foi implantada no servidor (ou nunca rodou a sincronização/
+        // importação), não pode derrubar a busca em autores/suspeitos.
+        const [vetoresAutores, vetoresSuspeitos, vetoresEchelonx, vetoresCerbero] = await Promise.all([
             P3.Autores.listarVetores(rfCfg),
             P3.Suspeitos.listarVetores(rfCfg),
             P3.PessoasEchelonx.listarVetores(rfCfg).catch(err => {
                 console.warn('[reconhecimento-facial] echelonx indisponível:', err.message);
+                return {};
+            }),
+            P3.Cerbero.listarVetores(rfCfg).catch(err => {
+                console.warn('[reconhecimento-facial] cerbero indisponível:', err.message);
                 return {};
             })
         ]);
         const candidatos = [
             ...Object.entries(vetoresAutores || {}).map(([id, a]) => Object.assign({ id, tipo: 'autor' }, a)),
             ...Object.entries(vetoresSuspeitos || {}).map(([id, s]) => Object.assign({ id, tipo: 'suspeito' }, s)),
-            ...Object.entries(vetoresEchelonx || {}).map(([id, p]) => Object.assign({ id, tipo: 'echelonx' }, p))
+            ...Object.entries(vetoresEchelonx || {}).map(([id, p]) => Object.assign({ id, tipo: 'echelonx' }, p)),
+            ...Object.entries(vetoresCerbero || {}).map(([id, p]) => Object.assign({ id, tipo: 'cerbero' }, p))
         ].filter(a => Array.isArray(a.vetorFacial) && a.vetorFacial.length);
 
         const resultados = candidatos
