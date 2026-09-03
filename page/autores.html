@@ -305,14 +305,13 @@
             <div class="autores-wrap">
                 <div id="clm-badge-container" style="margin-bottom:14px;"></div>
 
+                <!-- Reconhecimento Facial e Cérbero MUDARAM pra páginas
+                     próprias dentro de Soluções IA (03/09/2026, pedido
+                     explícito do usuário) — ver page/reconhecimento-
+                     facial.html e page/cerbero.html. -->
                 <div class="abas-topo">
                     <button type="button" class="aba-btn ativa" id="aba-btn-autores" data-aba="autores">👤 Autores</button>
                     <button type="button" class="aba-btn" id="aba-btn-suspeitos" data-aba="suspeitos">🕵️ Suspeitos</button>
-                    <button type="button" class="aba-btn" id="aba-btn-facial" data-aba="facial">🔎 Reconhecimento facial</button>
-                    <!-- Só visível pra P2/admin (ver js/cerbero.js) — dado de
-                         inteligência sob controle restrito, pedido explícito
-                         do usuário. -->
-                    <button type="button" class="aba-btn" id="aba-btn-cerbero" data-aba="cerbero" style="display:none;">🐕 Cérbero</button>
                 </div>
 
                 <div id="painel-autores" class="tab-painel">
@@ -504,71 +503,6 @@
                     </div>
                 </div>
 
-                <div id="painel-facial" class="tab-painel" style="display:none;">
-                    <h3>🔎 Reconhecimento facial — comparação por similaridade</h3>
-                    <div class="rf-aviso">
-                        ⚠️ Resultado é uma <strong>estimativa de similaridade</strong> entre a foto enviada e as
-                        fotos já cadastradas dos autores (ver <code>tools/vetores-faciais/</code>) — não é uma
-                        identificação positiva. Sempre confirme manualmente antes de qualquer decisão operacional.
-                        A base de comparação é só o que já está na sua pasta da Hostinger.
-                    </div>
-
-                    <div class="rf-upload-area">
-                        <div class="rf-preview" id="rf-preview">Nenhuma imagem selecionada</div>
-                        <div class="rf-controles">
-                            <input type="file" id="rf-input-foto" accept="image/*">
-                            <button type="button" id="rf-btn-buscar" disabled>Buscar compatibilidade</button>
-                            <span id="rf-status-msg"></span>
-                        </div>
-                    </div>
-
-                    <div class="rf-resultados" id="rf-resultados"></div>
-                </div>
-
-                <!-- Cérbero (02/09/2026, pedido explícito do usuário) — base
-                     de inteligência da PM-AL (cerimonial.pm.al.gov.br),
-                     importada por captura .har (não é busca ao vivo — ver
-                     comentário grande em tools/atualizador-local/cerbero_har.py
-                     sobre reCAPTCHA+2FA no login de lá). Sob controle da P2:
-                     só visível/utilizável pra sessão nível p2/admin. -->
-                <div id="painel-cerbero" class="tab-painel" style="display:none;">
-                    <h3>🐕 Cérbero — Base de Inteligência (PM-AL)</h3>
-                    <div class="rf-aviso">
-                        ⚠️ Dado importado de uma captura (.har) feita por você navegando o Cérbero — não é uma busca
-                        ao vivo (login de lá exige reCAPTCHA + autenticação de dois fatores, não automatizamos isso).
-                        Só reflete o que foi visitado/exportado na última captura. Reimporte um .har novo todo mês
-                        (ou sempre que quiser) pra atualizar — nunca duplica, atualiza por ID do próprio Cérbero.
-                    </div>
-
-                    <div class="rf-upload-area">
-                        <input type="file" id="cerbero-input-har" accept=".har,.ndjson">
-                        <button type="button" id="cerbero-btn-importar" disabled>Importar captura (.har ou .ndjson)</button>
-                        <button type="button" id="cerbero-btn-facial" title="Calcula o reconhecimento facial (face-api.js, no navegador) pra quem já foi importado e tem foto, mas ainda não tem vetor calculado">
-                            🧠 Gerar reconhecimento facial
-                        </button>
-                        <span id="cerbero-status-msg"></span>
-                    </div>
-                    <div class="rf-upload-area" style="margin-top:-14px;">
-                        <input type="text" id="cerbero-input-caminho-local" placeholder="Ou cole aqui o caminho completo do arquivo (pra capturas grandes, GB+) — ex.: C:\Users\...\Downloads\cerbero_captura.ndjson" style="min-width:420px;flex:1;">
-                        <button type="button" id="cerbero-btn-importar-local" title="Lê o arquivo direto de onde ele já está no seu computador, sem reenviar pelo navegador — recomendado pra capturas de vários GB">Importar do disco local</button>
-                    </div>
-                    <div class="p3-progress-wrap" id="cerbero-progresso-wrap" style="display:none;">
-                        <div class="p3-progress-label">
-                            <span>Importando captura do Cérbero</span>
-                            <span id="cerbero-progresso-texto"></span>
-                        </div>
-                        <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="cerbero-progresso-fill"></div></div>
-                    </div>
-
-                    <h4 style="margin-top:22px;">Pesquisar</h4>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-                        <input type="text" id="cerbero-input-busca" placeholder="CPF, nome, cidade, facção, ORCRIM ou data de nascimento (dd/mm/aaaa)..." style="max-width:520px;flex:1;min-width:260px;">
-                        <button type="button" id="cerbero-btn-buscar">🔎 Buscar</button>
-                    </div>
-                    <div id="cerbero-resultados-info" style="margin-top:8px;font-size:12.5px;opacity:.7;"></div>
-                    <div id="cerbero-resultados" style="margin-top:10px;"></div>
-                </div>
-
             </div>
         </main>
     </section>
@@ -620,18 +554,15 @@
     <script src="../js/pessoa-modal.js"></script>
     <script src="../js/autores.js"></script>
     <script src="../js/suspeitos.js"></script>
-    <script src="../js/autores-reconhecimento-facial.js"></script>
-    <script src="../js/cerbero.js"></script>
     <script>
+        // Reconhecimento Facial e Cérbero saíram daqui (03/09/2026) —
+        // agora são páginas próprias dentro de Soluções IA.
         document.querySelectorAll('.aba-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('ativa'));
                 btn.classList.add('ativa');
                 document.getElementById('painel-autores').style.display = btn.dataset.aba === 'autores' ? '' : 'none';
                 document.getElementById('painel-suspeitos').style.display = btn.dataset.aba === 'suspeitos' ? '' : 'none';
-                document.getElementById('painel-facial').style.display = btn.dataset.aba === 'facial' ? '' : 'none';
-                document.getElementById('painel-cerbero').style.display = btn.dataset.aba === 'cerbero' ? '' : 'none';
-                if (btn.dataset.aba === 'cerbero' && window.P3Cerbero) window.P3Cerbero.carregarSeNecessario();
             });
         });
         document.addEventListener('DOMContentLoaded', function () {
