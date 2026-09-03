@@ -556,24 +556,13 @@
                         <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="cerbero-progresso-fill"></div></div>
                     </div>
 
-                    <h4 style="margin-top:22px;">Pessoas</h4>
-                    <input type="text" id="cerbero-filtro-pessoas" placeholder="Filtrar por nome, vulgo ou CPF..." style="max-width:400px;margin-bottom:10px;">
-                    <table class="tabela-autores" id="cerbero-tabela-pessoas">
-                        <thead>
-                            <tr>
-                                <th>Foto</th><th>Nome</th><th>Vulgos</th><th>CPF</th><th>Filiação</th>
-                                <th>Nascimento</th><th>Sexo</th><th>Situação</th><th>Facção</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cerbero-corpo-pessoas"></tbody>
-                    </table>
-
-                    <h4 style="margin-top:22px;">Endereços</h4>
-                    <input type="text" id="cerbero-filtro-enderecos" placeholder="Filtrar endereço..." style="max-width:400px;margin-bottom:10px;">
-                    <table class="tabela-autores" id="cerbero-tabela-enderecos">
-                        <thead><tr><th>Endereço</th><th>Pessoas vinculadas</th></tr></thead>
-                        <tbody id="cerbero-corpo-enderecos"></tbody>
-                    </table>
+                    <h4 style="margin-top:22px;">Pesquisar</h4>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                        <input type="text" id="cerbero-input-busca" placeholder="CPF, nome, cidade, facção, ORCRIM ou data de nascimento (dd/mm/aaaa)..." style="max-width:520px;flex:1;min-width:260px;">
+                        <button type="button" id="cerbero-btn-buscar">🔎 Buscar</button>
+                    </div>
+                    <div id="cerbero-resultados-info" style="margin-top:8px;font-size:12.5px;opacity:.7;"></div>
+                    <div id="cerbero-resultados" style="margin-top:10px;"></div>
                 </div>
 
             </div>
