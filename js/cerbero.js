@@ -175,13 +175,48 @@
         }
     }
 
-    async function importar() {
-        const input = document.getElementById('cerbero-input-har');
-        const btn = document.getElementById('cerbero-btn-importar');
+    // Corpo comum de "importar" e "importar do disco local" — só muda a
+    // função que efetivamente chama o servidor (`executor`) e quais
+    // elementos ficam desabilitados durante a importação.
+    async function executarImportacao(executor, elementosParaDesabilitar) {
         const statusEl = document.getElementById('cerbero-status-msg');
         const wrap = document.getElementById('cerbero-progresso-wrap');
         const fill = document.getElementById('cerbero-progresso-fill');
         const texto = document.getElementById('cerbero-progresso-texto');
+
+        elementosParaDesabilitar.forEach(el => { el.disabled = true; });
+        wrap.style.display = 'block';
+        fill.style.width = '0%';
+        let etapas = 0;
+        try {
+            const resultado = await executor(function (evt) {
+                etapas++;
+                texto.textContent = evt.mensagem || '';
+                // Sem total conhecido de antemão (parse decide isso) — barra
+                // "indeterminada" simples, só avança visualmente a cada evento.
+                fill.style.width = Math.min(95, etapas * 2) + '%';
+            });
+            fill.style.width = '100%';
+            const resumo = `Pessoas: ${resultado.pessoas} (${resultado.pessoasGravadas} gravada(s)) · ` +
+                `Endereços: ${resultado.enderecos} (${resultado.enderecosGravados} gravado(s)) · ` +
+                `Fotos: ${resultado.fotosEnviadas} enviada(s), ${resultado.fotosJaExistentes} já existente(s)` +
+                (resultado.fotosComErro ? `, ${resultado.fotosComErro} com erro` : '');
+            statusEl.textContent = '✅ ' + resumo;
+            alert('Importação do Cérbero concluída!\n\n' + resumo);
+            await carregarDados(true);
+        } catch (e) {
+            console.error('[cerbero] Erro na importação:', e);
+            statusEl.textContent = '⚠️ Erro: ' + e.message;
+            alert('Erro ao importar a captura do Cérbero: ' + e.message);
+        } finally {
+            elementosParaDesabilitar.forEach(el => { el.disabled = false; });
+            setTimeout(() => { wrap.style.display = 'none'; }, 1500);
+        }
+    }
+
+    async function importar() {
+        const input = document.getElementById('cerbero-input-har');
+        const btn = document.getElementById('cerbero-btn-importar');
         const arquivo = input.files && input.files[0];
         if (!arquivo) return;
 
@@ -191,37 +226,34 @@
         }
         if (!confirm(`Importar "${arquivo.name}" (${(arquivo.size / 1024 / 1024).toFixed(1)}MB) pro Cérbero? Isso pode levar alguns minutos (fotos são enviadas uma a uma).`)) return;
 
-        btn.disabled = true;
-        input.disabled = true;
-        wrap.style.display = 'block';
-        fill.style.width = '0%';
-        let etapas = 0;
-        try {
-            const resultado = await P3AtualizadorLocal.importarHarCerbero(arquivo, function (evt) {
-                etapas++;
-                texto.textContent = evt.mensagem || '';
-                // Sem total conhecido de antemão (parse decide isso) — barra
-                // "indeterminada" simples, só avança visualmente a cada evento.
-                fill.style.width = Math.min(95, etapas * 4) + '%';
-            });
-            fill.style.width = '100%';
-            const resumo = `Pessoas: ${resultado.pessoas} (${resultado.pessoasGravadas} gravada(s)) · ` +
-                `Endereços: ${resultado.enderecos} (${resultado.enderecosGravados} gravado(s)) · ` +
-                `Fotos: ${resultado.fotosEnviadas} enviada(s), ${resultado.fotosJaExistentes} já existente(s)` +
-                (resultado.fotosComErro ? `, ${resultado.fotosComErro} com erro` : '');
-            statusEl.textContent = '✅ ' + resumo;
-            alert('Importação do Cérbero concluída!\n\n' + resumo);
-            input.value = '';
-            await carregarDados(true);
-        } catch (e) {
-            console.error('[cerbero] Erro na importação:', e);
-            statusEl.textContent = '⚠️ Erro: ' + e.message;
-            alert('Erro ao importar a captura do Cérbero: ' + e.message);
-        } finally {
-            btn.disabled = false;
-            input.disabled = false;
-            setTimeout(() => { wrap.style.display = 'none'; }, 1500);
+        await executarImportacao(
+            (onProgresso) => P3AtualizadorLocal.importarHarCerbero(arquivo, onProgresso),
+            [btn, input]
+        );
+        input.value = '';
+    }
+
+    // Importa direto pelo CAMINHO do arquivo (03/09/2026, pedido explícito
+    // do usuário: capturas de vários GB não cabem numa cópia temporária
+    // extra em disco pra fazer o upload por HTTP — ver comentário em
+    // app.py:rota_cerbero_importar_caminho_local). Só uma string, sem
+    // subir o conteúdo nenhuma vez pelo navegador.
+    async function importarLocal() {
+        const inputCaminho = document.getElementById('cerbero-input-caminho-local');
+        const btn = document.getElementById('cerbero-btn-importar-local');
+        const caminho = inputCaminho.value.trim();
+        if (!caminho) { alert('Cole o caminho completo do arquivo primeiro (ex.: C:\\Users\\...\\Downloads\\cerbero_captura.ndjson).'); return; }
+
+        if (typeof P3AtualizadorLocal === 'undefined' || !(await P3AtualizadorLocal.disponivel())) {
+            alert('O atualizador local precisa estar aberto pra importar uma captura. Abra o Sistema P3 (app desktop) e tente de novo.');
+            return;
         }
+        if (!confirm(`Importar o arquivo em:\n${caminho}\n\npro Cérbero? Isso pode levar bastante tempo em capturas grandes (fotos são enviadas uma a uma).`)) return;
+
+        await executarImportacao(
+            (onProgresso) => P3AtualizadorLocal.importarCaminhoLocalCerbero(caminho, onProgresso),
+            [btn, inputCaminho]
+        );
     }
 
     // ── "🧠 Gerar reconhecimento facial" (02/09/2026, pedido explícito do
@@ -726,6 +758,10 @@
             document.getElementById('cerbero-btn-importar').disabled = !(e.target.files && e.target.files.length);
         });
         document.getElementById('cerbero-btn-importar').addEventListener('click', importar);
+        document.getElementById('cerbero-btn-importar-local').addEventListener('click', importarLocal);
+        document.getElementById('cerbero-input-caminho-local').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') importarLocal();
+        });
         document.getElementById('cerbero-btn-facial').addEventListener('click', gerarReconhecimentoFacial);
 
         // Busca — botão, Enter, ou digitação (debounce 250ms, já que roda
