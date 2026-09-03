@@ -441,6 +441,64 @@
         return (j && j.CPF) ? j : null;
     }
 
+    // ====================================================================
+    // P3.Cerbero (02/09/2026) — mesmo formato de retorno de
+    // autoresListarVetores/suspeitosListarVetores/pessoasEchelonxListarVetores
+    // (id -> {NOME,CPF,vetorFacial,fotoArquivo}), pra
+    // js/autores-reconhecimento-facial.js somar como 4ª fonte sem lógica
+    // especial. Ver hostinger-api/cerbero.php. cfg.apiPhp.cerberoUrl já
+    // vem pronto (não precisa do replace de autores.php -> outro arquivo
+    // que as demais integrações fazem, porque este campo foi criado
+    // direto com o nome certo).
+    // ====================================================================
+    async function cerberoListarVetores(cfg) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl) return {};
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=listarVetores`);
+        if (!res.ok) throw new Error(`API cerbero (listarVetores) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // Vínculos pessoa↔endereço (aba "Vínculos" → "Endereços" da ficha da
+    // pessoa no Cérbero — extraído por tools/atualizador-local/cerbero_har.py,
+    // ver hostinger-api/cerbero.php). Leitura aberta (sem X-Api-Key),
+    // mesmo padrão de listarVetores/listar_pessoas/listar_enderecos. Só
+    // existe vínculo pra quem o usuário abriu essa sub-aba durante a
+    // captura — a lista pode vir bem menor que o total de pessoas.
+    async function cerberoListarPessoaEnderecos(cfg) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl) return [];
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=listar_pessoa_enderecos`);
+        if (!res.ok) throw new Error(`API cerbero (listar_pessoa_enderecos) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // Galeria de fotos de 1 pessoa do Cérbero (cerbero_pessoa_fotos) —
+    // mesmo padrão de Autores/Suspeitos.listarFotos, usado pelo modal de
+    // detalhe em js/cerbero.js.
+    async function cerberoListarFotos(cfg, id) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl || !id) return [];
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=listarFotos&id=${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error(`API cerbero (listarFotos) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // Chamado pelo botão "🧠 Gerar reconhecimento facial" em js/cerbero.js
+    // — depois que o navegador já baixou a foto de uma pessoa importada e
+    // calculou o embedding via face-api.js.
+    async function cerberoAtualizarVetorFacial(cfg, id, vetorFacial) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl) throw new Error('Cérbero só está disponível para o 10º BPM.');
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=atualizarVetorFacial`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+            body: JSON.stringify({ id, vetorFacial: Array.from(vetorFacial) }),
+        });
+        if (!res.ok) {
+            let msg = `API cerbero (atualizarVetorFacial) — HTTP ${res.status}`;
+            try { const j = await res.json(); if (j && j.erro) msg = j.erro; } catch (e) {}
+            throw new Error(msg);
+        }
+        return await res.json();
+    }
+
     // Upload de foto (arquivo de verdade, multipart/form-data) — diferente
     // de autoresApiFetch (que só manda JSON): NÃO define Content-Type
     // manualmente, o navegador precisa gerar o boundary do multipart
@@ -924,6 +982,12 @@
         PessoasEchelonx: {
             listarVetores: pessoasEchelonxListarVetores,
             buscarPorCpf: pessoasEchelonxBuscarPorCpf
+        },
+        Cerbero: {
+            listarVetores: cerberoListarVetores,
+            atualizarVetorFacial: cerberoAtualizarVetorFacial,
+            listarPessoaEnderecos: cerberoListarPessoaEnderecos,
+            listarFotos: cerberoListarFotos
         }
     };
 
