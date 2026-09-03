@@ -16,6 +16,15 @@
     let enderecos = [];
     let carregado = false;
 
+    // Tabela paginada (03/09/2026, pedido explícito do usuário: "devolvendo
+    // a tabela porém com limite de 50 linhas para cada página") — a busca
+    // acima FILTRA a lista, a tabela sempre mostra o resultado paginado
+    // (com busca vazia = tudo, paginado). Mesmo tamanho de página que
+    // Autores/Suspeitos já usam (ver ITENS_POR_PAGINA em js/autores.js).
+    const ITENS_POR_PAGINA = 50;
+    let paginaAtualPessoas = 1;
+    let paginaAtualEnderecos = 1;
+
     // Vínculos pessoa↔endereço (aba "Vínculos" → "Endereços" da ficha da
     // pessoa no Cérbero — ver tools/atualizador-local/cerbero_har.py). Só
     // existe vínculo pra quem o usuário abriu essa sub-aba durante a
@@ -92,61 +101,91 @@
         return normalizar(e.endereco).includes(queryNorm);
     }
 
-    function renderizarResultadosBusca(pessoasEncontradas, enderecosEncontrados) {
-        const wrap = document.getElementById('cerbero-resultados');
-        const info = document.getElementById('cerbero-resultados-info');
-        const total = pessoasEncontradas.length + enderecosEncontrados.length;
+    function listaFiltradaPessoas() {
+        const bruto = document.getElementById('cerbero-input-busca').value.trim();
+        if (!bruto) return pessoas;
+        const queryNorm = normalizar(bruto);
+        const queryDigitos = bruto.replace(/\D/g, '');
+        return pessoas.filter(p => pessoaCasaComBusca(p, queryNorm, queryDigitos));
+    }
+
+    function listaFiltradaEnderecos() {
+        const bruto = document.getElementById('cerbero-input-busca').value.trim();
+        if (!bruto) return enderecos;
+        const queryNorm = normalizar(bruto);
+        return enderecos.filter(e => enderecoCasaComBusca(e, queryNorm));
+    }
+
+    function renderizarTabelaPessoas() {
+        const lista = listaFiltradaPessoas();
+        const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA));
+        if (paginaAtualPessoas > totalPaginas) paginaAtualPessoas = totalPaginas;
+        const inicio = (paginaAtualPessoas - 1) * ITENS_POR_PAGINA;
+        const pagina = lista.slice(inicio, inicio + ITENS_POR_PAGINA);
         const baseFotos = (cfgUnidade && cfgUnidade.apiPhp && cfgUnidade.apiPhp.fotosCerberoBaseUrl) || '';
 
-        if (!total) {
-            info.textContent = 'Nenhum resultado encontrado.';
-            wrap.innerHTML = '';
-            return;
-        }
-        info.textContent = `${pessoasEncontradas.length} pessoa(s), ${enderecosEncontrados.length} endereço(s) encontrado(s).`;
-
-        const itensPessoas = pessoasEncontradas.map(p => {
+        document.getElementById('cerbero-corpo-pessoas').innerHTML = pagina.map(p => {
             const foto = p.fotoArquivo
-                ? `<img src="${escaparHtml(baseFotos + p.fotoArquivo)}" alt="" class="cb-resultado-foto">`
-                : '<div class="cb-resultado-foto cb-resultado-foto-vazia">👤</div>';
-            const sub = [p.cpf ? `CPF ${p.cpf}` : null, p.faccao, p.situacao].filter(Boolean).join(' · ') || '—';
-            return `<div class="cb-resultado-item" data-cb-pessoa="${escaparHtml(p.id)}" title="Clique para ver os detalhes">
-                ${foto}
-                <div class="cb-resultado-info">
-                    <div class="cb-resultado-titulo">${escaparHtml(p.nome || '(sem nome)')}</div>
-                    <div class="cb-resultado-sub">${escaparHtml(sub)}</div>
-                </div>
-            </div>`;
-        });
-        const itensEnderecos = enderecosEncontrados.map(e => {
+                ? `<img src="${escaparHtml(baseFotos + p.fotoArquivo)}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:4px;">`
+                : '—';
+            return `<tr data-cb-pessoa="${escaparHtml(p.id)}" title="Clique para ver os detalhes">
+                <td>${foto}</td>
+                <td>${escaparHtml(p.nome || '---')}</td>
+                <td>${escaparHtml(p.vulgos || '---')}</td>
+                <td>${escaparHtml(p.cpf || '---')}</td>
+                <td>${escaparHtml(p.filiacao1 || '---')}</td>
+                <td>${formatarDataBr(p.nascimento)}</td>
+                <td>${escaparHtml(p.sexo || '---')}</td>
+                <td>${escaparHtml(p.situacao || '---')}</td>
+                <td>${escaparHtml(p.faccao || '---')}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="9" class="empty-msg">Nenhuma pessoa encontrada.</td></tr>';
+
+        const pagWrap = document.getElementById('cerbero-paginacao-pessoas');
+        pagWrap.style.display = lista.length > ITENS_POR_PAGINA ? 'flex' : 'none';
+        document.getElementById('cerbero-pessoas-pag-texto').textContent = `Página ${paginaAtualPessoas} de ${totalPaginas} (${lista.length} pessoa(s))`;
+        document.getElementById('cerbero-pessoas-pag-anterior').disabled = paginaAtualPessoas <= 1;
+        document.getElementById('cerbero-pessoas-pag-proxima').disabled = paginaAtualPessoas >= totalPaginas;
+    }
+
+    function renderizarTabelaEnderecos() {
+        const lista = listaFiltradaEnderecos();
+        const totalPaginas = Math.max(1, Math.ceil(lista.length / ITENS_POR_PAGINA));
+        if (paginaAtualEnderecos > totalPaginas) paginaAtualEnderecos = totalPaginas;
+        const inicio = (paginaAtualEnderecos - 1) * ITENS_POR_PAGINA;
+        const pagina = lista.slice(inicio, inicio + ITENS_POR_PAGINA);
+
+        document.getElementById('cerbero-corpo-enderecos').innerHTML = pagina.map(e => {
             const qtdPessoas = (pessoasDoEndereco.get(String(e.id)) || []).length;
-            const sub = qtdPessoas ? `${qtdPessoas} pessoa(s) vinculada(s)` : 'nenhum vínculo capturado';
-            return `<div class="cb-resultado-item" data-cb-endereco="${escaparHtml(e.id)}" title="Clique para ver os detalhes">
-                <div class="cb-resultado-foto cb-resultado-foto-vazia">📍</div>
-                <div class="cb-resultado-info">
-                    <div class="cb-resultado-titulo">${escaparHtml(e.endereco || '(sem endereço)')}</div>
-                    <div class="cb-resultado-sub">${escaparHtml(sub)}</div>
-                </div>
-            </div>`;
-        });
-        wrap.innerHTML = itensPessoas.join('') + itensEnderecos.join('');
+            const vinculo = qtdPessoas ? `${qtdPessoas} pessoa(s)` : '<span style="opacity:.5;">nenhum vínculo capturado</span>';
+            return `<tr data-cb-endereco="${escaparHtml(e.id)}" title="Clique para ver os detalhes">
+                <td>${escaparHtml(e.endereco || '---')}</td>
+                <td>${vinculo}</td>
+            </tr>`;
+        }).join('') || '<tr><td colspan="2" class="empty-msg">Nenhum endereço encontrado.</td></tr>';
+
+        const pagWrap = document.getElementById('cerbero-paginacao-enderecos');
+        pagWrap.style.display = lista.length > ITENS_POR_PAGINA ? 'flex' : 'none';
+        document.getElementById('cerbero-enderecos-pag-texto').textContent = `Página ${paginaAtualEnderecos} de ${totalPaginas} (${lista.length} endereço(s))`;
+        document.getElementById('cerbero-enderecos-pag-anterior').disabled = paginaAtualEnderecos <= 1;
+        document.getElementById('cerbero-enderecos-pag-proxima').disabled = paginaAtualEnderecos >= totalPaginas;
+    }
+
+    function renderizarTudo() {
+        if (!carregado) return;
+        const info = document.getElementById('cerbero-resultados-info');
+        const bruto = document.getElementById('cerbero-input-busca').value.trim();
+        info.textContent = bruto
+            ? `${listaFiltradaPessoas().length} pessoa(s), ${listaFiltradaEnderecos().length} endereço(s) encontrado(s).`
+            : `${pessoas.length} pessoa(s), ${enderecos.length} endereço(s) no total.`;
+        renderizarTabelaPessoas();
+        renderizarTabelaEnderecos();
     }
 
     function buscar() {
-        const bruto = document.getElementById('cerbero-input-busca').value.trim();
-        const info = document.getElementById('cerbero-resultados-info');
-        const wrap = document.getElementById('cerbero-resultados');
-        if (!bruto) {
-            wrap.innerHTML = '';
-            info.textContent = '';
-            return;
-        }
-        if (!carregado) { info.textContent = 'Carregando dados...'; return; }
-        const queryNorm = normalizar(bruto);
-        const queryDigitos = bruto.replace(/\D/g, '');
-        const pessoasEncontradas = pessoas.filter(p => pessoaCasaComBusca(p, queryNorm, queryDigitos));
-        const enderecosEncontrados = enderecos.filter(e => enderecoCasaComBusca(e, queryNorm));
-        renderizarResultadosBusca(pessoasEncontradas, enderecosEncontrados);
+        paginaAtualPessoas = 1;
+        paginaAtualEnderecos = 1;
+        renderizarTudo();
     }
 
     async function carregarDados(forcar) {
@@ -167,8 +206,8 @@
             enderecos = Array.isArray(respEnderecos) ? respEnderecos : [];
             montarMapasDeVinculo(respVinculos);
             carregado = true;
-            buscar(); // se já havia texto digitado (ex.: reimportação), reexecuta com os dados novos
-            if (statusEl) statusEl.textContent = `${pessoas.length} pessoa(s), ${enderecos.length} endereço(s) carregado(s) — use a busca acima.`;
+            renderizarTudo();
+            if (statusEl) statusEl.textContent = `${pessoas.length} pessoa(s), ${enderecos.length} endereço(s) carregado(s).`;
         } catch (e) {
             console.error('[cerbero] Erro ao carregar dados:', e);
             if (statusEl) statusEl.textContent = '⚠️ Erro ao carregar dados da Hostinger: ' + e.message;
@@ -365,12 +404,6 @@
         style.id = 'cb-detalhe-estilos';
         style.textContent = `
             .cb-resultado-item { display:flex; align-items:center; gap:12px; border:1px solid var(--p3-border); border-radius:8px; padding:8px 12px; margin-bottom:8px; cursor:pointer; transition:border-color .1s; }
-            .cb-resultado-item:hover { border-color:var(--p3-blue-700,#003366); }
-            .cb-resultado-foto { width:44px; height:44px; border-radius:6px; object-fit:cover; flex:0 0 44px; }
-            .cb-resultado-foto-vazia { background:var(--p3-bg); display:flex; align-items:center; justify-content:center; font-size:18px; border:1px solid var(--p3-border); box-sizing:border-box; }
-            .cb-resultado-info { flex:1; min-width:0; }
-            .cb-resultado-titulo { font-weight:600; font-size:13.5px; }
-            .cb-resultado-sub { font-size:12px; color:var(--p3-text-muted); margin-top:2px; }
             .cb-btn { display:inline-block; background:var(--p3-blue-700,#003366); color:#fff; border:none; border-radius:6px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; text-decoration:none; }
             .cb-btn:hover { opacity:.9; }
             .cb-btn:disabled { opacity:.5; cursor:not-allowed; }
@@ -460,9 +493,6 @@
             }).join('')
             : '<div class="cb-vazio">Nenhum endereço vinculado nesta captura — abra a aba "Vínculos → Endereços" desta pessoa no Cérbero antes de exportar o próximo .har pra isso aparecer aqui.</div>';
 
-        const consultaExistente = (ultimaConsultaIntegrada && String(ultimaConsultaIntegrada.pessoaId) === String(p.id))
-            ? ultimaConsultaIntegrada.resultado : null;
-
         document.getElementById('cb-corpo').innerHTML = `
             <div class="cb-foto-col">
                 ${urlFotoPrincipal ? `<img class="cb-foto-principal" src="${escaparHtml(urlFotoPrincipal)}" alt="Foto principal">` : `<div class="cb-foto-vazia">Sem foto cadastrada</div>`}
@@ -481,21 +511,17 @@
                 </div>
                 <div>
                     <div class="cb-secao-titulo">🔎 Consulta Integrada</div>
-                    <div id="cb-consulta-integrada">
-                        ${consultaExistente
-                            ? montarResumoConsultaIntegradaHtml(p, consultaExistente)
-                            : (p.cpf
-                                ? `<button type="button" id="cb-btn-consulta-integrada" class="cb-btn">🔎 Fazer consulta integrada</button>`
-                                : '<div class="cb-vazio">Pessoa sem CPF — não é possível fazer a consulta integrada.</div>')}
-                    </div>
+                    <div id="cb-consulta-integrada"><div class="cb-vazio">⏳ Carregando...</div></div>
                 </div>
             </div>`;
 
         document.getElementById('cb-detalhe-modal').classList.add('aberto');
-
-        const btnConsultaIntegrada = document.getElementById('cb-btn-consulta-integrada');
-        if (btnConsultaIntegrada) btnConsultaIntegrada.addEventListener('click', () => executarConsultaIntegrada(p));
         document.getElementById('cb-btn-imprimir-dossie').addEventListener('click', () => imprimirDossie(p));
+
+        // Consulta Integrada (03/09/2026, pedido explícito do usuário) —
+        // NÃO espera clique: já tenta mostrar/rodar sozinha assim que o
+        // modal abre (ver carregarOuExecutarConsultaIntegrada abaixo).
+        carregarOuExecutarConsultaIntegrada(p);
 
         // Galeria carregada à parte (chamada de rede) — não trava a
         // abertura do modal.
@@ -518,44 +544,113 @@
         }
     }
 
-    // Resumo compacto (contagens + alerta de mandado) do resultado da
-    // Consulta Integrada (mesmo objeto que page/consulta-pessoa.html usa,
-    // ver js/consulta-pessoa.js) — não reimplementa a renderização
-    // inteira de lá (~2000 linhas, várias fontes CAD/TJ/BNMP/Supabase);
-    // o link "Abrir consulta completa" leva pra tela de verdade pra quem
-    // quiser aprofundar. Os mesmos campos aqui alimentam o dossiê
+    function formatarDataHoraBr(mysqlDatetime) {
+        if (!mysqlDatetime) return '';
+        const m = String(mysqlDatetime).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        return m ? `${m[3]}/${m[2]}/${m[1]} ${m[4]}:${m[5]}` : String(mysqlDatetime);
+    }
+
+    // Resumo (03/09/2026, pedido explícito do usuário: "mostrando todos
+    // os dados como no consulta integrada com fotos do alcatraz e idseg e
+    // processos") — mesmo objeto que page/consulta-pessoa.html usa (ver
+    // js/consulta-pessoa.js), com galeria de fotos (r.fotos já junta
+    // Alcatraz + Quimera/IDSEG num array só) e tabela de processos
+    // inline. Não reimplementa a renderização INTEIRA de lá (~2000
+    // linhas, ocorrências/vínculos/veículos em detalhe exaustivo) — o
+    // link "Abrir consulta completa" leva pra tela de verdade pra quem
+    // quiser aprofundar nisso. Os mesmos campos aqui alimentam o dossiê
     // impresso (ver montarDossieHtml).
-    function montarResumoConsultaIntegradaHtml(p, r) {
+    function montarResumoConsultaIntegradaHtml(p, r, consultadoEmTexto) {
         const pessoaR = r.pessoa || {};
         const totalOcorrencias = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
-        const totalProcessos = (r.processos || []).length;
+        const processos = r.processos || [];
         const totalVeiculos = (r.veiculos || []).length;
         const totalVinculos = ((pessoaR.mae || pessoaR.pai) ? 1 : 0) + (r.vinculosOcorrencia || []).length + ((r.inteligencia && r.inteligencia.vinculos) || []).length;
         const mandadoAtivo = !!(r.mandados && r.mandados.possuiMandado);
+        const fotos = r.fotos || [];
+
+        const galeriaHtml = fotos.length
+            ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">${fotos.map(f =>
+                `<a href="${escaparHtml(f)}" target="_blank" rel="noopener"><img src="${escaparHtml(f)}" alt="" style="width:64px;height:64px;object-fit:cover;border-radius:6px;border:1px solid var(--p3-border);"></a>`
+              ).join('')}</div>`
+            : '<div class="cb-vazio" style="margin-bottom:10px;">Nenhuma foto encontrada (Alcatraz/Quimera).</div>';
+
+        const processosHtml = processos.length
+            ? `<div class="cb-secao-titulo" style="border:none;padding:0;margin:10px 0 4px;font-size:11px;">Processos judiciais (${processos.length})</div>` +
+              processos.slice(0, 10).map(pr => `<div class="cb-lista-item" style="cursor:default;">${escaparHtml(pr.tribunal || 'TJAL')} — ${escaparHtml(pr.numeroProcesso || '—')}${pr.classe ? ' · ' + escaparHtml(pr.classe) : ''}</div>`).join('')
+            : '';
+
         return `
+            ${consultadoEmTexto ? `<div style="font-size:11px;color:var(--p3-text-muted);margin-bottom:8px;">Consultado em ${escaparHtml(consultadoEmTexto)}</div>` : ''}
             ${mandadoAtivo ? '<div class="cb-alerta">🚨 Mandado de prisão ativo (BNMP)</div>' : ''}
+            ${galeriaHtml}
             <div class="cb-campos">
                 ${linhaCampo('Vínculos', String(totalVinculos))}
                 ${linhaCampo('Ocorrências', String(totalOcorrencias))}
-                ${linhaCampo('Processos', String(totalProcessos))}
+                ${linhaCampo('Processos', String(processos.length))}
                 ${linhaCampo('Veículos', String(totalVeiculos))}
             </div>
-            <a href="consulta-pessoa.html?cpf=${encodeURIComponent(p.cpf)}" target="_blank" rel="noopener" class="cb-btn" style="display:inline-block;margin-top:8px;">↗ Abrir consulta completa</a>`;
+            ${processosHtml}
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="consulta-pessoa.html?cpf=${encodeURIComponent(p.cpf)}" target="_blank" rel="noopener" class="cb-btn">↗ Abrir consulta completa</a>
+                <button type="button" id="cb-btn-nova-consulta" class="cb-btn" style="background:#8a6100;" title="Roda a consulta de novo e sobrescreve os dados salvos, caso ache que estão desatualizados">🔄 Nova consulta</button>
+            </div>`;
+    }
+
+    // Orquestra a abertura da Consulta Integrada (03/09/2026, pedido
+    // explícito do usuário): 1º tenta a versão JÁ SALVA na Hostinger
+    // (rápida, sem precisar do CAD); se não tiver, roda a consulta de
+    // verdade SOZINHA (sem precisar clicar em nada) quando o atualizador
+    // local (CAD/Quimera) estiver disponível, e salva o resultado assim
+    // que chega — pra da PRÓXIMA vez que essa pessoa for aberta, ser
+    // instantâneo. O botão "🔄 Nova consulta" (dentro do resumo) sempre
+    // permite forçar uma consulta nova, sobrescrevendo a salva.
+    async function carregarOuExecutarConsultaIntegrada(p) {
+        const area = document.getElementById('cb-consulta-integrada');
+        if (!area) return;
+        if (!p.cpf) {
+            area.innerHTML = '<div class="cb-vazio">Pessoa sem CPF — não é possível fazer a consulta integrada.</div>';
+            return;
+        }
+
+        try {
+            const salvo = await P3.Cerbero.obterConsultaIntegrada(cfgUnidade, p.id);
+            if (salvo && salvo.encontrado) {
+                ultimaConsultaIntegrada = { pessoaId: p.id, resultado: salvo.resultado };
+                area.innerHTML = montarResumoConsultaIntegradaHtml(p, salvo.resultado, formatarDataHoraBr(salvo.consultadoEm));
+                const btnNova = document.getElementById('cb-btn-nova-consulta');
+                if (btnNova) btnNova.addEventListener('click', () => executarConsultaIntegrada(p));
+                return;
+            }
+        } catch (e) {
+            console.error('[cerbero] erro ao buscar consulta integrada salva:', e);
+        }
+
+        // Sem nada salvo ainda — tenta rodar sozinha (cai pro botão manual
+        // dentro de executarConsultaIntegrada se o CAD/Quimera não estiver
+        // disponível agora).
+        await executarConsultaIntegrada(p);
     }
 
     // roda /pessoa/consultar (mesma rota/serviço local de page/consulta-
     // pessoa.html — CAD PPE/PC/SISPOL/BNMP/IDNET, TJAL, Supabase) direto
     // pra dentro do modal, sem precisar trocar de tela. Exige o
-    // atualizador local aberto (mesma exigência de lá) — a trava de
-    // nível (P2/ADMIN) já é a mesma que libera a aba Cérbero inteira.
+    // atualizador local aberto e logado no CAD/Quimera — a trava de
+    // nível (P2/ADMIN) já é a mesma que libera a página Cérbero inteira.
+    // Ao terminar, SALVA o resultado na Hostinger (ver
+    // carregarOuExecutarConsultaIntegrada acima) pra não precisar
+    // reconsultar da próxima vez.
     async function executarConsultaIntegrada(p) {
         const area = document.getElementById('cb-consulta-integrada');
         if (!area) return;
         if (typeof P3AtualizadorLocal === 'undefined' || !(await P3AtualizadorLocal.disponivel())) {
-            area.innerHTML = '<div class="cb-vazio">⚠️ O atualizador local precisa estar aberto pra fazer a consulta integrada. Abra o Sistema P3 (app desktop) e tente de novo.</div>';
+            area.innerHTML = '<div class="cb-vazio">⚠️ O atualizador local (CAD/Quimera) não está aberto — não deu pra consultar automaticamente.</div>' +
+                '<button type="button" id="cb-btn-consulta-integrada" class="cb-btn" style="margin-top:6px;">🔎 Tentar consulta integrada</button>';
+            const btnTentar = document.getElementById('cb-btn-consulta-integrada');
+            if (btnTentar) btnTentar.addEventListener('click', () => executarConsultaIntegrada(p));
             return;
         }
-        area.innerHTML = '<div class="cb-vazio" id="cb-consulta-progresso">⏳ Iniciando consulta...</div>';
+        area.innerHTML = '<div class="cb-vazio" id="cb-consulta-progresso">⏳ Iniciando consulta integrada (CAD/Quimera)...</div>';
         try {
             const resultado = await P3AtualizadorLocal.consultarPessoaStream(p.cpf, function (evento) {
                 const el = document.getElementById('cb-consulta-progresso');
@@ -564,7 +659,15 @@
                 else if (evento.tipo === 'aguardando') el.textContent = '⏳ ' + (evento.mensagem || 'Aguardando outra consulta terminar...');
             });
             ultimaConsultaIntegrada = { pessoaId: p.id, resultado };
-            area.innerHTML = montarResumoConsultaIntegradaHtml(p, resultado);
+            area.innerHTML = montarResumoConsultaIntegradaHtml(p, resultado, new Date().toLocaleString('pt-BR'));
+            const btnNova = document.getElementById('cb-btn-nova-consulta');
+            if (btnNova) btnNova.addEventListener('click', () => executarConsultaIntegrada(p));
+            // Salva pra próxima abertura ser instantânea — não trava a
+            // tela por isso, e uma falha aqui não invalida o que já foi
+            // mostrado (só significa que vai reconsultar da próxima vez).
+            P3.Cerbero.salvarConsultaIntegrada(cfgUnidade, p.id, p.cpf, resultado).catch(e => {
+                console.error('[cerbero] falha ao salvar consulta integrada:', e);
+            });
         } catch (e) {
             console.error('[cerbero] Erro na consulta integrada:', e);
             area.innerHTML = `<div class="cb-vazio">⚠️ Erro na consulta: ${escaparHtml(e.message)}</div>
@@ -743,16 +846,12 @@
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // Sob controle da P2 — pedido explícito do usuário: aba (e o
-        // recurso todo) só aparece pra sessão p2/admin, mesmo critério já
-        // usado pra fonte 7/8 de notificações (autor/suspeito) em
-        // js/core/notificacoes.js.
-        const sessao = (window.P3 && window.P3.getSession) ? window.P3.getSession() : null;
-        const autorizado = !!sessao && (sessao.nivel === 'p2' || sessao.nivel === 'admin');
-        const btnAba = document.getElementById('aba-btn-cerbero');
-        if (!btnAba) return;
-        if (!autorizado) return; // fica escondida (display:none já é o padrão no HTML)
-        btnAba.style.display = '';
+        // 03/09/2026 — Cérbero virou página própria (page/cerbero.html),
+        // que já bloqueia a página inteira pra quem não é P2/ADMIN antes
+        // de sequer chamar carregarSeNecessario(). A checagem de nível
+        // que existia aqui (quando isso era uma ABA escondida dentro de
+        // Autores) não é mais necessária.
+        if (!document.getElementById('cerbero-input-busca')) return; // página sem esse painel — nada a fazer
 
         document.getElementById('cerbero-input-har').addEventListener('change', function (e) {
             document.getElementById('cerbero-btn-importar').disabled = !(e.target.files && e.target.files.length);
@@ -777,13 +876,30 @@
         });
         document.getElementById('cerbero-btn-buscar').addEventListener('click', buscar);
 
-        // Clique num resultado da busca (pessoa ou endereço) abre o modal
-        // de detalhe (delegado, já que a lista é recriada a cada busca).
-        document.getElementById('cerbero-resultados').addEventListener('click', function (e) {
-            const itemPessoa = e.target.closest('[data-cb-pessoa]');
-            if (itemPessoa) { abrirDetalhePessoa(itemPessoa.dataset.cbPessoa); return; }
-            const itemEndereco = e.target.closest('[data-cb-endereco]');
-            if (itemEndereco) abrirDetalheEndereco(itemEndereco.dataset.cbEndereco);
+        // Paginação (50 por página) — Pessoas e Endereços são
+        // independentes uma da outra.
+        document.getElementById('cerbero-pessoas-pag-anterior').addEventListener('click', () => {
+            if (paginaAtualPessoas > 1) { paginaAtualPessoas--; renderizarTabelaPessoas(); }
+        });
+        document.getElementById('cerbero-pessoas-pag-proxima').addEventListener('click', () => {
+            paginaAtualPessoas++; renderizarTabelaPessoas();
+        });
+        document.getElementById('cerbero-enderecos-pag-anterior').addEventListener('click', () => {
+            if (paginaAtualEnderecos > 1) { paginaAtualEnderecos--; renderizarTabelaEnderecos(); }
+        });
+        document.getElementById('cerbero-enderecos-pag-proxima').addEventListener('click', () => {
+            paginaAtualEnderecos++; renderizarTabelaEnderecos();
+        });
+
+        // Clique numa linha da tabela (pessoa ou endereço) abre o modal de
+        // detalhe (delegado, já que a tabela é recriada a cada página).
+        document.getElementById('cerbero-corpo-pessoas').addEventListener('click', function (e) {
+            const linha = e.target.closest('[data-cb-pessoa]');
+            if (linha) abrirDetalhePessoa(linha.dataset.cbPessoa);
+        });
+        document.getElementById('cerbero-corpo-enderecos').addEventListener('click', function (e) {
+            const linha = e.target.closest('[data-cb-endereco]');
+            if (linha) abrirDetalheEndereco(linha.dataset.cbEndereco);
         });
 
         // Navegação DENTRO do modal — clicar num endereço vinculado (na
