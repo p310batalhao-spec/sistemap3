@@ -121,6 +121,23 @@
                     <p>Consulta Integrada de Pessoas</p>
                 </a>
 
+                <!-- Cérbero (03/09/2026, movido pra página própria — antes era
+                     uma aba dentro de Autores) — base de inteligência da PM-AL,
+                     sob controle da P2. Mesma trava de nível de Consulta
+                     Integrada, ver JS abaixo (#link-cerbero). -->
+                <a class="btn" href="cerbero.html" id="link-cerbero" title="Base de inteligência (Cérbero) — pessoas, endereços e reconhecimento facial" style="display:none;">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/dog.png" alt="cérbero" />
+                    <p>Cérbero</p>
+                </a>
+
+                <!-- Reconhecimento Facial (03/09/2026, movido pra página própria
+                     — antes era uma aba dentro de Autores). Sem trava de nível
+                     extra (só o padrão desta página, 10º BPM). -->
+                <a class="btn" href="reconhecimento-facial.html" title="Comparação por similaridade — Autores, Suspeitos, Echelonx e Cérbero">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/face-id.png" alt="reconhecimento facial" />
+                    <p>Reconhecimento Facial</p>
+                </a>
+
                 <!-- Denúncias Recorrentes (31/08/2026, redesenhada em
                      01/09/2026) — pedido explícito do usuário: agrupa
                      denúncias (tb_denuncias, Supabase) por endereço
@@ -173,6 +190,12 @@
         const linkConsultaPessoa = document.getElementById('link-consulta-pessoa');
         if (linkConsultaPessoa && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
             linkConsultaPessoa.style.display = '';
+        }
+
+        // Cérbero — mesma trava de nível de Consulta Integrada (P2/ADMIN).
+        const linkCerbero = document.getElementById('link-cerbero');
+        if (linkCerbero && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
+            linkCerbero.style.display = '';
         }
     });
 
