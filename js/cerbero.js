@@ -434,7 +434,56 @@
             .cb-lista-item { border:1px solid var(--p3-border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; cursor:pointer; }
             .cb-lista-item:hover { border-color:var(--p3-blue-700,#003366); }
         `;
+        // Modal com iframe (03/09/2026, pedido explícito do usuário: "eu
+        // quero que abra em modal" — antes "Abrir consulta completa" abria
+        // consulta-pessoa.html em nova aba/janela, o que também esbarrava
+        // no bloqueador de pop-up do navegador). z-index acima do modal de
+        // detalhe (9100) pra poder abrir por cima dele sem fechá-lo.
+        style.textContent += `
+            #cb-iframe-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:9200; align-items:center; justify-content:center; padding:16px; }
+            #cb-iframe-modal.aberto { display:flex; }
+            .cb-iframe-box { background:var(--p3-surface,#fff); border-radius:12px; width:100%; height:100%; max-width:1200px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 16px 48px rgba(0,0,0,.4); }
+            .cb-iframe-head { background:#003366; color:#fff; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:600; flex:0 0 auto; }
+            .cb-iframe-head button { background:none; border:none; color:rgba(255,255,255,.75); font-size:1.3rem; cursor:pointer; line-height:1; }
+            .cb-iframe-box iframe { flex:1 1 auto; border:0; width:100%; background:var(--p3-bg,#fff); }
+        `;
         document.head.appendChild(style);
+    }
+
+    // ── Modal com iframe pra "Abrir consulta completa" (03/09/2026) ────
+    function garantirModalIframe() {
+        garantirEstilosCerbero();
+        if (document.getElementById('cb-iframe-modal')) return;
+        const div = document.createElement('div');
+        div.id = 'cb-iframe-modal';
+        div.innerHTML = `
+            <div class="cb-iframe-box">
+                <div class="cb-iframe-head">
+                    <span>🔎 Consulta Integrada completa</span>
+                    <button type="button" id="cb-iframe-fechar" title="Fechar">✕</button>
+                </div>
+                <iframe id="cb-iframe-conteudo" src="about:blank"></iframe>
+            </div>`;
+        document.body.appendChild(div);
+        document.getElementById('cb-iframe-fechar').addEventListener('click', fecharModalIframe);
+        div.addEventListener('click', e => { if (e.target === div) fecharModalIframe(); });
+    }
+
+    function fecharModalIframe() {
+        const el = document.getElementById('cb-iframe-modal');
+        if (!el) return;
+        el.classList.remove('aberto');
+        // Volta pro branco — evita manter a consulta anterior carregada
+        // (com fetch em andamento) escondida atrás do modal fechado.
+        const iframe = document.getElementById('cb-iframe-conteudo');
+        if (iframe) iframe.src = 'about:blank';
+    }
+
+    function abrirConsultaCompletaEmModal(cpf) {
+        if (!cpf) return;
+        garantirModalIframe();
+        document.getElementById('cb-iframe-conteudo').src = `consulta-pessoa.html?cpf=${encodeURIComponent(cpf)}`;
+        document.getElementById('cb-iframe-modal').classList.add('aberto');
     }
 
     function garantirModalDetalhe() {
@@ -592,7 +641,7 @@
             </div>
             ${processosHtml}
             <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                <a href="consulta-pessoa.html?cpf=${encodeURIComponent(p.cpf)}" target="_blank" rel="noopener" class="cb-btn">↗ Abrir consulta completa</a>
+                <button type="button" id="cb-btn-abrir-consulta-completa" class="cb-btn">↗ Abrir consulta completa</button>
                 <button type="button" id="cb-btn-nova-consulta" class="cb-btn" style="background:#8a6100;" title="Roda a consulta de novo e sobrescreve os dados salvos, caso ache que estão desatualizados">🔄 Nova consulta</button>
             </div>`;
     }
@@ -620,6 +669,8 @@
                 area.innerHTML = montarResumoConsultaIntegradaHtml(p, salvo.resultado, formatarDataHoraBr(salvo.consultadoEm));
                 const btnNova = document.getElementById('cb-btn-nova-consulta');
                 if (btnNova) btnNova.addEventListener('click', () => executarConsultaIntegrada(p));
+                const btnAbrir = document.getElementById('cb-btn-abrir-consulta-completa');
+                if (btnAbrir) btnAbrir.addEventListener('click', () => abrirConsultaCompletaEmModal(p.cpf));
                 return;
             }
         } catch (e) {
@@ -662,6 +713,8 @@
             area.innerHTML = montarResumoConsultaIntegradaHtml(p, resultado, new Date().toLocaleString('pt-BR'));
             const btnNova = document.getElementById('cb-btn-nova-consulta');
             if (btnNova) btnNova.addEventListener('click', () => executarConsultaIntegrada(p));
+            const btnAbrir = document.getElementById('cb-btn-abrir-consulta-completa');
+            if (btnAbrir) btnAbrir.addEventListener('click', () => abrirConsultaCompletaEmModal(p.cpf));
             // Salva pra próxima abertura ser instantânea — não trava a
             // tela por isso, e uma falha aqui não invalida o que já foi
             // mostrado (só significa que vai reconsultar da próxima vez).
@@ -833,16 +886,35 @@
             </body></html>`;
     }
 
+    // 03/09/2026 — trocado de window.open('', '_blank') pra um <iframe>
+    // oculto na própria página (pedido do usuário: apareceu "o navegador
+    // bloqueou a janela de impressão"). window.open pode ser bloqueado
+    // pelo navegador mesmo dentro de um clique de verdade (política de
+    // pop-up mais rígida no WebView2/alguns navegadores); um iframe nunca
+    // é tratado como pop-up, então esse bloqueio não existe mais aqui.
     function imprimirDossie(p) {
         const consultaExistente = (ultimaConsultaIntegrada && String(ultimaConsultaIntegrada.pessoaId) === String(p.id))
             ? ultimaConsultaIntegrada.resultado : null;
         const html = montarDossieHtml(p, consultaExistente);
-        const janela = window.open('', '_blank');
-        if (!janela) { alert('O navegador bloqueou a janela de impressão — permita pop-ups pra este site e tente de novo.'); return; }
-        janela.document.write(html);
-        janela.document.close();
-        janela.focus();
-        setTimeout(() => janela.print(), 300); // dá tempo da foto carregar antes de abrir o diálogo de impressão
+
+        let iframe = document.getElementById('cb-print-iframe');
+        if (!iframe) {
+            iframe = document.createElement('iframe');
+            iframe.id = 'cb-print-iframe';
+            // Fora da tela (não "display:none" — alguns navegadores não
+            // rodam layout/carregam imagens de um iframe totalmente
+            // escondido, o que tiraria a foto do dossiê impresso).
+            iframe.style.cssText = 'position:fixed;left:-10000px;top:0;width:800px;height:1120px;border:0;';
+            document.body.appendChild(iframe);
+        }
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(html);
+        doc.close();
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+        }, 300); // dá tempo da foto carregar antes de abrir o diálogo de impressão
     }
 
     document.addEventListener('DOMContentLoaded', function () {
