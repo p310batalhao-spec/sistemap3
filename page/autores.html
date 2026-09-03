@@ -543,6 +543,9 @@
                     <div class="rf-upload-area">
                         <input type="file" id="cerbero-input-har" accept=".har">
                         <button type="button" id="cerbero-btn-importar" disabled>Importar captura (.har)</button>
+                        <button type="button" id="cerbero-btn-facial" title="Calcula o reconhecimento facial (face-api.js, no navegador) pra quem já foi importado e tem foto, mas ainda não tem vetor calculado">
+                            🧠 Gerar reconhecimento facial
+                        </button>
                         <span id="cerbero-status-msg"></span>
                     </div>
                     <div class="p3-progress-wrap" id="cerbero-progresso-wrap" style="display:none;">
@@ -568,7 +571,7 @@
                     <h4 style="margin-top:22px;">Endereços</h4>
                     <input type="text" id="cerbero-filtro-enderecos" placeholder="Filtrar endereço..." style="max-width:400px;margin-bottom:10px;">
                     <table class="tabela-autores" id="cerbero-tabela-enderecos">
-                        <thead><tr><th>Endereço</th></tr></thead>
+                        <thead><tr><th>Endereço</th><th>Pessoas vinculadas</th></tr></thead>
                         <tbody id="cerbero-corpo-enderecos"></tbody>
                     </table>
                 </div>
