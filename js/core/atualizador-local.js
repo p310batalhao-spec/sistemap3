@@ -325,6 +325,35 @@
                 return resultadoFinal;
             }
 
+            // Mesma coisa, mas pra arquivo GRANDE já salvo no disco do
+            // usuário (03/09/2026) — em vez de reenviar o conteúdo inteiro
+            // pelo navegador (o que exige uma cópia temporária extra e pode
+            // não caber em disco pra capturas de vários GB, como já
+            // aconteceu na prática), manda só o CAMINHO em texto — o
+            // servidor Python (que roda no MESMO computador) lê o arquivo
+            // direto de onde ele já está, sem duplicar nada.
+            async function importarCaminhoLocalCerbero(caminho, onProgresso) {
+                const resp = await fetch(`${URL_BASE}/cerbero/importar-caminho-local`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ caminho: caminho }),
+                });
+                if (!resp.ok) {
+                    let detalhe = '';
+                    try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+                    throw new Error(detalhe || `Importação respondeu HTTP ${resp.status}`);
+                }
+                let resultadoFinal = null;
+                let erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                return resultadoFinal;
+            }
+
             global.P3AtualizadorLocal = {
                 URL_BASE: URL_BASE,
                 disponivel: disponivel,
@@ -346,5 +375,6 @@
                 rodarVarreduraDenunciasRecorrentes: rodarVarreduraDenunciasRecorrentes,
                 buscarGradeCad: buscarGradeCad,
                 importarHarCerbero: importarHarCerbero,
+                importarCaminhoLocalCerbero: importarCaminhoLocalCerbero,
             };
         })(window);
