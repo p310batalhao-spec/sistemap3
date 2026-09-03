@@ -481,6 +481,30 @@
         return await res.json();
     }
 
+    // Consulta Integrada persistida por pessoa do Cérbero (03/09/2026,
+    // pedido explícito do usuário) — {encontrado, resultado?, consultadoEm?}.
+    // Leitura aberta (mesmo padrão de listarFotos/listar_pessoas).
+    async function cerberoObterConsultaIntegrada(cfg, pessoaId) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl) return { encontrado: false };
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=obter_consulta_integrada&pessoaId=${encodeURIComponent(pessoaId)}`);
+        if (!res.ok) throw new Error(`API cerbero (obter_consulta_integrada) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // Salva/sobrescreve (upsert por pessoa_id) o resultado de 1 consulta
+    // integrada — chamado por js/cerbero.js logo depois de uma consulta
+    // nova terminar, pra próxima abertura da mesma pessoa ser instantânea.
+    async function cerberoSalvarConsultaIntegrada(cfg, pessoaId, cpf, resultado) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.cerberoUrl) return;
+        const res = await fetch(`${cfg.apiPhp.cerberoUrl}?action=salvar_consulta_integrada`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+            body: JSON.stringify({ pessoaId: pessoaId, cpf: cpf, resultado: resultado }),
+        });
+        if (!res.ok) throw new Error(`API cerbero (salvar_consulta_integrada) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
     // Chamado pelo botão "🧠 Gerar reconhecimento facial" em js/cerbero.js
     // — depois que o navegador já baixou a foto de uma pessoa importada e
     // calculou o embedding via face-api.js.
@@ -987,7 +1011,9 @@
             listarVetores: cerberoListarVetores,
             atualizarVetorFacial: cerberoAtualizarVetorFacial,
             listarPessoaEnderecos: cerberoListarPessoaEnderecos,
-            listarFotos: cerberoListarFotos
+            listarFotos: cerberoListarFotos,
+            obterConsultaIntegrada: cerberoObterConsultaIntegrada,
+            salvarConsultaIntegrada: cerberoSalvarConsultaIntegrada
         }
     };
 
