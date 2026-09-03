@@ -2162,5 +2162,17 @@
                 console.warn('[consulta-pessoa] falha ao abrir resultado salvo:', e.message);
             }
         }
+
+        // Deep-link "?cpf=..." (02/09/2026) — usado pelo botão "🔎 Consulta
+        // Integrada" da aba Cérbero (js/cerbero.js), que abre esta página
+        // numa aba nova já pronta pra consultar o CPF da pessoa. Mesmo
+        // caminho de consultar() (preenche o campo e roda a busca normal),
+        // então herda a mesma validação/aviso de servidor indisponível.
+        const cpfDeepLink = limparCpf(new URLSearchParams(location.search).get('cpf') || '');
+        if (cpfDeepLink.length === 11) {
+            alternarModoBusca('cpf');
+            document.getElementById('cip-input-cpf').value = formatarCpf(cpfDeepLink);
+            consultar();
+        }
     });
 })();
