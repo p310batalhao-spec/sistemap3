@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Cérbero</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* 03/09/2026 — página própria (antes era uma aba dentro de
+           Autores), pedido explícito do usuário. Mesmos tokens --p3-*
+           de sempre (troca sozinho no modo escuro). */
+        .cerbero-wrap { padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .cerbero-wrap h3 { color: var(--p3-text); }
+
+        .rf-aviso {
+            background: var(--p3-bg); border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-blue-700);
+            border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--p3-text-muted);
+        }
+        .rf-upload-area {
+            display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 16px;
+        }
+        .rf-upload-area input[type="file"] { font-size: 13px; color: var(--p3-text); }
+        .rf-upload-area input[type="text"] {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 13px;
+            background: var(--p3-surface); color: var(--p3-text);
+        }
+        .rf-upload-area button {
+            padding: 9px 16px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px; font-weight: 600;
+        }
+        .rf-upload-area button:hover { background: var(--p3-blue-500); }
+        .rf-upload-area button:disabled { opacity: .6; cursor: not-allowed; }
+        #cerbero-status-msg { font-size: 12px; color: var(--p3-text-muted); }
+
+        .p3-progress-wrap { margin: -4px 0 14px; }
+        .p3-progress-label {
+            display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+            font-size: 12px; color: var(--p3-text-muted); margin-bottom: 4px;
+        }
+        .p3-progress-track { width: 100%; height: 9px; border-radius: 5px; background: var(--p3-border); overflow: hidden; }
+        .p3-progress-fill { height: 100%; width: 0%; border-radius: 5px; background: var(--p3-blue-500); transition: width .5s ease; }
+        .p3-progress-fill.andamento {
+            background-image: repeating-linear-gradient(45deg, var(--p3-blue-500), var(--p3-blue-500) 10px, var(--p3-blue-700) 10px, var(--p3-blue-700) 20px);
+            background-size: 28px 28px; animation: p3-progress-stripes 1s linear infinite;
+        }
+        @keyframes p3-progress-stripes { from { background-position: 0 0; } to { background-position: 28px 0; } }
+
+        .cerbero-busca-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 22px; }
+        .cerbero-busca-row input[type="text"] {
+            padding: 8px 10px; border-radius: 6px; border: 1px solid var(--p3-border); font-size: 14px;
+            background: var(--p3-surface); color: var(--p3-text); min-width: 320px; flex: 1;
+        }
+        .cerbero-busca-row button {
+            padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer;
+            background: var(--p3-blue-700); color: #fff; font-size: 13px;
+        }
+        .cerbero-busca-row button:hover { background: var(--p3-blue-500); }
+
+        .autores-table-wrap { overflow: auto; max-height: 62vh; border-radius: 8px; box-shadow: var(--p3-shadow-lg); margin-top: 12px; }
+        table.tabela-autores { width: 100%; border-collapse: collapse; background: var(--p3-surface); font-size: 13px; color: var(--p3-text); }
+        table.tabela-autores th, table.tabela-autores td {
+            padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--p3-border); vertical-align: top;
+        }
+        table.tabela-autores th {
+            background: var(--p3-bg); font-weight: 600; white-space: nowrap; color: var(--p3-text);
+            position: sticky; top: 0; z-index: 1;
+        }
+        table.tabela-autores tbody tr { cursor: pointer; }
+        table.tabela-autores tbody tr:hover { background: rgba(127,127,127,.08); }
+        .empty-msg { padding: 24px; text-align: center; opacity: .6; color: var(--p3-text-muted); }
+
+        .p3-paginacao {
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+            margin-top: 10px; font-size: 13px; color: var(--p3-text-muted);
+        }
+        .p3-paginacao button {
+            padding: 6px 14px; border-radius: 6px; border: 1px solid var(--p3-border); cursor: pointer;
+            background: var(--p3-surface); color: var(--p3-text); font-size: 13px;
+        }
+        .p3-paginacao button:hover:not(:disabled) { background: var(--p3-blue-500); color: #fff; border-color: var(--p3-blue-500); }
+        .p3-paginacao button:disabled { opacity: .4; cursor: not-allowed; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active=""></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="cerbero-wrap">
+                <h3>🐕 Cérbero — Base de Inteligência (PM-AL)</h3>
+                <div class="rf-aviso">
+                    ⚠️ Dado importado de uma captura (.har/.ndjson) feita por você navegando o Cérbero — não é uma busca
+                    ao vivo (login de lá exige reCAPTCHA + autenticação de dois fatores, não automatizamos isso).
+                    Só reflete o que foi visitado/exportado na última captura. Reimporte uma captura nova todo mês
+                    (ou sempre que quiser) pra atualizar — nunca duplica, atualiza por ID do próprio Cérbero.
+                </div>
+
+                <div class="rf-upload-area">
+                    <input type="file" id="cerbero-input-har" accept=".har,.ndjson">
+                    <button type="button" id="cerbero-btn-importar" disabled>Importar captura (.har ou .ndjson)</button>
+                    <button type="button" id="cerbero-btn-facial" title="Calcula o reconhecimento facial (face-api.js, no navegador) pra quem já foi importado e tem foto, mas ainda não tem vetor calculado">
+                        🧠 Gerar reconhecimento facial
+                    </button>
+                    <span id="cerbero-status-msg"></span>
+                </div>
+                <div class="rf-upload-area" style="margin-top:-10px;">
+                    <input type="text" id="cerbero-input-caminho-local" placeholder="Ou cole aqui o caminho completo do arquivo (pra capturas grandes, GB+) — ex.: C:\Users\...\Downloads\cerbero_captura.ndjson" style="min-width:420px;flex:1;">
+                    <button type="button" id="cerbero-btn-importar-local" title="Lê o arquivo direto de onde ele já está no seu computador, sem reenviar pelo navegador — recomendado pra capturas de vários GB">Importar do disco local</button>
+                </div>
+                <div class="p3-progress-wrap" id="cerbero-progresso-wrap" style="display:none;">
+                    <div class="p3-progress-label">
+                        <span>Importando captura do Cérbero</span>
+                        <span id="cerbero-progresso-texto"></span>
+                    </div>
+                    <div class="p3-progress-track"><div class="p3-progress-fill andamento" id="cerbero-progresso-fill"></div></div>
+                </div>
+
+                <div class="cerbero-busca-row">
+                    <input type="text" id="cerbero-input-busca" placeholder="Filtrar por CPF, nome, cidade, facção, ORCRIM ou data de nascimento (dd/mm/aaaa)...">
+                    <button type="button" id="cerbero-btn-buscar">🔎 Filtrar</button>
+                </div>
+                <div id="cerbero-resultados-info" style="margin-top:8px;font-size:12.5px;opacity:.7;"></div>
+
+                <h4 style="margin-top:22px;">Pessoas</h4>
+                <div class="autores-table-wrap">
+                    <table class="tabela-autores">
+                        <thead>
+                            <tr>
+                                <th>Foto</th><th>Nome</th><th>Vulgos</th><th>CPF</th><th>Filiação</th>
+                                <th>Nascimento</th><th>Sexo</th><th>Situação</th><th>Facção</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cerbero-corpo-pessoas"><tr><td colspan="9" class="empty-msg">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="p3-paginacao" id="cerbero-paginacao-pessoas" style="display:none;">
+                    <button type="button" id="cerbero-pessoas-pag-anterior">‹ Anterior</button>
+                    <span id="cerbero-pessoas-pag-texto"></span>
+                    <button type="button" id="cerbero-pessoas-pag-proxima">Próxima ›</button>
+                </div>
+
+                <h4 style="margin-top:26px;">Endereços</h4>
+                <div class="autores-table-wrap">
+                    <table class="tabela-autores">
+                        <thead><tr><th>Endereço</th><th>Pessoas vinculadas</th></tr></thead>
+                        <tbody id="cerbero-corpo-enderecos"><tr><td colspan="2" class="empty-msg">Carregando...</td></tr></tbody>
+                    </table>
+                </div>
+                <div class="p3-paginacao" id="cerbero-paginacao-enderecos" style="display:none;">
+                    <button type="button" id="cerbero-enderecos-pag-anterior">‹ Anterior</button>
+                    <span id="cerbero-enderecos-pag-texto"></span>
+                    <button type="button" id="cerbero-enderecos-pag-proxima">Próxima ›</button>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/vendor/face-api.min.js"></script>
+    <script src="../js/core/facial-detect.js"></script>
+    <script src="../js/cerbero.js"></script>
+    <script>
+        // Recurso sensível — sob controle da P2 (mesmo critério de
+        // page/consulta-pessoa.html:requireP2OuAdmin). Antes essa checagem
+        // vivia dentro de js/cerbero.js (só mostrava a ABA); agora que é
+        // página própria, bloqueia a página inteira.
+        document.addEventListener('DOMContentLoaded', function () {
+            const sessao = P3.requireAuth();
+            if (!sessao) return;
+            if (sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
+                alert('Este recurso está disponível apenas para usuários com nível P2 ou ADMIN.');
+                location.href = 'solucoesia.html';
+                return;
+            }
+            if (window.P3Cerbero) window.P3Cerbero.carregarSeNecessario();
+        });
+    </script>
+</body>
+
+</html>
