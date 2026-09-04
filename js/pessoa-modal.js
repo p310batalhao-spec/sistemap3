@@ -108,6 +108,10 @@
             .pm-campo-valor { flex:1; color:var(--p3-text); word-break:break-word; white-space:pre-wrap; }
             .pm-vazio { font-size:12.5px; color:var(--p3-text-muted); font-style:italic; }
             .pm-lista-item { border:1px solid var(--p3-border); border-radius:6px; padding:8px 10px; margin-bottom:6px; font-size:12px; white-space:pre-wrap; }
+            .pm-btn { display:inline-block; background:var(--p3-blue-700,#003366); color:#fff; border:none; border-radius:6px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; width:100%; text-align:center; }
+            .pm-btn:hover { opacity:.9; }
+            .pm-btn:disabled { opacity:.6; cursor:not-allowed; }
+            .pm-btn-ativo { background:#8a6100; }
         `;
         document.head.appendChild(style);
     }
@@ -131,6 +135,7 @@
                         <div id="pm-foto-wrap"></div>
                         <div class="pm-galeria-titulo" id="pm-galeria-titulo" style="display:none;">Todas as fotos registradas</div>
                         <div class="pm-galeria" id="pm-galeria"></div>
+                        <div id="pm-btn-interesse-wrap" style="margin-top:4px;"></div>
                     </div>
                     <div class="pm-dados-col">
                         <div>
@@ -237,6 +242,53 @@
         }
     }
 
+    // ── "⭐ Add lista de interesses" (04/09/2026, módulo P2) — pedido
+    // explícito do usuário: um autor/suspeito marcado aqui passa a
+    // aparecer em page/lista-interesses.html, com processos/ocorrências
+    // acompanhados e novidades no sino (ver js/core/notificacoes.js). Só
+    // pra tipo 'autor'/'suspeito' — resultado de reconhecimento facial
+    // (echelonx) não tem cadastro próprio pra vincular. Estado (já
+    // adicionado ou não) é consultado ao abrir o modal, sem travar o
+    // resto da renderização (mesmo espírito de carregarEchelonx/
+    // carregarGaleria acima).
+    function renderBotaoInteresseEstado(cfg, tipo, id, nome, cpf, jaAdicionado) {
+        const wrap = document.getElementById('pm-btn-interesse-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = jaAdicionado
+            ? '<button type="button" id="pm-btn-interesse" class="pm-btn pm-btn-ativo">⭐ Na lista de interesses</button>'
+            : '<button type="button" id="pm-btn-interesse" class="pm-btn">☆ Add lista de interesses</button>';
+        document.getElementById('pm-btn-interesse').addEventListener('click', async () => {
+            const btn = document.getElementById('pm-btn-interesse');
+            btn.disabled = true;
+            try {
+                if (jaAdicionado) {
+                    await global.P3.ListaInteresses.remover(cfg, { origem: tipo, origemId: id });
+                } else {
+                    await global.P3.ListaInteresses.adicionar(cfg, { origem: tipo, origemId: id, nome, cpf });
+                }
+                renderBotaoInteresseEstado(cfg, tipo, id, nome, cpf, !jaAdicionado);
+            } catch (e) {
+                alert('Erro ao atualizar a lista de interesses: ' + e.message);
+                btn.disabled = false;
+            }
+        });
+    }
+
+    async function carregarEstadoInteresse(cfg, tipo, id, nome, cpf) {
+        const wrap = document.getElementById('pm-btn-interesse-wrap');
+        if (!wrap) return;
+        if (tipo !== 'autor' && tipo !== 'suspeito' || !global.P3 || !global.P3.ListaInteresses) { wrap.innerHTML = ''; return; }
+        wrap.innerHTML = '<button type="button" class="pm-btn" disabled>⏳ Verificando…</button>';
+        try {
+            const lista = await global.P3.ListaInteresses.listar(cfg);
+            const jaAdicionado = lista.some(it => it.origem === tipo && String(it.origemId) === String(id));
+            renderBotaoInteresseEstado(cfg, tipo, id, nome, cpf, jaAdicionado);
+        } catch (e) {
+            console.error('[pessoa-modal] Erro ao verificar lista de interesses:', e);
+            wrap.innerHTML = '';
+        }
+    }
+
     // opts: { cfg, tipo: 'autor'|'suspeito'|'echelonx', registro }
     // registro precisa ter id (ou _id), NOME, CPF, fotoArquivo e demais
     // campos já carregados na tela (nenhuma chamada extra é feita pro
@@ -268,6 +320,9 @@
 
         document.getElementById('pm-echelonx').textContent = 'Consultando...';
         carregarEchelonx(cfg, registro.CPF);
+
+        document.getElementById('pm-btn-interesse-wrap').innerHTML = '';
+        carregarEstadoInteresse(cfg, tipo, id, registro.NOME, registro.CPF);
 
         document.getElementById('pessoa-modal').classList.add('aberto');
     }
