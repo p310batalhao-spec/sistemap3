@@ -111,31 +111,17 @@
                     <img width="64" height="64" src="https://img.icons8.com/ios/50/face-id.png" alt="busca facial campo" />
                     <p>Busca Facial (Campo)</p>
                 </a>
-                <!-- Consulta Integrada de Pessoas (28/08/2026) — CAD (identificação,
-                     CNH, PPE, PC antigo, SISPOL, BNMP, IDNET, veículos) + TJAL numa
-                     página só. Recurso sensível — mesma trava de nível de
-                     Busca Facial (Campo), só que P2/ADMIN em vez de operador_campo/admin
-                     (ver #link-consulta-pessoa abaixo em JS). -->
-                <a class="btn" href="consulta-pessoa.html" id="link-consulta-pessoa" title="Consulta integrada por CPF — CAD, TJAL, BNMP" style="display:none;">
-                    <img width="64" height="64" src="https://img.icons8.com/ios/50/search--v1.png" alt="consulta integrada de pessoas" />
-                    <p>Consulta Integrada de Pessoas</p>
-                </a>
-
-                <!-- Cérbero (03/09/2026, movido pra página própria — antes era
-                     uma aba dentro de Autores) — base de inteligência da PM-AL,
-                     sob controle da P2. Mesma trava de nível de Consulta
-                     Integrada, ver JS abaixo (#link-cerbero). -->
-                <a class="btn" href="cerbero.html" id="link-cerbero" title="Base de inteligência (Cérbero) — pessoas, endereços e reconhecimento facial" style="display:none;">
-                    <img width="64" height="64" src="https://img.icons8.com/ios/50/dog.png" alt="cérbero" />
-                    <p>Cérbero</p>
-                </a>
-
-                <!-- Reconhecimento Facial (03/09/2026, movido pra página própria
-                     — antes era uma aba dentro de Autores). Sem trava de nível
-                     extra (só o padrão desta página, 10º BPM). -->
-                <a class="btn" href="reconhecimento-facial.html" title="Comparação por similaridade — Autores, Suspeitos, Echelonx e Cérbero">
-                    <img width="64" height="64" src="https://img.icons8.com/ios/50/face-id.png" alt="reconhecimento facial" />
-                    <p>Reconhecimento Facial</p>
+                <!-- Módulo P2 (04/09/2026, pedido explícito do usuário) — junta
+                     Consulta Integrada de Pessoas, Cérbero, Reconhecimento
+                     Facial e a nova Lista de Interesses numa área própria
+                     (page/p2.html), com trava de nível P2/ADMIN (ver
+                     #link-p2 abaixo em JS). As 3 páginas antigas (Consulta
+                     Integrada, Cérbero, Reconhecimento Facial) SAÍRAM daqui
+                     — continuam existindo, só passaram a ser acessadas a
+                     partir do hub do módulo em vez de cards soltos. -->
+                <a class="btn" href="p2.html" id="link-p2" title="Módulo P2 — Cérbero, Consulta Integrada, Reconhecimento Facial e Lista de Interesses" style="display:none;">
+                    <img width="64" height="64" src="https://img.icons8.com/ios/50/spy--v1.png" alt="p2" />
+                    <p>P2</p>
                 </a>
 
                 <!-- Denúncias Recorrentes (31/08/2026, redesenhada em
@@ -185,17 +171,12 @@
             linkBuscaFacial.style.display = '';
         }
 
-        // Consulta Integrada de Pessoas — só P2/ADMIN (mesmo critério de
-        // page/consulta-pessoa.html:requireP2OuAdmin).
-        const linkConsultaPessoa = document.getElementById('link-consulta-pessoa');
-        if (linkConsultaPessoa && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
-            linkConsultaPessoa.style.display = '';
-        }
-
-        // Cérbero — mesma trava de nível de Consulta Integrada (P2/ADMIN).
-        const linkCerbero = document.getElementById('link-cerbero');
-        if (linkCerbero && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
-            linkCerbero.style.display = '';
+        // Módulo P2 — só P2/ADMIN (mesmo critério de sempre: Consulta
+        // Integrada, Cérbero, Reconhecimento Facial e Lista de Interesses,
+        // todos dentro de page/p2.html agora).
+        const linkP2 = document.getElementById('link-p2');
+        if (linkP2 && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
+            linkP2.style.display = '';
         }
     });
 
