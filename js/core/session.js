@@ -73,7 +73,15 @@
             fotosEchelonxBaseUrl: 'https://irispmal.io/api-p3/fotos_echelonx/',
             // Cérbero (02/09/2026) — ver hostinger-api/cerbero.php e js/cerbero.js.
             cerberoUrl: 'https://irispmal.io/api-p3/cerbero.php',
-            fotosCerberoBaseUrl: 'https://irispmal.io/api-p3/fotos_cerbero/'
+            fotosCerberoBaseUrl: 'https://irispmal.io/api-p3/fotos_cerbero/',
+            // Módulo P2 (04/09/2026) — Lista de Interesses (pessoas marcadas
+            // em Autores/Suspeitos/Cérbero) e o cache de Consulta Integrada
+            // compartilhado entre as 3 origens (chaveado por CPF, diferente
+            // do cache próprio do Cérbero que é por id). Ver
+            // hostinger-api/lista_interesses.php e
+            // hostinger-api/consulta_integrada.php.
+            listaInteressesUrl: 'https://irispmal.io/api-p3/lista_interesses.php',
+            consultaIntegradaUrl: 'https://irispmal.io/api-p3/consulta_integrada.php'
         }
     };
 
@@ -502,6 +510,70 @@
             body: JSON.stringify({ pessoaId: pessoaId, cpf: cpf, resultado: resultado }),
         });
         if (!res.ok) throw new Error(`API cerbero (salvar_consulta_integrada) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // ====================================================================
+    // P3.ListaInteresses (04/09/2026) — módulo P2: pessoas marcadas com
+    // "add lista de interesses" em Autores/Suspeitos/Cérbero. Leitura
+    // aberta (mesmo padrão de listar_pessoas/listarFotos); escrita exige
+    // X-Api-Key. Só existe pro 10º BPM (mesma exclusividade do resto do
+    // módulo P2 — Cérbero/Consulta Integrada).
+    // ====================================================================
+    async function listaInteressesListar(cfg) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.listaInteressesUrl) return [];
+        const res = await fetch(`${cfg.apiPhp.listaInteressesUrl}?action=listar`);
+        if (!res.ok) throw new Error(`API lista_interesses (listar) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    async function listaInteressesAdicionar(cfg, { origem, origemId, nome, cpf }) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.listaInteressesUrl) throw new Error('Lista de Interesses só está disponível para o 10º BPM.');
+        const sessao = getSession();
+        const res = await fetch(`${cfg.apiPhp.listaInteressesUrl}?action=adicionar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+            body: JSON.stringify({ origem, origemId, nome, cpf, adicionadoPor: sessao ? sessao.cpf : null }),
+        });
+        if (!res.ok) throw new Error(`API lista_interesses (adicionar) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    async function listaInteressesRemover(cfg, { origem, origemId }) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.listaInteressesUrl) throw new Error('Lista de Interesses só está disponível para o 10º BPM.');
+        const res = await fetch(`${cfg.apiPhp.listaInteressesUrl}?action=remover`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+            body: JSON.stringify({ origem, origemId }),
+        });
+        if (!res.ok) throw new Error(`API lista_interesses (remover) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    // ====================================================================
+    // P3.ConsultaIntegrada (04/09/2026) — cache de Consulta Integrada
+    // chaveado por CPF, compartilhado entre Autores/Suspeitos/Cérbero (ver
+    // hostinger-api/consulta_integrada.php). Diferente de
+    // P3.Cerbero.obterConsultaIntegrada/salvarConsultaIntegrada (chaveados
+    // pelo id do Cérbero — continuam existindo, usados só pelo modal do
+    // Cérbero) — este aqui é o que a página Lista de Interesses usa,
+    // porque uma pessoa vinda de Autores/Suspeitos não tem id do Cérbero.
+    // ====================================================================
+    async function consultaIntegradaObter(cfg, cpf) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.consultaIntegradaUrl || !cpf) return { encontrado: false };
+        const res = await fetch(`${cfg.apiPhp.consultaIntegradaUrl}?action=obter&cpf=${encodeURIComponent(cpf)}`);
+        if (!res.ok) throw new Error(`API consulta_integrada (obter) — HTTP ${res.status}`);
+        return await res.json();
+    }
+
+    async function consultaIntegradaSalvar(cfg, cpf, resultado) {
+        if (!autoresUsaApiPhp(cfg) || !cfg.apiPhp.consultaIntegradaUrl) return;
+        const res = await fetch(`${cfg.apiPhp.consultaIntegradaUrl}?action=salvar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Api-Key': cfg.apiPhp.apiKey || '' },
+            body: JSON.stringify({ cpf, resultado }),
+        });
+        if (!res.ok) throw new Error(`API consulta_integrada (salvar) — HTTP ${res.status}`);
         return await res.json();
     }
 
@@ -1014,6 +1086,15 @@
             listarFotos: cerberoListarFotos,
             obterConsultaIntegrada: cerberoObterConsultaIntegrada,
             salvarConsultaIntegrada: cerberoSalvarConsultaIntegrada
+        },
+        ListaInteresses: {
+            listar: listaInteressesListar,
+            adicionar: listaInteressesAdicionar,
+            remover: listaInteressesRemover
+        },
+        ConsultaIntegrada: {
+            obter: consultaIntegradaObter,
+            salvar: consultaIntegradaSalvar
         }
     };
 
