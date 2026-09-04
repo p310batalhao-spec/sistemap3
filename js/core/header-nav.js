@@ -293,6 +293,7 @@
         '<button type="button" class="notif-tab ativa" data-cat="todas">Todas</button>' +
         '<button type="button" class="notif-tab" data-cat="tco">TCO</button>' +
         '<button type="button" class="notif-tab" data-cat="autores">Autores</button>' +
+        '<button type="button" class="notif-tab" data-cat="interesse">Interesse</button>' +
         '<button type="button" class="notif-tab" data-cat="eventos">Eventos</button>' +
         '<button type="button" class="notif-tab" data-cat="outros">Outros</button>' +
         '</div>' +
