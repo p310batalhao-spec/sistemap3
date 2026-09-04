@@ -548,6 +548,7 @@
                 <div class="cb-galeria-titulo" id="cb-galeria-titulo" style="display:none;">Todas as fotos registradas</div>
                 <div class="cb-galeria" id="cb-galeria"></div>
                 <button type="button" id="cb-btn-imprimir-dossie" class="cb-btn" style="margin-top:6px;">🖨️ Imprimir dossiê completo</button>
+                <div id="cb-btn-interesse-wrap"></div>
             </div>
             <div class="cb-dados-col">
                 <div>
@@ -566,6 +567,9 @@
 
         document.getElementById('cb-detalhe-modal').classList.add('aberto');
         document.getElementById('cb-btn-imprimir-dossie').addEventListener('click', () => imprimirDossie(p));
+
+        document.getElementById('cb-btn-interesse-wrap').innerHTML = '';
+        carregarEstadoInteresseCerbero(p);
 
         // Consulta Integrada (03/09/2026, pedido explícito do usuário) —
         // NÃO espera clique: já tenta mostrar/rodar sozinha assim que o
@@ -590,6 +594,46 @@
             }
         } catch (e) {
             console.error('[cerbero] Erro ao carregar galeria de fotos:', e);
+        }
+    }
+
+    // ── "⭐ Add lista de interesses" (04/09/2026, módulo P2) — mesmo botão
+    // que js/pessoa-modal.js tem pra Autor/Suspeito, aqui pro modal
+    // próprio do Cérbero (origem 'cerbero', id = id do Cérbero).
+    function renderBotaoInteresseCerbero(p, jaAdicionado) {
+        const wrap = document.getElementById('cb-btn-interesse-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = jaAdicionado
+            ? '<button type="button" id="cb-btn-interesse" class="cb-btn" style="margin-top:6px;width:100%;background:#8a6100;">⭐ Na lista de interesses</button>'
+            : '<button type="button" id="cb-btn-interesse" class="cb-btn" style="margin-top:6px;width:100%;">☆ Add lista de interesses</button>';
+        document.getElementById('cb-btn-interesse').addEventListener('click', async () => {
+            const btn = document.getElementById('cb-btn-interesse');
+            btn.disabled = true;
+            try {
+                if (jaAdicionado) {
+                    await P3.ListaInteresses.remover(cfgUnidade, { origem: 'cerbero', origemId: p.id });
+                } else {
+                    await P3.ListaInteresses.adicionar(cfgUnidade, { origem: 'cerbero', origemId: p.id, nome: p.nome, cpf: p.cpf });
+                }
+                renderBotaoInteresseCerbero(p, !jaAdicionado);
+            } catch (e) {
+                alert('Erro ao atualizar a lista de interesses: ' + e.message);
+                btn.disabled = false;
+            }
+        });
+    }
+
+    async function carregarEstadoInteresseCerbero(p) {
+        const wrap = document.getElementById('cb-btn-interesse-wrap');
+        if (!wrap) return;
+        wrap.innerHTML = '<button type="button" class="cb-btn" style="margin-top:6px;width:100%;" disabled>⏳ Verificando…</button>';
+        try {
+            const lista = await P3.ListaInteresses.listar(cfgUnidade);
+            const jaAdicionado = lista.some(it => it.origem === 'cerbero' && String(it.origemId) === String(p.id));
+            renderBotaoInteresseCerbero(p, jaAdicionado);
+        } catch (e) {
+            console.error('[cerbero] Erro ao verificar lista de interesses:', e);
+            wrap.innerHTML = '';
         }
     }
 
@@ -721,6 +765,15 @@
             P3.Cerbero.salvarConsultaIntegrada(cfgUnidade, p.id, p.cpf, resultado).catch(e => {
                 console.error('[cerbero] falha ao salvar consulta integrada:', e);
             });
+            // Também grava no cache compartilhado por CPF (04/09/2026,
+            // módulo P2) — se esta pessoa estiver na Lista de Interesses,
+            // ela já aparece atualizada lá sem precisar reconsultar o
+            // CAD/Quimera de novo.
+            if (p.cpf) {
+                P3.ConsultaIntegrada.salvar(cfgUnidade, p.cpf, resultado).catch(e => {
+                    console.error('[cerbero] falha ao salvar consulta integrada compartilhada:', e);
+                });
+            }
         } catch (e) {
             console.error('[cerbero] Erro na consulta integrada:', e);
             area.innerHTML = `<div class="cb-vazio">⚠️ Erro na consulta: ${escaparHtml(e.message)}</div>
