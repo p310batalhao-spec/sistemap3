@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Lista de Interesses</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* 04/09/2026 — mesma identidade visual escura do módulo P2
+           (page/p2.html) — ver comentário lá. */
+        .li-shell {
+            margin: -20px; padding: 0 0 60px; min-height: calc(100vh - 40px);
+            background: radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
+                        radial-gradient(900px 460px at 100% 0%, rgba(255, 180, 77, .10), transparent 55%), #0a1220;
+            color: #e7ecf5;
+        }
+        .li-hero { padding: 40px 40px 22px; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .li-voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9fb0c9; text-decoration: none; margin-bottom: 14px; }
+        .li-voltar:hover { color: #fff; }
+        .li-hero h1 { font-size: 1.85rem; font-weight: 900; margin: 0 0 8px; letter-spacing: -.02em; color: #fff; }
+        .li-hero p { font-size: .92rem; color: #9fb0c9; max-width: 700px; line-height: 1.6; margin: 0; }
+
+        .li-wrap { padding: 26px 40px 0; max-width: 980px; }
+        .li-aviso {
+            background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-left: 4px solid #4d8bff;
+            border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; font-size: 12.5px; color: #9fb0c9;
+        }
+        #li-lista-vazia { padding: 50px 20px; text-align: center; color: #6c7fa0; font-size: 13.5px; border: 1px dashed rgba(255,255,255,.14); border-radius: 12px; }
+
+        .li-card {
+            background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+            border: 1px solid rgba(255,255,255,.09); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px;
+        }
+        .li-card-topo { display: flex; align-items: center; gap: 14px; }
+        .li-foto { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+        .li-foto-vazia { width: 56px; height: 56px; border-radius: 10px; background: rgba(255,255,255,.06); border: 1px dashed rgba(255,255,255,.18); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; opacity: .5; }
+        .li-info { flex: 1; min-width: 0; }
+        .li-nome { font-weight: 700; font-size: 1rem; color: #fff; }
+        .li-meta { font-size: 11.5px; color: #7f92b3; margin-top: 2px; }
+        .li-origem-selo {
+            display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+            padding: 2px 8px; border-radius: 999px; margin-right: 6px; background: rgba(90,150,255,.16); color: #8fb4ff; border: 1px solid rgba(90,150,255,.3);
+        }
+        .li-origem-selo.cerbero { background: rgba(255,180,77,.14); color: #ffb44d; border-color: rgba(255,180,77,.32); }
+        .li-btn-remover {
+            background: none; border: 1px solid rgba(255,255,255,.14); color: #9fb0c9; border-radius: 8px;
+            padding: 7px 10px; cursor: pointer; font-size: 13px; flex-shrink: 0;
+        }
+        .li-btn-remover:hover { background: rgba(230,80,80,.15); border-color: rgba(230,80,80,.4); color: #ff8a8a; }
+
+        .li-consulta { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08); }
+        .li-vazio { font-size: 12.5px; color: #7f92b3; font-style: italic; }
+        .li-alerta { background: rgba(230,80,80,.14); color: #ff9a9a; border: 1px solid rgba(230,80,80,.35); border-radius: 6px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; margin-bottom: 10px; }
+        .li-galeria { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .li-galeria img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,.14); }
+        .li-contadores { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12.5px; color: #c3cfe3; margin-bottom: 10px; }
+        .li-contadores b { color: #fff; }
+        .li-botoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        .li-btn {
+            display: inline-flex; align-items: center; gap: 6px; background: #2f5fdd; color: #fff; border: none;
+            border-radius: 8px; padding: 8px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+        }
+        .li-btn:hover { background: #2450bd; }
+        .li-btn:disabled { opacity: .5; cursor: not-allowed; }
+        .li-btn-nova { background: #8a6100; }
+        .li-btn-nova:hover { background: #6f4e00; }
+
+        #li-iframe-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 9200; align-items: center; justify-content: center; padding: 16px; }
+        #li-iframe-modal.aberto { display: flex; }
+        .li-iframe-box { background: #fff; border-radius: 12px; width: 100%; height: 100%; max-width: 1200px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 16px 48px rgba(0,0,0,.5); }
+        .li-iframe-head { background: #003366; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 600; }
+        .li-iframe-head button { background: none; border: none; color: rgba(255,255,255,.75); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+        .li-iframe-box iframe { flex: 1; border: 0; width: 100%; }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="solucoesia"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="li-shell">
+                <div class="li-hero">
+                    <a class="li-voltar" href="p2.html">← Voltar ao módulo P2</a>
+                    <h1>⭐ Lista de Interesses</h1>
+                    <p>Alvos marcados em Autores, Suspeitos e Cérbero. Processos, ocorrências e movimentações são
+                        acompanhados automaticamente — novidades também aparecem no sino de notificações.</p>
+                </div>
+                <div class="li-wrap">
+                    <div class="li-aviso">
+                        ⚠️ A Consulta Integrada de cada alvo é buscada automaticamente (CAD/Quimera) na 1ª vez e
+                        depois fica salva — use "🔄 Nova consulta" quando achar que os dados estão desatualizados.
+                    </div>
+                    <div id="li-lista"></div>
+                    <div id="li-lista-vazia" style="display:none;">Nenhum alvo na lista de interesses ainda — adicione pelo
+                        botão "☆ Add lista de interesses" em Autores, Suspeitos ou Cérbero.</div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/lista-interesses.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sessao = P3.requireAuth();
+            if (!sessao) return;
+            if (sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
+                alert('Este recurso está disponível apenas para usuários com nível P2 ou ADMIN.');
+                location.href = 'solucoesia.html';
+                return;
+            }
+            if (window.P3ListaInteresses) window.P3ListaInteresses.carregar();
+        });
+    </script>
+</body>
+
+</html>
