@@ -317,7 +317,23 @@
         const cacheKey = 'p3_unidade_config_' + unidadeId;
         const cached = sessionStorage.getItem(cacheKey);
         if (cached) {
-            global.P3_CONFIG = JSON.parse(cached);
+            const configCacheada = JSON.parse(cached);
+            // CORREÇÃO (04/09/2026) — cache por sessionStorage sobrevive a
+            // um F5/reload (só é limpo quando TODAS as abas/janelas da
+            // origem fecham), então um cache gravado ANTES de um campo
+            // novo ser acrescentado em DEFAULT_10BPM_CONFIG.apiPhp (ex.:
+            // listaInteressesUrl/consultaIntegradaUrl, 04/09/2026) ficava
+            // preso sem esse campo até o usuário fechar o app de verdade —
+            // bug real relatado: botão "Add lista de interesses" sumia
+            // silenciosamente (cfg.apiPhp.listaInteressesUrl undefined)
+            // mesmo com session.js já atualizado no GitHub Pages. Reforça
+            // os campos do default por cima do cache a cada leitura — só
+            // PREENCHE o que estiver faltando, nunca sobrescreve o que já
+            // veio customizado (ordem do Object.assign: base primeiro).
+            if (unidadeId === '10bpm' && configCacheada.apiPhp) {
+                configCacheada.apiPhp = Object.assign({}, DEFAULT_10BPM_CONFIG.apiPhp, configCacheada.apiPhp);
+            }
+            global.P3_CONFIG = configCacheada;
             return global.P3_CONFIG;
         }
 
