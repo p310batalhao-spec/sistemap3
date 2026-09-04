@@ -321,13 +321,18 @@
 
   <section class="pagecomplete">
     <main>
+      <!-- 04/09/2026 — identidade visual do módulo P2 (mesma casca escura
+           de page/p2.html), pedido explícito do usuário: "todas as
+           páginas dentro desse módulo tenham o mesmo design do módulo
+           p2". Estilo inline de propósito (não mexe no <style> gigante
+           desta página nem no resto do markup abaixo, só troca o
+           cabeçalho fixo por este). -->
+      <div style="margin:-20px -20px 20px;padding:34px 40px 22px;background:radial-gradient(1100px 480px at 12% -8%, rgba(60,120,220,.16), transparent 60%), radial-gradient(900px 460px at 100% 0%, rgba(230,140,40,.10), transparent 55%), #0a1220;border-bottom:1px solid rgba(255,255,255,.08);">
+        <a href="p2.html" style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:#9fb0c9;text-decoration:none;margin-bottom:14px;">← Voltar ao módulo P2</a>
+        <h1 style="font-size:1.85rem;font-weight:900;margin:0 0 8px;letter-spacing:-.02em;color:#fff;">🔎 Consulta Integrada de Pessoas</h1>
+        <p style="font-size:.92rem;color:#9fb0c9;max-width:700px;line-height:1.6;margin:0;">Consolida identificação, CNH, ocorrências, mandados, endereços e veículos numa única consulta por CPF. Nenhuma correlação é apresentada como fato sem confirmação.</p>
+      </div>
       <div class="cip-wrap">
-        <h3>🔎 Consulta Integrada de Pessoas</h3>
-        <p style="font-size:13px;color:var(--p3-text-muted);margin:8px 0 16px;">
-          Consolida identificação, CNH, ocorrências, mandados, endereços e veículos numa única consulta por CPF.
-          Nenhuma correlação é apresentada como fato sem confirmação.
-        </p>
-
         <div id="cip-aviso-servidor">
           ⚠️ Servidor local (Python) não está rodando — esta página depende dele (não tem alternativa via Apps
           Script). Abra <code>tools/atualizador-local</code> (<code>python app.py</code>, ou o app desktop) e
