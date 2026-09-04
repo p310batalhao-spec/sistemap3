@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Módulo P2</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <style>
+        /* 04/09/2026 — módulo P2, pedido explícito do usuário: "visual
+           moderno e pode ser até diferente do visual do sistema, contanto
+           que tenha o mesmo nav". Header/nav ficam 100% padrão
+           (js/core/header-nav.js, sem nenhuma alteração) — só o
+           conteúdo dentro de <main> tem identidade própria: fundo escuro
+           "sala de operações", grade de cartões com selo de acesso
+           restrito. Tudo em cima dos tokens --p3-* onde faz sentido
+           (tema claro/escuro do resto do sistema), com uma paleta própria
+           mais escura por cima pra esta página específica.
+        */
+        .p2-shell {
+            margin: -20px -20px -20px -20px;
+            padding: 0 0 60px;
+            min-height: calc(100vh - 40px);
+            background:
+                radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
+                radial-gradient(900px 460px at 100% 0%, rgba(230, 140, 40, .10), transparent 55%),
+                #0a1220;
+            color: #e7ecf5;
+        }
+        .p2-hero {
+            padding: 46px 40px 34px;
+            border-bottom: 1px solid rgba(255,255,255,.08);
+        }
+        .p2-selo {
+            display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700;
+            letter-spacing: .09em; text-transform: uppercase; color: #ffb44d;
+            background: rgba(255, 160, 40, .12); border: 1px solid rgba(255, 160, 40, .35);
+            border-radius: 999px; padding: 5px 14px; margin-bottom: 16px;
+        }
+        .p2-hero h1 {
+            font-family: 'Inter', sans-serif; font-size: 2.1rem; font-weight: 900; margin: 0 0 10px;
+            letter-spacing: -.02em; color: #fff; text-wrap: balance;
+        }
+        .p2-hero p { font-size: .95rem; color: #9fb0c9; max-width: 680px; line-height: 1.6; margin: 0; }
+
+        .p2-grid {
+            padding: 34px 40px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 20px; max-width: 1200px;
+        }
+        .p2-card {
+            position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px 22px;
+            border-radius: 16px; text-decoration: none; color: #e7ecf5;
+            background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
+            border: 1px solid rgba(255,255,255,.09);
+            transition: transform .16s ease, border-color .16s ease, background .16s ease;
+            overflow: hidden;
+        }
+        .p2-card::before {
+            content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .2s ease;
+            background: radial-gradient(280px 140px at 0% 0%, rgba(90, 150, 255, .18), transparent 70%);
+        }
+        .p2-card:hover { transform: translateY(-3px); border-color: rgba(120, 170, 255, .45); background: linear-gradient(165deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); }
+        .p2-card:hover::before { opacity: 1; }
+        .p2-card-icone {
+            width: 52px; height: 52px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
+            background: rgba(90, 150, 255, .14); border: 1px solid rgba(120, 170, 255, .25); flex-shrink: 0;
+        }
+        .p2-card-icone img { width: 28px; height: 28px; filter: brightness(0) invert(1); opacity: .92; }
+        .p2-card h3 { font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff; }
+        .p2-card p { font-size: .82rem; color: #9fb0c9; line-height: 1.5; margin: 0; }
+        .p2-card-seta { position: absolute; top: 22px; right: 20px; font-size: 18px; color: #5a7bb8; transition: transform .16s ease; }
+        .p2-card:hover .p2-card-seta { transform: translateX(3px); color: #7fa8ff; }
+
+        .p2-card-interesses { border-color: rgba(255, 180, 77, .3); }
+        .p2-card-interesses .p2-card-icone { background: rgba(255, 180, 77, .14); border-color: rgba(255, 180, 77, .3); }
+        .p2-card-interesses:hover { border-color: rgba(255, 180, 77, .6); }
+
+        @media (max-width: 640px) {
+            .p2-hero { padding: 34px 20px 26px; }
+            .p2-grid { padding: 26px 20px 0; gap: 14px; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="solucoesia"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="p2-shell">
+                <div class="p2-hero">
+                    <span class="p2-selo">🔒 Acesso restrito · P2 / ADMIN</span>
+                    <h1>Módulo P2</h1>
+                    <p>Inteligência e investigação — base de dados do Cérbero, consulta integrada por CPF (CAD, TJAL, BNMP),
+                        comparação por reconhecimento facial e o acompanhamento contínuo dos alvos de interesse.</p>
+                </div>
+
+                <div class="p2-grid">
+                    <a class="p2-card" href="lista-interesses.html">
+                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/star--v1.png" alt=""></div>
+                        <h3>Lista de Interesses</h3>
+                        <p>Alvos marcados em Autores, Suspeitos e Cérbero — processos, movimentações e ocorrências
+                            acompanhados num só lugar, com aviso no sino de notificações.</p>
+                        <span class="p2-card-seta">→</span>
+                    </a>
+                    <a class="p2-card" href="cerbero.html">
+                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/dog.png" alt=""></div>
+                        <h3>Cérbero</h3>
+                        <p>Base de inteligência da PM-AL — pessoas, endereços vinculados e galeria de fotos importados
+                            de uma captura do sistema.</p>
+                        <span class="p2-card-seta">→</span>
+                    </a>
+                    <a class="p2-card" href="consulta-pessoa.html">
+                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/search--v1.png" alt=""></div>
+                        <h3>Consulta Integrada de Pessoas</h3>
+                        <p>Busca por CPF cruzando CAD (PPE/PC/SISPOL/BNMP/IDNET), TJAL e Supabase numa página só.</p>
+                        <span class="p2-card-seta">→</span>
+                    </a>
+                    <a class="p2-card" href="reconhecimento-facial.html">
+                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/face-id.png" alt=""></div>
+                        <h3>Reconhecimento Facial</h3>
+                        <p>Comparação por similaridade contra Autores, Suspeitos, Echelonx e Cérbero.</p>
+                        <span class="p2-card-seta">→</span>
+                    </a>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sessao = P3.requireAuth();
+            if (!sessao) return;
+            if (sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
+                alert('O módulo P2 está disponível apenas para usuários com nível P2 ou ADMIN.');
+                location.href = 'solucoesia.html';
+                return;
+            }
+        });
+    </script>
+</body>
+
+</html>
