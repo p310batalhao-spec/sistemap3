@@ -20,18 +20,19 @@
            sozinho no modo escuro). */
         .rf-wrap { padding: 24px 20px 60px; max-width: 1100px; margin: 0 auto; }
 
-        .rf-hero {
-            display: flex; align-items: center; gap: 18px; padding: 26px 30px; border-radius: 16px;
-            margin-bottom: 22px; color: #fff;
-            background: linear-gradient(120deg, #0a2a52 0%, #123a72 55%, #1d5fae 100%);
-            box-shadow: 0 10px 30px rgba(10,42,82,.25);
-        }
-        .rf-hero-icone {
-            width: 56px; height: 56px; border-radius: 14px; background: rgba(255,255,255,.14);
-            display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0;
-        }
-        .rf-hero h1 { font-size: 1.35rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -.01em; }
-        .rf-hero p { font-size: .82rem; margin: 0; opacity: .82; max-width: 640px; line-height: 1.5; }
+        /* 04/09/2026 — hero próprio (gradiente azul) trocado pela mesma
+           casca escura do módulo P2 (page/p2.html), pedido explícito do
+           usuário: "todas as páginas dentro desse módulo tenham o mesmo
+           design do módulo p2". Ver mesmo bloco .p2m-* em page/cerbero.html. */
+        .p2m-shell { margin: -20px -20px 0; background:
+            radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
+            radial-gradient(900px 460px at 100% 0%, rgba(230, 140, 40, .10), transparent 55%), #0a1220; }
+        .p2m-hero { padding: 34px 40px 22px; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .p2m-voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9fb0c9; text-decoration: none; margin-bottom: 14px; }
+        .p2m-voltar:hover { color: #fff; }
+        .p2m-hero h1 { font-size: 1.85rem; font-weight: 900; margin: 0 0 8px; letter-spacing: -.02em; color: #fff; }
+        .p2m-hero p { font-size: .92rem; color: #9fb0c9; max-width: 700px; line-height: 1.6; margin: 0; }
+        @media (max-width: 640px) { .p2m-hero { padding: 26px 20px 20px; } }
 
         .rf-aviso {
             background: var(--p3-bg); border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-blue-700);
@@ -127,16 +128,13 @@
 
     <section class="pagecomplete">
         <main>
+          <div class="p2m-shell">
+            <div class="p2m-hero">
+                <a class="p2m-voltar" href="p2.html">← Voltar ao módulo P2</a>
+                <h1>🔎 Reconhecimento Facial</h1>
+                <p>Compare uma foto contra os vetores já cadastrados de Autores, Suspeitos, Echelonx e Cérbero — comparação por similaridade, tudo processado no seu navegador.</p>
+            </div>
             <div class="rf-wrap">
-                <a href="p2.html" style="display:inline-block;margin-bottom:14px;font-size:12.5px;color:var(--p3-text-muted);text-decoration:none;">← Voltar ao módulo P2</a>
-                <div class="rf-hero">
-                    <div class="rf-hero-icone">🔎</div>
-                    <div>
-                        <h1>Reconhecimento Facial</h1>
-                        <p>Compare uma foto contra os vetores já cadastrados de Autores, Suspeitos, Echelonx e Cérbero — comparação por similaridade, tudo processado no seu navegador.</p>
-                    </div>
-                </div>
-
                 <div class="rf-aviso">
                     ⚠️ Resultado é uma <strong>estimativa de similaridade</strong>, não uma identificação positiva.
                     Sempre confirme manualmente antes de qualquer decisão operacional. A base de comparação é só o
@@ -172,6 +170,7 @@
                     </div>
                 </div>
             </div>
+          </div>
         </main>
     </section>
 
