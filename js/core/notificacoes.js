@@ -793,6 +793,94 @@
         } catch (e) { return []; }
     }
 
+    // ── 10) Novidades na Lista de Interesses (módulo P2, 04/09/2026,
+    // pedido explícito do usuário: "mostrando também no sininho de
+    // notificações") — mesma segmentação de papel das fontes 7/8 (só
+    // 'p2' e 'admin'). NÃO dispara nenhuma consulta ao CAD/Quimera — só
+    // LÊ o cache já calculado (P3.ConsultaIntegrada, chaveado por CPF,
+    // ver hostinger-api/consulta_integrada.php) e compara contra o que
+    // este navegador já tinha visto. A consulta de verdade acontece só
+    // quando alguém abre page/lista-interesses.html (lá sim, com CAD
+    // aberto) — este módulo só percebe QUE mudou, não é quem descobre.
+    const CHAVE_INTERESSE_SNAPSHOT = 'p3_notif_interesse_snapshot';
+    const CHAVE_INTERESSE_ULTIMA_VERIFICACAO = 'p3_notif_interesse_ultima_verificacao';
+    const CHAVE_INTERESSE_ULTIMAS_NOTIF = 'p3_notif_interesse_ultimas';
+    const INTERVALO_MIN_VERIFICACAO_INTERESSE_MS = 10 * 60 * 1000;
+
+    // "Assinatura" barata da Consulta Integrada — mandado + quantidade de
+    // processos/ocorrências + data do movimento mais recente entre os
+    // processos. Qualquer novo processo, nova ocorrência, mandado surgido
+    // ou movimentação de processo muda essa string, sem precisar comparar
+    // o JSON inteiro campo a campo.
+    function _assinaturaConsultaIntegrada(r) {
+        if (!r) return '';
+        const processos = r.processos || [];
+        const totalOcorrencias = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
+        const mandado = !!(r.mandados && r.mandados.possuiMandado);
+        let ultimaMov = '';
+        processos.forEach(p => {
+            const dt = p.ultimoMovimento && p.ultimoMovimento.dataHora;
+            if (dt && dt > ultimaMov) ultimaMov = dt;
+        });
+        return [mandado ? 1 : 0, processos.length, totalOcorrencias, ultimaMov].join('|');
+    }
+
+    async function obterNovidadesListaInteresses(cfg) {
+        if (!cfg || !cfg.apiPhp || !cfg.apiPhp.listaInteressesUrl || !cfg.apiPhp.consultaIntegradaUrl) return [];
+
+        const agora = Date.now();
+        const ultima = parseInt(localStorage.getItem(CHAVE_INTERESSE_ULTIMA_VERIFICACAO) || '0', 10);
+        if (agora - ultima < INTERVALO_MIN_VERIFICACAO_INTERESSE_MS) {
+            try { return JSON.parse(localStorage.getItem(CHAVE_INTERESSE_ULTIMAS_NOTIF) || '[]'); }
+            catch (e) { return []; }
+        }
+
+        let snapshotAnterior = {};
+        try { snapshotAnterior = JSON.parse(localStorage.getItem(CHAVE_INTERESSE_SNAPSHOT) || '{}'); } catch (e) {}
+
+        try {
+            const res = await fetch(`${cfg.apiPhp.listaInteressesUrl}?action=listar`);
+            const itens = res.ok ? await res.json() : null;
+            if (!Array.isArray(itens) || !itens.length) return [];
+
+            const primeiraVez = Object.keys(snapshotAnterior).length === 0;
+            const novoSnapshot = {};
+            const notificacoes = [];
+
+            // Teto de segurança — a lista de interesses não deveria crescer
+            // sem limite, mas evita bater dezenas de requisições de uma vez
+            // se algum dia crescer demais.
+            const alvos = itens.filter(it => it.cpf).slice(0, 80);
+            const resultados = await Promise.all(alvos.map(it =>
+                fetch(`${cfg.apiPhp.consultaIntegradaUrl}?action=obter&cpf=${encodeURIComponent(it.cpf)}`)
+                    .then(r => r.ok ? r.json() : { encontrado: false })
+                    .catch(() => ({ encontrado: false }))
+            ));
+
+            alvos.forEach((it, i) => {
+                const info = resultados[i];
+                if (!info || !info.encontrado) return;
+                const assinatura = it.id + ':' + _assinaturaConsultaIntegrada(info.resultado);
+                novoSnapshot[it.id] = assinatura;
+                if (!primeiraVez && snapshotAnterior[it.id] !== undefined && snapshotAnterior[it.id] !== assinatura) {
+                    notificacoes.push({
+                        id: 'interesse:' + assinatura,
+                        categoria: 'interesse',
+                        icone: '⭐',
+                        titulo: 'Novidade na Lista de Interesses',
+                        texto: `${it.nome || 'Alvo'}: dados atualizados na Consulta Integrada (processos, ocorrências ou mandado).`,
+                        link: _prefixoPaginaRisco() + 'page/lista-interesses.html',
+                    });
+                }
+            });
+
+            localStorage.setItem(CHAVE_INTERESSE_SNAPSHOT, JSON.stringify(novoSnapshot));
+            localStorage.setItem(CHAVE_INTERESSE_ULTIMA_VERIFICACAO, String(agora));
+            localStorage.setItem(CHAVE_INTERESSE_ULTIMAS_NOTIF, JSON.stringify(notificacoes));
+            return notificacoes;
+        } catch (e) { return []; }
+    }
+
     // Detecção "crua" — cada fonte reporta o que vale AGORA (ex.: a
     // movimentação do E-SAJ só aparece aqui no instante em que muda).
     // Quem quer a lista completa pra MOSTRAR no sino usa
@@ -807,7 +895,7 @@
         // autor e suspeito (pedido explícito do usuário — não é aditivo
         // pra este papel).
         if (sessao.nivel === 'p2') {
-            const listasP2 = await Promise.all([obterMovimentacoesEsajAutor(cfg), obterMovimentacoesEsajSuspeito(cfg)]);
+            const listasP2 = await Promise.all([obterMovimentacoesEsajAutor(cfg), obterMovimentacoesEsajSuspeito(cfg), obterNovidadesListaInteresses(cfg)]);
             return listasP2.reduce(function (a, b) { return a.concat(b); }, []);
         }
 
@@ -824,6 +912,7 @@
         if (sessao.nivel === 'admin') {
             fontes.push(obterMovimentacoesEsajAutor(cfg));
             fontes.push(obterMovimentacoesEsajSuspeito(cfg));
+            fontes.push(obterNovidadesListaInteresses(cfg));
         }
 
         const listas = await Promise.all(fontes);
@@ -848,7 +937,7 @@
     // isso o fallback abaixo deduz a categoria pelo PREFIXO do id (que já
     // denuncia a fonte) quando `categoria` não vier preenchido — sem
     // precisar tocar no que já está salvo no navegador.
-    const ROTULOS_CATEGORIA = { todas: 'Todas', tco: 'TCO', autores: 'Autores', eventos: 'Eventos', outros: 'Outros' };
+    const ROTULOS_CATEGORIA = { todas: 'Todas', tco: 'TCO', autores: 'Autores', interesse: 'Interesse', eventos: 'Eventos', outros: 'Outros' };
     let categoriaAtiva = 'todas';
 
     function categoriaPorPrefixoId(id) {
@@ -859,6 +948,7 @@
         if (s.indexOf('esaj:') === 0) return 'tco';
         if (s.indexOf('autor-esaj:') === 0 || s.indexOf('autor-alerta:') === 0 ||
             s.indexOf('suspeito-esaj:') === 0 || s.indexOf('suspeito-alerta:') === 0) return 'autores';
+        if (s.indexOf('interesse:') === 0) return 'interesse';
         if (s.indexOf('evento:') === 0) return 'eventos';
         return 'outros';
     }
