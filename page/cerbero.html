@@ -18,6 +18,23 @@
         .cerbero-wrap { padding: 20px; max-width: 1400px; margin: 0 auto; }
         .cerbero-wrap h3 { color: var(--p3-text); }
 
+        /* 04/09/2026 — identidade visual do módulo P2 (mesma casca de
+           page/p2.html), pedido explícito do usuário: "todas as páginas
+           dentro desse módulo tenham o mesmo design do módulo p2". Classes
+           com prefixo "p2m-" (P2 módulo) — compartilhado de propósito
+           entre as páginas do módulo (mesmos valores em cada uma,
+           duplicado por serem CSS local de página, mesmo padrão de
+           .rf-aviso/.p3-progress-* já usado no sistema). */
+        .p2m-shell { margin: -20px -20px 0; background:
+            radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
+            radial-gradient(900px 460px at 100% 0%, rgba(230, 140, 40, .10), transparent 55%), #0a1220; }
+        .p2m-hero { padding: 34px 40px 22px; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .p2m-voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9fb0c9; text-decoration: none; margin-bottom: 14px; }
+        .p2m-voltar:hover { color: #fff; }
+        .p2m-hero h1 { font-size: 1.85rem; font-weight: 900; margin: 0 0 8px; letter-spacing: -.02em; color: #fff; }
+        .p2m-hero p { font-size: .92rem; color: #9fb0c9; max-width: 700px; line-height: 1.6; margin: 0; }
+        @media (max-width: 640px) { .p2m-hero { padding: 26px 20px 20px; } }
+
         .rf-aviso {
             background: var(--p3-bg); border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-blue-700);
             border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 13px; color: var(--p3-text-muted);
@@ -94,9 +111,13 @@
 
     <section class="pagecomplete">
         <main>
+          <div class="p2m-shell">
+            <div class="p2m-hero">
+                <a class="p2m-voltar" href="p2.html">← Voltar ao módulo P2</a>
+                <h1>🐕 Cérbero</h1>
+                <p>Base de inteligência da PM-AL — pessoas, endereços vinculados e galeria de fotos importados de uma captura do sistema.</p>
+            </div>
             <div class="cerbero-wrap">
-                <a href="p2.html" style="display:inline-block;margin-bottom:10px;font-size:12.5px;color:var(--p3-text-muted);text-decoration:none;">← Voltar ao módulo P2</a>
-                <h3>🐕 Cérbero — Base de Inteligência (PM-AL)</h3>
                 <div class="rf-aviso">
                     ⚠️ Dado importado de uma captura (.har/.ndjson) feita por você navegando o Cérbero — não é uma busca
                     ao vivo (login de lá exige reCAPTCHA + autenticação de dois fatores, não automatizamos isso).
@@ -161,6 +182,7 @@
                     <button type="button" id="cerbero-enderecos-pag-proxima">Próxima ›</button>
                 </div>
             </div>
+          </div>
         </main>
     </section>
 
