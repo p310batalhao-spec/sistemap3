@@ -128,6 +128,7 @@
     <section class="pagecomplete">
         <main>
             <div class="rf-wrap">
+                <a href="p2.html" style="display:inline-block;margin-bottom:14px;font-size:12.5px;color:var(--p3-text-muted);text-decoration:none;">← Voltar ao módulo P2</a>
                 <div class="rf-hero">
                     <div class="rf-hero-icone">🔎</div>
                     <div>
@@ -183,6 +184,18 @@
         // desta página nova — observa o resultado que já é montado pelo JS
         // de sempre, sem precisar mexer nele). Marca a foto escolhida como
         // "tem-foto" no dropzone pra trocar a borda tracejada por sólida.
+        // 04/09/2026 — página passou a fazer parte do módulo P2 (ver
+        // page/p2.html), mesma trava de nível de Cérbero/Consulta
+        // Integrada (antes só exigia unidade 10º BPM).
+        document.addEventListener('DOMContentLoaded', function () {
+            const sessao = P3.requireAuth();
+            if (!sessao) return;
+            if (sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
+                alert('Este recurso está disponível apenas para usuários com nível P2 ou ADMIN.');
+                location.href = 'solucoesia.html';
+            }
+        });
+
         document.addEventListener('DOMContentLoaded', function () {
             const preview = document.getElementById('rf-preview');
             const input = document.getElementById('rf-input-foto');
