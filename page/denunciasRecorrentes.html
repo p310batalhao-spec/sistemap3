@@ -12,6 +12,21 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <style>
+        /* 04/09/2026 — identidade visual do módulo P2 (mesma casca de
+           page/p2.html), pedido explícito do usuário. Ver mesmo bloco
+           .p2m-* em page/cerbero.html/page/reconhecimento-facial.html. */
+        .p2m-shell { margin: -20px -20px 0; background:
+            radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
+            radial-gradient(900px 460px at 100% 0%, rgba(230, 140, 40, .10), transparent 55%), #0a1220; }
+        .p2m-hero { padding: 34px 40px 22px; border-bottom: 1px solid rgba(255,255,255,.08); }
+        .p2m-voltar { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #9fb0c9; text-decoration: none; margin-bottom: 14px; }
+        .p2m-voltar:hover { color: #fff; }
+        .p2m-hero h1 { font-size: 1.85rem; font-weight: 900; margin: 0 0 8px; letter-spacing: -.02em; color: #fff; }
+        .p2m-hero p { font-size: .92rem; color: #9fb0c9; max-width: 700px; line-height: 1.6; margin: 0; }
+        @media (max-width: 640px) { .p2m-hero { padding: 26px 20px 20px; } }
+        .p2m-wrap { padding: 20px 40px 40px; }
+        @media (max-width: 640px) { .p2m-wrap { padding: 20px; } }
+
         .dr-intro { max-width: 62rem; color: var(--p3-text-muted); font-size: .9rem; margin: .25rem 0 1.25rem; }
         .dr-aviso-servidor {
             display: none; background: var(--p3-blue-100); border: .0625rem solid var(--p3-border);
@@ -76,13 +91,14 @@
 
     <section class="pagecomplete">
         <main>
-            <a href="solucoesia.html" style="display:inline-flex;align-items:center;gap:6px;font-size:.82rem;color:var(--p3-blue-700);text-decoration:none;margin-bottom:.75rem;">← Voltar para Soluções IA</a>
-            <div class="saudacao">
-                <h2>Denúncias Recorrentes</h2>
+          <div class="p2m-shell">
+            <div class="p2m-hero">
+                <a class="p2m-voltar" href="solucoesia.html">← Voltar para Soluções IA</a>
+                <h1>🔁 Denúncias Recorrentes</h1>
                 <p>Locais com 2 ou mais denúncias (Disque Denúncia) que geram um alvo confirmado em cadastro
                     (Supabase ou Autores) — a busca completa (CAD, TJAL, BNMP) já foi feita e salva pra cada um.</p>
             </div>
-
+            <div class="p2m-wrap">
             <div class="dr-intro">
                 A varredura agrupa denúncias por endereço semelhante, extrai candidatos a nome do texto (resumo/
                 narrativa), cruza contra pessoas já cadastradas e, só pros confirmados, roda a mesma busca da
@@ -119,6 +135,8 @@
                     <tbody id="dr-corpo-tabela"></tbody>
                 </table>
             </div>
+            </div>
+          </div>
         </main>
     </section>
 
