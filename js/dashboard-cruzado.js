@@ -1,15 +1,18 @@
 // ════════════════════════════════════════════════════════════════════
-// DASHBOARD CRUZADO — visão consolidada por categoria (MVI/CVLI, TCO,
-// Armas, Drogas, Visita Orientativa, Perturbação do Sossego, Violência
-// Doméstica), com filtro cruzado (clicar num gráfico filtra os demais
-// da mesma aba), comparativo ano anterior x atual e filtros manuais de
-// período, COP, nome e cidade.
+// DASHBOARD CRUZADO — visão consolidada por categoria (MVI/CVLI, CVP,
+// TCO, Armas, Drogas, Visita Orientativa, Perturbação do Sossego,
+// Violência Doméstica, Cumprimento de Mandados, Materiais), com filtro
+// cruzado (clicar num gráfico filtra os demais da mesma aba),
+// comparativo ano anterior x atual e filtros manuais de período, COP,
+// nome e cidade.
 //
 // A regra de contagem de MVI é a MESMA usada em js/index.js
-// (atualizarContagemHomicidiosFirebase): ano atual + (HOMICÍDIO sem
-// "tentativa" OU tentativa com OBITO = "S"). Não reinventar essa regra
-// em outro lugar — se precisar mudar o critério de MVI, mudar aqui E
-// em js/index.js.
+// (atualizarContagemHomicidiosFirebase) — 04/09/2026, pedido explícito
+// do usuário: homicídio (doloso), latrocínio, feminicídio, homicídio
+// culposo ao volante e homicídio doloso ao volante — sempre; TENTATIVA
+// desses só conta quando OBITO = "S". Não reinventar essa regra em
+// outro lugar — se precisar mudar o critério de MVI, mudar aqui E em
+// js/index.js.
 // ════════════════════════════════════════════════════════════════════
 
 (function () {
@@ -66,12 +69,15 @@
     }
 
     // ── Regra oficial de MVI (idêntica a js/index.js) ─────────────────
+    // Homicídio (doloso), latrocínio, feminicídio, homicídio culposo ao
+    // volante e homicídio doloso ao volante — os dois últimos casam por
+    // "HOMICIDIO" no texto. TENTATIVA só conta quando OBITO = "S"
+    // (pedido explícito do usuário); consumado conta sempre.
     function isMVI(item) {
-        const tip = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO'));
-        const ehHomicidio = tip.includes('HOMICIDIO') && !tip.includes('TENTATIVA');
-        const ehTentativa = tip.includes('TENTATIVA');
-        const temObito = NORM(item.OBITO) === 'S';
-        return ehHomicidio || (ehTentativa && temObito);
+        const tip = NORM(canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')));
+        if (!(tip.includes('HOMICIDIO') || tip.includes('FEMINICIDIO') || tip.includes('LATROCINIO'))) return false;
+        if (tip.includes('TENTATIVA')) return NORM(item.OBITO) === 'S';
+        return true;
     }
 
     // ── Movimentação do TCO vem como "STATUS (dd/mm/aaaa)" — mesma
@@ -167,9 +173,11 @@
         mvicvli: {
             label: 'MVI e CVLI', icone: '🔪',
             fetch: () => fetchNode('geral'),
-            // Universo de CVLI = mesmo filtro usado em page/mvi.html (o
-            // cadastro de CVLI de fato): tipificação contém HOMICIDIO ou FEMINI.
-            filtroBase: item => { const t = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI'); },
+            // Universo de CVLI: tipificação contém HOMICIDIO, FEMINI ou
+            // LATROCINIO (latrocínio é CVLI e também entra na contagem de
+            // MVI — ver isMVI). Homicídio culposo/doloso ao volante casa
+            // por "HOMICIDIO".
+            filtroBase: item => { const t = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI') || t.includes('LATROCINIO'); },
             campoData: item => CAMPO(item, 'DATA', 'data'),
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'BOLETIM'),
@@ -179,6 +187,21 @@
             labelTip: 'Tipificação', labelStatus: 'Solução',
             kpiExtra: lista => ({ label: 'MVI no período', valor: lista.filter(isMVI).length }),
             iconeExtra: '💀',
+        },
+        // CVP — nó /cvp (fan-out do cadastro de ocorrências: ROUBO /
+        // EXTORSÃO / LATROCÍNIO — ver js/cadastroocorrencias.js). Mesmo
+        // schema de /geral.
+        cvp: {
+            label: 'CVP', icone: '💰',
+            fetch: () => fetchNode('cvp'),
+            filtroBase: () => true,
+            campoData: item => CAMPO(item, 'DATA', 'data'),
+            campoCidade: item => CAMPO(item, 'CIDADE'),
+            campoCop: item => CAMPO(item, 'BOLETIM'),
+            campoNome: item => CAMPO(item, 'SOLICITANTE'),
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
+            campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
+            labelTip: 'Tipificação', labelStatus: 'Solução',
         },
         tco: {
             label: 'TCO', icone: '📋',
@@ -239,7 +262,7 @@
             campoData: item => CAMPO(item, 'DATA', 'data'),
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
-            campoNome: item => CAMPO(item, 'NOME_AUTOR'),
+            campoNome: item => CAMPO(item, 'NOME_AUTOR', 'SOLICITANTE'),
             campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação de origem', labelStatus: 'Solução',
@@ -266,6 +289,21 @@
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
             campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO DA OCORRÊNCIA', 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
+            labelTip: 'Tipificação', labelStatus: 'Solução',
+        },
+        // Cumprimento de Mandados — nó /mandados (fan-out do cadastro:
+        // TIPIFICACAO_GERAL contém "MANDADO" — ver js/cadastroocorrencias.js).
+        // Mesmo schema de /geral.
+        mandados: {
+            label: 'Cumprimento de Mandados', icone: '📜',
+            fetch: () => fetchNode('mandados'),
+            filtroBase: () => true,
+            campoData: item => CAMPO(item, 'DATA', 'data'),
+            campoCidade: item => CAMPO(item, 'CIDADE'),
+            campoCop: item => CAMPO(item, 'BOLETIM'),
+            campoNome: item => CAMPO(item, 'SOLICITANTE'),
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
+            campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
         materiais: {
@@ -301,7 +339,7 @@
         },
     };
 
-    const ORDEM_ABAS = ['mvicvli', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia', 'materiais'];
+    const ORDEM_ABAS = ['mvicvli', 'cvp', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia', 'mandados', 'materiais'];
 
     // ════════════════════════════════════════════════════════════════
     // ESTADO — filtros manuais e cross-filter, por aba
@@ -722,7 +760,7 @@
         const meses = buildMeses12();
         const mesesLabels = meses.map(m => m.label);
 
-        const cvliArr = geral.filter(i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI'); });
+        const cvliArr = geral.filter(i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI') || t.includes('LATROCINIO'); });
         const mviArr = geral.filter(isMVI);
         const cvpArr = cvpBruto.filter(isCVP);
 
