@@ -58,11 +58,20 @@
     function chaveCidadeBairro_(it) {
         return (it.CIDADE || 'N/D').toString().trim() + '||' + (it.BAIRRO || 'N/D').toString().trim();
     }
+    // Canoniza a tipificação — ver canonTipificacao() em js/dashboard-cruzado.js.
+    // A grade do CAD NEM SEMPRE sufixa com "| CÓDIGO PENAL": os dois formatos
+    // ("HOMICÍDIO" e "HOMICÍDIO | CÓDIGO PENAL") coexistem pro mesmo crime, e
+    // sem unir viravam DUAS barras no gráfico (as duas exibidas iguais depois
+    // do encurtamento). Cortar o sufixo aqui resolve grupo E filtro cruzado
+    // (ambos passam por tipificacaoLabel_).
+    function canonTipificacao_(s) {
+        return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+    }
     function tipificacaoLabel_(it) {
         const t1 = (it.TIPIFICACAO || '').toString().trim();
-        if (t1 && t1 !== '---') return t1;
+        if (t1 && t1 !== '---') return canonTipificacao_(t1);
         const t2 = (it.TIPIFICACAO_GERAL || '').toString().trim();
-        return (t2 && t2 !== '---') ? t2 : '';
+        return (t2 && t2 !== '---') ? canonTipificacao_(t2) : '';
     }
     function aplicarCrossCAD(lista, exceto) {
         const c = window._cadCross;
@@ -556,78 +565,15 @@
     function normRisco(str) {
         return String(str || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
     }
-    function tipificacaoDe(item) {
-        return normRisco((item.TIPIFICACAO_GERAL || '') + ' ' + (item.TIPIFICACAO || ''));
-    }
-    function ehTipoCVLI(t) {
-        return t.includes('HOMICIDIO') || t.includes('FEMINICIDIO') || t.includes('LATROCINIO');
-    }
-
-    // ── SUBNOTIFICAÇÃO DO CAD — a grade não tem campo "Óbito" explícito,
-    // então uma "TENTATIVA DE HOMICÍDIO" que na verdade terminou em morte
-    // (a tipificação do boletim às vezes não é atualizada a tempo) ficava
-    // presa em CVLI, nunca virando MVI. Como paliativo, procura indícios
-    // de óbito nos campos de texto que JÁ vêm na grade (Solução/Situação/
-    // Tipificação) — se achar, reclassifica pra MVI mesmo com a
-    // tipificação ainda dizendo "tentativa". Regex conforme especificado:
-    // cobre "óbito"/"obito" (com/sem acento), confirmação do SAMU e
-    // encaminhamento ao IML — sinais fortes de morte já constatada.
-    const REGEX_INDICIO_OBITO = /(óbito|obito|constatado óbito|samu atestou|iml)/i;
-    function textoRelatoDe(item) {
-        return [item.SOLUCAO, item['SOLUÇÃO'], item.SITUACAO, item.TIPIFICACAO, item.TIPIFICACAO_GERAL]
-            .filter(Boolean).join(' ');
-    }
-    function temIndicioDeObitoNoRelato(item) {
-        return REGEX_INDICIO_OBITO.test(textoRelatoDe(item));
-    }
-
-    // "Tentativa" no VOCABULÁRIO PRÓPRIO do CAD nem sempre usa a palavra
-    // "TENTATIVA" — a própria grade tem uma tipificação real chamada
-    // "LATROCINIO TENTADO" (confirmado por captura real, id 735), que
-    // não contém "TENTATIVA" e por isso escapava dessa checagem: caía no
-    // ramo "direto" de isMVI e era contada como MVI incondicionalmente,
-    // sem nenhuma evidência de óbito — mesmo bug que a verificação
-    // abaixo corrige. "TENTADO" cobre esse caso (e qualquer outro rótulo
-    // do CAD com a mesma construção).
-    function ehTentativa_(t) {
-        return t.includes('TENTATIVA') || t.includes('TENTADO');
-    }
-    // Mesma regra de js/analisePreditiva.js:isMVI — só entram no MVI as
-    // ocorrências CONSUMADAS de homicídio/feminicídio/latrocínio, OU uma
-    // tentativa que teve óbito confirmado depois (ali, via campo OBITO
-    // real do cadastro manual; aqui, via indício de óbito no relato —
-    // ver temIndicioDeObitoNoRelato acima, já que a grade do CAD não
-    // expõe um campo de óbito explícito).
-    function isMVI(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
-        if (ehTentativa_(t)) {
-            // Só reclassifica tentativa->MVI se (a) o tipo de base já é
-            // homicídio/feminicídio/latrocínio E (b) há indício real de
-            // óbito no texto disponível — nunca promove uma tentativa de
-            // furto ou qualquer outra coisa só por bater a regex à toa.
-            return ehTipoCVLI(t) && temIndicioDeObitoNoRelato(item);
-        }
-        return ehTipoCVLI(t);
-    }
-    function isCVLI(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('ACHADO') || t.includes('SUICIDIO') || t.includes('VIOLACAO')) return false;
-        return ehTipoCVLI(t);
-    }
-    // Mesma regra de js/analisePreditiva.js:isCVP — uma tentativa com
-    // óbito confirmado sai do CVP (deixa de ser só "crime contra o
-    // patrimônio" — virou MVI, ver isMVI acima). Sem isso o mesmo caso
-    // contaria como CVP E MVI ao mesmo tempo por acidente (diferente do
-    // latrocínio consumado, que conta como as duas categorias DE
-    // PROPÓSITO — ver ehTipoCVLI/isCVP abaixo, comportamento já validado
-    // nesta sessão).
-    function isCVP(item) {
-        const t = tipificacaoDe(item);
-        if (t.includes('APOIO') || t.includes('OUTRAS')) return false;
-        if (ehTentativa_(t) && temIndicioDeObitoNoRelato(item)) return false;
-        return t.includes('ROUBO') || t.includes('EXTORSAO');
-    }
+    // Classificação CVP/CVLI/MVI — MOVIDA pra js/core/previsaoMensalCad.js
+    // (02/09/2026) pra virar fonte única, compartilhada com o lembrete
+    // automático de fim de mês (js/core/notificacoes.js, que roda sem
+    // esta página estar aberta e precisa da MESMA regra de classificação
+    // pra nunca divergir do que a tela mostraria). Ver ali o histórico de
+    // bugs já corrigidos (subnotificação de óbito, "LATROCINIO TENTADO").
+    const isMVI = window.PrevisaoMensalCAD.isMVI;
+    const isCVLI = window.PrevisaoMensalCAD.isCVLI;
+    const isCVP = window.PrevisaoMensalCAD.isCVP;
 
     function parseHoraCAD(item) {
         const h = String(item.HORA || '').trim();
@@ -959,24 +905,31 @@
 
     // Top tipificações por categoria — mesmo padrão de
     // page/analisePreditiva.html (gráfico horizontal, 1 por categoria).
-    // A grade do CAD sempre sufixa a tipificação com "| CÓDIGO PENAL" (a
-    // Natureza Geral — todo CVP/CVLI/MVI já é, por definição, Código
-    // Penal). Repetir isso em CADA barra do gráfico só ocupava espaço
-    // sem informar nada novo, e era o que empurrava o início do rótulo
-    // (ex.: "TENTATIVA DE...") pra fora da área visível do card. Só
-    // encurta pra EXIBIÇÃO no eixo do gráfico — o filtro cruzado
-    // (toggleCrossCAD) continua recebendo o rótulo COMPLETO (ver
-    // renderTipificacaoPorCategoria abaixo), pra combinar exatamente com
-    // o texto que tipificacaoLabel_/aplicarCrossCAD comparam.
+    // A tipificação já vem canonizada de tipificacaoLabel_ (sufixo
+    // "| CÓDIGO PENAL" / "| ..." removido — ver comentário lá); aqui só
+    // encurta o que ainda ficar longo demais pro eixo do gráfico.
     function encurtarLabelTipificacao_(label) {
-        const semSufixo = String(label || '').replace(/\s*\|\s*C[ÓO]DIGO\s+PENAL\s*$/i, '').trim();
-        return semSufixo.length > 30 ? semSufixo.substring(0, 28) + '…' : semSufixo;
+        const s = canonTipificacao_(label);
+        return s.length > 30 ? s.substring(0, 28) + '…' : s;
+    }
+
+    // Conta as tipificações já CANONIZADAS (une "HOMICÍDIO" +
+    // "HOMICÍDIO | CÓDIGO PENAL" numa barra só) — não usa contarTop
+    // genérico porque este precisa passar por tipificacaoLabel_.
+    function contarTopTipCanon_(lista, n) {
+        const cont = new Map();
+        lista.forEach(function (it) {
+            const v = tipificacaoLabel_(it);
+            if (!v) return;
+            cont.set(v, (cont.get(v) || 0) + 1);
+        });
+        return Array.from(cont.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n || 8);
     }
 
     function renderTipificacaoPorCategoria(arrCVP, arrCVLI, arrMVI) {
-        const tCVP = contarTop(arrCVP, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
-        const tCVLI = contarTop(arrCVLI, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
-        const tMVI = contarTop(arrMVI, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
+        const tCVP = contarTopTipCanon_(arrCVP, 8);
+        const tCVLI = contarTopTipCanon_(arrCVLI, 8);
+        const tMVI = contarTopTipCanon_(arrMVI, 8);
         chartTipCvp = atualizarGraficoBar(chartTipCvp, 'chart-tip-cvp', tCVP.map(function (t) { return encurtarLabelTipificacao_(t[0]); }), tCVP.map(function (t) { return t[1]; }), COR_CVP,
             function (idx) { toggleCrossCAD('tip', tCVP[idx][0]); });
         chartTipCvli = atualizarGraficoBar(chartTipCvli, 'chart-tip-cvli', tCVLI.map(function (t) { return encurtarLabelTipificacao_(t[0]); }), tCVLI.map(function (t) { return t[1]; }), COR_CVLI,
@@ -1888,41 +1841,18 @@
         return chaveMes(d);
     }
 
-    // Monta a previsão PARA o próximo mês (previsaoMensal via o mesmo
-    // ensemble do bloco preservado + zonasRisco via identificarZonasRisco_)
-    // — não grava nada sozinha, só calcula. arrCVP/arrCVLI/arrMVI: bases
-    // (sem cross-filter), mesmas usadas em renderClassificacaoRisco.
+    // computarPrevisaoProximoMes_/buscarPrevisaoRegistrada_/
+    // salvarPrevisaoSeNecessario_ — MOVIDOS pra
+    // js/core/previsaoMensalCad.js (02/09/2026), mesmo motivo da
+    // classificação acima: precisam ser IDÊNTICOS ao que o lembrete
+    // automático de fim de mês usa (js/core/notificacoes.js), senão as
+    // duas fontes podem gravar previsões diferentes pro mesmo mês.
+    // Ficam só wrappers finos aqui — mesmo nome/assinatura de sempre,
+    // então nenhum outro lugar deste arquivo precisou mudar.
     function computarPrevisaoProximoMes_(arrCVP, arrCVLI, arrMVI) {
         const dataIni = document.getElementById('data-ini').value;
         const dataFim = document.getElementById('data-fim').value;
-        const sCVP = serieMensalCompleta(arrCVP, dataIni, dataFim);
-        const sCVLI = serieMensalCompleta(arrCVLI, dataIni, dataFim);
-        const sMVI = serieMensalCompleta(arrMVI, dataIni, dataFim);
-        if (!sCVP.chaves.length) return null;
-
-        const chaveAtual = sCVP.chaves[sCVP.chaves.length - 1];
-        const mesAlvo = proximaChaveMes_(chaveAtual);
-
-        const todos = arrCVP.concat(arrCVLI, arrMVI);
-        const porMes = agruparPorMes_(todos);
-        const chaves = Array.from(porMes.keys()).sort();
-        const mesesBaseline = chaves.slice(-JANELA_MESES_BASELINE_ACURACIA);
-        const itensBaseline = [];
-        mesesBaseline.forEach(function (k) { itensBaseline.push.apply(itensBaseline, porMes.get(k)); });
-        if (!itensBaseline.length) return null;
-
-        return {
-            mesAlvo: mesAlvo,
-            criadoComDadosAte: chaveAtual,
-            previsaoMensal: {
-                cvp: preverComEnsemble(sCVP.valores),
-                cvli: preverComEnsemble(sCVLI.valores),
-                mvi: preverComEnsemble(sMVI.valores),
-            },
-            zonasRisco: Array.from(identificarZonasRisco_(itensBaseline)),
-            mesesBaseline: mesesBaseline,
-            totalBaseline: itensBaseline.length,
-        };
+        return window.PrevisaoMensalCAD.computarPrevisaoProximoMes(arrCVP, arrCVLI, arrMVI, dataIni, dataFim);
     }
 
     // Cache em memória — evita reconsultar o Firebase a cada re-render
@@ -1933,37 +1863,29 @@
     async function buscarPrevisaoRegistrada_(chaveMesAlvo) {
         if (chaveMesAlvo in window._cadPrevisoesCache) return window._cadPrevisoesCache[chaveMesAlvo];
         if (!window._cadFirebaseUrl) { window._cadPrevisoesCache[chaveMesAlvo] = false; return false; }
-        try {
-            const resp = await fetch(window._cadFirebaseUrl + '/' + NO_PREVISOES_FIREBASE + '/' + chaveMesAlvo + '.json');
-            const dados = resp.ok ? await resp.json() : null;
-            window._cadPrevisoesCache[chaveMesAlvo] = dados || false;
-            return window._cadPrevisoesCache[chaveMesAlvo];
-        } catch (e) {
-            console.warn('[preditivaCAD] falha ao buscar previsão registrada:', e);
-            return false;
-        }
+        const dados = await window.PrevisaoMensalCAD.buscarPrevisaoRegistrada(window._cadFirebaseUrl, chaveMesAlvo);
+        window._cadPrevisoesCache[chaveMesAlvo] = dados || false;
+        return window._cadPrevisoesCache[chaveMesAlvo];
     }
 
     // Calcula (se ainda não existir) e grava no Firebase a previsão pro
     // PRÓXIMO mês — idempotente: se já existe algo gravado nesse nó,
     // NUNCA sobrescreve (a previsão fica congelada no que foi calculado
-    // da primeira vez que alguém abriu a página naquele mês). Chamada
-    // uma única vez por sessão (ver renderClassificacaoRisco), não a
-    // cada re-render — evita ficar batendo no Firebase à toa.
+    // da primeira vez que alguém abriu a página naquele mês, OU pelo
+    // lembrete automático — ver js/core/notificacoes.js). Chamada uma
+    // única vez por sessão (ver renderClassificacaoRisco), não a cada
+    // re-render — evita ficar batendo no Firebase à toa.
     async function salvarPrevisaoSeNecessario_(arrCVP, arrCVLI, arrMVI) {
         if (!window._cadFirebaseUrl) return;
         try {
-            const previsao = computarPrevisaoProximoMes_(arrCVP, arrCVLI, arrMVI);
-            if (!previsao) return;
-            const jaExiste = await buscarPrevisaoRegistrada_(previsao.mesAlvo);
-            if (jaExiste) return; // já tem uma previsão congelada pra esse mês — não mexe
-            const registro = Object.assign({ criadoEm: new Date().toISOString() }, previsao);
-            const resp = await fetch(window._cadFirebaseUrl + '/' + NO_PREVISOES_FIREBASE + '/' + previsao.mesAlvo + '.json', {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registro),
-            });
-            if (resp.ok) {
-                window._cadPrevisoesCache[previsao.mesAlvo] = registro;
-                console.log('[preditivaCAD] previsão gravada pra ' + previsao.mesAlvo + ':', registro);
+            const dataIni = document.getElementById('data-ini').value;
+            const dataFim = document.getElementById('data-fim').value;
+            const resultado = await window.PrevisaoMensalCAD.registrarPrevisaoProximoMesSeNecessario(window._cadFirebaseUrl, { dataIni: dataIni, dataFim: dataFim });
+            if (resultado.status === 'gravada') {
+                window._cadPrevisoesCache[resultado.mesAlvo] = resultado;
+                console.log('[preditivaCAD] previsão gravada pra ' + resultado.mesAlvo + ':', resultado);
+            } else if (resultado.status === 'ja_existia') {
+                window._cadPrevisoesCache[resultado.mesAlvo] = resultado;
             }
         } catch (e) {
             console.warn('[preditivaCAD] falha ao gravar previsão:', e);
