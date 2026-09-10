@@ -528,7 +528,7 @@
         var motivoRaw = String(r['Motivo do Arquivamento'] || '').trim();
         var erroMat   = r['Erro – Atipicidade Material'] || r['Erro - Atipicidade Material'] || '';
         var erroForm  = r['Erro – Atipicidade Formal']   || r['Erro - Atipicidade Formal']   || '';
-        var tip       = String(r['Tipificação'] || '').trim();
+        var tip       = _canonTip(r['Tipificação']);
         var comarca   = String(r['Comarca'] || '').trim();
         var indiciado = String(r['Indiciado'] || '').trim();
         var dataStr   = String(r['Data da Sentença'] || '').trim();
@@ -638,6 +638,13 @@
       return s.replace(/[áàãâä]/g, 'a').replace(/[éèêë]/g, 'e')
         .replace(/[íìîï]/g, 'i').replace(/[óòõôö]/g, 'o')
         .replace(/[úùûü]/g, 'u').replace(/ç/g, 'c').replace(/ñ/g, 'n');
+    }
+    // Canoniza a tipificação — ver canonTipificacao() em js/dashboard-cruzado.js:
+    // "<TIPO>" e "<TIPO> | <DIPLOMA LEGAL>" são o MESMO crime — corta o
+    // sufixo antes de qualquer agrupamento (o normTip abaixo só une
+    // variantes de ESCRITA, não remove esse rótulo).
+    function _canonTip(s) {
+      return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
     }
     function _fp(texto) {
       var s = _semAcento(texto.toLowerCase()).replace(/\([^)]*\)/g, '').replace(/[^\w\s]/g, ' ');
@@ -1730,7 +1737,7 @@ function gerarHTMLSugestoes(d) {
         var igs = getIgs(bol);
         if (!igs.length) return;
 
-        var tip = String(t['Tipicidade Geral'] || '—');
+        var tip = _canonTip(t['Tipicidade Geral']) || '—';
         var ano = esajAno[esaj] || esajAno[_norm(esaj)] || '—';
 
         igs.forEach(function(ig) {
