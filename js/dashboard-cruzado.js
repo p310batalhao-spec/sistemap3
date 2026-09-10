@@ -34,6 +34,22 @@
     }
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+    // A tipificação do CAD vem em dois formatos pro MESMO crime, dependendo
+    // do fluxo/época que capturou o registro: só "<TIPO>" ("HOMICÍDIO") ou
+    // "<TIPO> | <DIPLOMA LEGAL>" ("HOMICÍDIO | CÓDIGO PENAL",
+    // "AMEAÇA | LEI MARIA DA PENHA", "PERTURBAÇÃO... | CONTRAVENÇÕES PENAIS"
+    // etc.). Sem tratar isso, o mesmo crime aparecia como DUAS barras
+    // separadas em todo gráfico "por tipificação", quebrando a contagem
+    // (bug real relatado: HOMICÍDIO 30 + HOMICÍDIO | CÓDIGO PENAL 17 em vez
+    // de 47). A parte depois do " | " é só o rótulo do diploma —
+    // redundante e derivável —, então corta fora; também colapsa espaço
+    // duplicado ("AO  VOLANTE" → "AO VOLANTE"). Preserva acento/caixa
+    // pro rótulo do gráfico continuar legível. NÃO usar em TIPO_ARMA/
+    // TIPO_DROGA (não têm esse padrão).
+    function canonTipificacao(s) {
+        return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+    }
+
     // Parser de data tolerante — cobre AAAA-MM-DD, DD/MM/AAAA e strings
     // de Date() genéricas (mesma necessidade já resolvida em
     // qualitativo_tco.html/calendario.html para os mesmos tipos de dado).
@@ -158,7 +174,7 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
             kpiExtra: lista => ({ label: 'MVI no período', valor: lista.filter(isMVI).length }),
@@ -172,7 +188,7 @@
             campoCidade: null,
             campoCop: item => CAMPO(item, 'Nº Ocorrência', 'BOLETIM'),
             campoNome: null,
-            campoTip: item => CAMPO(item, 'Tipicidade Geral', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'Tipicidade Geral', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => movBase(CAMPO(item, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO')) || 'Sem Movimentação',
             labelTip: 'Tipicidade', labelStatus: 'Movimentação (status)',
             kpiExtra: lista => {
@@ -224,7 +240,7 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
             campoNome: item => CAMPO(item, 'NOME_AUTOR'),
-            campoTip: item => CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação de origem', labelStatus: 'Solução',
         },
@@ -236,7 +252,7 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
@@ -248,7 +264,7 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO DA OCORRÊNCIA', 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
@@ -262,7 +278,7 @@
             campoCidade: item => item._CIDADE || 'Não identificada',
             campoCop: item => CAMPO(item, 'N° DO BOU'),
             campoNome: null,
-            campoTip: item => item._TIPIFICACAO || 'Não identificada',
+            campoTip: item => canonTipificacao(item._TIPIFICACAO) || 'Não identificada',
             campoStatus: item => CAMPO(item, 'STATUS') || 'Não informado',
             labelTip: 'Tipificação (ocorrência de origem)', labelStatus: 'Movimentação / Status',
             // Dimensões extras — motor genérico de renderAba() renderiza 1
@@ -710,7 +726,7 @@
         const mviArr = geral.filter(isMVI);
         const cvpArr = cvpBruto.filter(isCVP);
 
-        const campoTip = i => CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO') || 'Não informado';
+        const campoTip = i => canonTipificacao(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado';
         const campoCidade = i => CAMPO(i, 'CIDADE') || 'Não informado';
 
         // Tabela: só os campos necessários dos 40 CVLI mais recentes (leve, não é o array bruto inteiro)
