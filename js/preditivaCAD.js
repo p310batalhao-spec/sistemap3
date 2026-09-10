@@ -58,11 +58,20 @@
     function chaveCidadeBairro_(it) {
         return (it.CIDADE || 'N/D').toString().trim() + '||' + (it.BAIRRO || 'N/D').toString().trim();
     }
+    // Canoniza a tipificação — ver canonTipificacao() em js/dashboard-cruzado.js.
+    // A grade do CAD NEM SEMPRE sufixa com "| CÓDIGO PENAL": os dois formatos
+    // ("HOMICÍDIO" e "HOMICÍDIO | CÓDIGO PENAL") coexistem pro mesmo crime, e
+    // sem unir viravam DUAS barras no gráfico (as duas exibidas iguais depois
+    // do encurtamento). Cortar o sufixo aqui resolve grupo E filtro cruzado
+    // (ambos passam por tipificacaoLabel_).
+    function canonTipificacao_(s) {
+        return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+    }
     function tipificacaoLabel_(it) {
         const t1 = (it.TIPIFICACAO || '').toString().trim();
-        if (t1 && t1 !== '---') return t1;
+        if (t1 && t1 !== '---') return canonTipificacao_(t1);
         const t2 = (it.TIPIFICACAO_GERAL || '').toString().trim();
-        return (t2 && t2 !== '---') ? t2 : '';
+        return (t2 && t2 !== '---') ? canonTipificacao_(t2) : '';
     }
     function aplicarCrossCAD(lista, exceto) {
         const c = window._cadCross;
@@ -896,24 +905,31 @@
 
     // Top tipificações por categoria — mesmo padrão de
     // page/analisePreditiva.html (gráfico horizontal, 1 por categoria).
-    // A grade do CAD sempre sufixa a tipificação com "| CÓDIGO PENAL" (a
-    // Natureza Geral — todo CVP/CVLI/MVI já é, por definição, Código
-    // Penal). Repetir isso em CADA barra do gráfico só ocupava espaço
-    // sem informar nada novo, e era o que empurrava o início do rótulo
-    // (ex.: "TENTATIVA DE...") pra fora da área visível do card. Só
-    // encurta pra EXIBIÇÃO no eixo do gráfico — o filtro cruzado
-    // (toggleCrossCAD) continua recebendo o rótulo COMPLETO (ver
-    // renderTipificacaoPorCategoria abaixo), pra combinar exatamente com
-    // o texto que tipificacaoLabel_/aplicarCrossCAD comparam.
+    // A tipificação já vem canonizada de tipificacaoLabel_ (sufixo
+    // "| CÓDIGO PENAL" / "| ..." removido — ver comentário lá); aqui só
+    // encurta o que ainda ficar longo demais pro eixo do gráfico.
     function encurtarLabelTipificacao_(label) {
-        const semSufixo = String(label || '').replace(/\s*\|\s*C[ÓO]DIGO\s+PENAL\s*$/i, '').trim();
-        return semSufixo.length > 30 ? semSufixo.substring(0, 28) + '…' : semSufixo;
+        const s = canonTipificacao_(label);
+        return s.length > 30 ? s.substring(0, 28) + '…' : s;
+    }
+
+    // Conta as tipificações já CANONIZADAS (une "HOMICÍDIO" +
+    // "HOMICÍDIO | CÓDIGO PENAL" numa barra só) — não usa contarTop
+    // genérico porque este precisa passar por tipificacaoLabel_.
+    function contarTopTipCanon_(lista, n) {
+        const cont = new Map();
+        lista.forEach(function (it) {
+            const v = tipificacaoLabel_(it);
+            if (!v) return;
+            cont.set(v, (cont.get(v) || 0) + 1);
+        });
+        return Array.from(cont.entries()).sort(function (a, b) { return b[1] - a[1]; }).slice(0, n || 8);
     }
 
     function renderTipificacaoPorCategoria(arrCVP, arrCVLI, arrMVI) {
-        const tCVP = contarTop(arrCVP, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
-        const tCVLI = contarTop(arrCVLI, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
-        const tMVI = contarTop(arrMVI, ['TIPIFICACAO', 'TIPIFICACAO_GERAL'], 8);
+        const tCVP = contarTopTipCanon_(arrCVP, 8);
+        const tCVLI = contarTopTipCanon_(arrCVLI, 8);
+        const tMVI = contarTopTipCanon_(arrMVI, 8);
         chartTipCvp = atualizarGraficoBar(chartTipCvp, 'chart-tip-cvp', tCVP.map(function (t) { return encurtarLabelTipificacao_(t[0]); }), tCVP.map(function (t) { return t[1]; }), COR_CVP,
             function (idx) { toggleCrossCAD('tip', tCVP[idx][0]); });
         chartTipCvli = atualizarGraficoBar(chartTipCvli, 'chart-tip-cvli', tCVLI.map(function (t) { return encurtarLabelTipificacao_(t[0]); }), tCVLI.map(function (t) { return t[1]; }), COR_CVLI,
