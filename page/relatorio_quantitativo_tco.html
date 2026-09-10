@@ -234,6 +234,13 @@
         if (!texto) return '';
         return texto.toString().normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
     }
+    // Canoniza a tipificação — ver canonTipificacao() em js/dashboard-cruzado.js:
+    // "<TIPO>" e "<TIPO> | <DIPLOMA LEGAL>" ("FURTO" vs "FURTO | CÓDIGO PENAL")
+    // são o MESMO crime — sem cortar o sufixo apareciam como duas fatias
+    // separadas no gráfico de "Tipicidades Mais Frequentes".
+    function _canonTip(s) {
+        return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+    }
     function _toISO(str) {
         if (!str) return '';
         str = str.toString().trim();
@@ -387,7 +394,7 @@
             if (movNorm === 'ARQUIVADO' || movNorm === 'JULGADO') concluidos++;
             if (!mov) semMovimentacao++;
 
-            const tip = _get(doc,'Tipicidade Geral','TIPIFICACAO','TIPIFICACAO_GERAL');
+            const tip = _canonTip(_get(doc,'Tipicidade Geral','TIPIFICACAO','TIPIFICACAO_GERAL'));
             if (tip) porTip[tip] = (porTip[tip]||0) + 1;
 
             const op = _get(doc,'OPERADOR CAPA');
