@@ -5,6 +5,13 @@ let FB_GERAL = null; // definidos em runtime a partir da unidade do usuário log
 let FB_CVP   = null;
 let FB_CVLI  = null;
 
+// Canoniza a tipificação — ver canonTipificacao() em js/dashboard-cruzado.js:
+// a tipificação vem como "<TIPO>" OU "<TIPO> | <DIPLOMA LEGAL>"
+// ("HOMICÍDIO" vs "HOMICÍDIO | CÓDIGO PENAL") pro MESMO crime; sem cortar
+// o sufixo o mesmo crime virava duas barras separadas nos gráficos por
+// tipificação. Copiado por arquivo — candidato a módulo compartilhado.
+function canonTip(s) { return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim(); }
+
 // ═══════════════════════════════════════════════════════════════
 // UTILITÁRIOS DE INTERFACE
 // ═══════════════════════════════════════════════════════════════
@@ -344,7 +351,7 @@ function renderModalTabela(lista) {
         return;
     }
     tbody.innerHTML = lista.map(r => {
-        const tip   = (r.TIPIFICACAO || r.TIPIFICACAO_GERAL || '—').trim();
+        const tip   = canonTip(r.TIPIFICACAO || r.TIPIFICACAO_GERAL) || '—';
         const cid   = (r.CIDADE  || '—').trim();
         const bai   = (r.BAIRRO  || '—').trim();
         const data  = (r.DATA    || '—').trim();
@@ -593,9 +600,9 @@ async function carregar() {
 
         // ── Tipificações ──────────────────────────────────────
         const tipCVP={}, tipCVLI={}, tipMVI={};
-        arrCVP.forEach(r  => { const t=(r.TIPIFICACAO||r.TIPIFICACAO_GERAL||'N/D').trim(); tipCVP[t]=(tipCVP[t]||0)+1; });
-        arrCVLI.forEach(r => { const t=(r.TIPIFICACAO||r.TIPIFICACAO_GERAL||'N/D').trim(); tipCVLI[t]=(tipCVLI[t]||0)+1; });
-        arrMVI.forEach(r  => { const t=(r.TIPIFICACAO||'N/D').trim(); tipMVI[t]=(tipMVI[t]||0)+1; });
+        arrCVP.forEach(r  => { const t=canonTip(r.TIPIFICACAO||r.TIPIFICACAO_GERAL)||'N/D'; tipCVP[t]=(tipCVP[t]||0)+1; });
+        arrCVLI.forEach(r => { const t=canonTip(r.TIPIFICACAO||r.TIPIFICACAO_GERAL)||'N/D'; tipCVLI[t]=(tipCVLI[t]||0)+1; });
+        arrMVI.forEach(r  => { const t=canonTip(r.TIPIFICACAO)||'N/D'; tipMVI[t]=(tipMVI[t]||0)+1; });
 
         // ── Hotspots cidade+bairro ────────────────────────────
         function mapaLocalidade(arr) {
