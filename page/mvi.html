@@ -211,6 +211,15 @@
             .trim();
     }
 
+    // Corta o sufixo "| <DIPLOMA LEGAL>" da tipifica\u00e7\u00e3o (ver
+    // canonTipificacao() em js/dashboard-cruzado.js) \u2014 s\u00f3 pra EXIBI\u00c7\u00c3O na
+    // coluna, pra tabela n\u00e3o misturar "HOMIC\u00cdDIO" numa linha e
+    // "HOMIC\u00cdDIO | C\u00d3DIGO PENAL" na outra. O filtro abaixo continua por
+    // substring ("HOMI"/"FEMINI"), ent\u00e3o n\u00e3o muda quais linhas aparecem.
+    function canonTipificacao(s) {
+        return String(s || "").split(/\s*\|\s*/)[0].replace(/\s+/g, " ").trim();
+    }
+
     function getStringField(field) {
         if (!field) return "";
         if (field.stringValue) return field.stringValue;
@@ -282,7 +291,7 @@
                 <td>${doc.LATITUDE || ""}</td>
                 <td>${doc.LONGITUDE || ""}</td>
                 <td style="font-weight:bold; color:red;">
-                    ${doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'] || ""}
+                    ${canonTipificacao(doc.TIPIFICACAO || doc['TIPIFICAÇÃO NO DESPACHO'])}
                 </td>
                 <td>${doc.ESTABELECIMENTO || ""}</td>
                 <td>${doc.SOLUCAO || doc.SOLUÇÃO || ""}</td>
