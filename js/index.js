@@ -108,16 +108,23 @@ async function atualizarContagemHomicidiosFirebase() {
 
         const lista = Object.values(dados);
 
+        // MVI (04/09/2026, pedido explícito do usuário): homicídio
+        // (doloso), latrocínio, feminicídio, homicídio culposo ao volante
+        // e homicídio doloso ao volante — os dois últimos casam por
+        // "HOMICIDIO" no texto. Consumado conta sempre; TENTATIVA desses
+        // só conta quando OBITO = "S". MESMA regra em
+        // js/dashboard-cruzado.js:isMVI — mudar nos dois. O split("|")
+        // corta o sufixo "| CÓDIGO PENAL" que parte dos registros traz.
         const contagem = lista.filter(item => {
             if (!doAnoAtual(item)) return false;
             const tip = (item.TIPIFICACAO_GERAL || item.TIPIFICACAO || "")
-                .toString().trim()
+                .toString().split("|")[0]
                 .normalize("NFD").replace(/[̀-ͯ]/g, "")
-                .toUpperCase();
-            const ehHomicidio = tip.includes("HOMICIDIO") && !tip.includes("TENTATIVA");
-            const ehTentativa = tip.includes("TENTATIVA");
-            const temObito = (item.OBITO || "").toString().trim().toUpperCase() === "S";
-            return ehHomicidio || (ehTentativa && temObito);
+                .toUpperCase().trim();
+            const ehLetal = tip.includes("HOMICIDIO") || tip.includes("FEMINICIDIO") || tip.includes("LATROCINIO");
+            if (!ehLetal) return false;
+            if (tip.includes("TENTATIVA")) return (item.OBITO || "").toString().trim().toUpperCase() === "S";
+            return true;
         }).length;
 
         el.innerText = contagem;
