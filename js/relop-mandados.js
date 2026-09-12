@@ -131,11 +131,9 @@
             <div class="relop-opcoes">
                 <div class="relop-opcao${ULTIMO_MODO === 'individual' ? ' ativa' : ''}" id="relop-card-individual">
                     <label class="relop-radio-modo"><input type="radio" name="relop-modo" value="individual" ${ULTIMO_MODO === 'individual' ? 'checked' : ''}> <h4 style="display:inline;margin:0;">RELOP Individual</h4></label>
-                    <p style="font-size:12px;color:var(--p3-text-muted);margin:4px 0 0;">1 boletim específico — informe o número e a data da ocorrência.</p>
-                    <label>Nº do boletim/ocorrência</label>
+                    <p style="font-size:12px;color:var(--p3-text-muted);margin:4px 0 0;">1 COP específico — a data é localizada sozinha a partir do cadastro de Cumprimento de Mandados já feito nesta tela.</p>
+                    <label>Nº do COP/boletim</label>
                     <input type="text" id="relop-in-boletim" inputmode="numeric" placeholder="ex.: 1551648">
-                    <label>Data da ocorrência</label>
-                    <input type="date" id="relop-in-data">
                 </div>
                 <div class="relop-opcao${ULTIMO_MODO === 'periodo' ? ' ativa' : ''}" id="relop-card-periodo">
                     <label class="relop-radio-modo"><input type="radio" name="relop-modo" value="periodo" ${ULTIMO_MODO === 'periodo' ? 'checked' : ''}> <h4 style="display:inline;margin:0;">RELOP por Período</h4></label>
@@ -161,6 +159,27 @@
         document.getElementById('relop-btn-buscar').addEventListener('click', executarBusca);
     }
 
+    // "AAAA-MM-DD" <- "DD/MM/AAAA" (formato salvo no Firebase, ver
+    // js/cadastroocorrencias.js) — a rota /cad/relop-mandado exige ISO.
+    function dataBrParaIso(dataBr) {
+        const m = String(dataBr || '').match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    }
+
+    // Localiza sozinho a data do boletim no nó /mandados (o mesmo que
+    // alimenta a tabela desta própria tela) — o usuário só digita o
+    // número do COP, pedido explícito (04/09/2026): "não quero colocar
+    // data, mas sim somente o número do COP". Sem isso, precisaríamos
+    // perguntar a data porque a busca do CAD é sempre por período.
+    async function resolverDataDoBoletim(boletim) {
+        const cfg = await P3.loadUnidadeConfig();
+        const resp = await fetch(`${cfg.firebase.databaseURL}/mandados.json`);
+        const dados = resp.ok ? await resp.json() : null;
+        if (!dados) return null;
+        const registro = Object.values(dados).find(r => String(r.BOLETIM || r.NUMEROOCORRENCIA || '') === String(boletim));
+        return registro ? dataBrParaIso(registro.DATA || registro.data) : null;
+    }
+
     async function executarBusca() {
         if (typeof P3AtualizadorLocal === 'undefined' || !(await P3AtualizadorLocal.disponivel())) {
             renderEscolha('O atualizador local (CAD/Quimera) precisa estar aberto e logado no CAD pra buscar as ocorrências e imagens.');
@@ -170,8 +189,23 @@
         let params;
         if (ULTIMO_MODO === 'individual') {
             const boletim = document.getElementById('relop-in-boletim').value.trim();
-            const data = document.getElementById('relop-in-data').value;
-            if (!boletim || !data) { renderEscolha('Informe o número do boletim e a data.'); return; }
+            if (!boletim) { renderEscolha('Informe o número do COP/boletim.'); return; }
+
+            const corpoEspera = document.getElementById('relop-corpo');
+            corpoEspera.innerHTML = '<div class="relop-progresso">⏳ Localizando a data desse boletim no cadastro...</div>';
+            document.getElementById('relop-rodape').innerHTML = '';
+            let data;
+            try {
+                data = await resolverDataDoBoletim(boletim);
+            } catch (e) {
+                console.error('[relop-mandados] erro ao localizar data do boletim:', e);
+                renderEscolha('Não consegui consultar o cadastro pra achar a data desse boletim — tente de novo.');
+                return;
+            }
+            if (!data) {
+                renderEscolha(`Boletim ${boletim} não encontrado no cadastro de Cumprimento de Mandados desta tela — confira o número (ou importe essa ocorrência antes, na Sincronização Direta do CAD).`);
+                return;
+            }
             params = { boletim, data };
         } else {
             const dataIni = document.getElementById('relop-in-data-ini').value;
