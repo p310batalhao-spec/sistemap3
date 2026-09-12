@@ -354,6 +354,34 @@
                 return resultadoFinal;
             }
 
+            // RELOP de Cumprimento de Mandado (04/09/2026) — modo
+            // 'individual' (`params: {boletim, data}`, mesmo dia) ou
+            // 'periodo' (`params: {dataIni, dataFim}`). onProgresso(obj)
+            // recebe {tipo:'progresso', mensagem}. Devolve o array `alvos`
+            // ({BOLETIM,DATA,...,IMAGENS:[{nome,contentType,base64}]}) —
+            // lança erro tanto pra falha de rede/servidor quanto pro caso
+            // "nada encontrado" ({ok:false,erro}), pra quem chama só
+            // precisar de 1 try/catch.
+            async function gerarRelopMandado(modo, params, onProgresso) {
+                const qs = new URLSearchParams(Object.assign({ modo: modo }, params)).toString();
+                const resp = await fetch(`${URL_BASE}/cad/relop-mandado?${qs}`);
+                if (!resp.ok) {
+                    let detalhe = '';
+                    try { detalhe = (await resp.json()).erro || ''; } catch (e) { /* corpo não era JSON */ }
+                    throw new Error(detalhe || `RELOP respondeu HTTP ${resp.status}`);
+                }
+                let resultadoFinal = null;
+                let erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                if (!resultadoFinal || !resultadoFinal.ok) throw new Error((resultadoFinal && resultadoFinal.erro) || 'Falha ao gerar o RELOP.');
+                return resultadoFinal.alvos;
+            }
+
             global.P3AtualizadorLocal = {
                 URL_BASE: URL_BASE,
                 disponivel: disponivel,
@@ -376,5 +404,6 @@
                 buscarGradeCad: buscarGradeCad,
                 importarHarCerbero: importarHarCerbero,
                 importarCaminhoLocalCerbero: importarCaminhoLocalCerbero,
+                gerarRelopMandado: gerarRelopMandado,
             };
         })(window);
