@@ -17,6 +17,8 @@
 <body>
     <script src="../js/core/session.js"></script>
     <script src="../js/core/header-nav.js"></script>
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/relop-mandados.js"></script>
 
     <section class="pagecomplete">
         <main>
@@ -32,6 +34,14 @@
                         <img width="20" height="20" src="https://img.icons8.com/ios-filled/50/plus--v1.png"
                             alt="Adicionar" />
                         Adicionar Novo Mandado
+                    </button>
+                    <!-- RELOP (04/09/2026, pedido explícito do usuário) — só
+                         P2/ADMIN (ver checagem de nível no script inline no
+                         fim do arquivo). Precisa do atualizador local aberto
+                         e logado no CAD (é ele quem busca as ocorrências e
+                         baixa as fotos anexadas — ver js/relop-mandados.js). -->
+                    <button id="btn-gerar-relop" style="display:none;">
+                        📄 Gerar RELOP
                     </button>
                     <p id="mensagem-carregamento">Carregando dados, aguarde...</p>
                 </div>
@@ -365,9 +375,17 @@
 
     // --- INICIALIZAÇÃO ---
     document.addEventListener('DOMContentLoaded', async () => {
-        if (!P3.requireAuth()) return;
+        const sessao = P3.requireAuth();
+        if (!sessao) return;
         const cfg = await P3.loadUnidadeConfig();
         DATABASE_URL = cfg.firebase.databaseURL;
         carregarDados();
+
+        // RELOP (04/09/2026) — botão só pra P2/ADMIN (js/relop-mandados.js
+        // já cuida do clique; aqui só decide se ele aparece).
+        const btnRelop = document.getElementById('btn-gerar-relop');
+        if (btnRelop && (sessao.nivel === 'p2' || sessao.nivel === 'admin')) {
+            btnRelop.style.display = '';
+        }
     });
 </script>
