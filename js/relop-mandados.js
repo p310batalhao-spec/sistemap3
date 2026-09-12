@@ -232,18 +232,33 @@
     }
 
     // ── Etapa 2 — revisão/edição antes de gerar o documento ────────────
+    // Referência do processo: prioriza o Nº do processo extraído do
+    // "Relato do Despachante" no CAD (pedido explícito do usuário,
+    // 12/09/2026: "no lugar de informar o nº do boletim... deve informar
+    // o número do processo, tanto no texto quanto nos dados") — só cai
+    // pro boletim quando o CAD não trouxe o número do processo.
+    function referenciasProcesso(alvos) {
+        return alvos.map(a => a.NUMERO_PROCESSO || `boletim ${a.BOLETIM}`);
+    }
+
     function montarNarrativaPadrao(params, alvos) {
         const cidades = [...new Set(alvos.map(a => a.CIDADE).filter(Boolean))].join(', ');
-        const boletins = alvos.map(a => a.BOLETIM).join(', ');
+        const refs = referenciasProcesso(alvos).join(', ');
         const dataRef = ULTIMO_MODO === 'individual' ? formatarDataBrExtenso(alvos[0] && alvos[0].DATA) : null;
         const periodoTxt = dataRef
-            ? `No dia ${dataRef}, foi cumprido mandado de busca e apreensão referente ao boletim nº ${boletins}`
-            : `No período informado, foram cumpridos mandados de busca e apreensão referentes aos boletins nº ${boletins}`;
+            ? `No dia ${dataRef}, foi cumprido mandado de busca e apreensão referente ao processo nº ${refs}`
+            : `No período informado, foram cumpridos mandados de busca e apreensão referentes aos processos nº ${refs}`;
         return `${periodoTxt}, expedido(s) pela Vara Criminal da Comarca de [COMARCA], no âmbito de investigação que apura [NATUREZA DA INVESTIGAÇÃO], tendo como alvos indivíduos situados n${cidades ? 'o município de ' + cidades : 'este município'}/AL.\n\n` +
             `As diligências foram executadas com base em levantamentos da Agência de Inteligência do 10º BPM (PM-2), com emprego de equipes operacionais, visando à localização de materiais ilícitos, armas de fogo, drogas e dispositivos eletrônicos.`;
     }
 
+    // Endereço: prioriza o endereço rico extraído da página de detalhes
+    // do CAD (logradouro+nº+bairro+cidade/UF reais) — pedido explícito
+    // do usuário (12/09/2026): "os dados do endereço devem estar
+    // preenchidos com os dados da imagem 3". Só cai pro endereço da
+    // grade (mais pobre) quando o detalhe não veio.
     function montarEnderecoAlvo(a) {
+        if (a.ENDERECO_DETALHE) return a.ENDERECO_DETALHE;
         return [a.LOGRADOURO, a.BAIRRO, a.CIDADE ? a.CIDADE + '/AL' : ''].filter(Boolean).join(', ');
     }
 
@@ -251,6 +266,10 @@
         const alvos = ALVOS_CARREGADOS;
         const corpo = document.getElementById('relop-corpo');
         const hoje = hojeISO();
+        // Autos nº: pré-preenche com o 1º processo achado no CAD (pedido
+        // explícito do usuário, item 1) — continua editável pra quando
+        // houver mais de um processo distinto ou o CAD não achar nenhum.
+        const autosPreenchido = (alvos.find(a => a.NUMERO_PROCESSO) || {}).NUMERO_PROCESSO || '';
         corpo.innerHTML = `
             <div class="relop-secao-titulo">Dados do RELOP</div>
             <div class="relop-grid-2">
@@ -261,7 +280,7 @@
                 <div class="relop-campo"><label>Difusão anterior</label><input type="text" id="relop-campo-difusao-ant" value="X-X-X-X"></div>
                 <div class="relop-campo"><label>Referência</label><input type="text" id="relop-campo-referencia" value="X-X-X-X"></div>
                 <div class="relop-campo"><label>Operação</label><input type="text" id="relop-campo-operacao" value="X-X-X-X"></div>
-                <div class="relop-campo"><label>Referente aos autos nº</label><input type="text" id="relop-campo-autos" placeholder="ex.: 8000052-74.2026.8.02.0046"></div>
+                <div class="relop-campo"><label>Referente aos autos nº</label><input type="text" id="relop-campo-autos" value="${esc(autosPreenchido)}" placeholder="ex.: 8000052-74.2026.8.02.0046"></div>
             </div>
             <div class="relop-campo"><label>Assunto</label><input type="text" id="relop-campo-assunto" value="CUMPRIMENTO DE MANDADOS DE BUSCA E APREENSÃO"></div>
             <div class="relop-campo"><label>Narrativa (revise antes de gerar — comarca/natureza da investigação não vêm do CAD)</label>
@@ -275,13 +294,13 @@
         listaEl.innerHTML = alvos.map((a, i) => `
             <div class="relop-alvo-card" data-relop-alvo="${i}">
                 <div class="relop-alvo-card-cabecalho"><span>Boletim ${esc(a.BOLETIM)} · ${esc(a.DATA)} ${esc(a.HORA || '')}</span><span>${(a.IMAGENS || []).length} imagem(ns) no CAD</span></div>
-                <div class="relop-campo"><label>Nome do alvo</label><input type="text" id="relop-alvo-nome-${i}" placeholder="Nome do representado/alvo"></div>
+                <div class="relop-campo"><label>Nome do alvo</label><input type="text" id="relop-alvo-nome-${i}" value="${esc(a.NOME_ALVO || '')}" placeholder="Nome do representado/alvo"></div>
                 <div class="relop-campo"><label>Endereço</label><textarea id="relop-alvo-endereco-${i}" rows="2">${esc(montarEnderecoAlvo(a))}</textarea></div>
                 <div class="relop-grid-2">
                     <div class="relop-campo"><label>Mandado cumprido</label>
                         <select id="relop-alvo-cumprido-${i}"><option value="SIM">SIM</option><option value="NÃO">NÃO</option><option value="PARCIALMENTE">PARCIALMENTE</option></select>
                     </div>
-                    <div class="relop-campo"><label>Material apreendido</label><textarea id="relop-alvo-material-${i}" rows="2" placeholder="Nada encontrado">${esc(a.SOLUCAO && /nada/i.test(a.SOLUCAO) ? 'Nada encontrado' : '')}</textarea></div>
+                    <div class="relop-campo"><label>Material apreendido (revise — extraído do CAD, editável)</label><textarea id="relop-alvo-material-${i}" rows="2" placeholder="Nada encontrado">${esc(a.MATERIAL_APREENDIDO || (a.SOLUCAO && /nada/i.test(a.SOLUCAO) ? 'Nada encontrado' : ''))}</textarea></div>
                 </div>
                 ${a.TEXTO_DESPACHANTE ? `<div style="font-size:11.5px;color:var(--p3-text-muted);background:var(--p3-surface);border:1px dashed var(--p3-border);border-radius:6px;padding:8px 10px;margin-top:6px;"><b>Despacho no CAD (referência):</b> ${esc(a.TEXTO_DESPACHANTE)}</div>` : ''}
                 <div class="relop-galeria">
@@ -394,7 +413,8 @@
                 .relopdoc-cabecalho img { width:64px; height:64px; object-fit:contain; }
                 .relopdoc-cabecalho-texto { flex:1; text-align:center; font-weight:700; font-size:11.5px; line-height:1.4; }
                 .relopdoc-cabecalho-texto small { display:block; font-weight:400; font-size:10px; }
-                .relopdoc-titulo { text-align:center; font-weight:700; font-size:13px; margin:14px 0; }
+                .relopdoc-titulo { text-align:center; font-weight:700; font-size:13px; margin:14px 0; position:relative; }
+                .relopdoc-selo { position:absolute; right:0; top:-6px; width:70px; height:auto; opacity:.92; }
                 table.relopdoc-campos { width:100%; border-collapse:collapse; margin-bottom:14px; }
                 table.relopdoc-campos td { padding:2px 4px; font-size:12px; vertical-align:top; }
                 table.relopdoc-campos td.relopdoc-rot { font-weight:700; width:150px; white-space:nowrap; }
@@ -420,7 +440,7 @@
                         <small>p2.10bpm@pm.al.gov.br / p2.10bpm.pmal@gmail.com</small>
                     </div>
                 </div>
-                <div class="relopdoc-titulo">RELOP - CUMPRIMENTO DE MANDADO - ${numeroTitulo}</div>
+                <div class="relopdoc-titulo">RELOP - CUMPRIMENTO DE MANDADO - ${numeroTitulo}<img class="relopdoc-selo" src="../img/selo-relop-10bpm.png" alt="selo de autenticação"></div>
                 <table class="relopdoc-campos">
                     <tr><td class="relopdoc-rot">DATA:</td><td>${esc(dataExibicao)}</td></tr>
                     <tr><td class="relopdoc-rot">ASSUNTO:</td><td>${esc(c.assunto)}</td></tr>
