@@ -96,12 +96,34 @@ function renderHeatmap(id, contagens, r, g, b) {
 // ═══════════════════════════════════════════════════════════════════
 // INICIALIZAÇÃO
 // ═══════════════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', function () {
+// Busca o payload gravado por js/preditivaCAD.js — via retransmissor do
+// servidor local (?token=..., ver app.py:/relatorio/obter) quando veio
+// do app desktop, senão via localStorage (uso comum pelo navegador). Ver
+// comentário grande em js/preditivaCAD.js:abrirRelatorioCAD sobre por
+// que o localStorage sozinho não atravessa pro navegador externo que o
+// WebView2 abre.
+async function obterPayloadRelatorio() {
+    const token = new URLSearchParams(location.search).get('token');
+    if (token) {
+        const base = (typeof P3AtualizadorLocal !== 'undefined' && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
+        const resp = await fetch(`${base}/relatorio/obter?token=${encodeURIComponent(token)}`);
+        if (!resp.ok) throw new Error('token expirado ou não encontrado — gere o relatório de novo.');
+        return resp.text();
+    }
     const raw = localStorage.getItem('p3_preditiva_cad');
-    if (!raw) {
-        document.getElementById('loader').innerHTML =
-            '<i class="fas fa-exclamation-triangle" style="color:#b71c1c;font-size:2rem;display:block;margin-bottom:12px;"></i>' +
-            'Dados não encontrados.<br><small>Abra este relatório pelo botão <strong>"🖨️ Imprimir Relatório"</strong> na página de Análise Preditiva CAD.</small>';
+    if (!raw) throw new Error('__SEM_DADOS__');
+    return raw;
+}
+
+window.addEventListener('DOMContentLoaded', async function () {
+    let raw;
+    try {
+        raw = await obterPayloadRelatorio();
+    } catch (e) {
+        document.getElementById('loader').innerHTML = e.message === '__SEM_DADOS__'
+            ? '<i class="fas fa-exclamation-triangle" style="color:#b71c1c;font-size:2rem;display:block;margin-bottom:12px;"></i>' +
+              'Dados não encontrados.<br><small>Abra este relatório pelo botão <strong>"🖨️ Imprimir Relatório"</strong> na página de Análise Preditiva CAD.</small>'
+            : '<i class="fas fa-exclamation-triangle" style="color:#b71c1c;font-size:2rem;display:block;margin-bottom:12px;"></i>' + e.message;
         return;
     }
 
@@ -273,10 +295,17 @@ window.addEventListener('DOMContentLoaded', function () {
         const coordTd = r.coord
             ? '<a href="https://www.google.com/maps?q=' + r.coord + '" target="_blank" style="color:#00695c;font-weight:600;text-decoration:none;">📍 ' + r.coord + '</a>'
             : '<span style="color:#9ea3b5;">—</span>';
+        // Taxa/10k habitantes (IBGE) — mesmo campo que a tela ao vivo já
+        // calcula em computarHotspots_ (ver js/preditivaCAD.js); "—" quando
+        // a população não chegou a tempo do relatório ser gerado ou o nome
+        // da cidade não bateu com a lista do IBGE.
+        const taxaTd = r.taxa10k != null
+            ? '<td>' + r.taxa10k.toFixed(1) + '<span style="color:#9ea3b5;font-size:.68rem;"> /10k</span></td>'
+            : '<td style="color:#9ea3b5;">—</td>';
         return '<tr><td style="color:#9ea3b5;font-weight:bold;">' + (i + 1) + '</td><td>' + r.cidade + '</td><td><strong>' + r.bairro + '</strong></td>' +
-            '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' +
+            '<td>' + r.cvp + '</td><td>' + r.cvli + '</td><td>' + r.mvi + '</td><td><strong>' + r.total + '</strong></td>' + taxaTd +
             '<td><span class="badge-risco risco-' + r.risco + '">' + rlabel + '</span></td><td>' + coordTd + '</td></tr>';
-    }).join('') || '<tr><td colspan="9" style="text-align:center;color:#9ea3b5;padding:1rem;">Sem dados suficientes.</td></tr>';
+    }).join('') || '<tr><td colspan="10" style="text-align:center;color:#9ea3b5;padding:1rem;">Sem dados suficientes.</td></tr>';
     const topHotspot = (HS.linhas || [])[0];
     document.getElementById('comentario-hotspots').innerHTML = topHotspot
         ? '<div class="insight"><i class="fas fa-map-marker-alt"></i><span>Maior concentração: <strong>' + topHotspot.bairro + ' (' + topHotspot.cidade + ')</strong>, ' + topHotspot.total + ' ocorrência(s) (' + topHotspot.pct + '% do total classificado). A coordenada mostrada é a mais frequente do local, já filtrada contra "pinos fixos" da geocodificação (mesma validação de bounding box de Alagoas do módulo de Machine Learning).</span></div>'
