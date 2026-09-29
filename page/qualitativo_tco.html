@@ -423,9 +423,39 @@
       if (erroForm && String(erroForm).trim()) return 'Atipicidade Formal';
       if (erroMat && String(erroMat).trim())  return 'Atipicidade Material';
 
-      if (!m && !r) return null;
-      return m ? 'Outros Motivos' : null;
+      // CORREÇÃO (29/09/2026, relatado pelo usuário: "440 tcos analisados,
+      // porém quando vemos o somatório dos valores apresentados dá em
+      // torno de 419") — processo que NÃO foi arquivado (foi a julgamento
+      // e teve sentença condenatória/absolutória, por ex.) vem com o campo
+      // "Motivo do Arquivamento" vazio, então antes essa função devolvia
+      // null pra ele e o registro inteiro SUMIA da tabela de motivos (sem
+      // erro nenhum, silenciosamente) — daí o total de sentenças analisadas
+      // (conta TODA linha da planilha) nunca batia com a soma da tabela de
+      // motivos (só conta quem tinha motivo). Pedido explícito do usuário:
+      // "inclua o mapeamento para 'condenação' dos autores" — abaixo disso,
+      // qualquer OUTRO resultado que não bateu em nada cai num balde
+      // "Resultado Não Classificado" em vez de sumir — garante que a soma
+      // da tabela de motivos SEMPRE bate com o total, e deixa visível (em
+      // vez de escondido) quando a planilha tem algum resultado ainda sem
+      // categoria dedicada.
+      if (/conden/.test(r) || /julgo procedente/.test(r) || /\bprocedente\b/.test(r)) return 'Condenação';
+      if (/absolv/.test(r)) return 'Absolvição';
+      if (/prescri/.test(r)) return 'Prescrição';
+
+      if (m) return 'Outros Motivos';
+      if (r) return 'Resultado Não Classificado';
+      return 'Sem Motivo/Resultado Informado';
     }
+
+    // Categorias que não representam um ARQUIVAMENTO de fato (processo foi
+    // a julgamento, ou a linha não tem motivo/resultado informado) — usada
+    // só pra não inflar a KPI "Arquivamentos"/totalArquivamentos com elas;
+    // elas continuam entrando normalmente em porMotivo/porCategoria, é só
+    // esse contador específico que as exclui.
+    var CATEGORIAS_NAO_ARQUIVAMENTO = {
+      'Condenação': true, 'Absolvição': true, 'Prescrição': true,
+      'Resultado Não Classificado': true, 'Sem Motivo/Resultado Informado': true,
+    };
 
     var MOTIVO_GRUPO = {
       'Transação Penal Cumprida':      'aceitavel',
@@ -436,6 +466,11 @@
       'Ausência de Representação':     'externo',
       'Litispendência / Duplicidade':  'externo',
       'Outros Motivos':                'outros',
+      'Condenação':                    'processual',
+      'Absolvição':                    'processual',
+      'Prescrição':                    'externo',
+      'Resultado Não Classificado':    'outros',
+      'Sem Motivo/Resultado Informado':'outros',
     };
 
     // Um motivo é "aceitável" quando pertence ao grupo 'aceitavel' do
@@ -456,7 +491,8 @@
     // extinção por ausência de representação, ou litispendência.
     function resultadoFinal(motivoCanon, resultadoRaw) {
       if (motivoCanon === 'Transação Penal Cumprida' || motivoCanon === 'Composição Civil das Partes' ||
-          motivoCanon === 'Ausência de Representação' || motivoCanon === 'Litispendência / Duplicidade') {
+          motivoCanon === 'Ausência de Representação' || motivoCanon === 'Litispendência / Duplicidade' ||
+          motivoCanon === 'Condenação' || motivoCanon === 'Absolvição' || motivoCanon === 'Prescrição') {
         return motivoCanon;
       }
       var r = _semAcento(String(resultadoRaw || '').toLowerCase());
@@ -542,7 +578,7 @@
 
         if (motivoCanon) {
           porMotivo[motivoCanon] = (porMotivo[motivoCanon] || 0) + 1;
-          totalArquivamentos++;
+          if (!CATEGORIAS_NAO_ARQUIVAMENTO[motivoCanon]) totalArquivamentos++;
           if (!catObj[motivoCanon]) catObj[motivoCanon] = { texto: motivoCanon, qtd: 0, grupo: MOTIVO_GRUPO[motivoCanon] || 'outros' };
           catObj[motivoCanon].qtd++;
         }
@@ -2382,4 +2418,3 @@ function gerarHTMLSugestoes(d) {
 </script>
 </body>
 </html>
-
