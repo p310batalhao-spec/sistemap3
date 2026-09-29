@@ -2265,15 +2265,44 @@
     }
 
     // Botão "🖨️ Imprimir Relatório" — mesmo mecanismo de
-    // js/analisePreditiva.js:abrirRelatorioPreditivo (serializa em
-    // localStorage, abre a página do relatório em nova aba). Exposta em
-    // window pq é chamada via onclick inline no HTML.
-    window.abrirRelatorioCAD = function () {
+    // js/analisePreditiva.js:abrirRelatorioPreditivo (serializa os dados,
+    // abre a página do relatório em nova aba). Exposta em window pq é
+    // chamada via onclick inline no HTML.
+    //
+    // CORREÇÃO (29/09/2026, relatado pelo usuário: "quando clico em
+    // imprimir o relatório dentro do exe ele abre uma página no navegador
+    // do chrome mas os dados aparecem errados") — dentro do app desktop
+    // (pywebview/WebView2), window.open() não abre uma "aba" de verdade:
+    // o Windows repassa pro NAVEGADOR PADRÃO (Chrome, no caso do usuário),
+    // que tem um perfil de localStorage TOTALMENTE separado do WebView2 —
+    // o dado que acabou de ser gravado aqui nunca chega lá, e o Chrome
+    // mostra qualquer localStorage velho que já tivesse daquela URL.
+    // Quando o servidor local está disponível (é exatamente esse o caso
+    // do app desktop), usa ele como retransmissor (POST /relatorio/salvar
+    // → token na URL → a página do relatório busca de volta por HTTP, ver
+    // app.py) — funciona não importa qual motor de navegador acabe
+    // renderizando a página, porque os dois falam com o MESMO 127.0.0.1.
+    // Sem servidor local (uso comum pelo navegador, sem esse problema de
+    // perfil separado), mantém o fluxo antigo via localStorage.
+    window.abrirRelatorioCAD = async function () {
         if (!window._cadDadosRelatorio) {
             alert('Aguarde o carregamento completo dos dados do CAD antes de gerar o relatório.');
             return;
         }
         const json = JSON.stringify(window._cadDadosRelatorio);
+
+        if (typeof P3AtualizadorLocal !== 'undefined' && await P3AtualizadorLocal.disponivel()) {
+            try {
+                const resp = await fetch(`${P3AtualizadorLocal.URL_BASE}/relatorio/salvar`, { method: 'POST', body: json });
+                const dados = await resp.json();
+                if (!resp.ok || !dados.ok) throw new Error(dados.erro || ('HTTP ' + resp.status));
+                window.open('../relatorios/relatorio_preditiva_cad.html?token=' + encodeURIComponent(dados.token), '_blank');
+                return;
+            } catch (e) {
+                console.error('[preditivaCAD] falha ao retransmitir relatório pelo servidor local, caindo pro localStorage:', e);
+            }
+        }
+
         try {
             localStorage.removeItem('p3_preditiva_cad');
             localStorage.setItem('p3_preditiva_cad', json);
