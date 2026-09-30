@@ -350,6 +350,8 @@
         }
         window._EM = d.errosMaterial;
         window._EF = d.errosFormais;
+        window._RES_PROCESSOS = d.porResultadoProcessos;
+        window._MOT_PROCESSOS = d.porMotivoProcessos;
         mostrarBtnSugestoes(d);
         window._DADOS_RELATORIO_ACEIT = d;
 
@@ -554,6 +556,15 @@
       var porMotivo = {}, porResultado = {}, porAno = {}, tipificacaoObj = {};
       var porMotivoAno = {};
       var errosMatMap = {}, errosFormMap = {}, catObj = {};
+      // Processos por categoria — alimenta as tabelas expansíveis "Resultados"
+      // e "Motivo do Arquivamento" da aba Relatório (pedido explícito do
+      // usuário, 30/09/2026: "duas tabelas expansível... data, número do
+      // cop, número do processo, tipificação, cidade, resultado, teor da
+      // sentença/certidão ou decisão"). Mesmo padrão já usado pra
+      // Atipicidade Material/Formal (errosMatMap/errosFormMap), só que
+      // agrupado por RESULTADO/MOTIVO em vez de por texto de erro
+      // agrupado por similaridade.
+      var porResultadoProcessos = {}, porMotivoProcessos = {};
       var esajsAceitaveis = [], esajsFalha = [];
       var esajAno = {}; // Nº Processo → ano da sentença (usado no ranking de militares por período)
       var totalArquivamentos = 0;
@@ -564,6 +575,13 @@
         var motivoRaw = String(r['Motivo do Arquivamento'] || '').trim();
         var erroMat   = r['Erro – Atipicidade Material'] || r['Erro - Atipicidade Material'] || '';
         var erroForm  = r['Erro – Atipicidade Formal']   || r['Erro - Atipicidade Formal']   || '';
+        // "Teor da sentença/certidão ou decisão" — a coluna dedicada a isso
+        // na planilha é "Fundamentação Legal"; quando vem vazia (planilha
+        // real confirma que às vezes o parágrafo inteiro é colado em
+        // "Motivo do Arquivamento" em vez disso — ver comentário de
+        // canonMotivo), cai pro motivoRaw como 2ª opção em vez de mostrar
+        // vazio à toa.
+        var teor      = String(r['Fundamentação Legal'] || '').trim() || motivoRaw;
         var tip       = _canonTip(r['Tipificação']);
         var comarca   = String(r['Comarca'] || '').trim();
         var indiciado = String(r['Indiciado'] || '').trim();
@@ -593,6 +611,14 @@
         }
 
         var processoObj = { numero: numero, data: dataStr, indiciado: indiciado, tipificacao: tip, comarca: comarca };
+        var processoObjComTeor = { numero: numero, data: dataStr, indiciado: indiciado, tipificacao: tip, comarca: comarca, resultado: resultado, teor: teor };
+
+        if (!porResultadoProcessos[resultadoBucket]) porResultadoProcessos[resultadoBucket] = [];
+        porResultadoProcessos[resultadoBucket].push(processoObjComTeor);
+        if (motivoCanon) {
+          if (!porMotivoProcessos[motivoCanon]) porMotivoProcessos[motivoCanon] = [];
+          porMotivoProcessos[motivoCanon].push(processoObjComTeor);
+        }
 
         if (erroMat && String(erroMat).trim()) {
           var txtM = String(erroMat).trim();
@@ -619,6 +645,8 @@
         porMotivo: porMotivo,
         porMotivoAno: porMotivoAno,
         porResultado: porResultado,
+        porResultadoProcessos: porResultadoProcessos,
+        porMotivoProcessos: porMotivoProcessos,
         porAno: porAno,
         porTipoDocumento: {},
         porTipificacao: Object.entries(tipificacaoObj).map(function (e) { return { texto: e[0], qtd: e[1] }; }),
@@ -771,6 +799,15 @@
       }
       h += mkSec('Atipicidade Material', 'mat', d.errosMaterial || []);
       h += mkSec('Atipicidade Formal', 'form', d.errosFormais || []);
+      // Tabelas expansíveis por categoria — pedido explícito do usuário
+      // (30/09/2026): "duas tabelas expansível... data, número do cop,
+      // número do processo, tipificação, cidade, resultado, teor da
+      // sentença/certidão ou decisão". Mesmo mecanismo de clique/expandir
+      // de mkSec acima, só que agrupado por RESULTADO/MOTIVO (dicionário
+      // categoria→qtd) em vez de por texto de erro agrupado por
+      // similaridade — ver mkSecCategorias.
+      h += mkSecCategorias('Resultados', 'res', d.porResultado || {}, '&#128202;');
+      h += mkSecCategorias('Motivo do Arquivamento', 'mot', d.porMotivo || {}, '&#128193;');
       return h;
     }
 
@@ -796,79 +833,131 @@
       h += '</div></div>'; return h;
     }
 
+    // Ícone da seção + rótulo de contagem — igual espírito de mkSec, só
+    // que a lista vem de um dicionário {categoria: qtd} (d.porResultado/
+    // d.porMotivo) em vez de um array de {texto,qtd,processos}. A chave
+    // da categoria vira o id do <div> de detalhe (via _idSeguro, porque
+    // nomes como "Litispendência / Duplicidade" têm caracteres que não
+    // servem de id de elemento).
+    function _idSeguro(s) { return String(s).replace(/[^a-zA-Z0-9]+/g, '_'); }
+
+    function mkSecCategorias(titulo, tipo, contagemObj, icone) {
+      var entradas = Object.entries(contagemObj).sort(function (a, b) { return b[1] - a[1]; });
+      if (!entradas.length) return '';
+      var h = '<div class="fs"><div class="fh"><div class="fht">' + icone + ' ' + esc(titulo) + '</div>' +
+        '<div class="fhb">&#128269; ' + entradas.length + ' categoria(s) &middot; clique para ver processos</div></div><div class="fl2">';
+      entradas.forEach(function (e) {
+        var chave = e[0], qtd = e[1], id = _idSeguro(chave);
+        h += '<div class="fi">' +
+          '<div class="fr" data-tipo="' + tipo + '" data-chave="' + esc(chave) + '" data-id="' + id + '">' +
+          '<div class="fn">' + qtd + '</div>' +
+          '<div class="fc"><div class="ftx">' + esc(chave) + '</div></div>' +
+          '<div class="fse">&#9658;</div></div>' +
+          '<div class="fd" id="det-' + tipo + '-' + id + '"></div></div>';
+      });
+      h += '</div></div>'; return h;
+    }
+
+    // Mapa ESAJ (Nº Processo) → Boletim/COP a partir dos TCOs carregados
+    // (window._TCO_DADOS) — mesmo join usado nas tabelas de Atipicidade,
+    // reaproveitado aqui pra "Número do COP" nas tabelas de Resultado/Motivo.
+    function montarEsajBolMap() {
+      var esajBolMap = {};
+      (window._TCO_DADOS || []).forEach(function (tc) {
+        var esaj = String(tc['E-SAJ'] || tc['ESAJ'] || tc['LocalE-SAJ'] || '').trim();
+        var bol = String(tc['Nº Ocorrência'] || '').trim();
+        if (esaj && bol) esajBolMap[esaj] = bol;
+      });
+      return esajBolMap;
+    }
+
+    // Formata a data pra DD/MM/AAAA venha ela em ISO, string longa de
+    // Date() ou já no formato BR — mesma lógica que já existia inline em
+    // ativarToggle, só extraída pra ser reaproveitada pelas 4 seções.
+    function formatarDataProcesso(dataStr) {
+      var dataFmt = String(dataStr || '—');
+      var mLong = dataFmt.match(/(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
+      if (mLong) {
+        var meses = { Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06', Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12' };
+        var m = meses[mLong[2]] || '??';
+        var d = String(mLong[3]).padStart(2, '0');
+        dataFmt = d + '/' + m + '/' + mLong[4];
+      }
+      var mISO = dataFmt.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (mISO) dataFmt = mISO[3] + '/' + mISO[2] + '/' + mISO[1];
+      return dataFmt;
+    }
+
+    // Monta a tabela de processos dentro do painel expandido — reaproveitada
+    // pelas 4 seções (Atipicidade Material/Formal, Resultados, Motivo do
+    // Arquivamento). comResultadoTeor liga as 2 colunas extras pedidas pelo
+    // usuário só nas 2 seções novas (nas de Atipicidade o "teor" já é o
+    // próprio texto do cabeçalho do grupo, mostrar de novo em toda linha
+    // seria redundante).
+    function montarTabelaProcessos(det, procs, comResultadoTeor) {
+      if (!procs.length) { det.innerHTML = '<div style="padding:12px 18px;font-size:12px;color:var(--p3-text-muted, #667);font-style:italic;">Nenhum processo detalhado disponível.</div>'; return; }
+      var esajBolMap = montarEsajBolMap();
+      var thStyle = 'background:var(--qtco-zebra, #f7f9fc);color:var(--p3-text-muted, #667);font-size:10px;font-weight:700;' +
+                    'text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;' +
+                    'text-align:left;border-bottom:1px solid var(--p3-border, #e0e7f0);';
+
+      var t = '<table><tr>' +
+        '<th style="' + thStyle + '">Data</th>' +
+        '<th style="' + thStyle + '">N&ordm; do COP</th>' +
+        '<th style="' + thStyle + '">N&ordm; Processo</th>' +
+        '<th style="' + thStyle + '">Tipificação</th>' +
+        '<th style="' + thStyle + '">Cidade</th>' +
+        (comResultadoTeor ? '<th style="' + thStyle + '">Resultado</th><th style="' + thStyle + ';min-width:260px;">Teor</th>' : '<th style="' + thStyle + '">Indiciado</th>') +
+        '</tr>';
+
+      procs.forEach(function (p, pi) {
+        var bg = pi % 2 === 0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f6f9fc)';
+        var bol = esajBolMap[String(p.numero || '').trim()] || '—';
+        var dataFmt = formatarDataProcesso(p.data);
+        t += '<tr style="background:' + bg + '">' +
+          '<td style="padding:8px 12px;white-space:nowrap;font-size:12px;">' + esc(dataFmt) + '</td>' +
+          '<td style="padding:8px 12px;font-family:Consolas,monospace;font-size:11px;color:#1a6b45;font-weight:700;">' + esc(bol) + '</td>' +
+          '<td style="padding:8px 12px;"><span class="pn">' + esc(p.numero || '—') + '</span></td>' +
+          '<td style="padding:8px 12px;font-size:12px;">' + esc(p.tipificacao || '—') + '</td>' +
+          '<td style="padding:8px 12px;font-size:12px;">' + esc(p.comarca || '—') + '</td>' +
+          (comResultadoTeor
+            ? '<td style="padding:8px 12px;font-size:12px;"><span class="badge ' + bc(p.resultado || '') + '">' + esc(p.resultado || '—') + '</span></td>' +
+              '<td style="padding:8px 12px;font-size:11.5px;white-space:normal;line-height:1.4;">' + esc(p.teor || '—') + '</td>'
+            : '<td style="padding:8px 12px;font-size:12px;">' + esc(p.indiciado || '—') + '</td>') +
+        '</tr>';
+      });
+      t += '</table>'; det.innerHTML = t;
+      enriquecerTabelaGuarnicao(det, procs);
+    }
+
     function ativarToggle() {
       var container = document.getElementById('conteudo-relatorio');
       if (!container) return;
       if (container._th) container.removeEventListener('click', container._th);
       container._th = function (ev) {
-        var row = ev.target.closest('[data-tipo][data-idx]');
+        var row = ev.target.closest('[data-tipo]');
         if (!row) return;
-        var idx = parseInt(row.getAttribute('data-idx'), 10), tipo = row.getAttribute('data-tipo');
-        if (isNaN(idx) || !tipo) return;
-        var det = document.getElementById('det-' + tipo + '-' + idx);
+        var tipo = row.getAttribute('data-tipo');
+        var temChave = row.hasAttribute('data-chave');
+        var idOuIdx = temChave ? row.getAttribute('data-id') : row.getAttribute('data-idx');
+        if (!tipo || idOuIdx == null) return;
+        var det = document.getElementById('det-' + tipo + '-' + idOuIdx);
         if (!det) return;
         var aberto = det.classList.contains('visivel');
         container.querySelectorAll('.fd.visivel').forEach(function (d) { d.classList.remove('visivel'); });
-        container.querySelectorAll('[data-tipo][data-idx].aberto').forEach(function (r) { r.classList.remove('aberto'); });
+        container.querySelectorAll('[data-tipo].aberto').forEach(function (r) { r.classList.remove('aberto'); });
         if (aberto) return;
         row.classList.add('aberto'); det.classList.add('visivel');
         if (det.querySelector('table')) return;
-        var lista = tipo === 'mat' ? (window._EM || []) : (window._EF || []);
-        var item = lista[idx] || {}, procs = item.processos || [];
-        if (!procs.length) { det.innerHTML = '<div style="padding:12px 18px;font-size:12px;color:var(--p3-text-muted, #667);font-style:italic;">Nenhum processo detalhado disponível.</div>'; return; }
-        // Monta mapa ESAJ → boletim a partir dos TCOs carregados
-        var esajBolMap = {};
-        (window._TCO_DADOS || []).forEach(function(tc) {
-          var esaj = String(tc['E-SAJ'] || tc['ESAJ'] || tc['LocalE-SAJ'] || '').trim();
-          var bol  = String(tc['Nº Ocorrência'] || '').trim();
-          if (esaj && bol) esajBolMap[esaj] = bol;
-        });
 
-        var thStyle = 'background:var(--qtco-zebra, #f7f9fc);color:var(--p3-text-muted, #667);font-size:10px;font-weight:700;' +
-                      'text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;' +
-                      'text-align:left;border-bottom:1px solid var(--p3-border, #e0e7f0);';
+        var procs;
+        if (tipo === 'mat') procs = ((window._EM || [])[parseInt(idOuIdx, 10)] || {}).processos || [];
+        else if (tipo === 'form') procs = ((window._EF || [])[parseInt(idOuIdx, 10)] || {}).processos || [];
+        else if (tipo === 'res') procs = (window._RES_PROCESSOS || {})[row.getAttribute('data-chave')] || [];
+        else if (tipo === 'mot') procs = (window._MOT_PROCESSOS || {})[row.getAttribute('data-chave')] || [];
+        else procs = [];
 
-        var t = '<table>' +
-          '<tr>' +
-            '<th style="' + thStyle + '">N&ordm; Processo (ESAJ)</th>' +
-            '<th style="' + thStyle + '">Boletim (TCO)</th>' +
-            '<th style="' + thStyle + '">Data</th>' +
-            '<th style="' + thStyle + '">Indiciado</th>' +
-            '<th style="' + thStyle + '">Tipificação</th>' +
-            '<th style="' + thStyle + '">Comarca</th>' +
-          '</tr>';
-
-        procs.forEach(function (p, pi) {
-          var bg  = pi % 2 === 0 ? 'var(--p3-surface, #fff)' : 'var(--qtco-zebra, #f6f9fc)';
-          var bol = esajBolMap[String(p.numero||'').trim()] || '—';
-
-          // Formata a data para DD/MM/AAAA se vier em outro formato
-          var dataFmt = String(p.data || '—');
-          // Se vier como string longa de Date (ex: "Thu Oct 30 2025...")
-          var mLong = dataFmt.match(/(\w{3})\s+(\w{3})\s+(\d{1,2})\s+(\d{4})/);
-          if (mLong) {
-            var meses = {Jan:'01',Feb:'02',Mar:'03',Apr:'04',May:'05',Jun:'06',
-                         Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12'};
-            var m = meses[mLong[2]] || '??';
-            var d = String(mLong[3]).padStart(2,'0');
-            dataFmt = d + '/' + m + '/' + mLong[4];
-          }
-          // Se vier no formato ISO AAAA-MM-DD
-          var mISO = dataFmt.match(/^(\d{4})-(\d{2})-(\d{2})/);
-          if (mISO) dataFmt = mISO[3] + '/' + mISO[2] + '/' + mISO[1];
-
-          t += '<tr style="background:' + bg + '">' +
-            '<td style="padding:8px 12px;"><span class="pn">' + esc(p.numero || '—') + '</span></td>' +
-            '<td style="padding:8px 12px;font-family:Consolas,monospace;font-size:11px;' +
-            'color:#1a6b45;font-weight:700;">' + esc(bol) + '</td>' +
-            '<td style="padding:8px 12px;white-space:nowrap;font-size:12px;">' + esc(dataFmt) + '</td>' +
-            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.indiciado || '—') + '</td>' +
-            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.tipificacao || '—') + '</td>' +
-            '<td style="padding:8px 12px;font-size:12px;">' + esc(p.comarca || '—') + '</td>' +
-          '</tr>';
-        });
-        t += '</table>'; det.innerHTML = t;
-        enriquecerTabelaGuarnicao(det, procs);
+        montarTabelaProcessos(det, procs, tipo === 'res' || tipo === 'mot');
       };
       container.addEventListener('click', container._th);
     }
