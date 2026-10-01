@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia TCO Eleitoral — 10º BPM</title>
+<meta name="description" content="Guia de consulta rápida sobre crimes eleitorais de menor potencial ofensivo, pesquisável por termo/situação — 10º Batalhão de Polícia Militar de Alagoas.">
+<meta name="theme-color" content="#003366">
+<link rel="stylesheet" href="../css/guia-tco-eleitoral.css">
+</head>
+<body>
+
+<header class="topo">
+    <div class="topo-conteudo">
+        <img src="../img/brasao.png" alt="Brasão 10º BPM">
+        <div class="topo-texto">
+            <h1>GUIA TCO ELEITORAL</h1>
+            <p>10º Batalhão de Polícia Militar de Alagoas — Eleições Gerais 2026</p>
+            <p>Seção de Planejamento, Instrução e Estatística - P3</p>
+        </div>
+        <div class="topo-datas">
+            <div class="topo-data"><b>04·10</b><span>1º Turno</span></div>
+            <div class="topo-data"><b>25·10</b><span>2º Turno</span></div>
+        </div>
+    </div>
+</header>
+
+<nav class="ancoras">
+    <div class="wrap">
+        <a href="#" class="aba-nav-link" data-aba="novidades">🆕 Novidades 2026</a>
+        <a href="#buscar" class="aba-nav-link" data-aba="guia">🔎 Buscar crime</a>
+        <a href="#procedimento" class="aba-nav-link" data-aba="guia">📋 Procedimento (POP)</a>
+        <a href="#autoridades" class="aba-nav-link" data-aba="guia">🎖️ Autoridades</a>
+        <a href="#nao-cabe" class="aba-nav-link" data-aba="guia">🚫 Não cabe TCO</a>
+        <a href="#contatos" class="aba-nav-link" data-aba="guia">✉️ Zonas eleitorais</a>
+    </div>
+</nav>
+
+<main>
+<section id="aba-guia" class="aba-conteudo">
+
+    <div class="intro">
+        <p>O <strong>Termo Circunstanciado de Ocorrência (TCO) Eleitoral</strong> é lavrado pelo próprio policial militar no local da ocorrência, para infrações eleitorais cuja pena máxima <strong>não ultrapassa 2 anos</strong> (art. 61 da Lei nº 9.099/95), com base no Decreto nº 88.653/2023 e na autorização do TRE-AL. O autuado assina Termo de Compromisso de Comparecimento ao Juízo Eleitoral — não há prisão.</p>
+        <p>Este guia reúne mais de 50 crimes eleitorais — do Código Eleitoral (Lei nº 4.737/65), da Lei das Eleições (Lei nº 9.504/97) e da Lei nº 6.091/74 (transporte de eleitores) — tanto os de menor potencial ofensivo (admitem TCO) quanto os mais graves (NÃO admitem TCO, vão para a Delegacia), além dos principais procedimentos. A busca abaixo cobre o <strong>texto integral</strong> de cada artigo — qualquer palavra que conste na lei pode ser encontrada, não só o nome do crime. Prazos e determinações recentes do TSE/TRE-AL estão na aba <b>"🆕 Novidades 2026"</b> no menu acima.</p>
+        <div class="aviso">⚠️ <strong>Ferramenta de apoio e consulta rápida.</strong> Não substitui a orientação do COPOM/escalão superior nem a leitura da legislação vigente. Conteúdo baseado no Manual TCO Eleitoral da PMAL 2026 (2ª Seção/EMG, em parceria com o TRE-AL), ampliado com a legislação eleitoral completa e resoluções recentes do TSE/TRE-AL. Em caso de dúvida no procedimento, acionar o COPOM.</div>
+    </div>
+
+    <div class="busca-bloco" id="buscar">
+        <div class="busca-caixa">
+            <span class="ic">🔎</span>
+            <input type="text" id="campo-busca" placeholder="Pesquise qualquer termo ou situação: compra de voto, boca de urna, transportar eleitores, urna eletrônica..." autocomplete="off">
+            <button id="limpar-busca" title="Limpar">✕</button>
+        </div>
+        <div class="exemplos">Experimente: <b data-ex="compra de voto">compra de voto</b> · <b data-ex="boca de urna">boca de urna</b> · <b data-ex="selfie na urna">selfie na urna</b> · <b data-ex="transportar eleitores">transportar eleitores</b> · <b data-ex="entrar na seção">entrar na seção</b> · <b data-ex="urna eletrônica">urna eletrônica</b> · <b data-ex="falsidade ideológica">falsidade ideológica</b></div>
+
+        <div class="filtros">
+            <div class="chip ativo" data-filtro="todos">Todos</div>
+            <div class="chip" data-filtro="antes">Antes do pleito</div>
+            <div class="chip" data-filtro="dia">Dia da eleição</div>
+            <div class="chip" data-filtro="cabe">Cabe TCO</div>
+            <div class="chip" data-filtro="naocabe">Não cabe TCO</div>
+            <div class="chip" data-filtro="proc">Procedimentos/normativos</div>
+        </div>
+    </div>
+
+    <div id="contador-resultados"></div>
+    <div id="grade-cards"></div>
+
+    <h2 class="secao-titulo" id="procedimento">📋 Procedimento Operacional Padrão — TCO Eleitoral</h2>
+    <div class="passos">
+        <div class="passo"><div class="passo-num">1</div><div class="passo-txt"><b>Analisar a viabilidade</b> da lavratura do TCO e o interesse da pessoa autuada em prestar o compromisso de comparecer ao Juízo Eleitoral.</div></div>
+        <div class="passo"><div class="passo-num">2</div><div class="passo-txt"><b>Registrar o atendimento</b> policial militar, com a natureza correspondente ao crime eleitoral praticado.</div></div>
+        <div class="passo"><div class="passo-num">3</div><div class="passo-txt"><b>Preencher os termos</b> necessários de acordo com o atendimento, conferindo as respectivas assinaturas.</div></div>
+        <div class="passo"><div class="passo-num">4</div><div class="passo-txt"><b>Informar o comandante</b> imediato sobre a lavratura do TCO Eleitoral.</div></div>
+        <div class="passo"><div class="passo-num">5</div><div class="passo-txt"><b>Encaminhar</b> ao supervisor de operações o arquivo digital do TCO.</div></div>
+        <div class="passo"><div class="passo-num">6</div><div class="passo-txt"><b>Peticionar no PJe:</b> o peticionador do TCO revisa a ocorrência e peticiona no sistema PJe (Processo Judicial Eletrônico) do TRE-AL.</div></div>
+    </div>
+    <div class="nota-box vermelha">Caso o autuado se recuse a assinar o Termo de Compromisso de Comparecimento, as partes envolvidas deverão ser encaminhadas à Delegacia de Polícia Federal/Civil.</div>
+    <div class="nota-box">Não foi constatada infração penal → registra-se a ocorrência normalmente. Infração de <strong>maior</strong> potencial ofensivo eleitoral → encaminhar à delegacia de Polícia Federal/Civil.</div>
+
+    <h2 class="secao-titulo" id="autoridades">🎖️ Classificação de Autoridades</h2>
+    <div class="tabela-wrap" style="margin-bottom:14px;">
+        <table class="tb">
+            <tr><th>Poder</th><th>Esfera</th><th>Cargo</th></tr>
+            <tr><td>Executivo</td><td>Federal</td><td>Presidente da República</td></tr>
+            <tr><td>Executivo</td><td>Estadual</td><td>Governador</td></tr>
+            <tr><td>Executivo</td><td>Municipal</td><td>Prefeito</td></tr>
+            <tr><td>Legislativo</td><td>Federal</td><td>Deputados Federais e Senadores</td></tr>
+            <tr><td>Legislativo</td><td>Estadual</td><td>Deputados Estaduais</td></tr>
+            <tr><td>Legislativo</td><td>Municipal</td><td>Vereadores</td></tr>
+        </table>
+    </div>
+    <div class="intro" style="margin-bottom:14px;">
+        <p><b>Autoridades Diplomáticas</b> — exercem funções internacionais representando seu País junto ao Governo Federal; possuem imunidades diplomáticas (Direito Internacional Público).</p>
+        <p><b>Autoridades Militares</b> — Oficiais lotados no Alto Comando das Forças Armadas, Polícias Militares, Casas Militares e Corpos de Bombeiros Militares.</p>
+        <p><b>Autoridades Religiosas</b> — líderes religiosos de modo geral (Cardeais, Pastores, Pai-de-Santo etc.).</p>
+        <p><b>Executivos / Celebridades (VIP)</b> — não possuem mandatos, porém exercem grande influência na sociedade pelo poder econômico e prestígio junto à população.</p>
+    </div>
+    <div class="nota-box">Ao atender ocorrência envolvendo autoridade: constate o nível funcional, solicite identificação (se não publicamente conhecida), acione o Oficial PM de serviço, arrole testemunhas, elabore BO/COP e envie relatório circunstanciado ao superior imediato. Em caso de dúvida, solicitar orientação ao escalão superior.</div>
+
+    <h2 class="secao-titulo" id="nao-cabe">🚫 Condutas que NÃO admitem TCO</h2>
+    <p style="font-size:12.5px;color:var(--texto-mudo);margin-bottom:12px;">A pena máxima ultrapassa 2 anos ou a matéria não tem natureza penal de menor potencial ofensivo. Nesses casos as partes devem ser encaminhadas à Delegacia de Polícia Federal/Civil, e a Justiça Eleitoral acionada pelas vias próprias. (Estes itens também aparecem na busca acima, filtro "Não cabe TCO".)</p>
+
+    <h2 class="secao-titulo" id="contatos">✉️ Contatos — Zonas Eleitorais de Alagoas</h2>
+    <details class="anexo">
+        <summary>Ver relação completa de e-mails das Zonas Eleitorais (clique para abrir)</summary>
+        <div class="conteudo-anexo">
+            <p style="font-size:11.5px;color:var(--texto-mudo);margin:8px 0;">Confirme os endereços vigentes junto ao TRE-AL antes do envio.</p>
+            <input type="text" id="busca-zona" class="busca-zona" placeholder="Filtrar por município ou número da zona...">
+            <div class="tabela-wrap">
+                <table class="tb" id="tabela-zonas">
+                    <thead><tr><th>Zona</th><th>Município-sede</th><th>E-mail</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </details>
+
+</section>
+
+<section id="aba-novidades" class="aba-conteudo" hidden>
+    <h2 class="secao-titulo" style="margin-top:0;">🆕 Novidades e Prazos Importantes — TSE/TRE-AL 2026</h2>
+    <div class="intro" style="margin-bottom:14px;">
+        <p><b>📅 Prazos da reta final — 1º turno (04/10):</b> dia <b>01/10 (qui.)</b> foi o último dia de propaganda eleitoral gratuita no rádio/TV, impulsionamento pago na internet, comícios e debates. A partir das <b>22h de sábado (03/10)</b>, encerra-se a campanha de rua (carreata, carro de som, comício) para o 1º turno. <b>No dia da votação (04/10)</b>, é proibido pedir voto, distribuir material de campanha, fazer boca de urna, pesquisa de boca de urna ou qualquer manifestação coletiva capaz de influenciar o eleitor. <b>Votação: 8h às 17h</b>, horário de Brasília, em todo o país. Havendo <b>2º turno, a votação será em 25/10/2026</b>, com prazos equivalentes recontados a partir dessa nova data (ex.: a vedação de conteúdo de IA, a proibição de propaganda no dia, o fim de campanha de rua etc. se repetem antes do 2º turno).</p>
+        <p><b>🤖 Regras de Inteligência Artificial atualizadas (Res. TSE nº 23.755/2026 e nº 23.757/2026):</b> além da vedação a deepfake com voz/imagem de candidatos sem rotulagem, as novas regras proíbem especificamente: conteúdo de IA com nudez, conteúdo sexual ou violência contra a mulher envolvendo candidatas; sistemas de IA que recomendem, ranqueiem ou priorizem candidatos; e conteúdo com informação falsa sobre as urnas, incitação a crime ou subversão da ordem constitucional. A janela de restrição total a <b>NOVO</b> conteúdo sintético é de <b>1 a 3 de outubro</b> (72h antes do 1º turno) e se estende por <b>24h após o encerramento de cada turno</b>. As sanções são administrativas (remoção do conteúdo, indisponibilização do serviço, inversão do ônus da prova) — não geram TCO por si só (ver card "Conteúdo Sintético / Inteligência Artificial" na aba Guia).</p>
+        <p><b>🤝 Acordo de segurança TRE-AL (set/2026):</b> o TRE-AL firmou Termo de Cooperação Técnica com as forças de segurança (Polícia Federal, Polícia Rodoviária Federal, SSP-AL, Polícia Militar, Polícia Civil, Corpo de Bombeiros, Polícia Penal e Guardas Municipais), formalizando o Planejamento Operacional Único de Segurança Pública para as Eleições 2026. À PM cabe o patrulhamento dos locais de votação e a guarda das urnas; à PRF, o monitoramento de rodovias federais e escolta de urnas; à Polícia Civil, o atendimento padrão de ocorrências. O acordo vale até a totalização dos resultados, cobrindo os dois turnos (04/10 e 25/10).</p>
+        <div class="aviso">⚠️ Datas e prazos conferidos junto ao TSE/TRE-AL em 01/10/2026 — sempre reconfirmar no calendário eleitoral oficial (tse.jus.br/eleicoes/calendario-eleitoral) antes de qualquer ação, especialmente os prazos específicos do 2º turno.</div>
+    </div>
+</section>
+
+</main>
+
+<footer>
+    <div><b>10º Batalhão de Polícia Militar de Alagoas</b> — Seção de Planejamento, Instrução e Estatística (P3)</div>
+    <div><b>Feito por 1º Ten PM Calheiros</b>
+    </div>
+    <div style="margin-top:8px;">Em caso de dúvidas quanto ao procedimento: <b>acionar o COPOM</b>.</div>
+</footer>
+
+<button class="voltar-topo" id="btn-topo" title="Voltar ao topo">↑</button>
+
+<script src="../js/guia-tco-eleitoral.js"></script>
+</body>
+</html>
