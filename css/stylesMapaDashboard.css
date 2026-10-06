@@ -542,6 +542,8 @@ table.rr-tabela th {
 }
 table.rr-tabela td { border-bottom: 1px solid #ddd; padding: 5px 8px; vertical-align: top; }
 table.rr-tabela tr:nth-child(even) td { background: #f6f8fb; }
+.rr-material { white-space: normal; }
+.rr-material + .rr-material { margin-top: 2px; }
 .rr-tipo-chip {
     display: inline-block; padding: 1px 7px; border-radius: 10px;
     color: #fff; font-size: 7.5pt; font-weight: 700; white-space: nowrap;
