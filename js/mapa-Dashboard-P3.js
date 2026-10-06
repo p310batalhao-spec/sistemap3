@@ -1592,7 +1592,7 @@ function abrirSeletorRelatorioRegiao() {
 // rascunho), filtra TODAS as camadas atualmente ativas (respeitando o
 // filtro de período já aplicado no mapa — _dadosMapa já vem filtrado)
 // e abre o relatório.
-function gerarRelatorioRegiao(fbKey, nome) {
+async function gerarRelatorioRegiao(fbKey, nome) {
     let poligono;
     if (fbKey && _fbDesenhos[fbKey]) {
         const anel = _fbDesenhos[fbKey].layer.getLatLngs()[0] || [];
@@ -1606,15 +1606,101 @@ function gerarRelatorioRegiao(fbKey, nome) {
     _mapaL.closePopup();
 
     const ocorrencias = [];
+    const vistos = new Set(); // camada+boletim — /droga e /arma têm 1 registro por item, /tco repete o /geral
     for (const cfg of CAMADAS_CONFIG) {
         if (!_camadasAtivas.has(cfg.id)) continue; // só camadas ligadas — "o que o usuário está vendo agora"
         for (const p of (_dadosMapa[cfg.id] || [])) {
             if (_pontoDentroPoligono(p.lat, p.lng, poligono)) {
+                const bol = norm(p.boletim).trim();
+                if (bol && bol !== '—') {
+                    const chave = cfg.id + '|' + bol;
+                    if (vistos.has(chave)) continue;
+                    vistos.add(chave);
+                }
                 ocorrencias.push(Object.assign({}, p, { _camada: cfg }));
             }
         }
     }
+    await _enriquecerOcorrenciasRelatorio(ocorrencias);
     _abrirModalRelatorioRegiao(nome, ocorrencias);
+}
+
+// Valor "de verdade" de um campo — ignora vazio, '---' e '—' (placeholders
+// gravados pela importação quando a planilha não trazia a coluna).
+function _campoValido(...vals) {
+    for (const v of vals) {
+        const s = String(v == null ? '' : v).trim();
+        if (s && s !== '---' && s !== '—') return s;
+    }
+    return '';
+}
+
+// Completa cada linha do relatório cruzando pelo BOLETIM:
+//  · Endereço  → /droga e /arma não têm LOGRADOURO (só cidade/bairro), então
+//                busca o endereço cadastrado no /geral da mesma ocorrência.
+//  · Tipificação → a cadastrada no despacho (TIPIFICACAO, ex.: "USUÁRIO DE
+//                ENTORPECENTE"), não a geral (TIPIFICACAO_GERAL).
+//  · Material apreendido → drogas (/droga), armas (/arma) e demais objetos
+//                (/objeto) com o mesmo boletim, + MATERIAL_APREENDIDO dos mandados.
+async function _enriquecerOcorrenciasRelatorio(ocorrencias) {
+    const porBoletim = lista => {
+        const idx = {};
+        (lista || []).forEach(i => {
+            const b = norm(i.BOLETIM || i.boletim || '').trim();
+            if (b) (idx[b] = idx[b] || []).push(i);
+        });
+        return idx;
+    };
+    let objetos = [];
+    try { objetos = await fbFetchComCache('objeto'); } catch (e) { objetos = []; }
+    const idxGeral  = porBoletim(DADOS_FB.geral);
+    const idxDroga  = porBoletim(DADOS_FB.droga);
+    const idxArma   = porBoletim(DADOS_FB.arma);
+    const idxObjeto = porBoletim(objetos);
+
+    ocorrencias.forEach(o => {
+        const raw = o._raw || {};
+        const bol = norm(o.boletim).trim();
+        const g   = (idxGeral[bol] || [])[0] || {};
+
+        const logr = _campoValido(raw.ENDERECO_DETALHE, raw.LOGRADOURO, g.LOGRADOURO, raw.ENDERECO, g.ENDERECO);
+        const comp = [];
+        if (logr) comp.push(logr);
+        const estab = _campoValido(raw.ESTABELECIMENTO, g.ESTABELECIMENTO);
+        if (estab && !norm(logr).includes(norm(estab))) comp.push(estab);
+        // ENDERECO_DETALHE (mandados) já vem com bairro/cidade embutidos
+        if (!raw.ENDERECO_DETALHE) {
+            const bairro = _campoValido(raw.BAIRRO, g.BAIRRO);
+            const cidade = _campoValido(raw.CIDADE, g.CIDADE);
+            if (bairro) comp.push(bairro);
+            if (cidade) comp.push(cidade);
+        }
+        o.enderecoCompleto = comp.join(', ') || '—';
+
+        o.tipCadastrada = _campoValido(raw.TIPIFICACAO, g.TIPIFICACAO, raw.TIPIFICACAO_GERAL, g.TIPIFICACAO_GERAL) || o.tip || '—';
+        o.hora = _campoValido(raw.HORA, raw.hora, g.HORA, g.hora) || '—';
+
+        const materiais = [];
+        (idxDroga[bol] || []).forEach(d => {
+            const tipo = _campoValido(d.TIPO_DROGA, d.TIPO) || 'DROGA (tipo não informado)';
+            const qtd  = _campoValido(d.QUANTIDADE, d.PESO);
+            const un   = _campoValido(d.UNIDADE_MEDIDA);
+            materiais.push(`🌿 ${tipo}${qtd ? ` (${qtd}${un ? ' ' + un : ''})` : ''}`);
+        });
+        (idxArma[bol] || []).forEach(a => {
+            const desc = [_campoValido(a.TIPO_ARMA) || 'ARMA', _campoValido(a.CALIBRE), _campoValido(a.MARCA)].filter(Boolean).join(' ');
+            materiais.push(`🔫 ${desc}`);
+        });
+        (idxObjeto[bol] || []).forEach(ob => {
+            const desc = _campoValido(ob.DESCRICAO);
+            if (!desc) return;
+            const qtd = _campoValido(ob.QUANTIDADE);
+            materiais.push(`📦 ${desc}${qtd ? ` (${qtd})` : ''}`);
+        });
+        const matMandado = _campoValido(raw.MATERIAL_APREENDIDO);
+        if (matMandado) materiais.push(`📦 ${matMandado}`);
+        o.materiais = [...new Set(materiais)];
+    });
 }
 
 // Monta o HTML do relatório (folha A4) e abre o overlay de impressão.
@@ -1646,18 +1732,19 @@ function _abrirModalRelatorioRegiao(nomeRegiao, ocorrencias) {
         : 'Todo o período disponível';
 
     const linhasTabela = ocorrencias.length ? ocorrencias.map(o => {
-        const endereco = [o.logr, o.bairro !== '—' ? o.bairro : '', o.cidade !== '—' ? o.cidade : '']
-            .filter(v => v && v !== '—').join(', ') || '—';
-        const hora = (o._raw && (o._raw.HORA || o._raw.hora)) || '—';
+        const material = (o.materiais && o.materiais.length)
+            ? o.materiais.map(m => `<div class="rr-material">${esc(m)}</div>`).join('')
+            : '—';
         return `<tr>
             <td><span class="rr-tipo-chip" style="background:${o._camada.cor};">${o._camada.icon} ${esc(o._camada.id.toUpperCase())}</span></td>
             <td>${esc(o.data)}</td>
-            <td>${esc(hora)}</td>
-            <td>${esc(endereco)}</td>
-            <td>${esc(o.tip)}</td>
+            <td>${esc(o.hora)}</td>
+            <td>${esc(o.enderecoCompleto)}</td>
+            <td>${esc(o.tipCadastrada)}</td>
+            <td>${material}</td>
             <td>${esc(o.boletim)}</td>
         </tr>`;
-    }).join('') : `<tr><td colspan="6" class="rr-vazio">Nenhuma ocorrência das camadas ativas foi encontrada dentro desta região.</td></tr>`;
+    }).join('') : `<tr><td colspan="7" class="rr-vazio">Nenhuma ocorrência das camadas ativas foi encontrada dentro desta região.</td></tr>`;
 
     const html = `
         <div class="rr-folha">
@@ -1678,7 +1765,7 @@ function _abrirModalRelatorioRegiao(nomeRegiao, ocorrencias) {
             <div class="rr-kpis">${kpisHtml || '<span style="font-size:9.5pt;color:#888;">Sem ocorrências pra detalhar por tipo.</span>'}</div>
             <div class="rr-tab-wrap">
                 <table class="rr-tabela">
-                    <thead><tr><th>Tipo</th><th>Data</th><th>Hora</th><th>Endereço</th><th>Tipificação</th><th>Boletim</th></tr></thead>
+                    <thead><tr><th>Tipo</th><th>Data</th><th>Hora</th><th>Endereço</th><th>Tipificação</th><th>Material apreendido</th><th>Boletim</th></tr></thead>
                     <tbody>${linhasTabela}</tbody>
                 </table>
             </div>
