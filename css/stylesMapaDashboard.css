@@ -543,6 +543,17 @@ table.rr-tabela th {
 table.rr-tabela td { border-bottom: 1px solid #ddd; padding: 5px 8px; vertical-align: top; }
 table.rr-tabela tr:nth-child(even) td { background: #f6f8fb; }
 .rr-material { white-space: normal; }
+
+.rr-sec-titulo {
+    font-size: 10pt; font-weight: 800; text-transform: uppercase; letter-spacing: .04em;
+    color: #1565c0; border-bottom: 1px solid #1565c0; padding-bottom: 3px; margin: 4px 0 8px;
+}
+.rr-mat-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.rr-mat-bloco { flex: 1 1 220px; break-inside: avoid; page-break-inside: avoid; }
+.rr-mat-titulo { font-size: 8.5pt; font-weight: 700; color: #333; text-transform: uppercase; margin-bottom: 4px; }
+table.rr-tab-resumo th, table.rr-tab-resumo td { padding: 4px 8px; }
+table.rr-tab-resumo tfoot td { font-weight: 800; border-top: 2px solid #1565c0; background: #e8f0fb !important; }
+.rr-num { text-align: right; white-space: nowrap; }
 .rr-material + .rr-material { margin-top: 2px; }
 .rr-tipo-chip {
     display: inline-block; padding: 1px 7px; border-radius: 10px;
