@@ -140,6 +140,11 @@
                 <button class="btn-mapa" id="btn-poligono" onclick="toggleDesenharPoligono()">🔷 Polígono</button>
                 <button class="btn-mapa" id="btn-add-marcador" onclick="toggleAdicionarMarcador()">📌 Marcador</button>
                 <button class="btn-mapa" onclick="limparDesenhos()">🗑 Limpar Rascunhos</button>
+                <button class="btn-mapa" onclick="abrirSeletorRelatorioRegiao()"
+                    style="background:rgba(21,101,192,.18);border-color:rgba(21,101,192,.4);color:#90caf9;font-weight:bold;"
+                    title="Desenhe um polígono (🔷) e depois gere o relatório das ocorrências dentro dele">
+                    📊 Relatório da Região
+                </button>
 
                 <input type="file" id="inp-geojson" accept=".geojson,.json" style="display:none;"
                     onchange="importarGeojson(event)">
@@ -177,6 +182,18 @@
         </div>
 
     </div><!-- /mapa-card-wrapper -->
+
+    <!-- ══ RELATÓRIO DE OCORRÊNCIAS POR REGIÃO (modal/impressão) ═════════ -->
+    <div id="rr-overlay">
+        <div class="rr-barra no-print">
+            <span class="rr-hint">📄 Relatório pronto — use "Imprimir" e, na janela de impressão, escolha "Salvar como PDF" no destino.</span>
+            <div class="rr-botoes">
+                <button onclick="window.print()">🖨 Imprimir / Salvar PDF</button>
+                <button class="rr-fechar" onclick="fecharRelatorioRegiao()">✕ Fechar</button>
+            </div>
+        </div>
+        <div id="rr-conteudo"></div>
+    </div>
 
     <!-- ══ FOOTER ══════════════════════════════════════════════════════ -->
     <footer>
