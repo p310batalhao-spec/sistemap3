@@ -450,3 +450,110 @@ body {
 #busca-oc {
     background: rgba(255, 255, 255, .07);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   RELATÓRIO DE OCORRÊNCIAS POR REGIÃO — pedido explícito do
+   usuário: selecionar uma região (reaproveita a ferramenta de
+   polígono já existente) e gerar um relatório em modal, pra
+   salvar em PDF ou imprimir. Mesmo padrão de overlay+impressão já
+   usado em page/opo-interativa.html (#oi-overlay-doc) — folha A4
+   branca por cima do mapa escuro, barra de ação marcada
+   .no-print, @media print escondendo tudo que não é o relatório.
+   ══════════════════════════════════════════════════════════════ */
+#rr-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 14, 20, .92);
+    z-index: 3000;
+    overflow-y: auto;
+    padding: 24px;
+}
+#rr-overlay.aberto { display: block; }
+
+.rr-barra {
+    max-width: 240mm;
+    margin: 0 auto 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .6rem;
+    flex-wrap: wrap;
+}
+.rr-barra .rr-hint { color: #fff; font-size: .78rem; opacity: .85; }
+.rr-barra .rr-botoes { display: flex; gap: .5rem; }
+.rr-barra button {
+    padding: .5rem 1rem;
+    border-radius: 7px;
+    border: none;
+    background: #1565c0;
+    color: #fff;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+.rr-barra button.rr-fechar { background: rgba(244,67,54,.85); }
+
+.rr-folha {
+    background: #fff;
+    width: 100%;
+    max-width: 240mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 16mm 14mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,.5);
+    font-family: Arial, Helvetica, sans-serif;
+    color: #111;
+}
+
+.rr-cabecalho {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border-bottom: 3px solid #1565c0;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+}
+.rr-cabecalho img { width: 52px; height: 52px; object-fit: contain; }
+.rr-cabecalho .rr-orgao { font-size: 10pt; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; line-height: 1.5; }
+.rr-titulo { font-size: 15pt; font-weight: 800; text-align: center; margin: 4px 0 2px; text-transform: uppercase; }
+.rr-subtitulo { font-size: 10.5pt; text-align: center; color: #444; margin-bottom: 14px; }
+
+.rr-meta { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: 9.5pt; color: #333; margin-bottom: 14px; }
+.rr-meta b { color: #000; }
+
+.rr-kpis { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.rr-kpi {
+    border: 1px solid #ccc;
+    border-left: 5px solid #999;
+    border-radius: 6px;
+    padding: 7px 12px;
+    min-width: 110px;
+    flex: 1 1 auto;
+}
+.rr-kpi .rr-kpi-n { font-size: 16pt; font-weight: 800; line-height: 1.1; }
+.rr-kpi .rr-kpi-l { font-size: 8.5pt; color: #555; text-transform: uppercase; letter-spacing: .03em; }
+
+.rr-tab-wrap { overflow-x: auto; }
+table.rr-tabela { width: 100%; border-collapse: collapse; font-size: 9pt; }
+table.rr-tabela th {
+    background: #1565c0; color: #fff; text-align: left; padding: 6px 8px;
+    font-size: 8pt; text-transform: uppercase; letter-spacing: .03em;
+}
+table.rr-tabela td { border-bottom: 1px solid #ddd; padding: 5px 8px; vertical-align: top; }
+table.rr-tabela tr:nth-child(even) td { background: #f6f8fb; }
+.rr-tipo-chip {
+    display: inline-block; padding: 1px 7px; border-radius: 10px;
+    color: #fff; font-size: 7.5pt; font-weight: 700; white-space: nowrap;
+}
+
+.rr-rodape { margin-top: 18px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 8pt; color: #666; text-align: center; }
+.rr-vazio { text-align: center; padding: 40px 10px; color: #888; font-size: 11pt; }
+
+@media print {
+    body { background: #fff !important; }
+    header, #painel-lateral, #btn-toggle-sidebar, #mapa-ferramentas, #status-bar, .no-print { display: none !important; }
+    #mapa-card-wrapper { display: none !important; }
+    #rr-overlay { position: static; padding: 0; background: #fff; overflow: visible; }
+    .rr-folha { box-shadow: none; margin: 0; min-height: 0; }
+}
