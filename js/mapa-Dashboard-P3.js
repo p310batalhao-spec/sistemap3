@@ -1383,6 +1383,10 @@ function _popupPoligono(obj) {
                 style="background:rgba(76,175,80,.2);border:1px solid rgba(76,175,80,.4);
                 color:#a5d6a7;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;width:100%;">
                 💾 Salvar no Firebase</button>`:''}
+            <button onclick="gerarRelatorioRegiao('${fk}','${nm}')"
+                style="background:rgba(21,150,243,.22);border:1px solid rgba(21,150,243,.45);
+                color:#90caf9;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;width:100%;font-weight:bold;">
+                📊 Relatório da Região</button>
             <button onclick="_excluirPoligono('${fk}','${nm}')"
                 style="background:rgba(244,67,54,.15);border:1px solid rgba(244,67,54,.35);
                 color:#ef9a9a;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:11px;width:100%;">
@@ -1522,6 +1526,174 @@ function limparDesenhos() {
         document.getElementById('mapa-calor').style.cursor='';
     }
     setStatusFerramenta('Rascunhos removidos. Desenhos salvos permanecem.');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RELATÓRIO DE OCORRÊNCIAS POR REGIÃO — pedido explícito do usuário:
+// selecionar uma região no mapa (reaproveita a ferramenta de polígono
+// já existente, 🔷) e gerar um relatório com a quantidade total de
+// ocorrências, tipo (TCO/MVI/CVP/...), data, hora, endereço e
+// tipificação de tudo que cai dentro da área — pronto pra imprimir ou
+// salvar em PDF (window.print(), mesmo padrão de page/opo-interativa.html).
+//
+// Não precisa de backend Python: todo o dado (_dadosMapa, por camada,
+// já filtrado pelo período ativo) já está carregado no navegador via
+// Firebase — a filtragem "está dentro do polígono?" é um cálculo
+// geométrico simples (ray casting), não justifica ida ao servidor.
+// ══════════════════════════════════════════════════════════════════
+
+// Teste ponto-dentro-de-polígono por ray casting (algoritmo padrão,
+// sem depender de lib externa — nem Leaflet.draw nem turf.js estão no
+// projeto). `poligono` é um array de {lat,lng}.
+function _pontoDentroPoligono(lat, lng, poligono) {
+    let dentro = false;
+    for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
+        const xi = poligono[i].lng, yi = poligono[i].lat;
+        const xj = poligono[j].lng, yj = poligono[j].lat;
+        const cruza = ((yi > lat) !== (yj > lat))
+            && (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+        if (cruza) dentro = !dentro;
+    }
+    return dentro;
+}
+
+// Lista unificada de {fbKey, nome, pontos} pra todo polígono existente
+// agora — salvo no Firebase (_fbDesenhos) ou ainda rascunho (_rascPoligonos).
+function _listarPoligonosDisponiveis() {
+    const lista = [];
+    Object.values(_fbDesenhos).forEach(d => {
+        if (d.tipo !== 'poligono') return;
+        const anel = d.layer.getLatLngs()[0] || [];
+        lista.push({ fbKey: d.fbKey, nome: d.nome, pontos: anel.map(ll => ({ lat: ll.lat, lng: ll.lng })) });
+    });
+    _rascPoligonos.forEach(r => {
+        lista.push({ fbKey: null, nome: r.nome, pontos: r.pontos.map(ll => ({ lat: ll.lat, lng: ll.lng })) });
+    });
+    return lista;
+}
+
+// Botão da barra de ferramentas — ponto de entrada quando o usuário
+// não clicou direto no popup de um polígono específico.
+function abrirSeletorRelatorioRegiao() {
+    const lista = _listarPoligonosDisponiveis();
+    if (!lista.length) {
+        alert('Nenhuma região desenhada ainda.\n\nClique em "🔷 Polígono", marque os vértices da área no mapa (duplo-clique pra fechar) e tente de novo.');
+        return;
+    }
+    if (lista.length === 1) { gerarRelatorioRegiao(lista[0].fbKey, lista[0].nome); return; }
+    const nomes = lista.map((p, i) => `${i + 1}. ${p.nome}`).join('\n');
+    const escolha = prompt(`Várias regiões desenhadas — digite o número da que você quer:\n\n${nomes}`, '1');
+    const idx = parseInt(escolha, 10) - 1;
+    if (isNaN(idx) || !lista[idx]) return;
+    gerarRelatorioRegiao(lista[idx].fbKey, lista[idx].nome);
+}
+
+// Núcleo: resolve o polígono (por fbKey se salvo, por nome se
+// rascunho), filtra TODAS as camadas atualmente ativas (respeitando o
+// filtro de período já aplicado no mapa — _dadosMapa já vem filtrado)
+// e abre o relatório.
+function gerarRelatorioRegiao(fbKey, nome) {
+    let poligono;
+    if (fbKey && _fbDesenhos[fbKey]) {
+        const anel = _fbDesenhos[fbKey].layer.getLatLngs()[0] || [];
+        poligono = anel.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+    } else {
+        const r = _rascPoligonos.find(p => p.nome === nome);
+        if (!r) { alert('Não encontrei esse polígono — ele pode ter sido excluído.'); return; }
+        poligono = r.pontos.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+    }
+    if (poligono.length < 3) { alert('Polígono inválido (menos de 3 vértices).'); return; }
+    _mapaL.closePopup();
+
+    const ocorrencias = [];
+    for (const cfg of CAMADAS_CONFIG) {
+        if (!_camadasAtivas.has(cfg.id)) continue; // só camadas ligadas — "o que o usuário está vendo agora"
+        for (const p of (_dadosMapa[cfg.id] || [])) {
+            if (_pontoDentroPoligono(p.lat, p.lng, poligono)) {
+                ocorrencias.push(Object.assign({}, p, { _camada: cfg }));
+            }
+        }
+    }
+    _abrirModalRelatorioRegiao(nome, ocorrencias);
+}
+
+// Monta o HTML do relatório (folha A4) e abre o overlay de impressão.
+function _abrirModalRelatorioRegiao(nomeRegiao, ocorrencias) {
+    // Mais recente primeiro — mesma convenção de "data" de outros
+    // relatórios do sistema (ex.: js/mapa-Dashboard-P3.js não tem
+    // precedente próprio, mas listarSentencas/registros do TCO
+    // eleitoral também mostram do mais novo pro mais velho).
+    ocorrencias.sort((a, b) => {
+        const da = parseDateStr(a.data), db = parseDateStr(b.data);
+        if (da && db && +da !== +db) return db - da;
+        return String((b._raw && b._raw.HORA) || '').localeCompare(String((a._raw && a._raw.HORA) || ''));
+    });
+
+    // Contagem por tipo de camada (TCO/MVI/CVP/...) — na ordem de CAMADAS_CONFIG.
+    const porTipo = {};
+    ocorrencias.forEach(o => { porTipo[o._camada.id] = (porTipo[o._camada.id] || 0) + 1; });
+    const kpisHtml = CAMADAS_CONFIG
+        .filter(cfg => porTipo[cfg.id])
+        .map(cfg => `<div class="rr-kpi" style="border-left-color:${cfg.cor};">
+            <div class="rr-kpi-n" style="color:${cfg.cor};">${porTipo[cfg.id]}</div>
+            <div class="rr-kpi-l">${cfg.icon} ${esc(cfg.label)}</div>
+        </div>`).join('');
+
+    const agora = new Date();
+    const dataGeracao = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const periodoTxt = (_filtroIni || _filtroFim)
+        ? `${_filtroIni ? _filtroIni.toLocaleDateString('pt-BR') : '…'} a ${_filtroFim ? _filtroFim.toLocaleDateString('pt-BR') : '…'}`
+        : 'Todo o período disponível';
+
+    const linhasTabela = ocorrencias.length ? ocorrencias.map(o => {
+        const endereco = [o.logr, o.bairro !== '—' ? o.bairro : '', o.cidade !== '—' ? o.cidade : '']
+            .filter(v => v && v !== '—').join(', ') || '—';
+        const hora = (o._raw && (o._raw.HORA || o._raw.hora)) || '—';
+        return `<tr>
+            <td><span class="rr-tipo-chip" style="background:${o._camada.cor};">${o._camada.icon} ${esc(o._camada.id.toUpperCase())}</span></td>
+            <td>${esc(o.data)}</td>
+            <td>${esc(hora)}</td>
+            <td>${esc(endereco)}</td>
+            <td>${esc(o.tip)}</td>
+            <td>${esc(o.boletim)}</td>
+        </tr>`;
+    }).join('') : `<tr><td colspan="6" class="rr-vazio">Nenhuma ocorrência das camadas ativas foi encontrada dentro desta região.</td></tr>`;
+
+    const html = `
+        <div class="rr-folha">
+            <div class="rr-cabecalho">
+                <img src="../img/brasao.png" alt="brasão" onerror="this.style.display='none'">
+                <div class="rr-orgao">
+                    POLÍCIA MILITAR DE ALAGOAS<br>
+                    10º BATALHÃO DE POLÍCIA MILITAR — SEÇÃO P3
+                </div>
+            </div>
+            <div class="rr-titulo">Relatório de Ocorrências por Região</div>
+            <div class="rr-subtitulo">Região: <b>${esc(nomeRegiao)}</b></div>
+            <div class="rr-meta">
+                <span><b>Gerado em:</b> ${dataGeracao}</span>
+                <span><b>Período considerado:</b> ${periodoTxt}</span>
+                <span><b>Total de ocorrências:</b> ${ocorrencias.length}</span>
+            </div>
+            <div class="rr-kpis">${kpisHtml || '<span style="font-size:9.5pt;color:#888;">Sem ocorrências pra detalhar por tipo.</span>'}</div>
+            <div class="rr-tab-wrap">
+                <table class="rr-tabela">
+                    <thead><tr><th>Tipo</th><th>Data</th><th>Hora</th><th>Endereço</th><th>Tipificação</th><th>Boletim</th></tr></thead>
+                    <tbody>${linhasTabela}</tbody>
+                </table>
+            </div>
+            <div class="rr-rodape">
+                Relatório gerado automaticamente pelo Mapa de Inteligência Policial do Sistema P3 — 10º BPM.
+                Considera apenas as camadas ativas no mapa no momento da geração e registros com coordenadas GPS válidas.
+            </div>
+        </div>`;
+
+    document.getElementById('rr-conteudo').innerHTML = html;
+    document.getElementById('rr-overlay').classList.add('aberto');
+}
+
+function fecharRelatorioRegiao() {
+    document.getElementById('rr-overlay').classList.remove('aberto');
 }
 
 // ══════════════════════════════════════════════════════════════════
