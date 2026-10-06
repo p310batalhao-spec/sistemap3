@@ -1700,7 +1700,106 @@ async function _enriquecerOcorrenciasRelatorio(ocorrencias) {
         const matMandado = _campoValido(raw.MATERIAL_APREENDIDO);
         if (matMandado) materiais.push(`📦 ${matMandado}`);
         o.materiais = [...new Set(materiais)];
+        // Itens brutos — usados no resumo de totais (deduplicado por boletim
+        // em _resumoMateriaisRelatorio, já que o mesmo BO pode virar 2 linhas).
+        o._itensApreendidos = { drogas: idxDroga[bol] || [], armas: idxArma[bol] || [], objetos: idxObjeto[bol] || [] };
     });
+}
+
+// Converte a quantidade de um registro de droga pra gramas. Convenção do
+// sistema (dashboard-p3.js, index.js): QUANTIDADE sem unidade = gramas.
+// Retorna null quando a unidade não é de peso (ex.: UNIDADE, PEDRA, PAPELOTE).
+function _drogaEmGramas(d) {
+    const n = parseFloat(String(_campoValido(d.QUANTIDADE, d.PESO) || '0').replace(',', '.'));
+    if (isNaN(n)) return { gramas: 0, unidade: null, qtd: 0 };
+    const un = norm(_campoValido(d.UNIDADE_MEDIDA)).trim();
+    if (!un || un === 'G' || un.startsWith('GRAMA')) return { gramas: n, unidade: null, qtd: n };
+    if (un === 'KG' || un.startsWith('QUILO') || un.startsWith('KILO')) return { gramas: n * 1000, unidade: null, qtd: n };
+    if (un === 'MG' || un.startsWith('MILIGRAMA')) return { gramas: n / 1000, unidade: null, qtd: n };
+    return { gramas: null, unidade: un, qtd: n };
+}
+
+function _fmtPeso(g) {
+    const opt = { minimumFractionDigits: 3, maximumFractionDigits: 3 };
+    return g >= 1000 ? (g / 1000).toLocaleString('pt-BR', opt) + ' kg' : g.toLocaleString('pt-BR', opt) + ' g';
+}
+function _fmtQtd(n) { return n.toLocaleString('pt-BR', { maximumFractionDigits: 3 }); }
+
+// Totais de material apreendido na região: drogas (peso por tipo + total),
+// armas (quantidade por tipo) e objetos (quantidade por descrição).
+function _resumoMateriaisRelatorio(ocorrencias) {
+    const vistos = new Set();
+    const drogas = {}, armas = {}, objetos = {};
+    let totalGramas = 0;
+    const totalOutrasUn = {};
+    ocorrencias.forEach(o => {
+        const bol = norm(o.boletim).trim();
+        if (!o._itensApreendidos || !bol || vistos.has(bol)) return;
+        vistos.add(bol);
+        o._itensApreendidos.drogas.forEach(d => {
+            const tipo = norm(_campoValido(d.TIPO_DROGA, d.TIPO) || 'NÃO INFORMADO').trim();
+            const r = _drogaEmGramas(d);
+            const t = drogas[tipo] = drogas[tipo] || { gramas: 0, outras: {}, registros: 0 };
+            t.registros++;
+            if (r.gramas != null) { t.gramas += r.gramas; totalGramas += r.gramas; }
+            else {
+                t.outras[r.unidade] = (t.outras[r.unidade] || 0) + r.qtd;
+                totalOutrasUn[r.unidade] = (totalOutrasUn[r.unidade] || 0) + r.qtd;
+            }
+        });
+        o._itensApreendidos.armas.forEach(a => {
+            const tipo = norm(_campoValido(a.TIPO_ARMA) || 'NÃO INFORMADO').trim();
+            armas[tipo] = (armas[tipo] || 0) + 1;
+        });
+        o._itensApreendidos.objetos.forEach(ob => {
+            const desc = norm(_campoValido(ob.DESCRICAO)).trim();
+            if (!desc) return;
+            const q = parseFloat(String(_campoValido(ob.QUANTIDADE) || '1').replace(',', '.'));
+            objetos[desc] = (objetos[desc] || 0) + (isNaN(q) || q <= 0 ? 1 : q);
+        });
+    });
+
+    const outrasTxt = obj => Object.entries(obj).map(([u, q]) => `${_fmtQtd(q)} ${esc(u)}`).join(' + ');
+    const blocos = [];
+
+    const tiposDroga = Object.keys(drogas).sort((a, b) => drogas[b].gramas - drogas[a].gramas);
+    if (tiposDroga.length) {
+        const linhas = tiposDroga.map(t => {
+            const d = drogas[t];
+            const peso = [d.gramas > 0 || !Object.keys(d.outras).length ? _fmtPeso(d.gramas) : '', outrasTxt(d.outras)].filter(Boolean).join(' + ');
+            return `<tr><td>🌿 ${esc(t)}</td><td class="rr-num">${d.registros}</td><td class="rr-num">${peso}</td></tr>`;
+        }).join('');
+        const totalTxt = [_fmtPeso(totalGramas), outrasTxt(totalOutrasUn)].filter(Boolean).join(' + ');
+        const totalReg = tiposDroga.reduce((s, t) => s + drogas[t].registros, 0);
+        blocos.push(`<div class="rr-mat-bloco">
+            <div class="rr-mat-titulo">Drogas apreendidas — peso por tipo</div>
+            <table class="rr-tabela rr-tab-resumo">
+                <thead><tr><th>Tipo de droga</th><th class="rr-num">Apreensões</th><th class="rr-num">Peso total</th></tr></thead>
+                <tbody>${linhas}</tbody>
+                <tfoot><tr><td>TOTAL DE DROGAS</td><td class="rr-num">${totalReg}</td><td class="rr-num">${totalTxt}</td></tr></tfoot>
+            </table>
+        </div>`);
+    }
+
+    const resumoQtd = (titulo, rotulo, icone, mapa) => {
+        const chaves = Object.keys(mapa).sort((a, b) => mapa[b] - mapa[a]);
+        if (!chaves.length) return;
+        const total = chaves.reduce((s, k) => s + mapa[k], 0);
+        blocos.push(`<div class="rr-mat-bloco">
+            <div class="rr-mat-titulo">${titulo}</div>
+            <table class="rr-tabela rr-tab-resumo">
+                <thead><tr><th>${rotulo}</th><th class="rr-num">Quantidade</th></tr></thead>
+                <tbody>${chaves.map(k => `<tr><td>${icone} ${esc(k)}</td><td class="rr-num">${_fmtQtd(mapa[k])}</td></tr>`).join('')}</tbody>
+                <tfoot><tr><td>TOTAL</td><td class="rr-num">${_fmtQtd(total)}</td></tr></tfoot>
+            </table>
+        </div>`);
+    };
+    resumoQtd('Armas apreendidas — quantidade por tipo', 'Tipo de arma', '🔫', armas);
+    resumoQtd('Outros materiais apreendidos — quantidade por tipo', 'Material', '📦', objetos);
+
+    if (!blocos.length) return '';
+    return `<div class="rr-sec-titulo">Materiais apreendidos na região</div>
+        <div class="rr-mat-grid">${blocos.join('')}</div>`;
 }
 
 // Monta o HTML do relatório (folha A4) e abre o overlay de impressão.
@@ -1763,6 +1862,7 @@ function _abrirModalRelatorioRegiao(nomeRegiao, ocorrencias) {
                 <span><b>Total de ocorrências:</b> ${ocorrencias.length}</span>
             </div>
             <div class="rr-kpis">${kpisHtml || '<span style="font-size:9.5pt;color:#888;">Sem ocorrências pra detalhar por tipo.</span>'}</div>
+            ${_resumoMateriaisRelatorio(ocorrencias)}
             <div class="rr-tab-wrap">
                 <table class="rr-tabela">
                     <thead><tr><th>Tipo</th><th>Data</th><th>Hora</th><th>Endereço</th><th>Tipificação</th><th>Material apreendido</th><th>Boletim</th></tr></thead>
