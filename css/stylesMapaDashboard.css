@@ -375,6 +375,14 @@ body {
     pointer-events: none;
 }
 
+/* ── Mapas base Cinza/Escuro (OSM + filtro, sem API key) ── */
+.leaflet-layer.tile-cinza  { filter: grayscale(1) contrast(.95) brightness(1.03); }
+.leaflet-layer.tile-escuro { filter: invert(1) hue-rotate(180deg) grayscale(.6) brightness(.9) contrast(.9); }
+
+/* ── Lista de polígonos salvos ──────────────────────────── */
+.desenho-item { display: flex; align-items: center; gap: 7px; padding: 5px 8px; }
+.desenho-item input[type=checkbox] { accent-color: var(--cor, #1565c0); cursor: pointer; flex-shrink: 0; }
+
 /* ── Polígono sendo desenhado — preview ─────────────────── */
 .leaflet-container.crosshair-cursor {
     cursor: crosshair !important;
