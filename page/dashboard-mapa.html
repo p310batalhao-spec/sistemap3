@@ -99,6 +99,14 @@
                     <button class="btn-mapa" onclick="desmarcarTodas()" style="flex:1;">☐ Nenhuma</button>
                 </div>
 
+                <!-- Polígonos / marcadores salvos (Firebase) ── -->
+                <div class="sec-label" style="margin-top:12px;">🔷 Polígonos Salvos</div>
+                <div style="display:flex;gap:5px;margin-bottom:6px;">
+                    <button class="btn-mapa" onclick="mostrarTodosPoligonos(true)" style="flex:1;">☑ Todos</button>
+                    <button class="btn-mapa" onclick="mostrarTodosPoligonos(false)" style="flex:1;">☐ Nenhum</button>
+                </div>
+                <div id="lista-desenhos"></div>
+
                 <!-- Inteligência Criminal (rede) ── -->
                 <div class="sec-label" style="margin-top:12px;">🕸️ Inteligência Criminal</div>
                 <div id="painel-rede-mapa" style="font-size:10px;color:rgba(255,255,255,.4);padding:4px 2px 10px;line-height:1.6;">
@@ -175,7 +183,7 @@
 
             <!-- Status bar -->
             <div id="status-bar">
-                <span>🛰 Satélite (Esri) · Rua (OSM) · Cinza/Escuro (CartoDB)</span>
+                <span>🛰 Satélite (Esri) · Rua (OSM) · Cinza/Escuro (OSM)</span>
                 <span id="sb-coords" style="font-family:monospace;"></span>
                 <span>ℹ Apenas registros com coordenadas GPS válidas são exibidos.</span>
             </div>
