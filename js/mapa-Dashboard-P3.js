@@ -536,8 +536,11 @@ function _inicializarLeaflet() {
     const tiles = {
         'Satélite (Esri)':    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{ attribution:'Esri', maxZoom:19 }),
         'Rua (OpenStreetMap)': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap', maxZoom:19 }),
-        'Cinza (CartoDB)':    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{ attribution:'© CartoDB', maxZoom:19 }),
-        'Escuro (CartoDB)':   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution:'© CartoDB', maxZoom:19 }),
+        // CartoDB passou a exigir API key (tile "API KEY REQUIRED"). Cinza e
+        // Escuro agora são o próprio OSM (grátis, sem chave, até zoom 19)
+        // com filtro CSS — ver .tile-cinza/.tile-escuro em stylesMapaDashboard.css.
+        'Cinza (OpenStreetMap)':  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap', maxZoom:19, className:'tile-cinza' }),
+        'Escuro (OpenStreetMap)': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap', maxZoom:19, className:'tile-escuro' }),
     };
     tiles['Satélite (Esri)'].addTo(_mapaL);
     L.control.layers(tiles,{},{ position:'topleft', collapsed:true }).addTo(_mapaL);
@@ -1932,36 +1935,87 @@ function renderPainelDesenhos() {
             <span style="opacity:.5;font-size:9px;">Crie polígonos ou marcadores e salve-os</span></div>`;
         return;
     }
-    // Agrupa por nome
-    const grupos = {};
-    todos.forEach(d => {
-        const g = d.tipo==='poligono' ? d.nome : `📌 ${d.nota||'Marcador'}`;
-        if (!grupos[g]) grupos[g]=[];
-        grupos[g].push(d);
-    });
-    el.innerHTML = Object.entries(grupos).map(([grupo, items]) => {
-        const cor = items[0].tipo==='poligono' ? (items[0].cor||'#1565c0') : '#e65100';
-        const vis = items.every(d=>d.visivel);
-        const icone = items[0].tipo==='poligono' ? '🔷' : '📍';
-        return `<div class="camada-toggle ${vis?'ativa':''}"
-            style="--cor:${cor};background:${vis?cor:'rgba(255,255,255,.04)'};
-                   border-color:${vis?cor:'rgba(255,255,255,.08)'};
-                   box-shadow:${vis?`0 0 8px ${cor}55`:'none'};"
-            onclick="_toggleDesenhoGrupo('${esc(grupo)}')">
-            <div class="camada-dot" style="background:#fff;opacity:${vis?1:.4};"></div>
+    const btnFocar = onclick => `<button onclick="event.stopPropagation();${onclick}"
+        style="background:none;border:none;color:rgba(255,255,255,.45);cursor:pointer;
+        font-size:13px;padding:0 3px;" title="Ir para no mapa">⛶</button>`;
+
+    // Polígonos — um item por polígono (por fbKey), com checkbox próprio,
+    // pra poder ligar/desligar cada um individualmente (ou todos/nenhum
+    // pelos botões acima da lista — mostrarTodosPoligonos).
+    const poligonos = todos.filter(d => d.tipo === 'poligono')
+        .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+    const htmlPoligonos = poligonos.map(d => {
+        const cor = d.cor || '#1565c0';
+        const vis = d.visivel;
+        return `<label class="camada-toggle desenho-item ${vis?'ativa':''}"
+            style="--cor:${cor};background:${vis?cor+'33':'rgba(255,255,255,.04)'};
+                   border-color:${vis?cor:'rgba(255,255,255,.08)'};">
+            <input type="checkbox" ${vis?'checked':''} onchange="_toggleDesenho('${esc(d.fbKey)}', this.checked)">
+            <div class="camada-dot" style="background:${cor};opacity:${vis?1:.4};"></div>
             <span class="camada-nome" style="color:${vis?'#fff':'#99a'};font-weight:${vis?'bold':'normal'};">
-                ${icone} ${esc(grupo)}
+                ${esc(d.nome || 'Polígono')}
             </span>
-            <div style="display:flex;gap:4px;align-items:center;">
-                <span class="camada-count" style="background:rgba(0,0,0,.25);color:${vis?'#fff':'rgba(255,255,255,.35)'};">
-                    ${items.length}
-                </span>
-                <button onclick="event.stopPropagation();_focarDesenhoGrupo('${esc(grupo)}')"
-                    style="background:none;border:none;color:rgba(255,255,255,.45);cursor:pointer;
-                    font-size:13px;padding:0 3px;" title="Ir para no mapa">⛶</button>
-            </div>
-        </div>`;
+            ${btnFocar(`_focarDesenho('${esc(d.fbKey)}')`)}
+        </label>`;
     }).join('');
+
+    // Marcadores — continuam agrupados pela nota (podem ser muitos).
+    const grupos = {};
+    todos.filter(d => d.tipo !== 'poligono').forEach(d => {
+        const g = `📌 ${d.nota||'Marcador'}`;
+        (grupos[g] = grupos[g] || []).push(d);
+    });
+    const htmlMarcadores = Object.entries(grupos).map(([grupo, items]) => {
+        const cor = '#e65100';
+        const vis = items.every(d=>d.visivel);
+        return `<label class="camada-toggle desenho-item ${vis?'ativa':''}"
+            style="--cor:${cor};background:${vis?cor+'33':'rgba(255,255,255,.04)'};
+                   border-color:${vis?cor:'rgba(255,255,255,.08)'};">
+            <input type="checkbox" ${vis?'checked':''} onchange="_toggleDesenhoGrupo('${esc(grupo)}')">
+            <span class="camada-nome" style="color:${vis?'#fff':'#99a'};font-weight:${vis?'bold':'normal'};">
+                📍 ${esc(grupo)}
+            </span>
+            <span class="camada-count" style="background:rgba(0,0,0,.25);color:${vis?'#fff':'rgba(255,255,255,.35)'};">
+                ${items.length}
+            </span>
+            ${btnFocar(`_focarDesenhoGrupo('${esc(grupo)}')`)}
+        </label>`;
+    }).join('');
+
+    const visiveis = poligonos.filter(d => d.visivel).length;
+    el.innerHTML = (poligonos.length
+            ? `<div style="font-size:9px;color:rgba(255,255,255,.35);text-align:right;margin-bottom:4px;">
+                   ${visiveis} de ${poligonos.length} polígono(s) visível(is)</div>${htmlPoligonos}`
+            : `<div style="color:rgba(255,255,255,.3);font-size:10px;text-align:center;padding:8px;">Nenhum polígono salvo</div>`)
+        + (htmlMarcadores
+            ? `<div class="sec-label" style="margin-top:8px;">📍 Marcadores Salvos</div>${htmlMarcadores}`
+            : '');
+}
+
+function _setVisivelDesenho(d, visivel) {
+    d.visivel = visivel;
+    if (visivel) { if (!_mapaL.hasLayer(d.layer)) d.layer.addTo(_mapaL); }
+    else _mapaL.removeLayer(d.layer);
+}
+
+function _toggleDesenho(fbKey, visivel) {
+    const d = _fbDesenhos[fbKey];
+    if (!d) return;
+    _setVisivelDesenho(d, visivel);
+    renderPainelDesenhos();
+}
+
+// Botões "☑ Todos" / "☐ Nenhum" da seção Polígonos Salvos.
+function mostrarTodosPoligonos(visivel) {
+    Object.values(_fbDesenhos).filter(d => d.tipo === 'poligono').forEach(d => _setVisivelDesenho(d, visivel));
+    renderPainelDesenhos();
+}
+
+function _focarDesenho(fbKey) {
+    const d = _fbDesenhos[fbKey];
+    if (!d) return;
+    if (!d.visivel) _toggleDesenho(fbKey, true);
+    try { _mapaL.fitBounds(d.layer.getBounds(), { padding:[40,40], maxZoom:16 }); } catch(e) {}
 }
 
 function _toggleDesenhoGrupo(grupo) {
