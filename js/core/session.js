@@ -299,6 +299,7 @@
     function mergeSobreDefault(base, override) {
         const result = { nome: base.nome, firebase: Object.assign({}, base.firebase), gas: Object.assign({}, base.gas), apiPhp: Object.assign({}, base.apiPhp), paginasPermitidas: null };
         if (override && override.nome) result.nome = override.nome;
+        if (override && override.logoUrl) result.logoUrl = override.logoUrl;
         if (override && Array.isArray(override.paginasPermitidas)) result.paginasPermitidas = override.paginasPermitidas;
         if (override && override.firebase) Object.assign(result.firebase, override.firebase);
         if (override && override.gas) Object.assign(result.gas, override.gas);
@@ -352,7 +353,7 @@
 
             config = unidadeId === '10bpm'
                 ? mergeSobreDefault(DEFAULT_10BPM_CONFIG, dados)
-                : { nome: (dados && dados.nome) || unidadeId.toUpperCase(), firebase: (dados && dados.firebase) || {}, gas: (dados && dados.gas) || {}, paginasPermitidas: (dados && dados.paginasPermitidas) || null };
+                : { nome: (dados && dados.nome) || unidadeId.toUpperCase(), logoUrl: (dados && dados.logoUrl) || null, firebase: (dados && dados.firebase) || {}, gas: (dados && dados.gas) || {}, paginasPermitidas: (dados && dados.paginasPermitidas) || null };
         } catch (err) {
             console.error('Erro ao carregar configuração da unidade:', err);
             config = unidadeId === '10bpm' ? DEFAULT_10BPM_CONFIG : { nome: unidadeId.toUpperCase(), firebase: {}, gas: {} };
@@ -1124,5 +1125,3 @@
     restringirNivelOperadorCampo();
     injetarXerife();
 })(window);
-
-
