@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="../css/theme.css">
     <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/rede-protecao.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -277,83 +278,6 @@
             to   { opacity:1; transform: scale(1); }
         }
 
-        /* ── Aba Rede de Proteção / Grupos Vulneráveis (js/dashboard-rede-protecao.js) ── */
-        .rp-wrap { display: flex; flex-direction: column; gap: 1rem; }
-        .rp-barra {
-            background: var(--p3-surface); border: 1.5px solid var(--p3-border); border-radius: 8px;
-            padding: .7rem 1rem; display: flex; flex-direction: column; gap: .55rem;
-        }
-        .rp-barra-linha { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; font-size: .82rem; color: #374263; }
-        .rp-barra-linha input[type=date], .rp-barra-linha select {
-            margin-left: 4px; padding: 5px 9px; border: 1.5px solid #d0d5e8; border-radius: 6px; font-size: .82rem;
-        }
-        .rp-btn {
-            padding: 7px 14px; border: 1.5px solid #d0d5e8; border-radius: 7px; background: #f5f7ff;
-            color: #374263; font-weight: bold; font-size: .8rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
-        }
-        .rp-btn:disabled { opacity: .55; cursor: wait; }
-        .rp-btn-cad { background: #ad1457; border-color: #ad1457; color: #fff; }
-        .rp-status { font-size: .76rem; color: #6b7594; flex: 1; min-width: 220px; }
-        .rp-secao {
-            font-size: .82rem; font-weight: bold; color: #6a1b9a; text-transform: uppercase; letter-spacing: .06em;
-            padding: .4rem 0 .1rem; border-bottom: 2px solid #e1bee7;
-        }
-        .rp-sub-secao { font-size: .74rem; font-weight: bold; color: #6b7594; text-transform: uppercase; letter-spacing: .05em; }
-        .rp-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
-        .rp-kpi {
-            background: var(--p3-surface); border-radius: var(--p3-radius-md); padding: .8rem 1rem;
-            border-top: 4px solid #6a1b9a; box-shadow: var(--p3-shadow-sm);
-        }
-        .rp-kpi-rot { font-size: .7rem; font-weight: bold; color: #6b7594; text-transform: uppercase; letter-spacing: .04em; }
-        .rp-kpi-n { font-size: 1.7rem; font-weight: bold; line-height: 1.15; }
-        .rp-kpi-sub { font-size: .72rem; color: #9ea3b5; }
-        .rp-destaques { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
-        .rp-dest { background: #f3e5f5; border-radius: 6px; padding: 4px 9px; font-size: .74rem; color: #4a148c; display: flex; gap: 6px; }
-        .rp-dest span { color: #7b1fa2; opacity: .8; }
-        .rp-ident, .rp-sintese { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; }
-        .rp-campo { display: flex; flex-direction: column; gap: 4px; font-size: .72rem; font-weight: bold; color: #6b7594; text-transform: uppercase; }
-        .rp-campo-grande { grid-column: span 2; }
-        .rp-campo input, .rp-campo textarea {
-            font: inherit; font-size: .84rem; font-weight: normal; text-transform: none; color: #1a1f36;
-            border: 1.5px solid #d0d5e8; border-radius: 6px; padding: 7px 9px; background: var(--p3-surface); resize: vertical;
-        }
-        .rp-card { background: var(--p3-surface); border-radius: var(--p3-radius-md); padding: .8rem 1rem; box-shadow: var(--p3-shadow-sm); grid-column: 1 / -1; }
-        .rp-card-tit { font-size: .74rem; font-weight: bold; color: #6a1b9a; text-transform: uppercase; margin-bottom: .4rem; }
-        .rp-achados { margin-left: 1.1rem; font-size: .84rem; color: #1a1f36; line-height: 1.6; }
-        .rp-nota, .rp-nota-peq { font-size: .74rem; color: #6b7594; line-height: 1.55; }
-        .rp-nota { background: #faf5fc; border: 1px dashed #ce93d8; border-radius: 8px; padding: .6rem .9rem; }
-        .rp-vazio { padding: 2.5rem 1rem; text-align: center; color: #6b7594; background: var(--p3-surface); border-radius: 10px; font-size: .9rem; }
-        .rp-vazio i { display: block; font-size: 1.6rem; color: #ce93d8; margin-bottom: .5rem; }
-        .rp-tabelas summary { cursor: pointer; font-weight: bold; font-size: .82rem; color: #6a1b9a; padding: .4rem 0; }
-        .rp-tabelas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: .6rem; }
-        .rp-tab-tit { font-size: .76rem; font-weight: bold; color: #374263; margin-bottom: 4px; }
-        .rp-num { text-align: right; white-space: nowrap; }
-        .rp-chart-card .chart-wrap { height: 260px; }
-        @media (max-width: 768px) { .rp-campo-grande { grid-column: auto; } }
-        .rp-secao-obs { font-size: .68rem; font-weight: normal; color: #9ea3b5; text-transform: none; letter-spacing: 0; }
-        .rp-btn-ppt { background: #531c7e; border-color: #531c7e; color: #fff; }
-
-        /* Pré-visualização da apresentação (pptx-preview) */
-        #rp-ppt-overlay {
-            display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(20, 10, 30, .92);
-            overflow: auto; padding: 16px 24px 32px;
-        }
-        #rp-ppt-overlay.aberto { display: block; }
-        .rp-ppt-barra {
-            max-width: 1100px; margin: 0 auto 12px; display: flex; flex-wrap: wrap; gap: .5rem 1rem;
-            align-items: center; color: #fff; font-size: .85rem; font-weight: bold;
-        }
-        .rp-ppt-dica { font-weight: normal; font-size: .74rem; opacity: .7; flex: 1; min-width: 240px; }
-        .rp-ppt-acoes { display: flex; gap: .5rem; }
-        .rp-ppt-acoes button {
-            padding: .5rem 1rem; border-radius: 7px; border: none; background: #ca247a; color: #fff;
-            font-weight: bold; font-size: .8rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
-        }
-        .rp-ppt-acoes .rp-ppt-fechar { background: rgba(255, 255, 255, .15); }
-        #rp-ppt-palco { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; }
-        /* O modelo usa Aptos (fonte do Office) — sem ela instalada, cai numa sem serifa parecida. */
-        #rp-ppt-palco span, #rp-ppt-palco p, #rp-ppt-palco div { font-family: Aptos, "Segoe UI", Calibri, Arial, sans-serif !important; }
-        .rp-ppt-erro { background: #fff; border-radius: 10px; padding: 2rem; color: #374263; text-align: center; font-size: .9rem; line-height: 1.6; }
 
         /* Cursor pointer em todos os canvas (indicativo de clicabilidade) */
         canvas { cursor: pointer; }
