@@ -11,7 +11,7 @@
     o conteúdo vem do servidor local: GET http://localhost:5057/relatorio/obter
     ?token=… (ver tools/atualizador-local/app.py). O token vale UMA vez.
       tipo "impressao"    → { html }                    — relatório pronto pra imprimir/salvar em PDF
-      tipo "apresentacao" → { nome, pptxBase64 }        — PowerPoint no modelo da Rede: pré-visualiza e baixa
+      tipo "apresentacao" → { nome, pptxBase64, titulo? } — PowerPoint (Rede de Proteção ou Indicadores do Dashboard Cruzado): pré-visualiza e baixa
 -->
 <style>
     body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #1d1028; color: #fff; }
@@ -30,6 +30,7 @@
 (async function () {
     const cont = document.getElementById('conteudo');
     const msg = t => { cont.innerHTML = '<div class="msg">' + t + '</div>'; };
+    const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const token = new URLSearchParams(location.search).get('token');
     if (!token) { msg('Link incompleto (sem token). Gere de novo pelo sistema.'); return; }
 
@@ -64,8 +65,8 @@
     };
 
     document.title = nome.replace(/\.pptx$/i, '');
-    cont.innerHTML = '<div class="barra"><h1>Apresentação — modelo padronizado da Rede de Proteção' +
-        '<small>Pré-visualização aproximada; o arquivo baixado abre idêntico ao modelo no PowerPoint.</small></h1>' +
+    cont.innerHTML = '<div class="barra"><h1>' + esc(dados.titulo || 'Apresentação — modelo padronizado da Rede de Proteção') +
+        '<small>Pré-visualização aproximada; o arquivo baixado abre completo e editável no PowerPoint.</small></h1>' +
         '<button id="btn-baixar">⬇ Salvar em PowerPoint (.pptx)</button></div><div id="palco"></div>';
     document.getElementById('btn-baixar').addEventListener('click', baixar);
 
