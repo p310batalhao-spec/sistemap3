@@ -12,6 +12,8 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="../css/rede-protecao.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 
@@ -176,7 +178,7 @@
         <main>
             <div class="saudacao-dc">
                 <h2>📊 Dashboard Cruzado — Visão Consolidada</h2>
-                <p>MVI/CVLI, CVP, TCO, Armas, Drogas, Visita Orientativa, Perturbação do Sossego, Violência Doméstica, Cumprimento de Mandados e Materiais — clique em qualquer gráfico para filtrar os demais da mesma aba.</p>
+                <p>MVI/CVLI, CVP, TCO, Armas, Drogas, Visita Orientativa, Perturbação do Sossego, Violência Doméstica, Cumprimento de Mandados, Materiais e Rede de Proteção (grupos vulneráveis) — clique em qualquer gráfico para filtrar os demais da mesma aba.</p>
             </div>
 
             <div class="acoes-dc">
@@ -227,6 +229,10 @@
     <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
     </footer>
 
+    <script src="../js/core/atualizador-local.js"></script>
     <script src="../js/dashboard-cruzado.js"></script>
+    <!-- Aba "Rede de Proteção / Grupos Vulneráveis" (busca de vítimas no CAD + apresentação no modelo da Rede) -->
+    <script src="../js/rede-protecao-pptx.js"></script>
+    <script src="../js/dashboard-rede-protecao.js"></script>
 </body>
 </html>
