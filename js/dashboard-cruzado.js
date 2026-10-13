@@ -127,13 +127,17 @@
     // igual ao pedido explícito do usuário. Sem correspondência, os
     // campos cruzados ficam vazios (agrupam em "Não identificada/o" nos
     // gráficos) — nunca inventa dado.
-    async function fetchMateriaisCruzados() {
+    // semGuarnicao: versão LEVE usada pela apresentação em PowerPoint
+    // (js/dashboard-cruzado-pptx.js) — /guarnicao tem dezenas de MB e a
+    // apresentação não usa o nome da guarnição; não entra no cache da aba.
+    async function fetchMateriaisCruzados(semGuarnicao) {
         if (window._NODES_CACHE.__materiaisCruzados) return window._NODES_CACHE.__materiaisCruzados;
+        if (semGuarnicao && window._NODES_CACHE.__materiaisLeve) return window._NODES_CACHE.__materiaisLeve;
 
         const [materiaisRes, geralArr, guarnicaoRes] = await Promise.all([
             fetch(`${APPS_SCRIPT_MATERIAIS_URL}?action=read`).then(r => r.ok ? r.json() : []).catch(() => []),
             fetchNode('geral'),
-            fetch(`${DATABASE_URL}/guarnicao.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+            semGuarnicao ? Promise.resolve(null) : fetch(`${DATABASE_URL}/guarnicao.json`).then(r => r.ok ? r.json() : null).catch(() => null),
         ]);
 
         const porBoletimGeral = new Map();
@@ -161,7 +165,8 @@
             });
         });
 
-        window._NODES_CACHE.__materiaisCruzados = lista;
+        if (semGuarnicao) window._NODES_CACHE.__materiaisLeve = lista;
+        else window._NODES_CACHE.__materiaisCruzados = lista;
         return lista;
     }
 
@@ -856,6 +861,23 @@
         renderAba(cat);
     }
     window.trocarAbaDash = trocarAbaDash;
+
+    // API pro gerador da apresentação (js/dashboard-cruzado-pptx.js) —
+    // reaproveita as MESMAS regras de cada aba (fonte, filtroBase, campos,
+    // MVI, peso de drogas) em vez de reimplementar contagens em outro lugar.
+    window.DashCruzadoAPI = {
+        CATEGORIAS, ORDEM_ABAS, parseData, NORM, CAMPO, isMVI, movBase, filtrosManuais,
+        async carregar(cat) {
+            const d = CATEGORIAS[cat];
+            if (window._DADOS_CAT[cat]) return window._DADOS_CAT[cat];
+            // Materiais sem /guarnicao (ver fetchMateriaisCruzados) — não
+            // grava em _DADOS_CAT pra aba continuar carregando a versão completa.
+            if (cat === 'materiais') return (await fetchMateriaisCruzados(true)).filter(d.filtroBase);
+            window._DADOS_CAT[cat] = (await d.fetch()).filter(d.filtroBase);
+            return window._DADOS_CAT[cat];
+        },
+        pronto: () => !!DATABASE_URL,
+    };
 
     // Desliga (visualmente e funcionalmente) os campos Nome/Cidade quando a
     // categoria ativa não tem esse dado — evita o usuário digitar um filtro
