@@ -71,6 +71,10 @@
                         <input type="text" id="f-nome" placeholder="5º BPM">
                     </div>
                     <div class="formulario">
+                        <p>Logo da unidade (endereço da imagem PNG/JPG — usada nas apresentações em PowerPoint; vazio = brasão padrão)</p>
+                        <input type="text" id="f-logo" placeholder="https://… ou ../img/brasao.png">
+                    </div>
+                    <div class="formulario">
                         <p>Status</p>
                         <select id="f-ativo">
                             <option value="true">Ativo</option>
@@ -221,6 +225,7 @@
             document.getElementById('f-id').value = id;
             document.getElementById('f-id').disabled = true;
             document.getElementById('f-nome').value = unidade.nome || '';
+            document.getElementById('f-logo').value = unidade.logoUrl || '';
             document.getElementById('f-ativo').value = String(unidade.ativo !== false);
 
             FB_CAMPOS.forEach(campo => {
@@ -259,6 +264,7 @@
 
             const dados = {
                 nome: document.getElementById('f-nome').value.trim(),
+                logoUrl: document.getElementById('f-logo').value.trim() || null,
                 ativo: document.getElementById('f-ativo').value === 'true',
                 firebase,
                 gas
