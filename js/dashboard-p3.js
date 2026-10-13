@@ -10,6 +10,14 @@ let FB_BASE = null; // definido em runtime a partir da unidade do usuário logad
 const norm = str => (str || '').toString().trim()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
+// Canoniza a tipifica\u00e7\u00e3o \u2014 ver canonTipificacao() em js/dashboard-cruzado.js:
+// a tipifica\u00e7\u00e3o do CAD vem como "<TIPO>" OU "<TIPO> | <DIPLOMA LEGAL>"
+// ("HOMIC\u00cdDIO" vs "HOMIC\u00cdDIO | C\u00d3DIGO PENAL") pro MESMO crime, e sem cortar
+// o sufixo o mesmo crime virava duas barras separadas nos gr\u00e1ficos por
+// tipifica\u00e7\u00e3o. Copiado por arquivo (mesmo padr\u00e3o de norm/isCVLI j\u00e1
+// duplicados) \u2014 candidato a m\u00f3dulo compartilhado.
+const canonTip = str => String(str || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+
 // ── Classificadores ──────────────────────────────────────────────
 // CVLI = tentativa de homicídio, tentativa de feminicídio, latrocínio tentado,
 //        homicídio, feminicídio, latrocínio
@@ -88,7 +96,7 @@ let DADOS = { geral: [], cvp: [], cvli: [], arma: [], droga: [], tco: [], vd: []
 let FILTRO = { ini: null, fim: null };
 let ANO_ATUAL = new Date().getFullYear();
 let CHARTS = {};
-let ABA_ATIVA = 'geral'; // 'geral' | 'mvi-cvli'
+let ABA_ATIVA = 'geral'; // 'geral' | 'mvi-cvli' | 'rede'
 
 // ════════════════════════════════════════════════════════════════════
 // CROSS-FILTER — motor de filtragem cruzada bidirecional
@@ -297,8 +305,16 @@ function renderizar() {
                 style="flex:1;padding:12px 20px;border:none;cursor:pointer;
                        font-weight:bold;font-size:.88rem;letter-spacing:.04em;
                        display:flex;align-items:center;justify-content:center;gap:8px;
-                       transition:all .2s;background:#f5f7ff;color:#374263;">
+                       transition:all .2s;background:#f5f7ff;color:#374263;
+                       border-right:2px solid #d0d5e8;">
                 <i class="fas fa-skull" style="color:#6a1b9a;"></i> Análise MVI / CVLI
+            </button>
+            <button id="aba-btn-rede" onclick="trocarAba('rede')"
+                style="flex:1;padding:12px 20px;border:none;cursor:pointer;
+                       font-weight:bold;font-size:.88rem;letter-spacing:.04em;
+                       display:flex;align-items:center;justify-content:center;gap:8px;
+                       transition:all .2s;background:#f5f7ff;color:#374263;">
+                <i class="fas fa-hands-helping" style="color:#ad1457;"></i> Rede de Proteção / Grupos Vulneráveis
             </button>
         </div>`);
 
@@ -836,6 +852,10 @@ function renderizar() {
             </div>
         </div>`);
 
+    // ── Conteúdo da aba Rede de Proteção (montado sob demanda por
+    // js/dashboard-rede-protecao.js na 1ª vez que a aba é aberta) ─────
+    main.insertAdjacentHTML('beforeend', `<div id="conteudo-rede" style="display:none;"></div>`);
+
     // Renderiza gráficos após DOM estar pronto
     setTimeout(() => {
         renderKPIs();
@@ -1114,7 +1134,7 @@ function renderTipCVLI() {
     const arr   = doAnoX(DADOS.geral, 'tipificacao').filter(isCVLI);
     const cnt   = {};
     arr.forEach(i => {
-        const t = (i.TIPIFICACAO_GERAL || i.TIPIFICACAO || 'N/D').trim();
+        const t = canonTip(i.TIPIFICACAO_GERAL || i.TIPIFICACAO) || 'N/D';
         cnt[t]  = (cnt[t] || 0) + 1;
     });
     const top    = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -1132,7 +1152,7 @@ function renderTipCVP() {
     const arr   = doAnoX(DADOS.cvp, 'tipificacao').filter(isCVP);
     const cnt   = {};
     arr.forEach(i => {
-        const t = (i.TIPIFICACAO_GERAL || i.TIPIFICACAO || 'N/D').trim();
+        const t = canonTip(i.TIPIFICACAO_GERAL || i.TIPIFICACAO) || 'N/D';
         cnt[t]  = (cnt[t] || 0) + 1;
     });
     const top   = Object.entries(cnt).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -1379,7 +1399,7 @@ function renderCruzamento() {
         const obitoHtml = obito === 'S'
             ? `<span class="obito-s">SIM</span>`
             : `<span class="obito-n">NÃO</span>`;
-        const tip = (doc.TIPIFICACAO_GERAL || doc.TIPIFICACAO || '—').trim();
+        const tip = canonTip(doc.TIPIFICACAO_GERAL || doc.TIPIFICACAO) || '—';
         return `<tr>
             <td><strong>${doc.BOLETIM || doc.NUMEROOCORRENCIA || '—'}</strong></td>
             <td style="white-space:nowrap">${doc.DATA || doc.data || '—'}</td>
@@ -1546,7 +1566,7 @@ function renderTCO() {
     const arrTip = doAnoX(DADOS.tco, 'tipificacao');
     const cntTip = {};
     arrTip.forEach(i => {
-        const t = (i.TIPIFICACAO_GERAL || i.TIPIFICACAO || 'N/D').trim();
+        const t = canonTip(i.TIPIFICACAO_GERAL || i.TIPIFICACAO) || 'N/D';
         cntTip[t] = (cntTip[t] || 0) + 1;
     });
     const topTip  = Object.entries(cntTip).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -2024,37 +2044,31 @@ function limparPeriodo() {
 // ════════════════════════════════════════════════════════════════════
 // TROCA DE ABA
 // ════════════════════════════════════════════════════════════════════
+// Abas: id do conteúdo, id do botão e cor do botão ativo.
+const ABAS_DASH = {
+    'geral':    { conteudo: 'conteudo-geral',    botao: 'aba-btn-geral',    cor: '#1565c0' },
+    'mvi-cvli': { conteudo: 'conteudo-mvi-cvli', botao: 'aba-btn-mvi-cvli', cor: '#6a1b9a' },
+    'rede':     { conteudo: 'conteudo-rede',     botao: 'aba-btn-rede',     cor: '#ad1457' }, // js/dashboard-rede-protecao.js
+};
+
 function trocarAba(aba) {
     ABA_ATIVA = aba;
-    const geral    = document.getElementById('conteudo-geral');
-    const mviCvli  = document.getElementById('conteudo-mvi-cvli');
-    const btnGeral = document.getElementById('aba-btn-geral');
-    const btnMvi   = document.getElementById('aba-btn-mvi-cvli');
+    Object.entries(ABAS_DASH).forEach(([id, cfg]) => {
+        const ativa = id === aba;
+        const cont = document.getElementById(cfg.conteudo);
+        const btn  = document.getElementById(cfg.botao);
+        if (cont) cont.style.display = ativa ? 'block' : 'none';
+        if (btn) {
+            btn.style.background = ativa ? cfg.cor : '#f5f7ff';
+            btn.style.color      = ativa ? '#fff' : '#374263';
+        }
+    });
+    // A aba Rede tem filtro de período próprio — esconde as barras globais nela.
+    ['cross-bar'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = aba === 'rede' ? 'none' : ''; });
+    document.querySelectorAll('.periodo-bar').forEach(el => { el.style.display = aba === 'rede' ? 'none' : ''; });
 
-    if (aba === 'geral') {
-        if (geral)   geral.style.display   = 'block';
-        if (mviCvli) mviCvli.style.display = 'none';
-        if (btnGeral) {
-            btnGeral.style.background = '#1565c0';
-            btnGeral.style.color      = '#fff';
-        }
-        if (btnMvi) {
-            btnMvi.style.background = '#f5f7ff';
-            btnMvi.style.color      = '#374263';
-        }
-    } else {
-        if (geral)   geral.style.display   = 'none';
-        if (mviCvli) mviCvli.style.display = 'block';
-        if (btnGeral) {
-            btnGeral.style.background = '#f5f7ff';
-            btnGeral.style.color      = '#374263';
-        }
-        if (btnMvi) {
-            btnMvi.style.background = '#6a1b9a';
-            btnMvi.style.color      = '#fff';
-        }
-        renderMviCvli();
-    }
+    if (aba === 'mvi-cvli') renderMviCvli();
+    else if (aba === 'rede' && typeof renderRedeProtecao === 'function') renderRedeProtecao();
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -2382,7 +2396,7 @@ function renderHoraMviCvli(atual) {
 // ── Tipificações MVI/CVLI ─────────────────────────────────────────
 function renderTipMviCvli(atual) {
     const cnt = {};
-    atual.forEach(i => { const t = (i.TIPIFICACAO_GERAL||i.TIPIFICACAO||'N/D').trim(); cnt[t]=(cnt[t]||0)+1; });
+    atual.forEach(i => { const t = canonTip(i.TIPIFICACAO_GERAL||i.TIPIFICACAO) || 'N/D'; cnt[t]=(cnt[t]||0)+1; });
     const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,8);
     const cores = ['#6a1b9a','#7b1fa2','#8e24aa','#9c27b0','#ab47bc','#ba68c8','#ce93d8','#e1bee7'];
     renderBarH('chart-mcvli-tip', top.map(x=>x[0]), top.map(x=>x[1]), cores);
@@ -2445,7 +2459,7 @@ function renderMviCvliCruzamento() {
             <td>${i.BOLETIM||'—'}</td>
             <td>${i.DATA||'—'}</td>
             <td>${(i.HORA||'—').substring(0,5)}</td>
-            <td>${(i.TIPIFICACAO_GERAL||i.TIPIFICACAO||'—').substring(0,35)}</td>
+            <td>${(canonTip(i.TIPIFICACAO_GERAL||i.TIPIFICACAO)||'—').substring(0,35)}</td>
             <td>${i.BAIRRO||'—'}</td>
             <td>${i.CIDADE||'—'}</td>
             <td>${obito}</td>
@@ -2474,6 +2488,10 @@ function renderMviCvli() {
 function atualizarTudo() {
     if (ABA_ATIVA === 'mvi-cvli') {
         renderMviCvli();
+        return;
+    }
+    if (ABA_ATIVA === 'rede') {
+        if (typeof renderRedeProtecao === 'function') renderRedeProtecao();
         return;
     }
     renderKPIs();
