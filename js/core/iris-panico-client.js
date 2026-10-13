@@ -73,11 +73,32 @@
         return resp.registros || [];
     }
 
+    // Lista TODOS os registros de uma tabela do Íris (assistidas,
+    // fiscalizacao, avaliacao, acionamentos), paginando de LIMITE em LIMITE
+    // (o back-end limita 1000–2000 por chamada). O recorte por unidade é o
+    // do próprio back-end (perfil P3: só a unidade do operador). Usado pela
+    // aba "Rede de Proteção" (seção Botão do Pânico).
+    async function listarTabela(tabela, extras) {
+        const LIMITE = (tabela === 'assistidas' || tabela === 'acionamentos') ? 2000 : 1000;
+        const todos = [];
+        for (let offset = 0, pagina = 0; pagina < 50; pagina++, offset += LIMITE) {
+            const params = Object.assign({ acao: 'listar', tabela, ordem: 'DESC', limite: LIMITE, offset }, extras || {});
+            const resp = await _chamar(params);
+            if (!resp.ok) throw new Error(resp.erro === 'sem-token' || resp.erro === 'token-expirado'
+                ? 'sem acesso ao Íris (faça login novamente)' : (resp.erro || ('falha ao consultar ' + tabela + ' no Íris')));
+            const regs = resp.registros || [];
+            todos.push(...regs);
+            if (regs.length < LIMITE || (resp.total && todos.length >= resp.total)) break;
+        }
+        return todos;
+    }
+
     global.IrisPanico = {
         API_URL,
         temToken,
         unidadeChaveAtual,
         autenticar,
         listarAcionamentos,
+        listarTabela,
     };
 })(window);
