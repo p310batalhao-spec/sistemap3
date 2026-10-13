@@ -831,10 +831,27 @@
     // ════════════════════════════════════════════════════════════════
     // ABAS — troca e inicialização
     // ════════════════════════════════════════════════════════════════
+    // Aba extra (fora de CATEGORIAS): "Rede de Proteção / Grupos
+    // Vulneráveis" — tem filtros e fonte de dados próprios (vítimas do CAD),
+    // renderizada por js/dashboard-rede-protecao.js. A barra de filtros
+    // global desta página não se aplica a ela, por isso fica escondida.
+    const ABA_REDE = 'rede';
+
+    function renderAtual() {
+        if (window._ABA_ATIVA === ABA_REDE) {
+            if (typeof window.renderRedeProtecao === 'function') window.renderRedeProtecao();
+            return;
+        }
+        renderAba(window._ABA_ATIVA);
+    }
+
     function trocarAbaDash(cat) {
         window._ABA_ATIVA = cat;
         document.querySelectorAll('.tab-dc-btn').forEach(b => b.classList.toggle('ativo', b.dataset.cat === cat));
         document.querySelectorAll('.aba-dc').forEach(a => a.classList.toggle('ativa', a.id === 'aba-' + cat));
+        const barraFiltros = document.querySelector('.filtro-dc-bar');
+        if (barraFiltros) barraFiltros.style.display = cat === ABA_REDE ? 'none' : '';
+        if (cat === ABA_REDE) { renderAtual(); return; }
         atualizarDisponibilidadeFiltros(cat);
         renderAba(cat);
     }
@@ -859,7 +876,7 @@
         }
     }
 
-    function aplicarFiltrosGlobais() { renderAba(window._ABA_ATIVA); }
+    function aplicarFiltrosGlobais() { if (window._ABA_ATIVA !== ABA_REDE) renderAba(window._ABA_ATIVA); }
     window.aplicarFiltrosGlobaisDash = aplicarFiltrosGlobais;
 
     function montarTabs() {
@@ -871,6 +888,8 @@
             hTabs += '<button class="tab-dc-btn' + (i === 0 ? ' ativo' : '') + '" data-cat="' + cat + '" onclick="trocarAbaDash(\'' + cat + '\')">' + d.icone + ' ' + esc(d.label) + '</button>';
             hAbas += '<div class="aba-dc' + (i === 0 ? ' ativa' : '') + '" id="aba-' + cat + '"><div id="conteudo-' + cat + '"><div class="vz-dc"><div class="vi">⏳</div><div class="vt">Carregando dados...</div></div></div></div>';
         });
+        hTabs += '<button class="tab-dc-btn" data-cat="' + ABA_REDE + '" onclick="trocarAbaDash(\'' + ABA_REDE + '\')">🛡️ Rede de Proteção / Grupos Vulneráveis</button>';
+        hAbas += '<div class="aba-dc" id="aba-' + ABA_REDE + '"><div id="conteudo-' + ABA_REDE + '"></div></div>';
         tabsEl.innerHTML = hTabs;
         abasEl.innerHTML = hAbas;
     }
@@ -903,7 +922,7 @@
         if (btnLogout) btnLogout.addEventListener('click', logout);
 
         document.querySelectorAll('#btn-tema').forEach(btn => {
-            btn.addEventListener('click', () => setTimeout(() => renderAba(window._ABA_ATIVA), 50));
+            btn.addEventListener('click', () => setTimeout(renderAtual, 50));
         });
 
         montarTabs();
