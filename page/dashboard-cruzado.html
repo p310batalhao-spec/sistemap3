@@ -184,6 +184,7 @@
             <div class="acoes-dc">
                 <a href="dashboard-mapa.html" class="btn-acao-dc">🗺️ Dashboard Mapa</a>
                 <button type="button" class="btn-acao-dc" onclick="abrirRelatorioP3(event)">📄 Relatório P3</button>
+                <button type="button" class="btn-acao-dc" onclick="gerarApresentacaoCruzado(event)" title="Indicadores de todas as abas no período dos filtros (ou do ano corrente), comparados com o mesmo período do ano anterior">📊 Apresentação PowerPoint</button>
             </div>
 
             <!-- ══ Filtros globais (aplicam-se à aba ativa) ══════════ -->
@@ -234,5 +235,6 @@
     <!-- Aba "Rede de Proteção / Grupos Vulneráveis" (busca de vítimas no CAD + apresentação no modelo da Rede) -->
     <script src="../js/rede-protecao-pptx.js"></script>
     <script src="../js/dashboard-rede-protecao.js"></script>
+    <script src="../js/dashboard-cruzado-pptx.js"></script>
 </body>
 </html>
