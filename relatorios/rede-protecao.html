@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rede de Proteção — 10º BPM</title>
+<!--
+    Aberta no NAVEGADOR PADRÃO a partir do app desktop (.exe) pela aba
+    "Rede de Proteção / Grupos Vulneráveis" (js/dashboard-rede-protecao.js).
+    O WebView2 do .exe bloqueia pop-up por script e download de arquivo, então
+    o conteúdo vem do servidor local: GET http://localhost:5057/relatorio/obter
+    ?token=… (ver tools/atualizador-local/app.py). O token vale UMA vez.
+      tipo "impressao"    → { html }                    — relatório pronto pra imprimir/salvar em PDF
+      tipo "apresentacao" → { nome, pptxBase64 }        — PowerPoint no modelo da Rede: pré-visualiza e baixa
+-->
+<style>
+    body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #1d1028; color: #fff; }
+    .barra { display: flex; flex-wrap: wrap; gap: .6rem 1rem; align-items: center; padding: 14px 24px; background: #531c7e; }
+    .barra h1 { font-size: 1rem; margin: 0; flex: 1; min-width: 240px; }
+    .barra small { display: block; font-weight: normal; opacity: .75; font-size: .75rem; margin-top: 2px; }
+    .barra button { padding: .55rem 1.1rem; border: none; border-radius: 7px; background: #ca247a; color: #fff; font-weight: bold; font-size: .85rem; cursor: pointer; }
+    #palco { display: flex; justify-content: center; padding: 20px 16px 40px; }
+    #palco span, #palco p, #palco div { font-family: Aptos, "Segoe UI", Calibri, Arial, sans-serif !important; }
+    .msg { max-width: 640px; margin: 60px auto; background: #fff; color: #333; border-radius: 10px; padding: 2rem; text-align: center; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="conteudo"><div class="msg">⏳ Carregando…</div></div>
+<script>
+(async function () {
+    const cont = document.getElementById('conteudo');
+    const msg = t => { cont.innerHTML = '<div class="msg">' + t + '</div>'; };
+    const token = new URLSearchParams(location.search).get('token');
+    if (!token) { msg('Link incompleto (sem token). Gere de novo pelo sistema.'); return; }
+
+    let dados;
+    try {
+        const r = await fetch('http://localhost:5057/relatorio/obter?token=' + encodeURIComponent(token));
+        if (!r.ok) throw new Error('não encontrado ou expirado');
+        dados = await r.json();
+    } catch (e) {
+        msg('Não foi possível carregar (' + e.message + ').<br>Este link só funciona uma vez e por até 10 minutos, com o Sistema P3 aberto. Gere de novo pelo sistema.');
+        return;
+    }
+
+    if (dados.tipo === 'impressao') {
+        // Já traz o próprio window.print() no onload.
+        document.open(); document.write(dados.html); document.close();
+        return;
+    }
+
+    if (dados.tipo !== 'apresentacao' || !dados.pptxBase64) { msg('Conteúdo desconhecido.'); return; }
+
+    const bin = atob(dados.pptxBase64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+    const nome = dados.nome || 'Rede_Protecao.pptx';
+    const baixar = () => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = nome;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    };
+
+    document.title = nome.replace(/\.pptx$/i, '');
+    cont.innerHTML = '<div class="barra"><h1>Apresentação — modelo padronizado da Rede de Proteção' +
+        '<small>Pré-visualização aproximada; o arquivo baixado abre idêntico ao modelo no PowerPoint.</small></h1>' +
+        '<button id="btn-baixar">⬇ Salvar em PowerPoint (.pptx)</button></div><div id="palco"></div>';
+    document.getElementById('btn-baixar').addEventListener('click', baixar);
+
+    try {
+        await new Promise((ok, falha) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/pptx-preview@1.0.7/dist/pptx-preview.umd.js';
+            s.onload = ok; s.onerror = () => falha(new Error('sem acesso à biblioteca de pré-visualização'));
+            document.head.appendChild(s);
+        });
+        const largura = Math.min(1100, window.innerWidth - 48);
+        const prev = window.pptxPreview.init(document.getElementById('palco'), { width: largura, height: Math.round(largura * 9 / 16), mode: 'slide' });
+        await prev.preview(await blob.arrayBuffer());
+    } catch (e) {
+        document.getElementById('palco').innerHTML = '<div class="msg">Pré-visualização indisponível (' + e.message + '). Use o botão <b>Salvar em PowerPoint</b>.</div>';
+    }
+})();
+</script>
+</body>
+</html>
