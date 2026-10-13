@@ -377,7 +377,7 @@
     // reenviado pro GitHub Pages (bug real relatado: notificacoes.js
     // antigo servido em cache, função nova inexistente pro index.html
     // novo). Subir esse número toda vez que qualquer um dos 4 mudar.
-    var VERSAO_SCRIPTS_DINAMICOS = '20260902-1';
+    var VERSAO_SCRIPTS_DINAMICOS = '20261014-1';
     (function () {
         var prefixo = estaEmSubpasta() ? '../' : '';
         var sPanico = document.createElement('script');
