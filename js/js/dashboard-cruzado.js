@@ -1,15 +1,18 @@
 // ════════════════════════════════════════════════════════════════════
-// DASHBOARD CRUZADO — visão consolidada por categoria (MVI/CVLI, TCO,
-// Armas, Drogas, Visita Orientativa, Perturbação do Sossego, Violência
-// Doméstica), com filtro cruzado (clicar num gráfico filtra os demais
-// da mesma aba), comparativo ano anterior x atual e filtros manuais de
-// período, COP, nome e cidade.
+// DASHBOARD CRUZADO — visão consolidada por categoria (MVI/CVLI, CVP,
+// TCO, Armas, Drogas, Visita Orientativa, Perturbação do Sossego,
+// Violência Doméstica, Cumprimento de Mandados, Materiais), com filtro
+// cruzado (clicar num gráfico filtra os demais da mesma aba),
+// comparativo ano anterior x atual e filtros manuais de período, COP,
+// nome e cidade.
 //
 // A regra de contagem de MVI é a MESMA usada em js/index.js
-// (atualizarContagemHomicidiosFirebase): ano atual + (HOMICÍDIO sem
-// "tentativa" OU tentativa com OBITO = "S"). Não reinventar essa regra
-// em outro lugar — se precisar mudar o critério de MVI, mudar aqui E
-// em js/index.js.
+// (atualizarContagemHomicidiosFirebase) — 04/09/2026, pedido explícito
+// do usuário: homicídio (doloso), latrocínio, feminicídio, homicídio
+// culposo ao volante e homicídio doloso ao volante — sempre; TENTATIVA
+// desses só conta quando OBITO = "S". Não reinventar essa regra em
+// outro lugar — se precisar mudar o critério de MVI, mudar aqui E em
+// js/index.js.
 // ════════════════════════════════════════════════════════════════════
 
 (function () {
@@ -34,6 +37,22 @@
     }
     function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+    // A tipificação do CAD vem em dois formatos pro MESMO crime, dependendo
+    // do fluxo/época que capturou o registro: só "<TIPO>" ("HOMICÍDIO") ou
+    // "<TIPO> | <DIPLOMA LEGAL>" ("HOMICÍDIO | CÓDIGO PENAL",
+    // "AMEAÇA | LEI MARIA DA PENHA", "PERTURBAÇÃO... | CONTRAVENÇÕES PENAIS"
+    // etc.). Sem tratar isso, o mesmo crime aparecia como DUAS barras
+    // separadas em todo gráfico "por tipificação", quebrando a contagem
+    // (bug real relatado: HOMICÍDIO 30 + HOMICÍDIO | CÓDIGO PENAL 17 em vez
+    // de 47). A parte depois do " | " é só o rótulo do diploma —
+    // redundante e derivável —, então corta fora; também colapsa espaço
+    // duplicado ("AO  VOLANTE" → "AO VOLANTE"). Preserva acento/caixa
+    // pro rótulo do gráfico continuar legível. NÃO usar em TIPO_ARMA/
+    // TIPO_DROGA (não têm esse padrão).
+    function canonTipificacao(s) {
+        return String(s || '').split(/\s*\|\s*/)[0].replace(/\s+/g, ' ').trim();
+    }
+
     // Parser de data tolerante — cobre AAAA-MM-DD, DD/MM/AAAA e strings
     // de Date() genéricas (mesma necessidade já resolvida em
     // qualitativo_tco.html/calendario.html para os mesmos tipos de dado).
@@ -50,12 +69,15 @@
     }
 
     // ── Regra oficial de MVI (idêntica a js/index.js) ─────────────────
+    // Homicídio (doloso), latrocínio, feminicídio, homicídio culposo ao
+    // volante e homicídio doloso ao volante — os dois últimos casam por
+    // "HOMICIDIO" no texto. TENTATIVA só conta quando OBITO = "S"
+    // (pedido explícito do usuário); consumado conta sempre.
     function isMVI(item) {
-        const tip = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO'));
-        const ehHomicidio = tip.includes('HOMICIDIO') && !tip.includes('TENTATIVA');
-        const ehTentativa = tip.includes('TENTATIVA');
-        const temObito = NORM(item.OBITO) === 'S';
-        return ehHomicidio || (ehTentativa && temObito);
+        const tip = NORM(canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')));
+        if (!(tip.includes('HOMICIDIO') || tip.includes('FEMINICIDIO') || tip.includes('LATROCINIO'))) return false;
+        if (tip.includes('TENTATIVA')) return NORM(item.OBITO) === 'S';
+        return true;
     }
 
     // ── Movimentação do TCO vem como "STATUS (dd/mm/aaaa)" — mesma
@@ -151,18 +173,35 @@
         mvicvli: {
             label: 'MVI e CVLI', icone: '🔪',
             fetch: () => fetchNode('geral'),
-            // Universo de CVLI = mesmo filtro usado em page/mvi.html (o
-            // cadastro de CVLI de fato): tipificação contém HOMICIDIO ou FEMINI.
-            filtroBase: item => { const t = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI'); },
+            // Universo de CVLI: tipificação contém HOMICIDIO, FEMINI ou
+            // LATROCINIO (latrocínio é CVLI e também entra na contagem de
+            // MVI — ver isMVI). Homicídio culposo/doloso ao volante casa
+            // por "HOMICIDIO".
+            filtroBase: item => { const t = NORM(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI') || t.includes('LATROCINIO'); },
             campoData: item => CAMPO(item, 'DATA', 'data'),
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
             kpiExtra: lista => ({ label: 'MVI no período', valor: lista.filter(isMVI).length }),
             iconeExtra: '💀',
+        },
+        // CVP — nó /cvp (fan-out do cadastro de ocorrências: ROUBO /
+        // EXTORSÃO / LATROCÍNIO — ver js/cadastroocorrencias.js). Mesmo
+        // schema de /geral.
+        cvp: {
+            label: 'CVP', icone: '💰',
+            fetch: () => fetchNode('cvp'),
+            filtroBase: () => true,
+            campoData: item => CAMPO(item, 'DATA', 'data'),
+            campoCidade: item => CAMPO(item, 'CIDADE'),
+            campoCop: item => CAMPO(item, 'BOLETIM'),
+            campoNome: item => CAMPO(item, 'SOLICITANTE'),
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
+            campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
+            labelTip: 'Tipificação', labelStatus: 'Solução',
         },
         tco: {
             label: 'TCO', icone: '📋',
@@ -172,7 +211,7 @@
             campoCidade: null,
             campoCop: item => CAMPO(item, 'Nº Ocorrência', 'BOLETIM'),
             campoNome: null,
-            campoTip: item => CAMPO(item, 'Tipicidade Geral', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'Tipicidade Geral', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => movBase(CAMPO(item, 'Movimentação', 'Movimentacao', 'MOVIMENTACAO')) || 'Sem Movimentação',
             labelTip: 'Tipicidade', labelStatus: 'Movimentação (status)',
             kpiExtra: lista => {
@@ -223,8 +262,8 @@
             campoData: item => CAMPO(item, 'DATA', 'data'),
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
-            campoNome: item => CAMPO(item, 'NOME_AUTOR'),
-            campoTip: item => CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO') || 'Não informado',
+            campoNome: item => CAMPO(item, 'NOME_AUTOR', 'SOLICITANTE'),
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'TIPIFICAÇÃO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação de origem', labelStatus: 'Solução',
         },
@@ -236,7 +275,7 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
@@ -248,8 +287,23 @@
             campoCidade: item => CAMPO(item, 'CIDADE'),
             campoCop: item => CAMPO(item, 'NUMEROOCORRENCIA', 'BOLETIM'),
             campoNome: item => CAMPO(item, 'SOLICITANTE'),
-            campoTip: item => CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO') || 'Não informado',
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICAÇÃO', 'TIPIFICACAO')) || 'Não informado',
             campoStatus: item => CAMPO(item, 'SOLUÇÃO DA OCORRÊNCIA', 'SOLUÇÃO', 'SOLUCAO') || 'Não informado',
+            labelTip: 'Tipificação', labelStatus: 'Solução',
+        },
+        // Cumprimento de Mandados — nó /mandados (fan-out do cadastro:
+        // TIPIFICACAO_GERAL contém "MANDADO" — ver js/cadastroocorrencias.js).
+        // Mesmo schema de /geral.
+        mandados: {
+            label: 'Cumprimento de Mandados', icone: '📜',
+            fetch: () => fetchNode('mandados'),
+            filtroBase: () => true,
+            campoData: item => CAMPO(item, 'DATA', 'data'),
+            campoCidade: item => CAMPO(item, 'CIDADE'),
+            campoCop: item => CAMPO(item, 'BOLETIM'),
+            campoNome: item => CAMPO(item, 'SOLICITANTE'),
+            campoTip: item => canonTipificacao(CAMPO(item, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado',
+            campoStatus: item => CAMPO(item, 'SOLUCAO', 'SOLUÇÃO') || 'Não informado',
             labelTip: 'Tipificação', labelStatus: 'Solução',
         },
         materiais: {
@@ -262,7 +316,7 @@
             campoCidade: item => item._CIDADE || 'Não identificada',
             campoCop: item => CAMPO(item, 'N° DO BOU'),
             campoNome: null,
-            campoTip: item => item._TIPIFICACAO || 'Não identificada',
+            campoTip: item => canonTipificacao(item._TIPIFICACAO) || 'Não identificada',
             campoStatus: item => CAMPO(item, 'STATUS') || 'Não informado',
             labelTip: 'Tipificação (ocorrência de origem)', labelStatus: 'Movimentação / Status',
             // Dimensões extras — motor genérico de renderAba() renderiza 1
@@ -285,7 +339,7 @@
         },
     };
 
-    const ORDEM_ABAS = ['mvicvli', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia', 'materiais'];
+    const ORDEM_ABAS = ['mvicvli', 'cvp', 'tco', 'armas', 'drogas', 'visita', 'perturbacao', 'violencia', 'mandados', 'materiais'];
 
     // ════════════════════════════════════════════════════════════════
     // ESTADO — filtros manuais e cross-filter, por aba
@@ -706,11 +760,11 @@
         const meses = buildMeses12();
         const mesesLabels = meses.map(m => m.label);
 
-        const cvliArr = geral.filter(i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI'); });
+        const cvliArr = geral.filter(i => { const t = NORM(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')); return t.includes('HOMICIDIO') || t.includes('FEMINI') || t.includes('LATROCINIO'); });
         const mviArr = geral.filter(isMVI);
         const cvpArr = cvpBruto.filter(isCVP);
 
-        const campoTip = i => CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO') || 'Não informado';
+        const campoTip = i => canonTipificacao(CAMPO(i, 'TIPIFICACAO_GERAL', 'TIPIFICACAO')) || 'Não informado';
         const campoCidade = i => CAMPO(i, 'CIDADE') || 'Não informado';
 
         // Tabela: só os campos necessários dos 40 CVLI mais recentes (leve, não é o array bruto inteiro)
@@ -777,10 +831,27 @@
     // ════════════════════════════════════════════════════════════════
     // ABAS — troca e inicialização
     // ════════════════════════════════════════════════════════════════
+    // Aba extra (fora de CATEGORIAS): "Rede de Proteção / Grupos
+    // Vulneráveis" — tem filtros e fonte de dados próprios (vítimas do CAD),
+    // renderizada por js/dashboard-rede-protecao.js. A barra de filtros
+    // global desta página não se aplica a ela, por isso fica escondida.
+    const ABA_REDE = 'rede';
+
+    function renderAtual() {
+        if (window._ABA_ATIVA === ABA_REDE) {
+            if (typeof window.renderRedeProtecao === 'function') window.renderRedeProtecao();
+            return;
+        }
+        renderAba(window._ABA_ATIVA);
+    }
+
     function trocarAbaDash(cat) {
         window._ABA_ATIVA = cat;
         document.querySelectorAll('.tab-dc-btn').forEach(b => b.classList.toggle('ativo', b.dataset.cat === cat));
         document.querySelectorAll('.aba-dc').forEach(a => a.classList.toggle('ativa', a.id === 'aba-' + cat));
+        const barraFiltros = document.querySelector('.filtro-dc-bar');
+        if (barraFiltros) barraFiltros.style.display = cat === ABA_REDE ? 'none' : '';
+        if (cat === ABA_REDE) { renderAtual(); return; }
         atualizarDisponibilidadeFiltros(cat);
         renderAba(cat);
     }
@@ -805,7 +876,7 @@
         }
     }
 
-    function aplicarFiltrosGlobais() { renderAba(window._ABA_ATIVA); }
+    function aplicarFiltrosGlobais() { if (window._ABA_ATIVA !== ABA_REDE) renderAba(window._ABA_ATIVA); }
     window.aplicarFiltrosGlobaisDash = aplicarFiltrosGlobais;
 
     function montarTabs() {
@@ -817,6 +888,8 @@
             hTabs += '<button class="tab-dc-btn' + (i === 0 ? ' ativo' : '') + '" data-cat="' + cat + '" onclick="trocarAbaDash(\'' + cat + '\')">' + d.icone + ' ' + esc(d.label) + '</button>';
             hAbas += '<div class="aba-dc' + (i === 0 ? ' ativa' : '') + '" id="aba-' + cat + '"><div id="conteudo-' + cat + '"><div class="vz-dc"><div class="vi">⏳</div><div class="vt">Carregando dados...</div></div></div></div>';
         });
+        hTabs += '<button class="tab-dc-btn" data-cat="' + ABA_REDE + '" onclick="trocarAbaDash(\'' + ABA_REDE + '\')">🛡️ Rede de Proteção / Grupos Vulneráveis</button>';
+        hAbas += '<div class="aba-dc" id="aba-' + ABA_REDE + '"><div id="conteudo-' + ABA_REDE + '"></div></div>';
         tabsEl.innerHTML = hTabs;
         abasEl.innerHTML = hAbas;
     }
@@ -849,7 +922,7 @@
         if (btnLogout) btnLogout.addEventListener('click', logout);
 
         document.querySelectorAll('#btn-tema').forEach(btn => {
-            btn.addEventListener('click', () => setTimeout(() => renderAba(window._ABA_ATIVA), 50));
+            btn.addEventListener('click', () => setTimeout(renderAtual, 50));
         });
 
         montarTabs();
