@@ -154,8 +154,7 @@
     function origem(rec) {
         if (!_idxGeral) {
             _idxGeral = {};
-            // DADOS é `let` global de dashboard-p3.js (não vira window.DADOS)
-            ((typeof DADOS !== 'undefined' && DADOS.geral) || []).forEach(g => { const b = nrm(g.BOLETIM || g.id); if (b) _idxGeral[b] = g; });
+            geralDisponivel().forEach(g => { const b = nrm(g.BOLETIM || g.id); if (b) _idxGeral[b] = g; });
         }
         const g = _idxGeral[nrm(rec.BOLETIM)];
         if (!g) return ORIGENS[8];
@@ -179,13 +178,35 @@
     }
 
     // ── Firebase ────────────────────────────────────────────────────
+    // A aba roda em duas páginas: Dashboard P3 (FB_BASE e DADOS são `let`
+    // globais de dashboard-p3.js — não viram window.*) e Dashboard Cruzado
+    // (sem esses globais: base vem da config da unidade e /geral é baixado
+    // aqui mesmo, ou reaproveitado do cache window._NODES_CACHE daquela página).
+    let _fbBase = null, _geral = null;
+    function base() {
+        if (typeof FB_BASE !== 'undefined' && FB_BASE) return FB_BASE;
+        return _fbBase;
+    }
+    function geralDisponivel() {
+        if (typeof DADOS !== 'undefined' && DADOS && DADOS.geral && DADOS.geral.length) return DADOS.geral;
+        if (window._NODES_CACHE && Array.isArray(window._NODES_CACHE.geral)) return window._NODES_CACHE.geral;
+        return _geral || [];
+    }
     async function carregarFirebase() {
+        if (!base()) {
+            const cfg = await P3.loadUnidadeConfig();
+            _fbBase = cfg.firebase.databaseURL;
+        }
         const [v, m] = await Promise.all([
-            fetch(`${FB_BASE}/${FB_NO_VITIMAS}.json`).then(r => r.json()).catch(() => null),
-            fetch(`${FB_BASE}/${FB_NO_META}.json`).then(r => r.json()).catch(() => null),
+            fetch(`${base()}/${FB_NO_VITIMAS}.json`).then(r => r.json()).catch(() => null),
+            fetch(`${base()}/${FB_NO_META}.json`).then(r => r.json()).catch(() => null),
         ]);
         VITIMAS = v ? Object.keys(v).map(k => Object.assign({ _key: k }, v[k])) : [];
         META = m || null;
+        if (VITIMAS.length && !geralDisponivel().length) {
+            // Só pra "origem do acionamento" (atendimento inicial/solicitante do boletim).
+            _geral = await fetch(`${base()}/geral.json`).then(r => r.json()).then(d => d ? Object.values(d) : []).catch(() => []);
+        }
         CARREGADO = true;
     }
 
@@ -194,14 +215,14 @@
         for (let i = 0; i < chaves.length; i += 400) {
             const lote = {};
             chaves.slice(i, i + 400).forEach(k => { lote[k] = registros[k]; });
-            const r = await fetch(`${FB_BASE}/${FB_NO_VITIMAS}.json`, {
+            const r = await fetch(`${base()}/${FB_NO_VITIMAS}.json`, {
                 method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(lote),
             });
             if (!r.ok) throw new Error(`Firebase respondeu HTTP ${r.status} ao gravar as vítimas.`);
             status(`💾 Gravando no Firebase… ${Math.min(i + 400, chaves.length)}/${chaves.length}`);
         }
         const sessao = (window.P3 && P3.getSession) ? P3.getSession() : null;
-        await fetch(`${FB_BASE}/${FB_NO_META}.json`, {
+        await fetch(`${base()}/${FB_NO_META}.json`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 ultimaBusca: new Date().toISOString(),
@@ -806,9 +827,9 @@
         const cont = document.getElementById('conteudo-rede');
         if (!cont) return;
         if (!CARREGADO) {
-            cont.innerHTML = `<div class="loader-dash"><i class="fas fa-spinner fa-spin"></i> Carregando dados da Rede de Proteção…</div>`;
+            cont.innerHTML = `<div class="rp-carregando">⏳ Carregando dados da Rede de Proteção…</div>`;
             try { await carregarFirebase(); }
-            catch (e) { cont.innerHTML = `<div class="loader-dash" style="color:#b71c1c;">Erro ao carregar: ${esc(e.message)}</div>`; return; }
+            catch (e) { cont.innerHTML = `<div class="rp-carregando" style="color:#b71c1c;">Erro ao carregar: ${esc(e.message)}</div>`; return; }
         }
         if (!document.getElementById('rp-corpo')) montarEstrutura(cont);
         renderCorpo();
