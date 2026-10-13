@@ -1,0 +1,96 @@
+/* ═══════════════════════════════════════════════════════════════════
+   ABA "REDE DE PROTEÇÃO / GRUPOS VULNERÁVEIS"
+   js/dashboard-rede-protecao.js — usada no Dashboard Cruzado e no
+   Dashboard P3. As classes genéricas de cartão/gráfico/tabela ficam
+   ESCOPADAS em .rp-wrap pra não interferir nos estilos de cada página.
+   ═══════════════════════════════════════════════════════════════════ */
+.rp-wrap .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+.rp-wrap .chart-card { background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md, 10px); padding: 1.1rem 1.2rem; box-shadow: var(--p3-shadow-sm); min-width: 0; }
+.rp-wrap .chart-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: .85rem; gap: .5rem; flex-wrap: wrap; }
+.rp-wrap .chart-title { font-size: .85rem; font-weight: bold; color: var(--p3-text, #1a1f36); }
+.rp-wrap .chart-sub { font-size: .72rem; color: var(--p3-text-muted, #9ea3b5); margin-top: .1rem; }
+.rp-wrap .chart-wrap { position: relative; height: 260px; }
+.rp-wrap .cruzamento-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.rp-wrap .cruzamento-table th { background: rgba(106, 27, 154, .08); color: var(--p3-text, #374263); font-weight: bold; padding: 7px 10px; text-align: left; border-bottom: 2px solid var(--p3-border); }
+.rp-wrap .cruzamento-table td { padding: 6px 10px; border-bottom: 1px solid var(--p3-border); color: var(--p3-text, #1a1f36); }
+.rp-carregando { display: flex; align-items: center; justify-content: center; gap: .75rem; padding: 3rem; font-size: .9rem; color: var(--p3-text-muted, #6b7594); }
+@media (max-width: 900px) { .rp-wrap .charts-grid { grid-template-columns: 1fr; } }
+
+/* ── Aba Rede de Proteção / Grupos Vulneráveis (js/dashboard-rede-protecao.js) ── */
+.rp-wrap { display: flex; flex-direction: column; gap: 1rem; }
+.rp-barra {
+    background: var(--p3-surface); border: 1.5px solid var(--p3-border); border-radius: 8px;
+    padding: .7rem 1rem; display: flex; flex-direction: column; gap: .55rem;
+}
+.rp-barra-linha { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; font-size: .82rem; color: var(--p3-text); }
+.rp-barra-linha input[type=date], .rp-barra-linha select {
+    background: var(--p3-surface); color: var(--p3-text);
+    margin-left: 4px; padding: 5px 9px; border: 1.5px solid var(--p3-border); border-radius: 6px; font-size: .82rem;
+}
+.rp-btn {
+    padding: 7px 14px; border: 1.5px solid var(--p3-border); border-radius: 7px; background: var(--p3-surface);
+    color: var(--p3-text); font-weight: bold; font-size: .8rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
+}
+.rp-btn:disabled { opacity: .55; cursor: wait; }
+.rp-btn-cad { background: #ad1457; border-color: #ad1457; color: #fff; }
+.rp-status { font-size: .76rem; color: var(--p3-text-muted); flex: 1; min-width: 220px; }
+.rp-secao {
+    font-size: .82rem; font-weight: bold; color: #6a1b9a; text-transform: uppercase; letter-spacing: .06em;
+    padding: .4rem 0 .1rem; border-bottom: 2px solid #e1bee7;
+}
+.rp-sub-secao { font-size: .74rem; font-weight: bold; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+.rp-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .75rem; }
+.rp-kpi {
+    background: var(--p3-surface); border-radius: var(--p3-radius-md); padding: .8rem 1rem;
+    border-top: 4px solid #6a1b9a; box-shadow: var(--p3-shadow-sm);
+}
+.rp-kpi-rot { font-size: .7rem; font-weight: bold; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+.rp-kpi-n { font-size: 1.7rem; font-weight: bold; line-height: 1.15; }
+.rp-kpi-sub { font-size: .72rem; color: var(--p3-text-muted); }
+.rp-destaques { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .6rem; }
+.rp-dest { background: rgba(106, 27, 154, .1); border-radius: 6px; padding: 4px 9px; font-size: .74rem; color: #8e24aa; display: flex; gap: 6px; }
+.rp-dest span { color: #7b1fa2; opacity: .8; }
+.rp-ident, .rp-sintese { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; }
+.rp-campo { display: flex; flex-direction: column; gap: 4px; font-size: .72rem; font-weight: bold; color: var(--p3-text-muted); text-transform: uppercase; }
+.rp-campo-grande { grid-column: span 2; }
+.rp-campo input, .rp-campo textarea {
+    font: inherit; font-size: .84rem; font-weight: normal; text-transform: none; color: var(--p3-text);
+    border: 1.5px solid var(--p3-border); border-radius: 6px; padding: 7px 9px; background: var(--p3-surface); resize: vertical;
+}
+.rp-card { background: var(--p3-surface); border-radius: var(--p3-radius-md); padding: .8rem 1rem; box-shadow: var(--p3-shadow-sm); grid-column: 1 / -1; }
+.rp-card-tit { font-size: .74rem; font-weight: bold; color: #6a1b9a; text-transform: uppercase; margin-bottom: .4rem; }
+.rp-achados { margin-left: 1.1rem; font-size: .84rem; color: var(--p3-text); line-height: 1.6; }
+.rp-nota, .rp-nota-peq { font-size: .74rem; color: var(--p3-text-muted); line-height: 1.55; }
+.rp-nota { background: rgba(106, 27, 154, .06); border: 1px dashed #ce93d8; border-radius: 8px; padding: .6rem .9rem; }
+.rp-vazio { padding: 2.5rem 1rem; text-align: center; color: var(--p3-text-muted); background: var(--p3-surface); border-radius: 10px; font-size: .9rem; }
+.rp-vazio i { display: block; font-size: 1.6rem; color: #ce93d8; margin-bottom: .5rem; }
+.rp-tabelas summary { cursor: pointer; font-weight: bold; font-size: .82rem; color: #6a1b9a; padding: .4rem 0; }
+.rp-tabelas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: .6rem; }
+.rp-tab-tit { font-size: .76rem; font-weight: bold; color: var(--p3-text); margin-bottom: 4px; }
+.rp-num { text-align: right; white-space: nowrap; }
+.rp-chart-card .chart-wrap { height: 260px; }
+@media (max-width: 768px) { .rp-campo-grande { grid-column: auto; } }
+.rp-secao-obs { font-size: .68rem; font-weight: normal; color: var(--p3-text-muted); text-transform: none; letter-spacing: 0; }
+.rp-btn-ppt { background: #531c7e; border-color: #531c7e; color: #fff; }
+
+/* Pré-visualização da apresentação (pptx-preview) */
+#rp-ppt-overlay {
+    display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(20, 10, 30, .92);
+    overflow: auto; padding: 16px 24px 32px;
+}
+#rp-ppt-overlay.aberto { display: block; }
+.rp-ppt-barra {
+    max-width: 1100px; margin: 0 auto 12px; display: flex; flex-wrap: wrap; gap: .5rem 1rem;
+    align-items: center; color: #fff; font-size: .85rem; font-weight: bold;
+}
+.rp-ppt-dica { font-weight: normal; font-size: .74rem; opacity: .7; flex: 1; min-width: 240px; }
+.rp-ppt-acoes { display: flex; gap: .5rem; }
+.rp-ppt-acoes button {
+    padding: .5rem 1rem; border-radius: 7px; border: none; background: #ca247a; color: #fff;
+    font-weight: bold; font-size: .8rem; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
+}
+.rp-ppt-acoes .rp-ppt-fechar { background: rgba(255, 255, 255, .15); }
+#rp-ppt-palco { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; }
+/* O modelo usa Aptos (fonte do Office) — sem ela instalada, cai numa sem serifa parecida. */
+#rp-ppt-palco span, #rp-ppt-palco p, #rp-ppt-palco div { font-family: Aptos, "Segoe UI", Calibri, Arial, sans-serif !important; }
+.rp-ppt-erro { background: #fff; border-radius: 10px; padding: 2rem; color: #374263; text-align: center; font-size: .9rem; line-height: 1.6; }
