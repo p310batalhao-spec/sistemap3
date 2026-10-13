@@ -829,8 +829,9 @@
         setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     }
 
+    // A pré-visualização roda DENTRO do app (overlay na própria página —
+    // funciona no .exe). Só salvar o .pptx e imprimir saem pro navegador.
     async function visualizarPPTX() {
-        if (emAppDesktop()) return abrirApresentacaoNoNavegador();
         const blob = await comEspera('Montando a apresentação', async () => {
             const b = await gerarPPTX();
             await carregarScript(URL_PPTX_PREVIEW, 'pptxPreview');
@@ -898,5 +899,32 @@
     window.exportarRedeProtecaoCSV = exportarCSV;
     window.visualizarRedeProtecaoPPTX = visualizarPPTX;
     window.baixarRedeProtecaoPPTX = baixarPPTX;
+
+    // Reaproveitados pela apresentação geral do Dashboard Cruzado
+    // (js/dashboard-cruzado-pptx.js):
+    //  · abrir conteúdo no navegador comum quando estiver no .exe;
+    //  · resumo das vítimas (só violência) num intervalo [ini, fim] de Date.
+    window.P3EmAppDesktop = emAppDesktop;
+    window.P3AbrirConteudoNoNavegador = abrirNoNavegador;
+    window.RedeProtecaoResumo = async function (ini, fim, cidadeNorm) {
+        if (!CARREGADO) await carregarFirebase();
+        const lista = VITIMAS.filter(r => {
+            const d = parseData(r.DATA);
+            if (!d || d < ini || d > fim) return false;
+            if (cidadeNorm && !nrm(r.CIDADE).includes(cidadeNorm)) return false;
+            return true;
+        }).map(r => Object.assign({}, r, { _idade: idade(r) }))
+          .map(r => Object.assign(r, { _tipos: tiposViolencia(r) }))
+          .filter(r => r._tipos.length);
+        const porTipo = contar(lista, r => r._tipos, TIPOS_VIOLENCIA);
+        return {
+            baseDisponivel: VITIMAS.length > 0,
+            total: lista.length,
+            mulheres: lista.filter(r => sexo(r) === 'Feminino').length,
+            criancasAdolescentes: lista.filter(r => r._idade != null && r._idade <= 17).length,
+            idosos: lista.filter(r => r._idade != null && r._idade >= 60).length,
+            porTipo,
+        };
+    };
     window.imprimirRedeProtecao = imprimir;
 })();
