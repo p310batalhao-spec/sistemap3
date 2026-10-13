@@ -693,9 +693,7 @@
         const ident = [['Nome do serviço', 'nome'], ['Órgão / Secretaria', 'orgao'], ['Território', 'territorio'], ['Responsável', 'responsavel'],
             ['O que fazemos', 'oquefazemos'], ['Porta de entrada', 'porta'], ['Contato institucional', 'contato']]
             .map(([r, k]) => `<tr><th>${r}</th><td>${esc(document.querySelector(`[data-rp-texto="${k}"]`)?.value || t[k] || '')}</td></tr>`).join('');
-        const w = window.open('', '_blank');
-        if (!w) { alert('O navegador bloqueou a janela de impressão — permita pop-ups para esta página.'); return; }
-        w.document.write(`<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Rede de Proteção — Vítimas de Violência</title>
+        const html = `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Rede de Proteção — Vítimas de Violência</title>
         <style>
             body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:14mm;font-size:10.5pt}
             h1{font-size:15pt;margin:0 0 2px;text-transform:uppercase;color:#4a148c}
@@ -707,7 +705,7 @@
             img{max-width:100%;max-height:270px;display:block;margin:4px auto}
             table{border-collapse:collapse;width:100%;margin:6px 0;font-size:9pt}caption{text-align:left;font-weight:bold;margin-bottom:2px}
             th,td{border:1px solid #ccc;padding:3px 6px;text-align:left;vertical-align:top}th{background:#f3e5f5}
-            .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.nota{font-size:8pt;color:#555;margin-top:14px;border-top:1px solid #ccc;padding-top:6px}
+            .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}.nota{font-size:8pt;color:#555;margin-top:14px;border-top:1px solid #ccc;padding-top:6px}
         </style></head><body>
         <h1>Rede de Proteção às Vítimas de Violência</h1>
         <div class="sub">Polícia Militar de Alagoas — 10º BPM · ${esc(cid)} · Período: ${per} · Gerado em ${new Date().toLocaleString('pt-BR')}</div>
@@ -735,8 +733,55 @@
         <div class="nota">Unidade de medida: vítimas registradas em ocorrências da PM. Tipos de violência admitem múltipla resposta. "Sem informação/ignorado" não foi redistribuído. Nenhum dado identificável de vítima é apresentado.
         Fonte: CAD/SISP — grade de envolvidos (tipo de envolvimento = VÍTIMA), 10º BPM.</div>
         <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>
-        </body></html>`);
-        w.document.close();
+        </body></html>`;
+        abrirImpressao(html);
+    }
+
+    // ── App desktop (.exe) ──────────────────────────────────────────
+    // Dentro do executável (pywebview/WebView2) a janela embutida bloqueia
+    // pop-up criado por script (window.open('') + document.write) e ignora
+    // download de arquivo gerado no navegador (<a download>). Mesmo
+    // contorno já usado pelo relatório da Preditiva CAD: o conteúdo vai
+    // pro servidor local (POST /relatorio/salvar → token) e uma página
+    // DO SITE (relatorios/rede_protecao.html?token=…) é aberta pela URL —
+    // o que o .exe repassa pro navegador padrão do Windows —, busca o
+    // conteúdo de volta no 127.0.0.1 e imprime/mostra/baixa por lá.
+    const emAppDesktop = () => !!window.pywebview;
+
+    async function abrirNoNavegador(payload) {
+        if (!window.P3AtualizadorLocal || !(await P3AtualizadorLocal.disponivel().catch(() => false))) {
+            throw new Error('Não consegui falar com o atualizador local (127.0.0.1:5057) — ele precisa estar aberto pra abrir a impressão/apresentação no navegador.');
+        }
+        const resp = await fetch(`${P3AtualizadorLocal.URL_BASE}/relatorio/salvar`, { method: 'POST', body: JSON.stringify(payload) });
+        const dados = await resp.json().catch(() => ({}));
+        if (!resp.ok || !dados.ok) throw new Error(dados.erro || ('servidor local respondeu HTTP ' + resp.status));
+        const url = new URL('../relatorios/rede_protecao.html?token=' + encodeURIComponent(dados.token), location.href).href;
+        window.open(url, '_blank');
+    }
+
+    async function abrirImpressao(html) {
+        if (!emAppDesktop()) {
+            const w = window.open('', '_blank');
+            if (w) { w.document.write(html); w.document.close(); return; }
+        }
+        // App desktop, ou navegador que bloqueou o pop-up: abre pelo servidor local.
+        await comEspera('Abrindo a impressão no navegador', () => abrirNoNavegador({ tipo: 'impressao', html }));
+    }
+
+    function blobParaBase64(blob) {
+        return new Promise((ok, falha) => {
+            const r = new FileReader();
+            r.onload = () => ok(String(r.result).split(',')[1]);
+            r.onerror = () => falha(r.error);
+            r.readAsDataURL(blob);
+        });
+    }
+
+    async function abrirApresentacaoNoNavegador() {
+        await comEspera('Gerando a apresentação e abrindo no navegador', async () => {
+            const blob = await gerarPPTX();
+            await abrirNoNavegador({ tipo: 'apresentacao', nome: RedeProtecaoPPTX.nomeArquivo(ULTIMO), pptxBase64: await blobParaBase64(blob) });
+        });
     }
 
     // ── PowerPoint (modelo padronizado da Rede — js/rede-protecao-pptx.js) ──
@@ -774,6 +819,7 @@
     }
 
     async function baixarPPTX() {
+        if (emAppDesktop()) return abrirApresentacaoNoNavegador();
         const blob = await comEspera('Gerando a apresentação no modelo da Rede', gerarPPTX);
         if (!blob) return;
         const a = document.createElement('a');
@@ -784,6 +830,7 @@
     }
 
     async function visualizarPPTX() {
+        if (emAppDesktop()) return abrirApresentacaoNoNavegador();
         const blob = await comEspera('Montando a apresentação', async () => {
             const b = await gerarPPTX();
             await carregarScript(URL_PPTX_PREVIEW, 'pptxPreview');
