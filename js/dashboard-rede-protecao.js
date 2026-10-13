@@ -472,6 +472,9 @@
 
             <div id="rp-corpo"></div>
 
+            <div class="rp-secao">Botão do Pânico — Patrulha Maria da Penha (IRIS PMAL) <span class="rp-secao-obs">Palmeira dos Índios · período selecionado acima</span></div>
+            <div id="rp-panico"></div>
+
             <div class="rp-secao">10. Síntese do serviço e necessidades da rede</div>
             <div class="rp-sintese">
                 <div class="rp-card"><div class="rp-card-tit">Principais achados (automático)</div><ul id="rp-achados" class="rp-achados"></ul></div>
@@ -522,6 +525,7 @@
         CHARTS_REDE = {};
         const corpo = document.getElementById('rp-corpo');
         if (!corpo) return;
+        atualizarPanico();
         if (!VITIMAS.length) {
             corpo.innerHTML = `<div class="rp-vazio"><i class="fas fa-database"></i>
                 Ainda não há vítimas importadas. Clique em <b>"Buscar vítimas no CAD"</b> (com o atualizador local aberto, ou via Apps Script).</div>`;
@@ -611,6 +615,7 @@
         if (semVinc) achados.push(`${pct(semVinc, T)} dos registros sem informação de vínculo com o agressor no CAD — ponto de melhoria no registro.`);
         document.getElementById('rp-achados').innerHTML = achados.map(a => `<li>${esc(a)}</li>`).join('');
         ULTIMO.achados = achados;
+        if (_panico.chave === chavePanico() && _panico.dados) ULTIMO.panico = _panico.dados;
     }
 
     const ordenar = obj => Object.fromEntries(Object.entries(obj).sort((a, b) => b[1] - a[1]));
@@ -661,6 +666,182 @@
         });
     }
 
+    // ── Botão do Pânico (IRIS PMAL) ─────────────────────────────────
+    // Dados do aplicativo Íris PMAL (Patrulha Maria da Penha), via API do
+    // próprio Íris (js/core/iris-panico-client.js, token do login integrado).
+    // Pedido explícito: SEMPRE de Palmeira dos Índios, no período da aba.
+    // Cidade de cada registro: campo próprio (acionamentos) ou a cidade da
+    // assistida vinculada (assistida_id / firebase_key) — mesma regra do
+    // dashboard do próprio Íris (dashboard_mysql.js:_cidadeAcio).
+    const CIDADE_PANICO = 'PALMEIRA DOS INDIOS';
+    const CIDADE_PANICO_TXT = 'Palmeira dos Índios';
+    const GRAUS = ['BAIXO', 'MÉDIO', 'ALTO', 'GRAVE', 'Não avaliado'];
+    let _irisBrutos = null, _irisCarregando = null;
+    let _panico = { chave: null, dados: null, erro: null };
+    let CHARTS_PANICO = {};
+
+    function periodoAba() {
+        const ini = parseData(document.getElementById('rp-ini')?.value);
+        const f = parseData(document.getElementById('rp-fim')?.value);
+        const fim = f ? new Date(f.getFullYear(), f.getMonth(), f.getDate(), 23, 59, 59) : null;
+        return { ini, fim };
+    }
+    const chavePanico = () => (document.getElementById('rp-ini')?.value || '') + '|' + (document.getElementById('rp-fim')?.value || '');
+
+    function carregarIris() {
+        if (_irisBrutos) return Promise.resolve(_irisBrutos);
+        if (_irisCarregando) return _irisCarregando;
+        if (!window.IrisPanico) return Promise.reject(new Error('Cliente do Íris não carregado.'));
+        if (!IrisPanico.temToken()) { const e = new Error('Sem acesso ao Íris PMAL nesta sessão.'); e.semToken = true; return Promise.reject(e); }
+        _irisCarregando = Promise.all(['assistidas', 'fiscalizacao', 'avaliacao', 'acionamentos'].map(t => IrisPanico.listarTabela(t)))
+            .then(([assistidas, fiscalizacao, avaliacao, acionamentos]) => (_irisBrutos = { assistidas, fiscalizacao, avaliacao, acionamentos }))
+            .catch(e => { if (/sem acesso/i.test(e.message)) e.semToken = true; throw e; })
+            .finally(() => { _irisCarregando = null; });
+        return _irisCarregando;
+    }
+
+    // "AAAA-MM-DD HH:MM:SS" (MySQL) → Date com hora (parseData só pega a data).
+    const dataHora = v => { const s = String(v || '').trim(); if (!s) return null; const d = new Date(s.replace(' ', 'T')); return isNaN(d) ? null : d; };
+
+    function resumirPanico(B, ini, fim) {
+        const cidAssist = {};
+        B.assistidas.forEach(a => {
+            const c = nrm(a.cidade);
+            if (a.id != null) cidAssist['id:' + a.id] = c;
+            if (a.firebase_key) cidAssist['fb:' + a.firebase_key] = c;
+        });
+        const cidadeDe = r => nrm(r.cidade) || cidAssist['id:' + r.assistida_id] || cidAssist['fb:' + r.assistida_key_fb]
+            || cidAssist['id:' + r.assistida_key_fb] || cidAssist['fb:' + r.firebase_key] || '';
+        const ehDaCidade = r => cidadeDe(r).includes(CIDADE_PANICO);
+        const dataDe = (r, campos) => { for (const c of campos) { const d = parseData(r[c]); if (d) return d; } return null; };
+        const noPeriodo = d => !!d && (!ini || d >= ini) && (!fim || d <= fim);
+
+        const assist = B.assistidas.filter(a => nrm(a.cidade).includes(CIDADE_PANICO));
+        const ativas = assist.filter(a => nrm(a.status) === 'ATIVO');
+        const grau = {}; GRAUS.forEach(g => { grau[g] = 0; });
+        ativas.forEach(a => { const g = GRAUS.find(x => nrm(x) === nrm(a.grau_risco)) || 'Não avaliado'; grau[g]++; });
+
+        const CAMPOS = { fisc: ['data_fiscalizacao'], aval: ['data_visita', 'timestamp_iso', 'data_avaliacao_risco'], acio: ['data_hora_acio', 'timestamp_iso'] };
+        const fisc = B.fiscalizacao.filter(r => ehDaCidade(r) && noPeriodo(dataDe(r, CAMPOS.fisc)));
+        const aval = B.avaliacao.filter(r => ehDaCidade(r) && noPeriodo(dataDe(r, CAMPOS.aval)));
+        const acio = B.acionamentos.filter(r => ehDaCidade(r) && noPeriodo(dataDe(r, CAMPOS.acio)));
+
+        const statusAcio = {};
+        acio.forEach(r => { const st = (r.status || 'NÃO INFORMADO').toString().toUpperCase(); statusAcio[st] = (statusAcio[st] || 0) + 1; });
+        const tempos = acio.map(r => {
+            const a = dataHora(r.data_hora_acio), b = dataHora(r.data_hora_resposta);
+            return a && b ? (b - a) / 60000 : null;
+        }).filter(m => m != null && m >= 0 && m < 24 * 60);
+
+        // Série mensal (meses do período, até 24)
+        const meses = [];
+        const i0 = ini || new Date(new Date().getFullYear(), 0, 1), f0 = fim || new Date();
+        for (let d = new Date(i0.getFullYear(), i0.getMonth(), 1); d <= f0 && meses.length < 24; d.setMonth(d.getMonth() + 1)) {
+            meses.push({ ano: d.getFullYear(), mes: d.getMonth(), rotulo: d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') + (i0.getFullYear() !== f0.getFullYear() ? '/' + String(d.getFullYear()).slice(2) : '') });
+        }
+        const porMes = (lista, campos) => meses.map(m => lista.filter(r => { const d = dataDe(r, campos); return d && d.getFullYear() === m.ano && d.getMonth() === m.mes; }).length);
+
+        return {
+            cidade: CIDADE_PANICO_TXT,
+            assistidasTotal: assist.length, assistidasAtivas: ativas.length,
+            encerrando: assist.filter(a => nrm(a.status) === 'MEDIDA ENCERRANDO').length,
+            encerradas: assist.filter(a => nrm(a.status) === 'MEDIDA ENCERRADA').length,
+            novas: assist.filter(a => noPeriodo(dataDe(a, ['data_cadastro', 'data_inicio_mpu']))).length,
+            grau,
+            fiscalizacoes: fisc.length, avaliacoes: aval.length, acionamentos: acio.length,
+            statusAcio, respondidos: acio.filter(r => r.data_hora_resposta).length,
+            tempoMedioMin: tempos.length ? tempos.reduce((s, x) => s + x, 0) / tempos.length : null,
+            meses: meses.map(m => m.rotulo),
+            porMes: { fisc: porMes(fisc, CAMPOS.fisc), aval: porMes(aval, CAMPOS.aval), acio: porMes(acio, CAMPOS.acio) },
+            atualizadoEm: new Date(),
+        };
+    }
+
+    // Garante os dados do pânico do período atual (usado antes de gerar a apresentação).
+    async function garantirPanico() {
+        const chave = chavePanico();
+        if (_panico.chave === chave && _panico.dados) return _panico.dados;
+        const B = await carregarIris();
+        const { ini, fim } = periodoAba();
+        _panico = { chave, dados: resumirPanico(B, ini, fim), erro: null };
+        if (ULTIMO) ULTIMO.panico = _panico.dados;
+        return _panico.dados;
+    }
+
+    async function atualizarPanico() {
+        const el = document.getElementById('rp-panico');
+        if (!el) return;
+        const chave = chavePanico();
+        if (!(_panico.chave === chave && _panico.dados)) el.innerHTML = `<div class="rp-vazio" style="padding:1.4rem;">⏳ Carregando dados do IRIS PMAL…</div>`;
+        try {
+            const D = await garantirPanico();
+            if (chavePanico() !== chave) return; // período mudou enquanto carregava
+            renderPanico(el, D);
+        } catch (e) {
+            _panico = { chave, dados: null, erro: e.message };
+            if (e.semToken) {
+                el.innerHTML = `<div class="rp-vazio" style="padding:1.4rem;">
+                    <i class="fas fa-lock"></i>Sem acesso ao IRIS PMAL nesta sessão. Entre com o seu CPF e senha do IRIS:
+                    <form id="rp-iris-login" style="display:flex;gap:.5rem;justify-content:center;flex-wrap:wrap;margin-top:.8rem;">
+                        <input name="cpf" placeholder="CPF" autocomplete="username" required style="padding:7px 9px;border:1.5px solid var(--p3-border);border-radius:6px;">
+                        <input name="senha" type="password" placeholder="Senha do IRIS" autocomplete="current-password" required style="padding:7px 9px;border:1.5px solid var(--p3-border);border-radius:6px;">
+                        <button class="rp-btn rp-btn-ppt" type="submit">Entrar no IRIS</button>
+                    </form><div id="rp-iris-msg" class="rp-nota-peq" style="margin-top:.5rem;"></div></div>`;
+                document.getElementById('rp-iris-login').addEventListener('submit', async ev => {
+                    ev.preventDefault();
+                    const f = ev.target, msg = document.getElementById('rp-iris-msg');
+                    msg.textContent = 'Autenticando…';
+                    const r = await IrisPanico.autenticar(f.cpf.value.replace(/\D/g, ''), f.senha.value).catch(() => null);
+                    if (r && r.ok) { _irisBrutos = null; atualizarPanico(); }
+                    else msg.textContent = 'Não foi possível entrar: ' + ((r && (r.erro || r.msg)) || 'verifique CPF e senha');
+                });
+            } else {
+                el.innerHTML = `<div class="rp-vazio" style="padding:1.4rem;color:#b71c1c;">Não foi possível carregar os dados do IRIS PMAL: ${esc(e.message)}</div>`;
+            }
+        }
+    }
+
+    const fmtTempo = m => m == null ? '—' : (m < 60 ? Math.round(m) + ' min' : (m / 60).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' h');
+
+    function renderPanico(el, D) {
+        Object.values(CHARTS_PANICO).forEach(c => { try { c.destroy(); } catch (e) { } });
+        CHARTS_PANICO = {};
+        const atendidos = D.statusAcio['ATENDIDO'] || 0;
+        el.innerHTML = `
+            <div class="rp-kpis">
+                ${kpi('Assistidas ativas', D.assistidasAtivas, `${D.assistidasTotal} cadastradas · ${D.novas} novas no período`, '#ad1457')}
+                ${kpi('Fiscalizações', D.fiscalizacoes, 'no período', '#283593')}
+                ${kpi('Avaliações de risco', D.avaliacoes, 'no período (FONAVID)', '#6a1b9a')}
+                ${kpi('Acionamentos do botão', D.acionamentos, `${atendidos} atendido(s) · resposta média ${fmtTempo(D.tempoMedioMin)}`, '#c62828')}
+            </div>
+            <div class="rp-wrap"><div class="charts-grid">
+                <div class="chart-card rp-chart-card"><div class="chart-header"><div><div class="chart-title">Fiscalizações, avaliações e acionamentos por mês</div>
+                    <div class="chart-sub">${esc(D.cidade)} · IRIS PMAL</div></div></div><div class="chart-wrap"><canvas id="rp-ch-panico-mes"></canvas></div></div>
+                <div class="chart-card rp-chart-card"><div class="chart-header"><div><div class="chart-title">Assistidas ativas por grau de risco</div>
+                    <div class="chart-sub">Última avaliação registrada no IRIS · ${D.encerrando} com medida encerrando</div></div></div><div class="chart-wrap"><canvas id="rp-ch-panico-grau"></canvas></div></div>
+            </div></div>
+            <div class="rp-nota-peq">Fonte: aplicativo IRIS PMAL (Patrulha Maria da Penha) — somente ${esc(D.cidade)}. Atualizado em ${D.atualizadoEm.toLocaleString('pt-BR')}.</div>`;
+        if (typeof Chart === 'undefined') return;
+        const plugins = window.ChartDataLabels ? [window.ChartDataLabels] : [];
+        CHARTS_PANICO.mes = new Chart(document.getElementById('rp-ch-panico-mes'), {
+            type: 'bar', plugins,
+            data: { labels: D.meses, datasets: [
+                { label: 'Fiscalizações', data: D.porMes.fisc, backgroundColor: '#283593', borderRadius: 3 },
+                { label: 'Avaliações de risco', data: D.porMes.aval, backgroundColor: '#8e24aa', borderRadius: 3 },
+                { label: 'Acionamentos', data: D.porMes.acio, backgroundColor: '#c62828', borderRadius: 3 },
+            ] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' },
+                datalabels: { anchor: 'end', align: 'top', font: { size: 9, weight: 'bold' }, formatter: v => v > 0 ? v : '' } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } }, layout: { padding: { top: 16 } } },
+        });
+        CHARTS_PANICO.grau = new Chart(document.getElementById('rp-ch-panico-grau'), {
+            type: 'doughnut', plugins,
+            data: { labels: GRAUS, datasets: [{ data: GRAUS.map(g => D.grau[g]), backgroundColor: ['#43a047', '#fbc02d', '#ef6c00', '#c62828', '#90a4ae'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' },
+                datalabels: { color: '#fff', font: { weight: 'bold' }, formatter: v => v > 0 ? v : '' } } },
+        });
+    }
+
     // ── Exportações ─────────────────────────────────────────────────
     function exportarCSV() {
         if (!ULTIMO) { alert('Nada para exportar ainda.'); return; }
@@ -674,6 +855,15 @@
         add('Sexo', A.porSexo, A.total); add('Faixa etária', A.porFaixa, A.total); add('Tipos de violência', A.porTipo, A.total);
         add('Vínculo do agressor', A.porVinculo, A.total); add('Origem do acionamento', A.porOrigem, A.total);
         add('Zona urbana', ordenar(A.urbano), A.totalUrbano); add('Zona rural', ordenar(A.rural), A.totalRural);
+        if (A.panico) {
+            const P = A.panico, sec = `Botão do Pânico (IRIS PMAL) — ${P.cidade}`;
+            [['Assistidas ativas', P.assistidasAtivas], ['Assistidas cadastradas (total)', P.assistidasTotal], ['Novas assistidas no período', P.novas],
+             ['Medidas encerrando', P.encerrando], ['Fiscalizações no período', P.fiscalizacoes], ['Avaliações de risco no período', P.avaliacoes],
+             ['Acionamentos no período', P.acionamentos], ['Acionamentos respondidos', P.respondidos], ['Tempo médio de resposta', fmtTempo(P.tempoMedioMin)]]
+                .forEach(([k, v]) => linhas.push([sec, k, v, '']));
+            Object.entries(P.grau).forEach(([k, v]) => linhas.push([sec + ' — grau de risco (ativas)', k, v, pct(v, P.assistidasAtivas)]));
+            P.meses.forEach((m, i) => linhas.push([sec + ' — por mês', m, `fisc. ${P.porMes.fisc[i]} · aval. ${P.porMes.aval[i]} · acion. ${P.porMes.acio[i]}`, '']));
+        }
         const csv = '﻿' + linhas.map(l => l.map(c => `"${String(c).replace(/"/g, '""')}"`).join(';')).join('\r\n');
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
@@ -725,6 +915,13 @@
         ${sec('7. Origem do acionamento', `${img('rp-ch-orig')}${tab('Origem', A.porOrigem, A.total)}`)}
         ${sec('8. Distribuição territorial — zona urbana', `${img('rp-ch-urb')}${tab('Bairros', ordenar(A.urbano), A.totalUrbano)}`)}
         ${sec('9. Distribuição territorial — zona rural', `${img('rp-ch-rur')}${tab('Localidades', ordenar(A.rural), A.totalRural)}`)}
+        ${A.panico ? sec(`Botão do Pânico — IRIS PMAL (${esc(A.panico.cidade)})`, `<div class="kpis">
+            <div class="kpi"><span>Assistidas ativas</span><b>${A.panico.assistidasAtivas}</b>${A.panico.assistidasTotal} cadastradas · ${A.panico.novas} novas</div>
+            <div class="kpi"><span>Fiscalizações</span><b>${A.panico.fiscalizacoes}</b>no período</div>
+            <div class="kpi"><span>Avaliações de risco</span><b>${A.panico.avaliacoes}</b>no período</div>
+            <div class="kpi"><span>Acionamentos</span><b>${A.panico.acionamentos}</b>resposta média ${fmtTempo(A.panico.tempoMedioMin)}</div></div>
+            <div class="grid">${CHARTS_PANICO.mes ? `<img src="${CHARTS_PANICO.mes.toBase64Image()}" alt="">` : ''}${CHARTS_PANICO.grau ? `<img src="${CHARTS_PANICO.grau.toBase64Image()}" alt="">` : ''}</div>
+            <div class="nota">Fonte: aplicativo IRIS PMAL (Patrulha Maria da Penha) — somente ${esc(A.panico.cidade)}.</div>`) : ''}
         ${sec('10. Síntese do serviço e necessidades da rede', `<table>
             <tr><th>Principais achados</th><td><ul>${(A.achados || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul></td></tr>
             <tr><th>Fragilidades identificadas</th><td>${esc(document.querySelector('[data-rp-texto="fragilidades"]')?.value || '')}</td></tr>
@@ -808,6 +1005,8 @@
         if (!ULTIMO || !ULTIMO.total) throw new Error('Não há vítimas no filtro atual — ajuste o período/cidade ou busque no CAD primeiro.');
         if (!window.RedeProtecaoPPTX) throw new Error('Gerador da apresentação (rede-protecao-pptx.js) não carregado.');
         await carregarScript(URL_JSZIP, 'JSZip');
+        try { ULTIMO.panico = await garantirPanico(); }
+        catch (e) { ULTIMO.panico = null; console.warn('[rede-protecao] botão do pânico fora da apresentação:', e.message); }
         return RedeProtecaoPPTX.gerar({ agregado: ULTIMO, textos: textosAtuais() });
     }
 
