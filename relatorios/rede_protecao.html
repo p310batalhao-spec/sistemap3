@@ -48,11 +48,12 @@
             const r = await fetch(url);
             const reg = r.ok ? await r.json() : null;
             if (!reg || !reg.conteudo) throw new Error('não encontrado ou já utilizado');
-            fetch(url, { method: 'DELETE' }).catch(() => {}); // uso único — não deixa o arquivo guardado
+            // Não apaga aqui: a página pode abrir mais de uma vez no .exe. O próprio sistema
+            // remove os registros com mais de 30 min a cada novo envio.
             dados = JSON.parse(reg.conteudo);
         }
     } catch (e) {
-        msg('Não foi possível carregar (' + e.message + ').<br>Este link só funciona uma vez e por até 10 minutos, com o Sistema P3 aberto. Gere de novo pelo sistema.');
+        msg('Não foi possível carregar (' + e.message + ').<br>O link vale por cerca de 30 minutos. Gere de novo pelo sistema.');
         return;
     }
 
