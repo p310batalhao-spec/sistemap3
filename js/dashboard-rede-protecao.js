@@ -945,14 +945,34 @@
     // conteúdo de volta no 127.0.0.1 e imprime/mostra/baixa por lá.
     const emAppDesktop = () => !!window.pywebview;
 
+    // 1º caminho: servidor local do .exe (POST /relatorio/salvar). NÃO
+    // consulta /health antes — no .exe o /health só responde "ok" pra nível
+    // P2/ADMIN (portão das buscas de processos/fotos, ver app.py), mas
+    // /relatorio/salvar é liberado pra todos; checar /health bloqueava a
+    // impressão/apresentação à toa pros demais níveis.
+    // 2º caminho (sem servidor local): retransmite pelo Firebase da unidade
+    // (nó temporário /relay_temp/<token>, apagado pela página assim que lê).
     async function abrirNoNavegador(payload) {
-        if (!window.P3AtualizadorLocal || !(await P3AtualizadorLocal.disponivel().catch(() => false))) {
-            throw new Error('Não consegui falar com o atualizador local (127.0.0.1:5057) — ele precisa estar aberto pra abrir a impressão/apresentação no navegador.');
+        const corpo = JSON.stringify(payload);
+        const urlLocal = (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
+        let param = null;
+        try {
+            const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+            const resp = await fetch(`${urlLocal}/relatorio/salvar`, { method: 'POST', body: corpo, signal: ctl.signal });
+            clearTimeout(t);
+            const dados = await resp.json().catch(() => ({}));
+            if (resp.ok && dados.ok && dados.token) param = 'token=' + encodeURIComponent(dados.token);
+        } catch (e) { console.warn('[rede-protecao] servidor local indisponível, usando o Firebase:', e.message); }
+
+        if (!param) {
+            if (!base()) await carregarFirebase();
+            const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+            const r = await fetch(`${base()}/relay_temp/${token}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ criadoEm: Date.now(), conteudo: corpo }) });
+            if (!r.ok) throw new Error(`não foi possível preparar o arquivo (Firebase respondeu HTTP ${r.status}).`);
+            param = 'fb=' + encodeURIComponent(token) + '&db=' + encodeURIComponent(base());
         }
-        const resp = await fetch(`${P3AtualizadorLocal.URL_BASE}/relatorio/salvar`, { method: 'POST', body: JSON.stringify(payload) });
-        const dados = await resp.json().catch(() => ({}));
-        if (!resp.ok || !dados.ok) throw new Error(dados.erro || ('servidor local respondeu HTTP ' + resp.status));
-        const url = new URL('../relatorios/rede_protecao.html?token=' + encodeURIComponent(dados.token), location.href).href;
+        const url = new URL('../relatorios/rede_protecao.html?' + param, location.href).href;
         window.open(url, '_blank');
     }
 
