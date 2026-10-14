@@ -31,14 +31,26 @@
     const cont = document.getElementById('conteudo');
     const msg = t => { cont.innerHTML = '<div class="msg">' + t + '</div>'; };
     const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const token = new URLSearchParams(location.search).get('token');
-    if (!token) { msg('Link incompleto (sem token). Gere de novo pelo sistema.'); return; }
+    const q = new URLSearchParams(location.search);
+    const token = q.get('token');               // via servidor local do .exe (127.0.0.1:5057)
+    const fb = q.get('fb'), db = q.get('db');   // via Firebase da unidade (nó temporário /relay_temp)
+    if (!token && !(fb && db)) { msg('Link incompleto. Gere de novo pelo sistema.'); return; }
 
     let dados;
     try {
-        const r = await fetch('http://localhost:5057/relatorio/obter?token=' + encodeURIComponent(token));
-        if (!r.ok) throw new Error('não encontrado ou expirado');
-        dados = await r.json();
+        if (token) {
+            const r = await fetch('http://localhost:5057/relatorio/obter?token=' + encodeURIComponent(token));
+            if (!r.ok) throw new Error('não encontrado ou expirado');
+            dados = await r.json();
+        } else {
+            if (!/^https:\/\/[a-z0-9-]+(-default-rtdb)?\.[a-z0-9.-]*firebase(io|database)\.(com|app)$/i.test(db)) throw new Error('endereço de dados inválido');
+            const url = `${db}/relay_temp/${encodeURIComponent(fb)}.json`;
+            const r = await fetch(url);
+            const reg = r.ok ? await r.json() : null;
+            if (!reg || !reg.conteudo) throw new Error('não encontrado ou já utilizado');
+            fetch(url, { method: 'DELETE' }).catch(() => {}); // uso único — não deixa o arquivo guardado
+            dados = JSON.parse(reg.conteudo);
+        }
     } catch (e) {
         msg('Não foi possível carregar (' + e.message + ').<br>Este link só funciona uma vez e por até 10 minutos, com o Sistema P3 aberto. Gere de novo pelo sistema.');
         return;
