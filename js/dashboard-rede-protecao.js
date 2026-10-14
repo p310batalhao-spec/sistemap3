@@ -945,32 +945,50 @@
     // conteúdo de volta no 127.0.0.1 e imprime/mostra/baixa por lá.
     const emAppDesktop = () => !!window.pywebview;
 
-    // 1º caminho: servidor local do .exe (POST /relatorio/salvar). NÃO
-    // consulta /health antes — no .exe o /health só responde "ok" pra nível
-    // P2/ADMIN (portão das buscas de processos/fotos, ver app.py), mas
-    // /relatorio/salvar é liberado pra todos; checar /health bloqueava a
-    // impressão/apresentação à toa pros demais níveis.
-    // 2º caminho (sem servidor local): retransmite pelo Firebase da unidade
-    // (nó temporário /relay_temp/<token>, apagado pela página assim que lê).
+    // Leva a impressão/apresentação do .exe pro navegador comum.
+    // 1º caminho: Firebase da unidade (nó temporário /relay_temp/<token>).
+    //   A leitura NÃO apaga o registro — no .exe a página pode ser carregada
+    //   mais de uma vez (o WebView2 abre o link internamente além de repassá-lo
+    //   ao navegador padrão), e a leitura de uso único do servidor local fazia
+    //   a 2ª abertura dar 404. Cada novo envio apaga os registros com mais de
+    //   30 min (o token começa com o horário de criação). Só dados agregados.
+    // 2º caminho (reserva): servidor local do .exe (POST /relatorio/salvar —
+    //   sem consultar /health, que no .exe só libera P2/ADMIN; ver app.py).
+    const RELAY_TTL_MS = 30 * 60 * 1000;
+
+    async function limparRelayAntigo() {
+        try {
+            const chaves = await fetch(`${base()}/relay_temp.json?shallow=true`).then(r => r.ok ? r.json() : null);
+            const agora = Date.now();
+            await Promise.all(Object.keys(chaves || {}).filter(k => {
+                const t = parseInt(k.split('-')[0], 36);
+                return !t || agora - t > RELAY_TTL_MS;
+            }).map(k => fetch(`${base()}/relay_temp/${encodeURIComponent(k)}.json`, { method: 'DELETE' }).catch(() => {})));
+        } catch (e) { /* limpeza é oportunista — nunca bloqueia o envio */ }
+    }
+
     async function abrirNoNavegador(payload) {
         const corpo = JSON.stringify(payload);
-        const urlLocal = (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
         let param = null;
         try {
-            const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
-            const resp = await fetch(`${urlLocal}/relatorio/salvar`, { method: 'POST', body: corpo, signal: ctl.signal });
-            clearTimeout(t);
-            const dados = await resp.json().catch(() => ({}));
-            if (resp.ok && dados.ok && dados.token) param = 'token=' + encodeURIComponent(dados.token);
-        } catch (e) { console.warn('[rede-protecao] servidor local indisponível, usando o Firebase:', e.message); }
-
-        if (!param) {
             if (!base()) await carregarFirebase();
-            const token = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+            limparRelayAntigo();
+            const token = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
             const r = await fetch(`${base()}/relay_temp/${token}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ criadoEm: Date.now(), conteudo: corpo }) });
-            if (!r.ok) throw new Error(`não foi possível preparar o arquivo (Firebase respondeu HTTP ${r.status}).`);
+            if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
             param = 'fb=' + encodeURIComponent(token) + '&db=' + encodeURIComponent(base());
+        } catch (e) { console.warn('[rede-protecao] Firebase indisponível, tentando o servidor local:', e.message); }
+
+        if (!param) {
+            const urlLocal = (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
+            const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+            const resp = await fetch(`${urlLocal}/relatorio/salvar`, { method: 'POST', body: corpo, signal: ctl.signal })
+                .catch(() => { throw new Error('não foi possível preparar o arquivo (sem acesso ao Firebase nem ao atualizador local).'); });
+            clearTimeout(t);
+            const dados = await resp.json().catch(() => ({}));
+            if (!resp.ok || !dados.ok || !dados.token) throw new Error(dados.erro || ('servidor local respondeu HTTP ' + resp.status));
+            param = 'token=' + encodeURIComponent(dados.token);
         }
         const url = new URL('../relatorios/rede_protecao.html?' + param, location.href).href;
         window.open(url, '_blank');
