@@ -21,6 +21,16 @@
     .barra button { padding: .55rem 1.1rem; border: none; border-radius: 7px; background: #ca247a; color: #fff; font-weight: bold; font-size: .85rem; cursor: pointer; }
     #palco { display: flex; justify-content: center; padding: 20px 16px 40px; }
     #palco span, #palco p, #palco div { font-family: Aptos, "Segoe UI", Calibri, Arial, sans-serif !important; }
+    .pronto { max-width: 640px; margin: 40px auto; background: #fff; color: #1c2333; border-radius: 16px; padding: 2.2rem 2.4rem; box-shadow: 0 10px 30px rgba(0,0,0,.25); text-align: center; }
+    .pronto-icone { font-size: 2.6rem; }
+    .pronto h2 { margin: .4rem 0 .2rem; color: #0b2545; font-size: 1.5rem; }
+    .pronto-sub { color: #6b7280; margin: 0 0 1.2rem; font-size: .9rem; }
+    .pronto-btn { padding: .8rem 1.6rem; border: none; border-radius: 10px; background: #2f5fdd; color: #fff; font-weight: bold; font-size: 1rem; cursor: pointer; }
+    .pronto-aviso { color: #6b7280; font-size: .82rem; margin: .8rem 0 0; }
+    .pronto h3 { text-align: left; color: #0b2545; font-size: .95rem; margin: 1.6rem 0 .5rem; border-top: 1px solid #e6eaf2; padding-top: 1rem; }
+    .pronto ol { list-style: none; padding: 0; margin: 0; text-align: left; columns: 2; column-gap: 1.5rem; font-size: .86rem; }
+    .pronto li { padding: .28rem 0; break-inside: avoid; }
+    .pronto li span { display: inline-block; width: 1.8rem; color: #2f5fdd; font-weight: bold; }
     .msg { max-width: 640px; margin: 60px auto; background: #fff; color: #333; border-radius: 10px; padding: 2rem; text-align: center; line-height: 1.6; }
 </style>
 </head>
@@ -79,9 +89,23 @@
 
     document.title = nome.replace(/\.pptx$/i, '');
     cont.innerHTML = '<div class="barra"><h1>' + esc(dados.titulo || 'Apresentação — modelo padronizado da Rede de Proteção') +
-        '<small>Pré-visualização aproximada; o arquivo baixado abre completo e editável no PowerPoint.</small></h1>' +
+        '<small>' + (dados.semPrevia ? 'Arquivo pronto para salvar — abre completo e editável no PowerPoint.' : 'Pré-visualização aproximada; o arquivo baixado abre completo e editável no PowerPoint.') + '</small></h1>' +
         '<button id="btn-baixar">⬇ Salvar em PowerPoint (.pptx)</button></div><div id="palco"></div>';
     document.getElementById('btn-baixar').addEventListener('click', baixar);
+
+    const mostrarSumario = (aviso) => {
+        const itens = (dados.sumario || []).map((t, i) => `<li><span>${String(i + 1).padStart(2, '0')}</span>${esc(t)}</li>`).join('');
+        document.getElementById('palco').innerHTML = `<div class="pronto">
+            <div class="pronto-icone">✅</div>
+            <h2>Apresentação pronta</h2>
+            ${dados.periodo ? `<p class="pronto-sub">${esc(dados.periodo)}</p>` : ''}
+            <button class="pronto-btn" id="btn-baixar2">⬇ Salvar em PowerPoint (.pptx)</button>
+            ${aviso ? `<p class="pronto-aviso">${aviso}</p>` : ''}
+            ${itens ? `<h3>${(dados.sumario || []).length} slides</h3><ol>${itens}</ol>` : ''}
+        </div>`;
+        document.getElementById('btn-baixar2').addEventListener('click', baixar);
+    };
+    if (dados.semPrevia) { mostrarSumario('Abra o arquivo no PowerPoint para ver os slides com gráficos editáveis.'); return; }
 
     try {
         await new Promise((ok, falha) => {
@@ -94,7 +118,8 @@
         const prev = window.pptxPreview.init(document.getElementById('palco'), { width: largura, height: Math.round(largura * 9 / 16), mode: 'slide' });
         await prev.preview(await blob.arrayBuffer());
     } catch (e) {
-        document.getElementById('palco').innerHTML = '<div class="msg">Pré-visualização indisponível (' + e.message + '). Use o botão <b>Salvar em PowerPoint</b>.</div>';
+        console.warn('pré-visualização indisponível:', e);
+        mostrarSumario('A pré-visualização no navegador não está disponível para este arquivo — abra-o no PowerPoint.');
     }
 })();
 </script>
