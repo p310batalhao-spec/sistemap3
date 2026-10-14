@@ -20,11 +20,11 @@
     'use strict';
 
     const URL_PPTXGEN = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
-    const LOGO_PADRAO = '../img/brasao.png';
+    const LOGO_PADRAO = '../img/brasao-limpo.png'; // brasão com contorno limpo (gerado de img/brasao.png)
 
     const COR = {
         navy: '0B2545', azul: '2F5FDD', anterior: 'A9B4C8', claro: 'F3F5FA', texto: '1C2333',
-        muted: '6B7280', borda: 'E5E7EB', bom: '2F8F5B', ruim: 'C0392B', neutro: '6B7280', branco: 'FFFFFF',
+        muted: '6B7280', borda: 'E5E7EB', bom: '1E8E5A', ruim: 'C53030', neutro: '6B7280', branco: 'FFFFFF',
     };
     const FONTE = 'Calibri';
 
@@ -178,6 +178,20 @@
     }
 
     // ── Montagem (pptxgenjs) ────────────────────────────────────────
+    // Visual: capa/encerramento em azul-marinho; conteúdo em fundo claro com
+    // cartões brancos (sombra suave), ícone colorido por indicador e
+    // etiquetas ▲/▼ de variação. SEM slide master/layout próprio de
+    // propósito: cada slide desenha fundo, logo, rodapé e número — o leitor
+    // da pré-visualização no navegador (pptx-preview) quebra com layouts
+    // personalizados ("reading 'background'"); no PowerPoint fica idêntico.
+    const VISUAL = {
+        mvicvli: { icone: '🚨', cor: 'B42318' }, cvp: { icone: '💰', cor: 'C2410C' }, tco: { icone: '📋', cor: '1D4ED8' },
+        armas: { icone: '🔫', cor: '166534' }, drogas: { icone: '💊', cor: 'B45309' }, visita: { icone: '🏠', cor: '0E7490' },
+        perturbacao: { icone: '🔊', cor: '0F766E' }, violencia: { icone: '🛡️', cor: 'BE185D' }, mandados: { icone: '📜', cor: '4338CA' },
+        materiais: { icone: '📦', cor: '6D28D9' }, rede: { icone: '🤝', cor: '9D174D' },
+    };
+    const FUNDO_CLARO = 'F4F6FA';
+
     function montar(PptxGenJS, D) {
         const pres = new PptxGenJS();
         pres.layout = 'LAYOUT_WIDE'; // 13,33" x 7,5"
@@ -185,210 +199,242 @@
         pres.company = D.unidade.replace(/&/g, '&amp;');
         pres.theme = { headFontFace: FONTE, bodyFontFace: FONTE };
 
+        const W = 13.333, Hs = 7.5;
         const periodo = `${dataBR(D.ini)} a ${dataBR(D.fim)}`;
         const periodoAnt = `${dataBR(D.iniAnt)} a ${dataBR(D.fimAnt)}`;
         const local = D.cidade ? ` • Cidade: ${D.cidade}` : '';
-        const W = 13.333;
+        const cats = D.categorias.filter(c => !c.erro);
+        const totalSlides = 3 + D.categorias.length + (D.rede ? 1 : 0) + 1;
+        let numSlide = 0;
+        const nomeAtual = `${D.ini.getFullYear() === D.fim.getFullYear() ? D.fim.getFullYear() : 'Atual'}`;
+        const nomeAnterior = `${D.iniAnt.getFullYear() === D.fimAnt.getFullYear() ? D.fimAnt.getFullYear() : 'Anterior'}`;
 
+        // ── peças reutilizáveis (objetos de opção sempre novos — pptxgenjs os altera) ──
+        const sombra = () => ({ type: 'outer', blur: 8, offset: 2, angle: 90, color: '0B2545', opacity: 0.12 });
+        const texto = (s, t, o) => s.addText(t, Object.assign({ fontFace: FONTE, margin: 0, isTextBox: true }, o));
         const logoBox = (x, y, alturaMax, larguraMax) => {
             if (!D.logo) return null;
             let h = alturaMax, w = h * D.logo.proporcao;
             if (w > larguraMax) { w = larguraMax; h = w / D.logo.proporcao; }
             return { data: D.logo.data, x: x + (larguraMax - w) / 2, y: y + (alturaMax - h) / 2, w, h };
         };
-
-        const objsMaster = [{ text: { text: `${D.unidade} • ${periodo} (comparado com ${periodoAnt})${local}`, options: { x: 0.5, y: 7.02, w: 10.5, h: 0.3, fontFace: FONTE, fontSize: 9, color: COR.muted } } }];
-        const lm = logoBox(12.25, 0.25, 0.7, 0.7);
-        if (lm) objsMaster.push({ image: lm });
-        pres.defineSlideMaster({
-            title: 'CONTEUDO', background: { color: COR.branco }, objects: objsMaster,
-            slideNumber: { x: 12.2, y: 7.0, w: 0.65, h: 0.32, fontFace: FONTE, fontSize: 9, color: COR.muted, align: 'right' },
-        });
-
-        const titulo = (s, txt, sub) => {
-            s.addText(txt, { x: 0.5, y: 0.3, w: 11.5, h: 0.6, fontFace: FONTE, fontSize: 26, bold: true, color: COR.navy, margin: 0, isTextBox: true });
-            if (sub) s.addText(sub, { x: 0.5, y: 0.9, w: 11.5, h: 0.35, fontFace: FONTE, fontSize: 12, color: COR.muted, margin: 0, isTextBox: true });
+        const novoSlide = (escuro) => {
+            const s = pres.addSlide();
+            numSlide++;
+            s.addShape(pres.shapes.RECTANGLE, { x: 0, y: 0, w: W, h: Hs, fill: { color: escuro ? COR.navy : FUNDO_CLARO }, line: { color: escuro ? COR.navy : FUNDO_CLARO } });
+            return s;
         };
-        const cartao = (s, x, y, w, h, rotulo, valor, cor, rodape) => {
-            s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, fill: { color: COR.claro }, line: { color: COR.claro }, rectRadius: 0.08 });
-            s.addText(rotulo.toUpperCase(), { x: x + 0.2, y: y + 0.12, w: w - 0.4, h: 0.3, fontFace: FONTE, fontSize: 10, bold: true, color: COR.muted, margin: 0, isTextBox: true });
-            s.addText(String(valor), { x: x + 0.2, y: y + 0.4, w: w - 0.4, h: 0.6, fontFace: FONTE, fontSize: 28, bold: true, color: cor, margin: 0, fit: 'shrink', isTextBox: true });
-            if (rodape) s.addText(rodape, { x: x + 0.2, y: y + h - 0.35, w: w - 0.4, h: 0.28, fontFace: FONTE, fontSize: 10, color: COR.muted, margin: 0, isTextBox: true });
+        const moldura = (s) => {
+            const lg = logoBox(12.05, 0.28, 0.72, 0.8);
+            if (lg) s.addImage(lg);
+            texto(s, `${D.unidade} • ${periodo} comparado com ${periodoAnt}${local}`, { x: 0.5, y: 7.05, w: 10.8, h: 0.28, fontSize: 9, color: COR.muted });
+            texto(s, `${numSlide} / ${totalSlides}`, { x: 11.8, y: 7.05, w: 1.05, h: 0.28, fontSize: 9, color: COR.muted, align: 'right' });
         };
-        const optsGrafico = (x, y, w, h, tituloG, dir, extra) => Object.assign({
-            x, y, w, h, barDir: dir, barGrouping: 'clustered',
-            chartColors: [COR.anterior, COR.azul], showLegend: true, legendPos: 't', legendFontSize: 10, legendFontFace: FONTE,
-            showTitle: true, title: tituloG, titleFontSize: 13, titleColor: COR.navy, titleFontFace: FONTE,
+        const cabecalho = (s, icone, cor, titulo, sub) => {
+            s.addShape(pres.shapes.OVAL, { x: 0.5, y: 0.33, w: 0.72, h: 0.72, fill: { color: cor }, line: { color: cor } });
+            texto(s, icone, { x: 0.5, y: 0.33, w: 0.72, h: 0.72, fontSize: 20, align: 'center', valign: 'middle' });
+            texto(s, titulo, { x: 1.42, y: 0.28, w: 10.4, h: 0.55, fontSize: 26, bold: true, color: COR.navy, fit: 'shrink' });
+            if (sub) texto(s, sub, { x: 1.42, y: 0.83, w: 10.4, h: 0.3, fontSize: 12, color: COR.muted });
+            moldura(s);
+        };
+        const cartao = (s, x, y, w, h) => s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h, rectRadius: 0.12, fill: { color: COR.branco }, line: { color: 'E6EAF2', width: 0.75 }, shadow: sombra() });
+        const pill = (s, x, y, w, txt, fundo, cor, tam) => {
+            s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w, h: 0.32, rectRadius: 0.16, fill: { color: fundo }, line: { color: fundo } });
+            texto(s, txt, { x, y, w, h: 0.32, fontSize: tam || 11, bold: true, color: cor, align: 'center', valign: 'middle' });
+        };
+        const estiloVar = (cat, v) => {
+            const cor = corVariacao(cat, v.sinal);
+            const seta = v.sinal > 0 ? '▲ ' : (v.sinal < 0 ? '▼ ' : '');
+            const fundo = cor === COR.bom ? 'E3F4EA' : (cor === COR.ruim ? 'FBE4E4' : 'EDEFF3');
+            return { txt: seta + v.txt, cor, fundo };
+        };
+        const kpi = (s, x, y, w, h, rotulo, valor, corValor, rodape, varObj) => {
+            cartao(s, x, y, w, h);
+            texto(s, rotulo.toUpperCase(), { x: x + 0.22, y: y + 0.16, w: w - 0.44, h: 0.26, fontSize: 10, bold: true, color: COR.muted, charSpacing: 1 });
+            texto(s, String(valor), { x: x + 0.22, y: y + 0.44, w: w - 0.44, h: 0.6, fontSize: 30, bold: true, color: corValor, fit: 'shrink' });
+            if (varObj) pill(s, x + 0.22, y + h - 0.46, Math.min(1.5, w - 0.44), varObj.txt, varObj.fundo, varObj.cor, 10);
+            else if (rodape) texto(s, rodape, { x: x + 0.22, y: y + h - 0.42, w: w - 0.44, h: 0.28, fontSize: 10, color: COR.muted });
+            if (varObj && rodape) texto(s, rodape, { x: x + 1.82, y: y + h - 0.46, w: w - 2.04, h: 0.32, fontSize: 9.5, color: COR.muted, valign: 'middle' });
+        };
+        const optsGrafico = (x, y, w, h, extra) => Object.assign({
+            x, y, w, h, barGrouping: 'clustered',
+            showLegend: true, legendPos: 't', legendFontSize: 10, legendFontFace: FONTE, legendColor: COR.texto,
+            showTitle: false,
             catAxisLabelFontSize: 9, valAxisLabelFontSize: 9, catAxisLabelColor: COR.muted, valAxisLabelColor: COR.muted,
-            catAxisLabelFontFace: FONTE, valAxisLabelFontFace: FONTE,
-            valGridLine: { color: COR.borda, size: 0.5 }, catGridLine: { style: 'none' },
+            catAxisLabelFontFace: FONTE, valAxisLabelFontFace: FONTE, catAxisLineShow: false, valAxisLineShow: false,
+            valGridLine: { color: 'E8ECF3', size: 0.5 }, catGridLine: { style: 'none' },
             showValue: true, dataLabelFontSize: 8, dataLabelColor: COR.texto, dataLabelFontFace: FONTE, dataLabelPosition: 'outEnd',
-            valAxisLabelFormatCode: '#,##0', dataLabelFormatCode: '#,##0',
+            valAxisLabelFormatCode: '#,##0', dataLabelFormatCode: '#,##0', barGapWidthPct: 60,
         }, extra || {});
-        const nomeAtual = `Atual (${D.ini.getFullYear() === D.fim.getFullYear() ? D.fim.getFullYear() : periodo})`;
-        const nomeAnterior = `Anterior (${D.iniAnt.getFullYear() === D.fimAnt.getFullYear() ? D.fimAnt.getFullYear() : periodoAnt})`;
+        const rotuloCartao = (s, x, y, w, txt) => texto(s, txt, { x: x + 0.25, y: y + 0.16, w: w - 0.5, h: 0.32, fontSize: 13, bold: true, color: COR.navy });
 
-        // ── 1. Capa ──
-        let s = pres.addSlide();
-        s.background = { color: COR.navy };
-        const lc = logoBox(0.9, 1.6, 3.6, 3.2);
+        // ══ 1. Capa ══
+        let s = novoSlide(true);
+        s.addShape(pres.shapes.OVAL, { x: 8.6, y: -2.2, w: 7.2, h: 7.2, fill: { color: '163A66', transparency: 35 }, line: { color: '163A66', transparency: 100 } });
+        s.addShape(pres.shapes.OVAL, { x: 10.6, y: 4.3, w: 4.4, h: 4.4, fill: { color: '1F4E86', transparency: 55 }, line: { color: '1F4E86', transparency: 100 } });
+        const lc = logoBox(0.85, 1.35, 4.5, 3.4);
         if (lc) s.addImage(lc);
-        s.addText(D.unidade.toUpperCase(), { x: 4.6, y: 1.55, w: 8.2, h: 0.5, fontFace: FONTE, fontSize: 16, bold: true, color: 'C9D3E8', margin: 0, isTextBox: true });
-        s.addText('Indicadores Operacionais', { x: 4.6, y: 2.1, w: 8.2, h: 0.9, fontFace: FONTE, fontSize: 40, bold: true, color: COR.branco, margin: 0, isTextBox: true });
-        s.addText('Período selecionado comparado com o mesmo período do ano anterior', { x: 4.6, y: 3.0, w: 8.2, h: 0.45, fontFace: FONTE, fontSize: 16, color: 'C9D3E8', margin: 0, isTextBox: true });
-        s.addText([
-            { text: 'Período atual: ', options: { bold: true } }, { text: periodo, options: { breakLine: true } },
-            { text: 'Comparação: ', options: { bold: true } }, { text: periodoAnt, options: { breakLine: !!D.cidade } },
-        ].concat(D.cidade ? [{ text: 'Cidade: ', options: { bold: true } }, { text: D.cidade }] : []),
-        { x: 4.6, y: 3.75, w: 8.2, h: 1.1, fontFace: FONTE, fontSize: 15, color: COR.branco, margin: 0, paraSpaceAfter: 4, isTextBox: true });
-        s.addText(`Gerado em ${D.geradoEm.toLocaleString('pt-BR')}${D.usuario ? ' por ' + D.usuario : ''} • Fonte: Sistema P3 (Dashboard Cruzado)`,
-            { x: 4.6, y: 6.55, w: 8.2, h: 0.35, fontFace: FONTE, fontSize: 10, color: '9AA8C4', margin: 0, isTextBox: true });
+        texto(s, D.unidade.toUpperCase(), { x: 4.75, y: 1.55, w: 7.9, h: 0.4, fontSize: 15, bold: true, color: '9FB4D6', charSpacing: 2 });
+        texto(s, 'Indicadores Operacionais', { x: 4.75, y: 2.0, w: 7.9, h: 0.95, fontSize: 44, bold: true, color: COR.branco, fit: 'shrink' });
+        texto(s, 'Período selecionado comparado com o mesmo período do ano anterior', { x: 4.75, y: 2.95, w: 7.9, h: 0.42, fontSize: 17, color: 'C9D3E8' });
+        pill(s, 4.75, 3.75, 3.55, `ATUAL  ${periodo}`, COR.azul, COR.branco, 12);
+        pill(s, 8.45, 3.75, 3.85, `COMPARAÇÃO  ${periodoAnt}`, '1F3B63', 'C9D3E8', 12);
+        if (D.cidade) pill(s, 4.75, 4.22, 3.55, `CIDADE  ${D.cidade}`, '1F3B63', 'C9D3E8', 12);
+        texto(s, `Gerado em ${D.geradoEm.toLocaleString('pt-BR')}${D.usuario ? ' por ' + D.usuario : ''} • Fonte: Sistema P3 (Dashboard Cruzado)`,
+            { x: 4.75, y: 6.6, w: 8.1, h: 0.3, fontSize: 10, color: '8FA3C4' });
 
-        // ── 2. Visão geral ──
-        const cats = D.categorias.filter(c => !c.erro);
-        s = pres.addSlide({ masterName: 'CONTEUDO' });
-        titulo(s, 'Visão geral do período', `${periodo} comparado com ${periodoAnt}${local}`);
-        const cab = ['Indicador', 'Atual', 'Anterior', 'Variação'].map((t, i) => ({ text: t, options: { bold: true, color: COR.branco, fill: { color: COR.navy }, align: i ? 'center' : 'left' } }));
+        // ══ 2. Visão geral ══
+        s = novoSlide(false);
+        cabecalho(s, '📊', COR.navy, 'Visão geral do período', `${periodo} comparado com ${periodoAnt}${local}`);
+        cartao(s, 0.5, 1.45, 7.55, 5.35);
+        const cab = ['Indicador', nomeAtual, nomeAnterior, 'Variação'].map((t, i) => ({ text: t, options: { bold: true, color: COR.muted, fill: { color: 'F1F4F9' }, align: i ? 'center' : 'left', fontSize: 10 } }));
         const linhas = [cab];
-        cats.forEach(c => {
-            const v = variacao(c.atual, c.anterior);
-            const fv = c.peso ? fmtPeso : fmtN;
+        const linha = (rotulo, a, p, v, cat, fv, destaqueRot) => {
+            const ev = v ? estiloVar(cat, v) : null;
             linhas.push([
-                { text: c.label },
-                { text: fv(c.atual), options: { align: 'center', bold: true } },
-                { text: fv(c.anterior), options: { align: 'center' } },
-                { text: v.txt, options: { align: 'center', bold: true, color: corVariacao(c.cat, v.sinal) } },
+                { text: rotulo, options: { bold: !destaqueRot, color: destaqueRot ? COR.muted : COR.texto } },
+                { text: fv(a), options: { align: 'center', bold: true, color: COR.navy } },
+                { text: p == null ? '—' : fv(p), options: { align: 'center', color: COR.muted } },
+                ev ? { text: ev.txt, options: { align: 'center', bold: true, color: ev.cor } } : { text: 'sem base', options: { align: 'center', color: COR.muted } },
             ]);
-            if (c.cat === 'mvicvli' && c.extra) {
-                const vm = variacao(c.extra.atual, c.extra.anterior);
-                linhas.push([{ text: '   ↳ MVI (mortes violentas)' }, { text: fmtN(c.extra.atual), options: { align: 'center', bold: true } },
-                    { text: fmtN(c.extra.anterior), options: { align: 'center' } }, { text: vm.txt, options: { align: 'center', bold: true, color: corVariacao('mvicvli', vm.sinal) } }]);
-            }
+        };
+        cats.forEach(c => {
+            const fv = c.peso ? fmtPeso : fmtN;
+            linha(c.label.split(' — ')[0], c.atual, c.anterior, variacao(c.atual, c.anterior), c.cat, fv);
+            if (c.cat === 'mvicvli' && c.extra) linha('   ↳ MVI (mortes violentas)', c.extra.atual, c.extra.anterior, variacao(c.extra.atual, c.extra.anterior), 'mvicvli', fmtN, true);
         });
-        // A base de vítimas só existe para os períodos já importados do CAD —
-        // sem nenhuma vítima no período anterior não há comparação honesta.
         const redeSemAnterior = D.rede && !D.rede.anterior.total;
-        if (D.rede) {
-            const vr = variacao(D.rede.atual.total, D.rede.anterior.total);
-            linhas.push([{ text: 'Rede de Proteção (vítimas)' }, { text: fmtN(D.rede.atual.total), options: { align: 'center', bold: true } },
-                { text: redeSemAnterior ? '—' : fmtN(D.rede.anterior.total), options: { align: 'center' } },
-                redeSemAnterior ? { text: 'sem base', options: { align: 'center', color: COR.muted } }
-                    : { text: vr.txt, options: { align: 'center', bold: true, color: corVariacao('violencia', vr.sinal) } }]);
-        }
-        const altLinha = Math.min(0.38, 5.1 / linhas.length);
-        s.addTable(linhas, { x: 0.5, y: 1.4, w: 7.3, colW: [3.4, 1.3, 1.3, 1.3], rowH: altLinha, margin: [2, 6, 2, 6], fontFace: FONTE, fontSize: linhas.length > 12 ? 10 : 11,
-            color: COR.texto, border: { type: 'solid', pt: 0.5, color: COR.borda }, valign: 'middle' });
+        if (D.rede) linha('Rede de Proteção (vítimas)', D.rede.atual.total, redeSemAnterior ? null : D.rede.anterior.total,
+            redeSemAnterior ? null : variacao(D.rede.atual.total, D.rede.anterior.total), 'violencia', fmtN);
+        const altLinha = Math.min(0.37, 4.95 / linhas.length);
+        s.addTable(linhas, { x: 0.68, y: 1.62, w: 7.2, colW: [3.3, 1.3, 1.3, 1.3], rowH: altLinha, margin: [2, 6, 2, 6], fontFace: FONTE,
+            fontSize: linhas.length > 12 ? 10.5 : 11.5, color: COR.texto, valign: 'middle',
+            border: [{ type: 'none' }, { type: 'none' }, { type: 'solid', pt: 0.5, color: 'E8ECF3' }, { type: 'none' }] });
+        cartao(s, 8.25, 1.45, 4.58, 5.35);
+        rotuloCartao(s, 8.25, 1.45, 4.58, 'Registros por indicador');
         const contaveis = cats.filter(c => !c.peso);
+        const rot = contaveis.map(c => c.label.split(' — ')[0].replace('Cumprimento de ', '').replace(' Apreendidas', '').replace(' Apreendidos', ''));
         s.addChart(pres.charts.BAR, [
-            { name: nomeAnterior, labels: contaveis.map(c => c.label.split(' — ')[0]), values: contaveis.map(c => c.anterior) },
-            { name: nomeAtual, labels: contaveis.map(c => c.label.split(' — ')[0]), values: contaveis.map(c => c.atual) },
-        ], optsGrafico(8.05, 1.35, 4.8, 5.3, 'Registros: atual x anterior', 'bar', { dataLabelFontSize: 7, catAxisLabelFontSize: 8, catAxisOrientation: 'maxMin' }));
-        s.addText('Verde = variação favorável • Vermelho = desfavorável (crimes: queda é favorável; apreensões, mandados e visitas: alta é favorável) • Cinza = neutro.',
-            { x: 0.5, y: 6.75, w: 11.5, h: 0.25, fontFace: FONTE, fontSize: 9, italic: true, color: COR.muted, margin: 0, isTextBox: true });
+            { name: nomeAnterior, labels: rot, values: contaveis.map(c => c.anterior) },
+            { name: nomeAtual, labels: rot, values: contaveis.map(c => c.atual) },
+        ], optsGrafico(8.35, 1.85, 4.38, 4.85, { barDir: 'bar', chartColors: [COR.anterior, COR.azul], dataLabelFontSize: 7, catAxisLabelFontSize: 8.5, catAxisOrientation: 'maxMin', valAxisHidden: true, valGridLine: { style: 'none' } }));
+        texto(s, '▲▼ verde = favorável • vermelho = ponto de atenção (crimes: queda é favorável; apreensões, mandados e visitas: alta é favorável) • cinza = neutro',
+            { x: 0.5, y: 6.83, w: 12.3, h: 0.22, fontSize: 8.5, italic: true, color: COR.muted });
 
-        // ── 3. Destaques ──
-        s = pres.addSlide({ masterName: 'CONTEUDO' });
-        titulo(s, 'Destaques do período', 'Maiores variações em relação ao mesmo período do ano anterior');
+        // ══ 3. Destaques ══
+        s = novoSlide(false);
+        cabecalho(s, '⭐', 'B7791F', 'Destaques do período', 'Maiores variações em relação ao mesmo período do ano anterior');
         const comVar = cats.map(c => Object.assign({ v: variacao(c.atual, c.anterior) }, c)).filter(c => c.v.pct != null && c.anterior >= 3);
         const favor = comVar.filter(c => SUBIR_EH_BOM[c.cat] != null && corVariacao(c.cat, c.v.sinal) === COR.bom).sort((a, b) => Math.abs(b.v.pct) - Math.abs(a.v.pct)).slice(0, 4);
         const desfavor = comVar.filter(c => SUBIR_EH_BOM[c.cat] != null && corVariacao(c.cat, c.v.sinal) === COR.ruim).sort((a, b) => Math.abs(b.v.pct) - Math.abs(a.v.pct)).slice(0, 4);
-        const blocoDestaque = (x, tituloB, cor, lista, vazio) => {
-            s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y: 1.5, w: 5.95, h: 5.2, fill: { color: COR.claro }, line: { color: COR.claro }, rectRadius: 0.08 });
-            s.addText(tituloB, { x: x + 0.3, y: 1.7, w: 5.35, h: 0.45, fontFace: FONTE, fontSize: 18, bold: true, color: cor, margin: 0, isTextBox: true });
-            if (!lista.length) { s.addText(vazio, { x: x + 0.3, y: 2.3, w: 5.35, h: 0.5, fontFace: FONTE, fontSize: 14, color: COR.muted, margin: 0, isTextBox: true }); return; }
+        const bloco = (x, titulo, cor, fundo, lista, vazio) => {
+            cartao(s, x, 1.45, 5.98, 5.35);
+            pill(s, x + 0.3, 1.68, 2.9, titulo, fundo, cor, 12);
+            if (!lista.length) { texto(s, vazio, { x: x + 0.3, y: 2.3, w: 5.4, h: 0.5, fontSize: 14, color: COR.muted }); return; }
             lista.forEach((c, i) => {
-                const y = 2.35 + i * 1.05, fv = c.peso ? fmtPeso : fmtN;
-                s.addText(c.v.txt, { x: x + 0.3, y, w: 1.75, h: 0.75, fontFace: FONTE, fontSize: 26, bold: true, color: cor, margin: 0, valign: 'middle', isTextBox: true });
-                s.addText([{ text: c.label, options: { bold: true, breakLine: true, color: COR.texto } }, { text: `${fv(c.anterior)} → ${fv(c.atual)}`, options: { color: COR.muted } }],
-                    { x: x + 2.1, y, w: 3.55, h: 0.75, fontFace: FONTE, fontSize: 13, margin: 0, valign: 'middle', isTextBox: true });
+                const y = 2.25 + i * 1.1, fv = c.peso ? fmtPeso : fmtN, vis = VISUAL[c.cat] || {};
+                s.addShape(pres.shapes.OVAL, { x: x + 0.3, y: y + 0.12, w: 0.6, h: 0.6, fill: { color: vis.cor || COR.navy }, line: { color: vis.cor || COR.navy } });
+                texto(s, vis.icone || '', { x: x + 0.3, y: y + 0.12, w: 0.6, h: 0.6, fontSize: 16, align: 'center', valign: 'middle' });
+                texto(s, [{ text: c.label.split(' — ')[0], options: { bold: true, color: COR.texto, breakLine: true } }, { text: `${fv(c.anterior)}  →  ${fv(c.atual)}`, options: { color: COR.muted } }],
+                    { x: x + 1.05, y, w: 3.0, h: 0.85, fontSize: 13, valign: 'middle' });
+                texto(s, (c.v.sinal > 0 ? '▲ ' : '▼ ') + c.v.txt, { x: x + 3.95, y, w: 1.8, h: 0.85, fontSize: 24, bold: true, color: cor, align: 'right', valign: 'middle' });
             });
         };
-        blocoDestaque(0.5, 'Resultados favoráveis', COR.bom, favor, 'Nenhuma variação favorável relevante.');
-        blocoDestaque(6.88, 'Pontos de atenção', COR.ruim, desfavor, 'Nenhuma variação desfavorável relevante.');
+        bloco(0.5, 'RESULTADOS FAVORÁVEIS', COR.bom, 'E3F4EA', favor, 'Nenhuma variação favorável relevante.');
+        bloco(6.85, 'PONTOS DE ATENÇÃO', COR.ruim, 'FBE4E4', desfavor, 'Nenhuma variação desfavorável relevante.');
 
-        // ── 4. Um slide por aba ──
+        // ══ 4. Um slide por aba ══
         D.categorias.forEach(c => {
-            s = pres.addSlide({ masterName: 'CONTEUDO' });
-            titulo(s, c.label, `${periodo} comparado com ${periodoAnt}${local}`);
-            if (c.erro) {
-                s.addText(`Não foi possível carregar os dados desta aba: ${c.erro}`, { x: 0.5, y: 2, w: 12, h: 0.6, fontFace: FONTE, fontSize: 16, color: COR.ruim, isTextBox: true });
-                return;
-            }
-            const v = variacao(c.atual, c.anterior);
-            const fv = c.peso ? fmtPeso : fmtN;
-            const cw = 2.9, gap = 0.233;
-            cartao(s, 0.5, 1.4, cw, 1.3, 'Período atual', fv(c.atual), COR.azul, c.peso ? `${fmtN(c.registrosAtual)} apreensão(ões)` : 'registros');
-            cartao(s, 0.5 + (cw + gap), 1.4, cw, 1.3, 'Mesmo período anterior', fv(c.anterior), COR.muted, c.peso ? `${fmtN(c.registrosAnterior)} apreensão(ões)` : 'registros');
-            cartao(s, 0.5 + 2 * (cw + gap), 1.4, cw, 1.3, 'Variação', v.txt, corVariacao(c.cat, v.sinal),
-                SUBIR_EH_BOM[c.cat] == null ? 'indicador neutro' : (v.sinal ? (corVariacao(c.cat, v.sinal) === COR.bom ? 'favorável' : 'ponto de atenção') : 'estável'));
+            const vis = VISUAL[c.cat] || { icone: '•', cor: COR.navy };
+            s = novoSlide(false);
+            cabecalho(s, vis.icone, vis.cor, c.label, `${periodo} comparado com ${periodoAnt}${local}`);
+            if (c.erro) { texto(s, `Não foi possível carregar os dados desta aba: ${c.erro}`, { x: 0.5, y: 2, w: 12.3, h: 0.6, fontSize: 16, color: COR.ruim }); return; }
+            const v = variacao(c.atual, c.anterior), fv = c.peso ? fmtPeso : fmtN;
+            const cw = 2.93, gap = 0.2, ky = 1.45, kh = 1.35;
+            kpi(s, 0.5, ky, cw, kh, `Período atual (${nomeAtual})`, fv(c.atual), vis.cor, c.peso ? `${fmtN(c.registrosAtual)} apreensão(ões)` : 'registros');
+            kpi(s, 0.5 + (cw + gap), ky, cw, kh, `Mesmo período (${nomeAnterior})`, fv(c.anterior), COR.muted, c.peso ? `${fmtN(c.registrosAnterior)} apreensão(ões)` : 'registros');
+            const ev = estiloVar(c.cat, v);
+            kpi(s, 0.5 + 2 * (cw + gap), ky, cw, kh, 'Variação', ev.txt, ev.cor,
+                SUBIR_EH_BOM[c.cat] == null ? 'indicador neutro' : (v.sinal ? (ev.cor === COR.bom ? 'resultado favorável' : 'ponto de atenção') : 'estável'));
             if (c.extra) {
                 const ve = variacao(c.extra.atual, c.extra.anterior);
-                cartao(s, 0.5 + 3 * (cw + gap), 1.4, cw, 1.3, c.extra.rotulo, fmtN(c.extra.atual), COR.navy, `anterior: ${fmtN(c.extra.anterior)} (${ve.txt})`);
+                kpi(s, 0.5 + 3 * (cw + gap), ky, cw, kh, c.extra.rotulo, fmtN(c.extra.atual), COR.navy, `antes: ${fmtN(c.extra.anterior)}`,
+                    estiloVar(c.cat === 'mvicvli' ? 'mvicvli' : c.cat, ve));
             } else {
                 const nm = Math.max(1, D.meses.length);
-                cartao(s, 0.5 + 3 * (cw + gap), 1.4, cw, 1.3, 'Média mensal', fv(c.atual / nm), COR.navy, `anterior: ${fv(c.anterior / nm)}`);
+                kpi(s, 0.5 + 3 * (cw + gap), ky, cw, kh, 'Média mensal', fv(c.atual / nm), COR.navy, `antes: ${fv(c.anterior / nm)}`);
             }
 
             const kg = c.peso && Math.max(...c.mesAtual, ...c.mesAnterior, 0) >= 1000;
-            const esc = arr => kg ? arr.map(x => Math.round(x / 10) / 100) : arr.map(x => Math.round(x * 100) / 100);
+            const escala = arr => kg ? arr.map(x => Math.round(x / 10) / 100) : arr.map(x => Math.round(x * 100) / 100);
             const unid = c.peso ? (kg ? ' (kg)' : ' (g)') : '';
             const fmtCod = kg ? '#,##0.0' : '#,##0';
+            const gy = 3.0, gh = 3.55;
+            cartao(s, 0.5, gy, 7.15, gh);
+            rotuloCartao(s, 0.5, gy, 7.15, 'Evolução mensal' + unid);
+            cartao(s, 7.85, gy, 4.98, gh);
+            rotuloCartao(s, 7.85, gy, 4.98, `Principais — ${c.labelTip}${unid}`);
             if (c.atual || c.anterior) {
                 s.addChart(pres.charts.BAR, [
-                    { name: nomeAnterior, labels: D.meses, values: esc(c.mesAnterior) },
-                    { name: nomeAtual, labels: D.meses, values: esc(c.mesAtual) },
-                ], optsGrafico(0.5, 2.95, 6.75, 3.65, 'Evolução mensal' + unid, 'col', { valAxisLabelFormatCode: fmtCod, dataLabelFormatCode: fmtCod, dataLabelFontSize: D.meses.length > 8 ? 7 : 8 }));
+                    { name: nomeAnterior, labels: D.meses.map(m => m.charAt(0).toUpperCase() + m.slice(1)), values: escala(c.mesAnterior) },
+                    { name: nomeAtual, labels: D.meses.map(m => m.charAt(0).toUpperCase() + m.slice(1)), values: escala(c.mesAtual) },
+                ], optsGrafico(0.6, gy + 0.45, 6.95, gh - 0.55, { barDir: 'col', chartColors: [COR.anterior, vis.cor], valAxisLabelFormatCode: fmtCod, dataLabelFormatCode: fmtCod, dataLabelFontSize: D.meses.length > 8 ? 7 : 8 }));
                 if (c.topTip.length) {
+                    const rotTip = c.topTip.map(t => t.length > 34 ? t.slice(0, 32) + '…' : t);
                     s.addChart(pres.charts.BAR, [
-                        { name: nomeAnterior, labels: c.topTip.map(t => t.length > 38 ? t.slice(0, 36) + '…' : t), values: esc(c.tipAnterior) },
-                        { name: nomeAtual, labels: c.topTip.map(t => t.length > 38 ? t.slice(0, 36) + '…' : t), values: esc(c.tipAtual) },
-                    ], optsGrafico(7.45, 2.95, 5.4, 3.65, `Principais — ${c.labelTip}${unid}`, 'bar', { valAxisLabelFormatCode: fmtCod, dataLabelFormatCode: fmtCod, catAxisLabelFontSize: 8, catAxisOrientation: 'maxMin' }));
+                        { name: nomeAnterior, labels: rotTip, values: escala(c.tipAnterior) },
+                        { name: nomeAtual, labels: rotTip, values: escala(c.tipAtual) },
+                    ], optsGrafico(7.95, gy + 0.45, 4.78, gh - 0.55, { barDir: 'bar', chartColors: [COR.anterior, vis.cor], valAxisLabelFormatCode: fmtCod, dataLabelFormatCode: fmtCod,
+                        catAxisLabelFontSize: 8, catAxisOrientation: 'maxMin', valAxisHidden: true, valGridLine: { style: 'none' }, dataLabelFontSize: 7.5 }));
                 }
             } else {
-                s.addText('Sem registros no período atual nem no mesmo período do ano anterior.', { x: 0.5, y: 3.6, w: 12.3, h: 0.6, fontFace: FONTE, fontSize: 16, color: COR.muted, align: 'center', isTextBox: true });
+                texto(s, 'Sem registros no período atual nem no mesmo período do ano anterior.', { x: 0.5, y: 4.4, w: 12.3, h: 0.5, fontSize: 15, color: COR.muted, align: 'center' });
             }
             if (c.topCidades.length) {
-                s.addText([{ text: 'Cidades com mais registros no período: ', options: { bold: true, color: COR.navy } },
-                    { text: c.topCidades.map(([k, n]) => `${k} (${fv(n)})`).join(' • '), options: { color: COR.texto } }],
-                { x: 0.5, y: 6.65, w: 12.3, h: 0.3, fontFace: FONTE, fontSize: 11, margin: 0, isTextBox: true });
+                texto(s, [{ text: 'Cidades com mais registros:  ', options: { bold: true, color: COR.navy } },
+                    { text: c.topCidades.map(([k, n]) => `${k} (${fv(n)})`).join('   •   '), options: { color: COR.texto } }],
+                { x: 0.5, y: 6.66, w: 12.3, h: 0.3, fontSize: 11 });
             }
         });
 
-        // ── 5. Rede de Proteção ──
+        // ══ 5. Rede de Proteção ══
         if (D.rede) {
-            const A = D.rede.atual, P = D.rede.anterior;
-            s = pres.addSlide({ masterName: 'CONTEUDO' });
-            titulo(s, 'Rede de Proteção — Grupos Vulneráveis', `Vítimas de violência registradas pela PM (CAD) • ${periodo} comparado com ${periodoAnt}${local}`);
-            const cw = 2.9, gap = 0.233;
+            const A = D.rede.atual, P = D.rede.anterior, vis = VISUAL.rede;
+            s = novoSlide(false);
+            cabecalho(s, vis.icone, vis.cor, 'Rede de Proteção — Grupos Vulneráveis', `Vítimas de violência registradas pela PM (CAD) • ${periodo}${local}`);
+            const cw = 2.93, gap = 0.2;
             [['Vítimas', A.total, P.total], ['Mulheres', A.mulheres, P.mulheres], ['Crianças e adolescentes', A.criancasAdolescentes, P.criancasAdolescentes], ['Pessoas idosas (60+)', A.idosos, P.idosos]]
-                .forEach(([r, a, p], i) => { const vv = variacao(a, p); cartao(s, 0.5 + i * (cw + gap), 1.4, cw, 1.3, r, fmtN(a), COR.azul, redeSemAnterior ? 'anterior: sem dados importados' : `anterior: ${fmtN(p)} (${vv.txt})`); });
-            if (redeSemAnterior) s.addText('O período anterior ainda não foi importado do CAD na aba Rede de Proteção ("Buscar vítimas no CAD") — por isso não há comparação.',
-                { x: 0.5, y: 6.65, w: 12.3, h: 0.3, fontFace: FONTE, fontSize: 10, italic: true, color: COR.muted, margin: 0, isTextBox: true });
+                .forEach(([r, a, p], i) => kpi(s, 0.5 + i * (cw + gap), 1.45, cw, 1.35, r, fmtN(a), vis.cor,
+                    redeSemAnterior ? 'ano anterior não importado' : `antes: ${fmtN(p)}`, redeSemAnterior ? null : estiloVar('violencia', variacao(a, p))));
             const tipos = Object.keys(A.porTipo).filter(k => (A.porTipo[k] || 0) + (P.porTipo[k] || 0) > 0);
+            cartao(s, 0.5, 3.0, 12.33, 3.55);
+            rotuloCartao(s, 0.5, 3.0, 12.33, 'Tipos de violência (múltipla resposta)');
             if (tipos.length) {
                 const series = [{ name: nomeAtual, labels: tipos, values: tipos.map(k => A.porTipo[k] || 0) }];
                 if (!redeSemAnterior) series.unshift({ name: nomeAnterior, labels: tipos, values: tipos.map(k => P.porTipo[k] || 0) });
-                s.addChart(pres.charts.BAR, series, optsGrafico(0.5, 2.95, 12.3, 3.6, 'Tipos de violência (múltipla resposta)', 'bar',
-                    { catAxisOrientation: 'maxMin', chartColors: redeSemAnterior ? [COR.azul] : [COR.anterior, COR.azul] }));
+                s.addChart(pres.charts.BAR, series, optsGrafico(0.6, 3.45, 12.13, 3.0, { barDir: 'col', chartColors: redeSemAnterior ? [vis.cor] : [COR.anterior, vis.cor], showLegend: !redeSemAnterior }));
             }
+            if (redeSemAnterior) texto(s, 'O período anterior ainda não foi importado do CAD na aba Rede de Proteção ("Buscar vítimas no CAD") — por isso não há comparação.',
+                { x: 0.5, y: 6.66, w: 12.3, h: 0.3, fontSize: 10, italic: true, color: COR.muted });
         }
 
-        // ── 6. Notas e fonte ──
-        s = pres.addSlide();
-        s.background = { color: COR.navy };
-        s.addText('Notas metodológicas', { x: 0.8, y: 0.7, w: 11.7, h: 0.7, fontFace: FONTE, fontSize: 30, bold: true, color: COR.branco, margin: 0, isTextBox: true });
-        s.addText([
+        // ══ 6. Notas e fonte ══
+        s = novoSlide(true);
+        s.addShape(pres.shapes.OVAL, { x: 9.8, y: 3.6, w: 6, h: 6, fill: { color: '163A66', transparency: 40 }, line: { color: '163A66', transparency: 100 } });
+        texto(s, 'Notas metodológicas', { x: 0.8, y: 0.7, w: 11.7, h: 0.7, fontSize: 32, bold: true, color: COR.branco });
+        texto(s, [
             `Período atual: ${periodo}; comparação: ${periodoAnt} (mesmo período do ano anterior).`,
             'Contagens seguem as mesmas regras de cada aba do Dashboard Cruzado do Sistema P3 (Firebase, planilhas de TCO e Materiais).',
             'MVI: homicídio, latrocínio, feminicídio e homicídio ao volante; tentativas só contam com óbito confirmado.',
             'Drogas: valores em peso apreendido (g/kg); demais indicadores em número de registros.',
             D.cidade ? `Filtro de cidade aplicado: ${D.cidade}.` : 'Todas as cidades da área da unidade.',
             D.rede ? 'Rede de Proteção: vítimas (tipo de envolvimento = vítima) do CAD, apenas ocorrências com violência.' : null,
-        ].filter(Boolean).map((t, i, arr) => ({ text: t, options: { bullet: true, breakLine: i < arr.length - 1 } })),
-        { x: 0.8, y: 1.7, w: 11.7, h: 4.2, fontFace: FONTE, fontSize: 16, color: 'DCE3F0', paraSpaceAfter: 10, valign: 'top', isTextBox: true });
-        const ln = logoBox(0.8, 6.0, 1.0, 1.0);
+        ].filter(Boolean).map((t, i, arr) => ({ text: t, options: { bullet: { indent: 18 }, breakLine: i < arr.length - 1 } })),
+        { x: 0.8, y: 1.65, w: 11.4, h: 4.2, fontSize: 16, color: 'DCE3F0', paraSpaceAfter: 10, valign: 'top' });
+        const ln = logoBox(0.8, 5.95, 1.0, 1.0);
         if (ln) s.addImage(ln);
-        s.addText(`${D.unidade} • Sistema P3`, { x: 2.0, y: 6.3, w: 10, h: 0.4, fontFace: FONTE, fontSize: 14, bold: true, color: 'C9D3E8', margin: 0, isTextBox: true });
+        texto(s, `${D.unidade} • Sistema P3`, { x: 2.0, y: 6.25, w: 9, h: 0.4, fontSize: 14, bold: true, color: 'C9D3E8' });
+        texto(s, `${numSlide} / ${totalSlides}`, { x: 11.8, y: 7.05, w: 1.05, h: 0.28, fontSize: 9, color: '8FA3C4', align: 'right' });
 
         return pres;
     }
@@ -426,7 +472,11 @@
             if (raiz.P3EmAppDesktop && raiz.P3EmAppDesktop()) {
                 // .exe: download bloqueado no WebView2 — abre no navegador comum (ver dashboard-rede-protecao.js).
                 const b64 = await new Promise((ok, falha) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = falha; r.readAsDataURL(blob); });
-                await raiz.P3AbrirConteudoNoNavegador({ tipo: 'apresentacao', titulo: `Indicadores Operacionais — ${D.unidade}`, nome, pptxBase64: b64 });
+                // semPrevia: o leitor de pré-visualização do navegador (pptx-preview) não
+                // abre arquivos da pptxgenjs com mais de 1 slide — a página mostra o sumário.
+                const sumario = ['Capa', 'Visão geral do período', 'Destaques do período'].concat(D.categorias.map(c => c.label), D.rede ? ['Rede de Proteção — Grupos Vulneráveis'] : [], ['Notas metodológicas']);
+                await raiz.P3AbrirConteudoNoNavegador({ tipo: 'apresentacao', titulo: `Indicadores Operacionais — ${D.unidade}`, nome, pptxBase64: b64, semPrevia: true, sumario,
+                    periodo: `${D.ini.toLocaleDateString('pt-BR')} a ${D.fim.toLocaleDateString('pt-BR')} (comparado com ${D.iniAnt.toLocaleDateString('pt-BR')} a ${D.fimAnt.toLocaleDateString('pt-BR')})` });
             } else {
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob); a.download = nome;
