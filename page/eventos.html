@@ -609,6 +609,11 @@
                                 <path d="M14 2v6h6"></path>
                             </svg>
                         </button>
+                        <button class="btn-icone-evento" data-acao="opo-int" title="OPO Inteligente do evento (análise preditiva + estratégia; aparece no Controle de Operações)">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5"></circle>
+                            </svg>
+                        </button>
                         <button class="btn-icone-evento excluir" data-acao="excluir" title="Excluir">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 6h18"></path>
@@ -625,12 +630,32 @@
                     const acao = acaoBtn.dataset.acao;
                     if (acao === 'editar') toggleSidebar(true, item);
                     else if (acao === 'opo') window.open(`../relatorios/gerar_opo.html?id=${encodeURIComponent(item.ID)}`, '_blank');
+                    else if (acao === 'opo-int') location.href = urlOpoInteligenteEvento(item);
                     else if (acao === 'excluir') deletarEvento(item.ID, item['NOME DO EVENTO'] || item.ID);
                 });
 
                 lista.appendChild(card);
             });
         });
+    }
+
+    // ── OPO Inteligente do evento ─────────────────────────────
+    // Abre page/opo_inteligente.html já preenchida (cidade, data e horário do
+    // evento, focos típicos de evento) e vinculada ao evento — ao salvar, a
+    // OPO aparece no Controle de Operações ligada a ele.
+    function urlOpoInteligenteEvento(item) {
+        const sd = String(item.DATA || '').trim();
+        const m = sd.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/) || sd.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        const iso = !m ? '' : (m[1].length === 4 ? `${m[1]}-${m[2]}-${m[3]}` : `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`);
+        const nome = item['NOME DO EVENTO'] || 'Evento';
+        const q = new URLSearchParams({
+            opo: '1', auto: '1', origem: 'eventos', escopo: 'cidade', cidade: item.CIDADE || '', periodo: '30',
+            nome: `OPO — ${nome}${item.CIDADE ? ' — ' + item.CIDADE : ''}`.toUpperCase(), dataIni: iso, dataFim: iso,
+            horaIni: item['HORÁRIO DE INÍCIO'] || '', horaFim: item['HORÁRIO DE TÉRMINO'] || '',
+            tipos: 'CVLI,CVP,PERTURBACAO,DROGAS,ARMAS', evento: item.ID || '', eventoNome: nome,
+        });
+        [...q.keys()].forEach(k => { if (!q.get(k)) q.delete(k); });
+        return 'opo_inteligente.html?' + q.toString();
     }
 
     // ── NOVO: Máscaras de CPF e Telefone ──────────────────────
