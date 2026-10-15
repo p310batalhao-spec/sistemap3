@@ -1250,12 +1250,31 @@
       color: rgba(255, 255, 255, .7);
       line-height: 1.4;
     }
+    /* ── Estratégia por tipo de combate (js/opo-estrategia.js) ── */
+    .opo-est-tipos { display:flex; flex-wrap:wrap; gap:5px; }
+    .opo-est-tipos label { display:flex; align-items:center; gap:4px; font-size:11px; color:#fff; background:rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.15); border-radius:14px; padding:4px 9px; cursor:pointer; }
+    .opo-est-tipos label:has(input:checked) { background:rgba(41,121,255,.3); border-color:#448aff; }
+    .opo-est-meta { font-size:10px; color:rgba(255,255,255,.5); margin:4px 0 8px; }
+    .opo-est-card { background:rgba(255,255,255,.05); border-left:4px solid #888; border-radius:6px; padding:8px 10px; margin-bottom:7px; font-size:11px; color:#eee; }
+    .opo-est-topo { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; font-size:12px; }
+    .opo-est-badge { font-size:9px; font-weight:700; letter-spacing:.06em; padding:2px 7px; border-radius:10px; }
+    .opo-est-badge.rep { background:#c62828; color:#fff; } .opo-est-badge.prev { background:#2e7d32; color:#fff; }
+    .opo-est-nums { display:flex; flex-wrap:wrap; gap:4px 12px; color:rgba(255,255,255,.75); }
+    .opo-est-nums b { color:#fff; }
+    .opo-est-linha { margin-top:3px; color:rgba(255,255,255,.7); }
+    .opo-est-card details summary { cursor:pointer; margin-top:4px; color:#90caf9; }
+    .opo-est-acao ul { margin:3px 0 4px 16px; padding:0; }
+    .opo-est-parecer { background:rgba(255,193,7,.08); border:1px solid rgba(255,193,7,.3); border-radius:6px; padding:9px 11px; font-size:11.5px; line-height:1.5; color:#f5f5f5; }
+    .opo-est-parecer p { margin:0 0 6px; }
+    .opo-est-parecer-tit { font-weight:700; color:#ffd54f; margin-bottom:5px; }
   </style>
 </head>
 
 <body>
     <script src="../js/core/session.js"></script>
     <script src="../js/cumprimento-core.js"></script>
+    <script src="../js/opo-estrategia.js"></script>
 
   <!-- ═══════ CABEÇALHO ═══════ -->
   <header>
@@ -1408,6 +1427,9 @@
         <div id="conteudo-tatica"></div>
       </div>
 
+      <!-- Estratégia por tipo de combate (js/opo-estrategia.js) -->
+      <div class="painel-secao" id="painel-estrategia" style="display:none;"></div>
+
       <!-- Gerar OPO -->
       <div class="painel-secao" id="painel-gerar" style="display:none;">
         <h3>Gerar Documento</h3>
@@ -1424,6 +1446,15 @@
                  color:#fff;border-radius:5px;padding:7px 10px;font-size:11px;
                  font-family:var(--fonte-tit);box-sizing:border-box;">
           <input type="hidden" id="inp-vig-fim" value="">
+
+          <label class="campo-label">Período de execução (Controle de OPO)</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input type="date" id="inp-exec-ini" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+                   color:#fff;border-radius:5px;padding:6px 8px;font-size:11px;color-scheme:dark;">
+            <span style="color:rgba(255,255,255,.4);font-size:11px;">a</span>
+            <input type="date" id="inp-exec-fim" style="flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);
+                   color:#fff;border-radius:5px;padding:6px 8px;font-size:11px;color-scheme:dark;">
+          </div>
 
           <label class="campo-label">Turno / Horário da OPO</label>
           <div style="display:flex;gap:6px;align-items:center;">
@@ -2479,6 +2510,7 @@
       // ── Tática ──
       renderTatica(tatica, hotspots);
       document.getElementById('painel-tatica').style.display = 'block';
+      document.getElementById('painel-estrategia').style.display = 'block';
 
       // ── Gerar OPO ──
       document.getElementById('painel-gerar').style.display = 'block';
@@ -2735,6 +2767,93 @@
     // ══════════════════════════════════════════════════════════
     //  GERAR OPO — Tabela de efetivo com escala real
     // ══════════════════════════════════════════════════════════
+    // ── Guarnições empenhadas na OPO ─────────────────────────────────
+    // Fonte ÚNICA pra tela (gerarOPO) e pro Word (baixarDocx) — antes o Word
+    // listava o efetivo fixo inteiro (EFETIVO_OPO) e toda a alocação sugerida,
+    // enquanto a tela mostrava só as cidades com hotspot + ADMs do Fecha Quartel.
+    // Nunca altera dadosAnalise (o Fecha Quartel trabalha sobre cópias).
+    //  → { modo: 'bpm'|'cidade'|'fixo', opms:[{label,tipo,vtr,homens}], totalVtr,
+    //      totalHomens, alocacao:[{prioridade,cidade,guarnicao,reforcos[],nivel,cvp,cvli}],
+    //      cidade:{nome, nivel, rps:[label], reforcos:[label]} }
+    function calcularEfetivoOPO(hotspots) {
+      const tipoDe = label => (label.includes('FORÇA TAREFA') || label.includes('FT')) ? 'Força Tarefa'
+        : label.includes('URBANO') ? 'Tático Urbano' : 'Tático Rural';
+      const opms = [];
+      const fechar = (r) => {
+        opms.push({ label: 'OFICIAL DE SERVIÇO', tipo: 'Oficial', vtr: 0, homens: 1 });
+        r.opms = opms;
+        r.totalVtr = opms.reduce((s, o) => s + (o.vtr || 0), 0);
+        r.totalHomens = opms.reduce((s, o) => s + (o.homens || 0), 0);
+        return r;
+      };
+      const alocacaoOPO = dadosAnalise && dadosAnalise.alocacao;
+      const comFQ = _modoFechaQuartel && _admFechaQuartel.length;
+
+      if (alocacaoOPO && alocacaoOPO.length) {
+        const cidadesHotSet = new Set([...new Set((hotspots || []).map(h => h.cidade).filter(Boolean))].map(c => normalizarStr(c)));
+        const rows = alocacaoOPO.filter(a => a.prioridade !== null)
+          .filter(a => cidadesHotSet.size === 0 || cidadesHotSet.has(normalizarStr(a.cidade)));
+        const vistos = new Set();
+        rows.forEach(a => {
+          (a.rps || []).forEach(rp => { if (!vistos.has(rp.id)) { vistos.add(rp.id); opms.push({ label: rp.label, tipo: 'RP Titular', vtr: rp.vtr, homens: rp.homens }); } });
+          (a.reforcos || []).forEach(label => { if (!vistos.has(label)) { vistos.add(label); opms.push({ label, tipo: tipoDe(label), vtr: 1, homens: 3 }); } });
+        });
+        // Fecha Quartel: ADMs distribuídas por prioridade (CRÍTICO 2; ALTO/MÉDIO 1; sobras 1 por cidade sem ADM)
+        const admPorCidade = new Map();
+        if (comFQ) {
+          const pool = _admFechaQuartel.map(a => ({ ...a, alocado: false }));
+          rows.forEach(a => {
+            const qtd = a.nivel === 'CRÍTICO' ? 2 : (a.nivel === 'ALTO' || a.nivel === 'MÉDIO') ? 1 : 0;
+            const lista = [];
+            for (const adm of pool) if (!adm.alocado && lista.length < qtd) { adm.alocado = true; lista.push(adm.label); }
+            admPorCidade.set(a.cidade, lista);
+          });
+          let idx = 0;
+          for (const adm of pool) {
+            if (adm.alocado) continue;
+            while (idx < rows.length) {
+              const lista = admPorCidade.get(rows[idx].cidade) || [];
+              idx++;
+              if (!lista.length) { lista.push(adm.label); admPorCidade.set(rows[idx - 1].cidade, lista); adm.alocado = true; break; }
+            }
+          }
+          const noResumo = new Set();
+          rows.forEach(a => (admPorCidade.get(a.cidade) || []).forEach(l => noResumo.add(l)));
+          noResumo.forEach(label => {
+            const adm = _admFechaQuartel.find(x => x.label === label) || {};
+            opms.push({ label, tipo: 'ADM (Fecha Quartel)', vtr: adm.vtr || 1, homens: adm.homens || 3 });
+          });
+        }
+        return fechar({
+          modo: 'bpm',
+          alocacao: rows.map(a => ({
+            prioridade: a.prioridade, cidade: a.cidade, guarnicao: a.guarnicao, nivel: a.nivel, cvp: a.cvp, cvli: a.cvli,
+            reforcos: [...(a.reforcos || []), ...(admPorCidade.get(a.cidade) || [])],
+          })),
+        });
+      }
+
+      const ef = dadosAnalise && dadosAnalise.tatica && dadosAnalise.tatica.efetivoCidade;
+      if (ef) {
+        const reforcos = [...(ef.reforcos || [])];
+        ef.rps.forEach(rp => opms.push({ label: rp.label, tipo: 'RP Titular', vtr: rp.vtr, homens: rp.homens }));
+        reforcos.forEach(label => opms.push({ label, tipo: tipoDe(label), vtr: 1, homens: 3 }));
+        if (comFQ) {
+          const nv = ef.nivelGeral || 'BAIXO';
+          const qtd = Math.min(nv === 'CRÍTICO' ? 2 : 1, _admFechaQuartel.length);
+          _admFechaQuartel.slice(0, qtd).forEach(adm => {
+            opms.push({ label: adm.label, tipo: 'ADM (Fecha Quartel)', vtr: adm.vtr, homens: adm.homens });
+            reforcos.push(adm.label);
+          });
+        }
+        return fechar({ modo: 'cidade', alocacao: [], cidade: { nome: dadosAnalise.cidade, nivel: ef.nivelGeral, rps: ef.rps.map(r => r.label), reforcos } });
+      }
+
+      // Sem análise de alocação: efetivo fixo da unidade
+      EFETIVO_OPO.forEach(e => opms.push({ label: e.label, tipo: 'Efetivo', vtr: e.vtr, homens: e.homens }));
+      return fechar({ modo: 'fixo', alocacao: [] });
+    }
+
     function gerarOPO() {
       if (!dadosAnalise) return;
       const { cidade, periodo, ocorrencias, hotspots, tatica, geo } = dadosAnalise;
@@ -2781,118 +2900,16 @@
     </tr>`
       ).join('');
 
-      // Usa efetivo real do 10ºBPM
-      // ── Gera HTML da tabela de alocação sugerida ──────────────────
-      // Usa dadosAnalise.alocacao (10BPM) ou tatica.efetivoCidade (cidade)
-      let linhasAlocacaoHTML = '';
-
-      const alocacaoOPO = dadosAnalise.alocacao;
+      // Guarnições empenhadas — MESMO cálculo usado pelo Word (baixarDocx),
+      // ver calcularEfetivoOPO(): a tela e o .docx nunca divergem.
+      const EF = calcularEfetivoOPO(hotspots);
       const corNvl = { 'CRÍTICO':'#ffebee','ALTO':'#fff3e0','MÉDIO':'#fffde7','BAIXO':'#f1f8e9','NORMAL':'#fafafa' };
-      const cidadesHotSet = new Set(cidadesComHot.map(c => normalizarStr(c)));
-
-      // Mapa de ADMs por cidade (só populado no modo Fecha Quartel)
-      let reforcosFQporCidade = new Map();
-
-      // Coleta OPMs que serão empenhadas (para Parte A — resumo)
-      const opmsEmpenhadas = [];
-      let efetivResumoHTML = '';
-      let alocacaoDetalheHTML = '';
-
-      if (alocacaoOPO && alocacaoOPO.length) {
-        // ── ANÁLISE 10BPM ──
-        const prioRows = alocacaoOPO.filter(a => a.prioridade !== null);
-        const rowsFiltradas = prioRows.filter(a =>
-          cidadesHotSet.size === 0 || cidadesHotSet.has(normalizarStr(a.cidade))
-        );
-
-        // Coleta OPMs únicas
-        const opmsVistas = new Set();
-        rowsFiltradas.forEach(a => {
-          (a.rps || []).forEach(rp => {
-            if (!opmsVistas.has(rp.id)) {
-              opmsVistas.add(rp.id);
-              opmsEmpenhadas.push({ label: rp.label, tipo: 'RP Titular', vtr: rp.vtr, homens: rp.homens });
-            }
-          });
-          a.reforcos.forEach(label => {
-            if (!opmsVistas.has(label)) {
-              opmsVistas.add(label);
-              const isFT     = label.includes('FORÇA TAREFA') || label.includes('FT');
-              const isUrbano = label.includes('URBANO');
-              const tipo     = isFT ? 'Força Tarefa' : isUrbano ? 'Tático Urbano' : 'Tático Rural';
-              opmsEmpenhadas.push({ label, tipo, vtr: 1, homens: 3 });
-            }
-          });
-        });
-        // ── Fecha Quartel: distribui ADMs como pool ────────────────
-        // IMPORTANTE: trabalhamos com reforcosFQ — cópia isolada por cidade,
-        // jamais mutando a.reforcos (que pertence a dadosAnalise e persiste
-        // entre cliques). Assim cada clique em "Gerar" parte do zero.
-        //
-        // Regra de distribuição (por ordem de prioridade da cidade):
-        //   CRÍTICO → até 2 ADMs  |  ALTO/MÉDIO → até 1 ADM
-        //   BAIXO   → sobras do pool (se houver)
-        const reforcosFQporCidade = new Map(); // cidade → [...labels de ADM]
-
-        if (_modoFechaQuartel && _admFechaQuartel.length) {
-          const poolADM = _admFechaQuartel.map(a => ({ ...a, alocado: false }));
-
-          // 1ª passagem: CRÍTICO e ALTO/MÉDIO por prioridade
-          rowsFiltradas.forEach(a => {
-            const nivel  = a.nivel || 'BAIXO';
-            const qtdADM = nivel === 'CRÍTICO' ? 2
-                         : nivel === 'ALTO'    ? 1
-                         : nivel === 'MÉDIO'   ? 1
-                         : 0;
-            const admDaCidade = [];
-            let cnt = 0;
-            for (const adm of poolADM) {
-              if (!adm.alocado && cnt < qtdADM) {
-                adm.alocado = true;
-                admDaCidade.push(adm.label);
-                cnt++;
-              }
-            }
-            reforcosFQporCidade.set(a.cidade, admDaCidade);
-          });
-
-          // 2ª passagem: sobras → distribui 1 por vez para cidades ainda sem ADM
-          let cidadeIdx = 0;
-          for (const adm of poolADM) {
-            if (adm.alocado) continue;
-            // Avança para a próxima cidade que ainda não tem ADM
-            while (cidadeIdx < rowsFiltradas.length) {
-              const cid = rowsFiltradas[cidadeIdx];
-              const atual = reforcosFQporCidade.get(cid.cidade) || [];
-              if (atual.length === 0) {
-                atual.push(adm.label);
-                reforcosFQporCidade.set(cid.cidade, atual);
-                adm.alocado = true;
-                cidadeIdx++;
-                break;
-              }
-              cidadeIdx++;
-            }
-          }
-
-          // Adiciona as ADMs no resumo de efetivo (Parte A)
-          // e nas linhas de alocação (Parte B) — sem mutar a.reforcos original
-          const admsNoResumo = new Set();
-          rowsFiltradas.forEach(a => {
-            const admsCidade = reforcosFQporCidade.get(a.cidade) || [];
-            admsCidade.forEach(label => admsNoResumo.add(label));
-          });
-          admsNoResumo.forEach(label => {
-            opmsEmpenhadas.push({ label, tipo: 'ADM (Fecha Quartel)', vtr: 1, homens: 3 });
-          });
-        }
-        opmsEmpenhadas.push({ label: 'OFICIAL DE SERVIÇO', tipo: 'Oficial', vtr: 0, homens: 1 });
-
-        const totalVtr    = opmsEmpenhadas.reduce((s,o) => s + o.vtr,    0);
-        const totalHomens = opmsEmpenhadas.reduce((s,o) => s + o.homens, 0);
-
-        // Parte A — Resumo de efetivo empenhado
-        efetivResumoHTML = `
+      const corTipo = t => t === 'Força Tarefa' ? 'background:#e8f5e9;'
+        : t === 'Tático Urbano' ? 'background:#e3f2fd;'
+        : t === 'Tático Rural' ? 'background:#f3e5f5;'
+        : t === 'Oficial' ? 'background:#fff8e1;'
+        : t === 'ADM (Fecha Quartel)' ? 'background:#fce4ec;font-weight:bold;' : '';
+      const efetivResumoHTML = `
       <table class="tab-efetivo">
         <thead><tr>
           <th style="width:45%;">OPM / RECURSO</th>
@@ -2900,31 +2917,25 @@
           <th style="width:15%;text-align:center;">VTR</th>
           <th style="width:20%;text-align:center;">Homens</th>
         </tr></thead>
-        <tbody>${opmsEmpenhadas.map(o => {
-          const bg = o.tipo==='Força Tarefa'       ? 'background:#e8f5e9;'
-                   : o.tipo==='Tático Urbano'      ? 'background:#e3f2fd;'
-                   : o.tipo==='Tático Rural'       ? 'background:#f3e5f5;'
-                   : o.tipo==='Oficial'            ? 'background:#fff8e1;'
-                   : o.tipo==='ADM (Fecha Quartel)'? 'background:#fce4ec;font-weight:bold;'
-                   : '';
-          return `<tr style="${bg}">
+        <tbody>${EF.opms.map(o => `<tr style="${corTipo(o.tipo)}">
             <td><strong>${o.label}</strong></td>
             <td style="text-align:center;">${o.tipo}</td>
             <td style="text-align:center;">${o.vtr || '—'}</td>
             <td style="text-align:center;font-weight:bold;">${o.homens}</td>
-          </tr>`;
-        }).join('')}</tbody>
+          </tr>`).join('')}</tbody>
         <tfoot><tr style="background:#e0e0e0;font-weight:bold;">
-          <td>TOTAL EMPENHADO</td>
-          <td></td>
-          <td style="text-align:center;">${totalVtr}</td>
-          <td style="text-align:center;">${totalHomens}</td>
+          <td>TOTAL EMPENHADO</td><td></td>
+          <td style="text-align:center;">${EF.totalVtr}</td>
+          <td style="text-align:center;">${EF.totalHomens}</td>
         </tr></tfoot>
-      </table>`;
+      </table>${EF.modo === 'cidade' ? `
+      <p class="opo-texto" style="font-size:9pt;color:#555;">
+        Nível: <strong>${EF.cidade.nivel}</strong> —
+        ${EF.cidade.reforcos.length ? 'Reforço especializado acionado conforme protocolo P3.' : 'Sem reforço necessário.'}
+      </p>` : ''}`;
 
-        // Parte B — Alocação por cidade
-        // Combina reforços táticos (a.reforcos) + ADMs do Fecha Quartel
-        // sem jamais modificar a.reforcos (que pertence a dadosAnalise)
+      let alocacaoDetalheHTML = '';
+      if (EF.modo === 'bpm') {
         alocacaoDetalheHTML = `
       <table class="tab-efetivo">
         <thead><tr>
@@ -2936,96 +2947,23 @@
           <th style="width:7%;">CVP</th>
           <th style="width:6%;">CVLI</th>
         </tr></thead>
-        <tbody>${rowsFiltradas.map(a => {
-          // Mescla reforços táticos + ADMs sem mutar o original
-          const admsExtra = (_modoFechaQuartel && reforcosFQporCidade)
-            ? (reforcosFQporCidade.get(a.cidade) || [])
-            : [];
-          const todosReforcos = [...a.reforcos, ...admsExtra];
-          return `
+        <tbody>${EF.alocacao.map(a => `
           <tr style="background:${corNvl[a.nivel]||'#fff'};">
             <td style="text-align:center;font-weight:bold;">${a.prioridade}°</td>
             <td><strong>${a.cidade}</strong></td>
             <td style="font-size:8.5pt;">${a.guarnicao}</td>
             <td style="font-size:8.5pt;">
-              ${todosReforcos.length
-                ? todosReforcos.map(r => `<span style="color:${r.includes('ADM') ? '#c62828' : '#1565c0'};font-weight:bold;">${r}</span>`).join('<br>')
+              ${a.reforcos.length
+                ? a.reforcos.map(r => `<span style="color:${r.includes('ADM') ? '#c62828' : '#1565c0'};font-weight:bold;">${r}</span>`).join('<br>')
                 : '<span style="color:#888;">—</span>'}
             </td>
             <td style="text-align:center;"><strong>${a.nivel}</strong></td>
             <td style="text-align:center;">${a.cvp}</td>
             <td style="text-align:center;">${a.cvli}</td>
-          </tr>`;
-        }).join('')}
+          </tr>`).join('')}
         </tbody>
       </table>`;
-
-      } else if (dadosAnalise.tatica?.efetivoCidade) {
-        // ── ANÁLISE CIDADE ESPECÍFICA ──
-        const ef = dadosAnalise.tatica.efetivoCidade;
-        ef.rps.forEach(rp => opmsEmpenhadas.push({ label: rp.label, tipo: 'RP Titular', vtr: rp.vtr, homens: rp.homens }));
-        ef.reforcos.forEach(label => {
-          const isFT     = label.includes('FORÇA TAREFA') || label.includes('FT');
-          const isUrbano = label.includes('URBANO');
-          const tipo     = isFT ? 'Força Tarefa' : isUrbano ? 'Tático Urbano' : 'Tático Rural';
-          opmsEmpenhadas.push({ label, tipo, vtr: 1, homens: 3 });
-        });
-        // Fecha Quartel: distribui ADMs conforme nível da cidade
-        if (_modoFechaQuartel && _admFechaQuartel.length) {
-          const nivelCid  = ef.nivelGeral || 'BAIXO';
-          const qtdADMCid = nivelCid === 'CRÍTICO' ? Math.min(2, _admFechaQuartel.length)
-                          : nivelCid === 'ALTO'    ? Math.min(1, _admFechaQuartel.length)
-                          : nivelCid === 'MÉDIO'   ? Math.min(1, _admFechaQuartel.length)
-                          : Math.min(1, _admFechaQuartel.length); // BAIXO: ao menos 1
-          _admFechaQuartel.slice(0, qtdADMCid).forEach(adm => {
-            opmsEmpenhadas.push({
-              label: adm.label, tipo: 'ADM (Fecha Quartel)',
-              vtr: adm.vtr, homens: adm.homens
-            });
-            // Adiciona na tabela de alocação da cidade
-            if (!alocacaoDetalheHTML._reforcos) {
-              ef.reforcos = ef.reforcos || [];
-              ef.reforcos.push(adm.label);
-            }
-          });
-        }
-        opmsEmpenhadas.push({ label: 'OFICIAL DE SERVIÇO', tipo: 'Oficial', vtr: 0, homens: 1 });
-        const totalVtr    = opmsEmpenhadas.reduce((s,o) => s + o.vtr,    0);
-        const totalHomens = opmsEmpenhadas.reduce((s,o) => s + o.homens, 0);
-
-        efetivResumoHTML = `
-      <table class="tab-efetivo">
-        <thead><tr>
-          <th style="width:45%;">OPM / RECURSO</th>
-          <th style="width:20%;text-align:center;">Tipo</th>
-          <th style="width:15%;text-align:center;">VTR</th>
-          <th style="width:20%;text-align:center;">Homens</th>
-        </tr></thead>
-        <tbody>${opmsEmpenhadas.map(o => {
-          const bg = o.tipo==='Força Tarefa'       ? 'background:#e8f5e9;'
-                   : o.tipo==='Tático Urbano'      ? 'background:#e3f2fd;'
-                   : o.tipo==='Tático Rural'       ? 'background:#f3e5f5;'
-                   : o.tipo==='Oficial'            ? 'background:#fff8e1;'
-                   : o.tipo==='ADM (Fecha Quartel)'? 'background:#fce4ec;font-weight:bold;'
-                   : '';
-          return `<tr style="${bg}">
-            <td><strong>${o.label}</strong></td>
-            <td style="text-align:center;">${o.tipo}</td>
-            <td style="text-align:center;">${o.vtr || '—'}</td>
-            <td style="text-align:center;font-weight:bold;">${o.homens}</td>
-          </tr>`;
-        }).join('')}</tbody>
-        <tfoot><tr style="background:#e0e0e0;font-weight:bold;">
-          <td>TOTAL EMPENHADO</td><td></td>
-          <td style="text-align:center;">${totalVtr}</td>
-          <td style="text-align:center;">${totalHomens}</td>
-        </tr></tfoot>
-      </table>
-      <p class="opo-texto" style="font-size:9pt;color:#555;">
-        Nível: <strong>${ef.nivelGeral}</strong> —
-        ${ef.reforcos.length ? 'Reforço especializado acionado conforme protocolo P3.' : 'Sem reforço necessário.'}
-      </p>`;
-
+      } else if (EF.modo === 'cidade') {
         alocacaoDetalheHTML = `
       <table class="tab-efetivo">
         <thead><tr>
@@ -3036,25 +2974,15 @@
         <tbody>
           <tr>
             <td><strong>${cidade}</strong></td>
-            <td>${ef.rps.map(r => r.label).join('<br>') || '—'}</td>
+            <td>${EF.cidade.rps.join('<br>') || '—'}</td>
             <td style="color:#1565c0;font-weight:bold;">
-              ${ef.reforcos.length ? ef.reforcos.join('<br>') : '<span style="color:#888;font-weight:normal;">—</span>'}
+              ${EF.cidade.reforcos.length ? EF.cidade.reforcos.join('<br>') : '<span style="color:#888;font-weight:normal;">—</span>'}
             </td>
           </tr>
         </tbody>
       </table>`;
-
-      } else {
-        // Fallback
-        efetivResumoHTML = `
-      <table class="tab-efetivo">
-        <thead><tr><th>OPM / RECURSO</th><th>VTR</th><th>Homens</th></tr></thead>
-        <tbody>${EFETIVO_OPO.map(e => `<tr><td>${e.label}</td>
-          <td style="text-align:center;">${e.vtr||'—'}</td>
-          <td style="text-align:center;">${e.homens}</td></tr>`).join('')}</tbody>
-      </table>`;
       }
-      linhasAlocacaoHTML = efetivResumoHTML;
+      const linhasAlocacaoHTML = efetivResumoHTML;
 
       const niveisRisco = { 'CRÍTICO': 4, 'ALTO': 3, 'MÉDIO': 2, 'BAIXO': 1 };
       const nivelGeral = hotspots.length
@@ -3145,6 +3073,8 @@
       <!-- Blocos de mapa por cidade — gerados dinamicamente por renderMapaOPO() -->
       <div id="opo-mapas-container"></div>
     </div>
+
+    ${window.OPOEstrategia ? OPOEstrategia.htmlSecao() : ''}
 
     <div class="opo-secao">3. ORIENTAÇÕES OPERACIONAIS</div>
     <p class="opo-texto">a) O policiamento se destina ao cumprimento do artigo 144 da Constituição Federal
@@ -3258,6 +3188,17 @@
                 cidade: escopo === 'bpm' ? '10ºBPM — ÁREA COMPLETA' : cidade,
                 escopo, periodoDias: periodo, turno: turno || null,
                 alocacoes,
+                // Controle de OPO (Dashboard Cruzado → aba "Controle de OPO")
+                nome: (document.getElementById('inp-nome-opo')?.value || '').trim() || null,
+                vigenciaTexto: (document.getElementById('inp-vig-ini')?.value || '').trim() || null,
+                execucao: {
+                    dataIni: document.getElementById('inp-exec-ini')?.value || criadoEm.slice(0, 10),
+                    dataFim: document.getElementById('inp-exec-fim')?.value || document.getElementById('inp-exec-ini')?.value || null,
+                    horaIni: document.getElementById('inp-hora-ini')?.value || null,
+                    horaFim: document.getElementById('inp-hora-fim')?.value || null,
+                },
+                cidades: escopo === 'bpm' ? alocacoes.map(a => a.cidade).filter(Boolean) : [cidade].filter(Boolean),
+                tiposCombate: window.OPOEstrategia ? OPOEstrategia.tiposSelecionados() : [],
             };
 
             const res = await fetch(`${dbUrl}/cartoes_programa.json`, {
@@ -3384,7 +3325,8 @@
           ]
         });
 
-        // ── Tabela de Efetivo ─────────────────────────────────────────
+        // ── Tabela de Efetivo — MESMAS guarnições da tela (calcularEfetivoOPO) ──
+        const EF = calcularEfetivoOPO(hotspots);
         const c3 = Math.floor(LT * 0.55), c3b = Math.floor(LT * 0.22), c3c = LT - c3 - c3b;
         const tabEfetivo = new Table({
           width: { size: LT, type: WidthType.DXA }, columnWidths: [c3, c3b, c3c],
@@ -3394,15 +3336,15 @@
               cel('VTR', { bold: true, al: AlignmentType.CENTER, sh: shH, w: { size: c3b, type: WidthType.DXA } }),
               cel('HOMENS', { bold: true, al: AlignmentType.CENTER, sh: shH, w: { size: c3c, type: WidthType.DXA } }),
             ]),
-            ...EFETIVO_OPO.map(e => lin([
-              cel(e.label, { w: { size: c3, type: WidthType.DXA } }),
-              cel(e.vtr || '—', { al: AlignmentType.CENTER, w: { size: c3b, type: WidthType.DXA } }),
+            ...EF.opms.map(e => lin([
+              cel(`${e.label}${e.tipo && e.tipo !== 'Efetivo' ? ' (' + e.tipo + ')' : ''}`, { bold: e.tipo === 'ADM (Fecha Quartel)', w: { size: c3, type: WidthType.DXA } }),
+              cel(e.vtr ? String(e.vtr) : '—', { al: AlignmentType.CENTER, w: { size: c3b, type: WidthType.DXA } }),
               cel(String(e.homens), { al: AlignmentType.CENTER, w: { size: c3c, type: WidthType.DXA } }),
             ])),
             lin([
-              cel('TOTAL GERAL', { bold: true, sh: shT, w: { size: c3, type: WidthType.DXA } }),
-              cel(String(EFETIVO_TOTAL_VTR), { bold: true, al: AlignmentType.CENTER, sh: shT, w: { size: c3b, type: WidthType.DXA } }),
-              cel(String(EFETIVO_TOTAL_PRAC), { bold: true, al: AlignmentType.CENTER, sh: shT, w: { size: c3c, type: WidthType.DXA } }),
+              cel('TOTAL EMPENHADO', { bold: true, sh: shT, w: { size: c3, type: WidthType.DXA } }),
+              cel(String(EF.totalVtr), { bold: true, al: AlignmentType.CENTER, sh: shT, w: { size: c3b, type: WidthType.DXA } }),
+              cel(String(EF.totalHomens), { bold: true, al: AlignmentType.CENTER, sh: shT, w: { size: c3c, type: WidthType.DXA } }),
             ]),
           ]
         });
@@ -3464,14 +3406,13 @@
         // ── Tabela de Alocação de Efetivo (só 10BPM) ─────────────────
         const cA = [Math.floor(LT * 0.06), Math.floor(LT * 0.22), Math.floor(LT * 0.32),
         LT - Math.floor(LT * 0.06) - Math.floor(LT * 0.22) - Math.floor(LT * 0.32)];
-        const tabAlocacao = escopo === 'bpm' && alocacao?.length
+        const tabAlocacao = EF.modo === 'bpm' && EF.alocacao.length
           ? new Table({
             width: { size: LT, type: WidthType.DXA }, columnWidths: cA,
             rows: [
               lin(['Prio.', 'Cidade', 'Guarnição Titular', 'Reforço']
                 .map((h, i) => cel(h, { bold: true, al: AlignmentType.CENTER, sh: shH, w: { size: cA[i], type: WidthType.DXA } }))),
-              ...alocacao
-                .filter(a => a.prioridade !== null)
+              ...EF.alocacao
                 .map(a => lin([
                   cel(String(a.prioridade) + '°', { al: AlignmentType.CENTER, w: { size: cA[0], type: WidthType.DXA } }),
                   cel(a.cidade, { bold: true, w: { size: cA[1], type: WidthType.DXA } }),
@@ -3484,12 +3425,11 @@
 
         // ── Parágrafo de efetivo da cidade (análise cidade) ───────────
         const parasEfetivoCidade = [];
-        if (tatica.efetivoCidade) {
-          const ef = tatica.efetivoCidade;
+        if (EF.modo === 'cidade') {
           parasEfetivoCidade.push(
-            par(`Guarnição Titular: ${ef.rps.map(r => r.label).join(' · ') || '—'}`),
-            ef.reforcos.length
-              ? par(`Reforço Sugerido (nível ${ef.nivelGeral}): ${ef.reforcos.join(' · ')}`)
+            par(`Guarnição Titular: ${EF.cidade.rps.join(' · ') || '—'}`),
+            EF.cidade.reforcos.length
+              ? par(`Reforço (nível ${EF.cidade.nivel}): ${EF.cidade.reforcos.join(' · ')}`)
               : par('Sem efetivo de reforço necessário para o nível identificado.')
           );
         }
@@ -3558,6 +3498,9 @@
           par('Nota: Os hotspots acima correspondem à mancha criminal visualizada no mapa geoespacial em anexo.'),
           espaco(),
         );
+
+        // Estratégia por tipo de combate (mesma da tela)
+        if (window.OPOEstrategia) children.push(...OPOEstrategia.docxBlocos({ sec, par, cel, lin, Table, WidthType, AlignmentType, shH, LT, espaco }));
 
         // Orientações
         children.push(
