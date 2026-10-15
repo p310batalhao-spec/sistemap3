@@ -841,10 +841,18 @@
     // renderizada por js/dashboard-rede-protecao.js. A barra de filtros
     // global desta página não se aplica a ela, por isso fica escondida.
     const ABA_REDE = 'rede';
+    // Aba extra "Controle de OPO" (js/dashboard-controle-opo.js) — também
+    // tem filtros próprios (OPO salva, intervalo, horário e cidades).
+    const ABA_OPO = 'opo';
+    const ABAS_PROPRIAS = [ABA_REDE, ABA_OPO];
 
     function renderAtual() {
         if (window._ABA_ATIVA === ABA_REDE) {
             if (typeof window.renderRedeProtecao === 'function') window.renderRedeProtecao();
+            return;
+        }
+        if (window._ABA_ATIVA === ABA_OPO) {
+            if (typeof window.renderControleOPO === 'function') window.renderControleOPO();
             return;
         }
         renderAba(window._ABA_ATIVA);
@@ -855,8 +863,8 @@
         document.querySelectorAll('.tab-dc-btn').forEach(b => b.classList.toggle('ativo', b.dataset.cat === cat));
         document.querySelectorAll('.aba-dc').forEach(a => a.classList.toggle('ativa', a.id === 'aba-' + cat));
         const barraFiltros = document.querySelector('.filtro-dc-bar');
-        if (barraFiltros) barraFiltros.style.display = cat === ABA_REDE ? 'none' : '';
-        if (cat === ABA_REDE) { renderAtual(); return; }
+        if (barraFiltros) barraFiltros.style.display = ABAS_PROPRIAS.includes(cat) ? 'none' : '';
+        if (ABAS_PROPRIAS.includes(cat)) { renderAtual(); return; }
         atualizarDisponibilidadeFiltros(cat);
         renderAba(cat);
     }
@@ -898,7 +906,7 @@
         }
     }
 
-    function aplicarFiltrosGlobais() { if (window._ABA_ATIVA !== ABA_REDE) renderAba(window._ABA_ATIVA); }
+    function aplicarFiltrosGlobais() { if (!ABAS_PROPRIAS.includes(window._ABA_ATIVA)) renderAba(window._ABA_ATIVA); }
     window.aplicarFiltrosGlobaisDash = aplicarFiltrosGlobais;
 
     function montarTabs() {
@@ -912,6 +920,8 @@
         });
         hTabs += '<button class="tab-dc-btn" data-cat="' + ABA_REDE + '" onclick="trocarAbaDash(\'' + ABA_REDE + '\')">🛡️ Rede de Proteção / Grupos Vulneráveis</button>';
         hAbas += '<div class="aba-dc" id="aba-' + ABA_REDE + '"><div id="conteudo-' + ABA_REDE + '"></div></div>';
+        hTabs += '<button class="tab-dc-btn" data-cat="' + ABA_OPO + '" onclick="trocarAbaDash(\'' + ABA_OPO + '\')">🎯 Controle de OPO</button>';
+        hAbas += '<div class="aba-dc" id="aba-' + ABA_OPO + '"><div id="conteudo-' + ABA_OPO + '"></div></div>';
         tabsEl.innerHTML = hTabs;
         abasEl.innerHTML = hAbas;
     }
