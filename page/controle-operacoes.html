@@ -18,7 +18,10 @@
            CONTROLE DE OPERAÇÕES — tokens de css/theme.css (var(--p3-*)),
            corretos no modo claro e no escuro.
            ══════════════════════════════════════════════════════════ */
-        main { padding: 1.25rem 1.5rem; min-width: 0; }
+        /* main com base 0 e menu sem encolher: com flex-basis "auto" o calendário
+           (largo) fazia o flex ENCOLHER o .navegacao — no hover ele não abria inteiro. */
+        main { padding: 1.25rem 1.5rem; min-width: 0; flex: 1 1 0; }
+        .pagecomplete > .navegacao { flex-shrink: 0; }
         .co-app { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 1.1rem; align-items: start; }
 
         /* Menu interno */
@@ -125,6 +128,20 @@
         .co-previa { width: 100%; height: 900px; border: 1px solid var(--p3-border); border-radius: 8px; background: #fff; }
         .co-status { font-size: .74rem; color: var(--p3-text-muted); }
 
+        .co-barra-acoes { display: flex; justify-content: space-between; align-items: center; gap: .8rem; flex-wrap: wrap; }
+        .co-barra-acoes h2 { margin: 0; font-size: 1.1rem; color: var(--p3-text); }
+        .co-barra-acoes p { margin: .15rem 0 0; font-size: .75rem; color: var(--p3-text-muted); }
+        .co-modal-largo { width: min(1100px, 100%); }
+        .co-doc-frame { width: 100%; height: 72vh; border: 1px solid var(--p3-border); border-radius: 8px; background: #fff; }
+        .co-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .7rem 1rem; }
+        .co-form label, .co-form-rot { display: flex; flex-direction: column; gap: 4px; font-size: .7rem; font-weight: 600; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+        .co-form input, .co-form select { background: var(--p3-bg); color: var(--p3-text); border: 1.5px solid var(--p3-border); border-radius: 6px; padding: 7px 9px; font-size: .82rem; text-transform: none; letter-spacing: 0; }
+        .co-form-larga { grid-column: 1 / -1; }
+        .co-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+        .co-chips label { flex-direction: row; align-items: center; gap: 5px; text-transform: none; letter-spacing: 0; font-size: .8rem; color: var(--p3-text);
+            border: 1.5px solid var(--p3-border); border-radius: 16px; padding: 4px 11px; cursor: pointer; }
+        .co-chips label:has(input:checked) { background: rgba(31,95,191,.14); border-color: #1f5fbf; }
+
         @media (max-width: 1100px) { .co-grade { grid-template-columns: 1fr; } }
         @media (max-width: 860px) {
             main { padding: 1rem; }
@@ -159,6 +176,10 @@
                 <div>
                     <!-- ── VISÃO GERAL ── -->
                     <section class="co-view ativa" id="view-geral">
+                        <div class="co-barra-acoes">
+                            <div><h2>Controle de Operações</h2><p>Operações (OPO), eventos de médio e grande porte e resultados do CAD</p></div>
+                            <button class="co-btn co-btn-pri" id="co-btn-nova">➕ Nova OPO Inteligente</button>
+                        </div>
                         <div class="co-kpis" id="co-kpis-mes"></div>
                         <div id="co-aviso-mes"></div>
                         <div class="co-grade">
@@ -233,6 +254,37 @@
     <div class="co-modal" id="co-modal"><div class="co-modal-caixa">
         <div class="co-modal-topo"><h3 id="co-modal-tit"></h3><button class="co-btn co-btn-ico" id="co-modal-fechar">✕</button></div>
         <div id="co-modal-corpo"></div>
+    </div></div>
+
+    <!-- Nova OPO Inteligente (abre page/opo_inteligente.html já preenchida e gera tudo) -->
+    <div class="co-modal" id="co-nova"><div class="co-modal-caixa">
+        <div class="co-modal-topo"><h3>➕ Nova OPO Inteligente</h3><button class="co-btn co-btn-ico" data-fechar="co-nova">✕</button></div>
+        <div id="n-evento" class="co-det-meta" style="margin-bottom:.5rem;"></div>
+        <div class="co-form">
+            <label>Escopo da análise<select id="n-escopo"><option value="cidade">Cidade específica</option><option value="bpm">Área completa da unidade</option></select></label>
+            <label id="n-bloco-cidade">Cidade<select id="n-cidade"></select></label>
+            <label>Período de análise<select id="n-periodo"><option value="7">Últimos 7 dias</option><option value="15">Últimos 15 dias</option><option value="30">Últimos 30 dias</option><option value="60">Últimos 60 dias</option><option value="90">Últimos 90 dias</option></select></label>
+            <label>Turno<select id="n-turno"><option value="">Todos</option><option value="manha">Manhã (06h–12h)</option><option value="tarde">Tarde (12h–18h)</option><option value="noite">Noite (18h–06h)</option></select></label>
+            <label class="co-form-larga">Nome da OPO<input type="text" id="n-nome" placeholder="Ex: OPO MANCHA CRIMINAL — PALMEIRA"></label>
+            <label>Execução — início<input type="date" id="n-ini"></label>
+            <label>Execução — fim<input type="date" id="n-fim"></label>
+            <label>Horário — início<input type="time" id="n-hini"></label>
+            <label>Horário — fim<input type="time" id="n-hfim"></label>
+            <div class="co-form-larga"><span class="co-form-rot">Tipos de foco da operação</span><div class="co-chips" id="n-tipos"></div></div>
+        </div>
+        <p class="co-det-meta" style="margin:.8rem 0;">A OPO Inteligente abre com estes parâmetros, analisa a mancha criminal, calcula a estratégia por tipo de foco (Python + XERIFE) e gera a OPO. Revise e clique em <strong>💾 SALVAR OPO</strong> — ela passa a aparecer aqui no calendário, com o documento para Word/PDF.</p>
+        <div style="display:flex;justify-content:flex-end;gap:.5rem;"><button class="co-btn" data-fechar="co-nova">Cancelar</button><button class="co-btn co-btn-pri" id="n-gerar">🎯 Gerar OPO Inteligente</button></div>
+    </div></div>
+
+    <!-- Documento da OPO salva -->
+    <div class="co-modal" id="co-doc"><div class="co-modal-caixa co-modal-largo">
+        <div class="co-modal-topo"><h3 id="co-doc-tit">📄 OPO</h3>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                <button class="co-btn" id="co-doc-refazer">🔁 Gerar novamente</button>
+                <button class="co-btn" id="co-doc-word" disabled>⬇ Word (.docx)</button>
+                <button class="co-btn co-btn-pri" id="co-doc-pdf" disabled>🖨 PDF</button>
+                <button class="co-btn co-btn-ico" data-fechar="co-doc">✕</button></div></div>
+        <div id="co-doc-corpo"></div>
     </div></div>
 
     <footer>
