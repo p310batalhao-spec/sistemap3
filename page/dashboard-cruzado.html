@@ -28,7 +28,9 @@
            pelo próprio Chart.js) trava o <main> no tamanho mínimo do
            conteúdo — e isso "rouba" o espaço do menu lateral, impedindo o
            .navegacao de expandir no hover (o menu ficava travado em 70px). */
-        main { padding: 1.25rem 1.75rem; min-width: 0; }
+        main { padding: 1.25rem 1.75rem; min-width: 0; flex: 1 1 0; }
+        /* Menu lateral nunca encolhe (com flex-basis "auto" no main o hover não abria inteiro). */
+        .pagecomplete > .navegacao { flex-shrink: 0; }
         .graficos-grid-dc, .grafico-card-dc, .grafico-wrap-dc { min-width: 0; }
         .grafico-wrap-dc { overflow: hidden; }
 
