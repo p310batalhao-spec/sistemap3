@@ -270,9 +270,11 @@
     // ── Fluxo principal ─────────────────────────────────────────────
     function selecionados() { return [...document.querySelectorAll('#opo-est-tipos input:checked')].map(i => i.value); }
 
-    async function gerar() {
+    // opts.auto = disparado sozinho ao fim de "Analisar área": sem tipo
+    // selecionado não faz nada (nem alerta).
+    async function gerar(opts = {}) {
         const tipos = selecionados();
-        if (!tipos.length) { alert('Selecione ao menos um tipo de combate.'); return; }
+        if (!tipos.length) { if (!opts.auto) alert('Selecione ao menos um tipo de foco.'); return; }
         const btn = document.getElementById('opo-est-btn'), out = document.getElementById('opo-est-resultado');
         const esc0 = escopoAtualOPO();
         if (typeof escopoAtual !== 'undefined' && escopoAtual === 'cidade' && !esc0.cidade) { alert('Selecione a cidade da análise.'); return; }
@@ -293,7 +295,7 @@
             console.error('[opo-estrategia]', e);
             out.innerHTML = `<div style="color:#ff8a80;font-size:12px;">Não foi possível gerar a estratégia: ${esc(e.message)}</div>`;
         } finally {
-            btn.disabled = false; btn.textContent = '🎯 GERAR ESTRATÉGIA (XERIFE + PYTHON)';
+            btn.disabled = false; btn.textContent = '🎯 RECALCULAR ESTRATÉGIA (XERIFE + PYTHON)';
         }
     }
 
@@ -403,21 +405,31 @@
         ];
     }
 
+    // Os chips dos tipos de foco ficam nos PARÂMETROS DE ANÁLISE (#opo-est-tipos-host,
+    // visíveis desde o início); o painel #painel-estrategia (após a análise) tem
+    // o botão de recalcular e o resultado.
     function montarPainel() {
         const el = document.getElementById('painel-estrategia');
         if (!el || el.dataset.montado) return;
         el.dataset.montado = '1';
-        el.innerHTML = `
-            <h3>🎯 Estratégia por tipo de combate</h3>
-            <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0 0 8px;">Escolha os crimes a combater. O Python calcula a análise preditiva (tendência, previsão, horários e locais de risco) e o XERIFE redige a estratégia repressiva e preventiva.</p>
-            <div id="opo-est-tipos" class="opo-est-tipos">
+        const chips = `<div id="opo-est-tipos" class="opo-est-tipos">
                 ${TIPOS.map(t => `<label><input type="checkbox" value="${t.id}"${t.padrao ? ' checked' : ''}> ${t.nome}</label>`).join('')}
-            </div>
-            <button class="btn-analisar" id="opo-est-btn" type="button" style="margin-top:8px;">🎯 GERAR ESTRATÉGIA (XERIFE + PYTHON)</button>
+            </div>`;
+        const host = document.getElementById('opo-est-tipos-host');
+        if (host) host.innerHTML = chips;
+        el.innerHTML = `
+            <h3>🎯 Estratégia por tipo de foco</h3>
+            <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0 0 8px;">${host ? 'Tipos de foco escolhidos nos parâmetros de análise.' : 'Escolha os crimes a combater.'} O Python calcula a análise preditiva (tendência, previsão, horários e locais de risco) e o XERIFE redige a estratégia repressiva e preventiva.</p>
+            ${host ? '' : chips}
+            <button class="btn-analisar" id="opo-est-btn" type="button" style="margin-top:8px;">🎯 RECALCULAR ESTRATÉGIA (XERIFE + PYTHON)</button>
             <div id="opo-est-resultado" style="margin-top:10px;"></div>`;
-        document.getElementById('opo-est-btn').addEventListener('click', gerar);
+        document.getElementById('opo-est-btn').addEventListener('click', () => gerar());
+    }
+    function definirTipos(lista) {
+        const set = new Set((lista || []).map(t => String(t).toUpperCase()));
+        document.querySelectorAll('#opo-est-tipos input').forEach(i => { i.checked = set.has(i.value); });
     }
 
-    global.OPOEstrategia = { montarPainel, gerar, htmlSecao, docxBlocos, obterResultado: () => resultado, tiposSelecionados: () => (resultado ? resultado.tiposSelecionados : selecionados()), calcularLocal };
+    global.OPOEstrategia = { montarPainel, gerar, definirTipos, TIPOS, htmlSecao, docxBlocos, obterResultado: () => resultado, tiposSelecionados: () => (resultado ? resultado.tiposSelecionados : selecionados()), calcularLocal };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montarPainel); else montarPainel();
 })(window);
