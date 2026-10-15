@@ -57,23 +57,21 @@
     async function carregarOpos() {
         const d = await fetch(`${DB}/cartoes_programa.json`).then(r => r.ok ? r.json() : null);
         return Object.entries(d || {}).filter(([, o]) => o && o.tipo === 'opo').map(([id, o]) => {
-            const ex = o.execucao || {};
+            // Período: execução informada → texto da vigência ("15 a 18/10/2026") →
+            // estimado. No calendário a OPO ocupa todos os dias do período; a
+            // estimada (sem datas) aparece só no dia em que foi salva — a validade
+            // de 1 mês pintaria o mês inteiro.
             const p = ControleOPO.periodoPadrao(o);
-            const ini = parseData(p.ini), fim = parseData(p.fim);
-            // No calendário: dias de execução informados; OPO antiga (sem
-            // execução) aparece só no dia em que foi salva — a vigência de
-            // 1 mês pintaria o mês inteiro.
-            let dias;
-            if (parseData(ex.dataIni)) {
-                const a = parseData(ex.dataIni), b = parseData(ex.dataFim) || a;
-                dias = [];
-                for (let d = new Date(a); d <= b && dias.length < 62; d.setDate(d.getDate() + 1)) dias.push(iso(d));
-            } else dias = [iso(ini)];
+            const ini = parseData(p.ini), fimPlan = parseData(p.fimPlanejado);
+            const dias = [];
+            if (p.fonte === 'estimado') dias.push(iso(ini));
+            else for (let x = new Date(ini); x <= fimPlan && dias.length < 62; x.setDate(x.getDate() + 1)) dias.push(iso(x));
             return {
                 tipo: 'opo', id, chave: 'opo_' + chaveFb(id), raw: o,
-                nome: o.nome || ('OPO ' + (o.cidade || '')), dias, ini, fim,
+                nome: o.nome || ('OPO ' + (o.cidade || '')), dias, ini, fim: p.fonte === 'estimado' ? parseData(p.fim) : fimPlan,
                 hIni: p.hIni, hFim: p.hFim, cidades: ControleOPO.cidadesDaOpo(o),
-                semExecucao: !parseData(ex.dataIni), tiposCombate: o.tiposCombate || [],
+                fonte: p.fonte, semExecucao: p.fonte === 'estimado', tiposCombate: o.tiposCombate || [],
+                eventoId: o.eventoId || null, eventoNome: o.eventoNome || null, temDocumento: !!o.temDocumento,
                 detalhe: [o.criadoPor && 'Criada por ' + o.criadoPor, o.vigenciaTexto && 'Vigência: ' + o.vigenciaTexto].filter(Boolean).join(' · '),
             };
         });
@@ -203,7 +201,9 @@
     }
     function cardItem(it) {
         const d = it.ini;
-        const tag = it.tipo === 'opo' ? `<span class="co-tag" style="background:${COR.opo}">OPO</span>` : `<span class="co-tag" style="background:${COR[it.porte]}">${it.porte === 'GRANDE' ? 'GRANDE' : 'MÉDIO'}</span>`;
+        const tag = (it.tipo === 'opo' ? `<span class="co-tag" style="background:${COR.opo}">OPO</span>` : `<span class="co-tag" style="background:${COR[it.porte]}">${it.porte === 'GRANDE' ? 'GRANDE' : 'MÉDIO'}</span>`)
+            + (it.tipo === 'opo' && it.eventoId ? '<span class="co-tag" style="background:#6d4c41">EVENTO</span>' : '')
+            + (it.tipo === 'evento' && opoDoEvento(it).length ? '<span class="co-tag" style="background:#1f5fbf">COM OPO</span>' : '');
         const horario = it.hIni ? `${it.hIni}${it.hFim ? '–' + it.hFim : ''}` : 'dia inteiro';
         const periodo = it.tipo === 'opo' && !it.semExecucao && it.dias.length > 1 ? `${br(parseData(it.dias[0]))} a ${br(parseData(it.dias[it.dias.length - 1]))} · ` : '';
         return `<div class="co-item" data-dia="${it.dias[0]}"><div class="co-item-data"><b>${String(d.getDate()).padStart(2, '0')}</b><small>${MESES[d.getMonth()]}</small></div>
@@ -227,7 +227,11 @@
         const itens = ITENS.filter(it => it.dias.includes(dia));
         document.getElementById('co-modal-tit').textContent = `📅 ${parseData(dia).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}`;
         const corpo = document.getElementById('co-modal-corpo');
-        corpo.innerHTML = itens.length ? itens.map(detalheItem).join('') : '<div class="co-vazio">Nenhuma operação ou evento de médio/grande porte neste dia.</div>';
+        corpo.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:.6rem;"><button class="co-btn co-btn-pri" data-nova-dia="${dia}">➕ Nova OPO Inteligente neste dia</button></div>`
+            + (itens.length ? itens.map(detalheItem).join('') : '<div class="co-vazio">Nenhuma operação ou evento de médio/grande porte neste dia.</div>');
+        corpo.querySelector('[data-nova-dia]').addEventListener('click', () => abrirNovaOPO({ dataIni: dia, dataFim: dia }));
+        corpo.querySelectorAll('[data-nova-evento]').forEach(b => b.addEventListener('click', () => abrirNovaOPO(prefillEvento(ITENS.find(x => x.chave === b.dataset.novaEvento)))));
+        corpo.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => abrirDocumento(ITENS.find(x => x.chave === b.dataset.doc))));
         corpo.querySelectorAll('[data-computar]').forEach(b => b.addEventListener('click', async () => {
             const it = ITENS.find(x => x.chave === b.dataset.computar);
             b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
@@ -244,7 +248,9 @@
         const cor = it.tipo === 'opo' ? COR.opo : COR[it.porte];
         const horario = it.hIni ? `${it.hIni}${it.hFim ? ' às ' + it.hFim : ''}` : 'dia inteiro';
         const meta = [
-            it.tipo === 'opo' ? `Execução: ${it.semExecucao ? `não informada — resultados de ${br(it.ini)} a ${br(it.fim)} (criação → validade)` : `${br(it.ini)} a ${br(it.fim)}`}` : `Local: ${esc(it.local || '—')} · Público estimado: ${fmtN(it.publico)} pessoas`,
+            it.tipo === 'opo' ? `Execução: ${it.semExecucao ? `não informada — resultados de ${br(it.ini)} a ${br(it.fim)} (criação → validade)` : `${br(it.ini)} a ${br(it.fim)}${it.fonte === 'vigencia' ? ' (lida da vigência)' : ''}`}` : `Local: ${esc(it.local || '—')} · Público estimado: ${fmtN(it.publico)} pessoas`,
+            it.tipo === 'opo' && it.eventoId ? `🔗 OPO do evento: <strong>${esc(it.eventoNome || it.eventoId)}</strong>` : '',
+            it.tipo === 'evento' && opoDoEvento(it).length ? `🔗 OPO(s) deste evento: ${opoDoEvento(it).map(o => `<strong>${esc(o.nome)}</strong>`).join(', ')}` : '',
             `Horário: ${horario} · Cidades: ${esc(it.cidades.join(', ') || 'todas')}`,
             it.tiposCombate && it.tiposCombate.length ? `Tipos de combate: ${esc(it.tiposCombate.join(', '))}` : '',
             it.guarnicoes || it.viaturas ? `Guarnições: ${esc(it.guarnicoes || '—')} · Viaturas: ${esc(it.viaturas || '—')}` : '',
@@ -269,7 +275,10 @@
             <div class="co-det-meta">${meta}</div>${kp}
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
+                ${it.tipo === 'opo' ? `<button class="co-btn" data-doc="${esc(it.chave)}">📄 Ver OPO (Word / PDF)</button>` : ''}
                 ${it.tipo === 'opo' ? `<button class="co-btn" data-exec="${esc(it.chave)}">📅 Período de execução</button>` : ''}
+                ${it.tipo === 'evento' ? `<button class="co-btn co-btn-pri" data-nova-evento="${esc(it.chave)}">🎯 Gerar OPO deste evento</button>` : ''}
+                ${it.tipo === 'evento' ? opoDoEvento(it).map(o => `<button class="co-btn" data-doc="${esc(o.chave)}">📄 ${esc(o.nome)}</button>`).join('') : ''}
             </div>${ex}</div>`;
     }
 
@@ -290,6 +299,122 @@
         mesAtual = new Date(parseData(execucao.dataIni).getFullYear(), parseData(execucao.dataIni).getMonth(), 1);
         renderGeral();
         abrirDia(execucao.dataIni);
+    }
+
+    // ── Integração com a OPO Inteligente e com Eventos ──────────────
+    const opoDoEvento = ev => ITENS.filter(o => o.tipo === 'opo' && o.eventoId && String(o.eventoId) === String(ev.id));
+    const FOCOS = [['MVI', 'MVI', 1], ['CVLI', 'CVLI', 1], ['CVP', 'CVP', 1], ['VD', 'Violência Doméstica', 0], ['PERTURBACAO', 'Perturbação do Sossego', 0], ['ARMAS', 'Armas', 0], ['DROGAS', 'Drogas', 0]];
+    let CIDADES_CAD = null;
+    async function cidadesCAD() {
+        if (CIDADES_CAD) return CIDADES_CAD;
+        const m = new Map();
+        (await ControleOPO.carregarNo('geral')).forEach(g => { const c = val(g.CIDADE); if (c && !m.has(nrm(c))) m.set(nrm(c), c.toUpperCase()); });
+        return (CIDADES_CAD = [...m.values()].sort((a, b) => a.localeCompare(b, 'pt-BR')));
+    }
+    // Evento → OPO: cidade, data, horário do evento; focos típicos de evento.
+    function prefillEvento(ev) {
+        return {
+            escopo: 'cidade', cidade: ev.cidades[0] || '', dataIni: iso(ev.ini), dataFim: iso(ev.ini),
+            horaIni: ev.hIni, horaFim: ev.hFim, nome: `OPO — ${ev.nome}${ev.cidades[0] ? ' — ' + ev.cidades[0] : ''}`.toUpperCase(),
+            tipos: ['CVLI', 'CVP', 'PERTURBACAO', 'DROGAS', 'ARMAS'], evento: ev.id, eventoNome: ev.nome,
+        };
+    }
+    // Registro salvo → mesmos parâmetros (gerar o documento de novo).
+    function prefillOpo(it) {
+        const o = it.raw || {};
+        return {
+            escopo: o.escopo === 'bpm' ? 'bpm' : 'cidade', cidade: it.cidades[0] || '', periodo: String(o.periodoDias || 30),
+            turno: o.turno || '', nome: it.nome, dataIni: iso(it.ini), dataFim: iso(it.semExecucao ? it.ini : it.fim),
+            horaIni: it.hIni, horaFim: it.hFim, tipos: it.tiposCombate.length ? it.tiposCombate : ['MVI', 'CVLI', 'CVP'],
+            evento: it.eventoId || '', eventoNome: it.eventoNome || '',
+        };
+    }
+
+    async function abrirNovaOPO(pref = {}) {
+        const m = document.getElementById('co-nova');
+        const f = id => m.querySelector('#' + id);
+        f('n-cidade').innerHTML = '<option value="">⏳ Carregando cidades…</option>';
+        f('n-escopo').value = pref.escopo || 'cidade';
+        f('n-periodo').value = pref.periodo || '30';
+        f('n-turno').value = pref.turno || '';
+        f('n-nome').value = pref.nome || '';
+        f('n-ini').value = pref.dataIni || iso(new Date());
+        f('n-fim').value = pref.dataFim || pref.dataIni || iso(new Date());
+        f('n-hini').value = pref.horaIni || '';
+        f('n-hfim').value = pref.horaFim || '';
+        const tipos = new Set(pref.tipos || FOCOS.filter(x => x[2]).map(x => x[0]));
+        f('n-tipos').innerHTML = FOCOS.map(([id, nome]) => `<label><input type="checkbox" value="${id}"${tipos.has(id) ? ' checked' : ''}> ${nome}</label>`).join('');
+        m.dataset.evento = pref.evento || '';
+        m.dataset.eventoNome = pref.eventoNome || '';
+        f('n-evento').innerHTML = pref.evento ? `🔗 Vinculada ao evento <strong>${esc(pref.eventoNome)}</strong>` : '';
+        f('n-bloco-cidade').style.display = f('n-escopo').value === 'bpm' ? 'none' : '';
+        m.classList.add('aberto');
+        const lista = await cidadesCAD();
+        const alvo = nrm(pref.cidade);
+        f('n-cidade').innerHTML = '<option value="">— Selecione a cidade —</option>' + lista.map(c => `<option value="${esc(c)}"${nrm(c) === alvo ? ' selected' : ''}>${esc(c)}</option>`).join('');
+    }
+    function gerarOPOdoFormulario() {
+        const m = document.getElementById('co-nova');
+        const f = id => m.querySelector('#' + id).value;
+        const tipos = [...m.querySelectorAll('#n-tipos input:checked')].map(i => i.value);
+        if (f('n-escopo') === 'cidade' && !f('n-cidade')) { alert('Selecione a cidade.'); return; }
+        if (!tipos.length) { alert('Selecione ao menos um tipo de foco.'); return; }
+        if (f('n-fim') && f('n-fim') < f('n-ini')) { alert('A data final é anterior à inicial.'); return; }
+        const q = new URLSearchParams({ opo: '1', auto: '1', origem: 'controle', escopo: f('n-escopo'), cidade: f('n-escopo') === 'bpm' ? '' : f('n-cidade'),
+            periodo: f('n-periodo'), turno: f('n-turno'), nome: f('n-nome'), dataIni: f('n-ini'), dataFim: f('n-fim') || f('n-ini'),
+            horaIni: f('n-hini'), horaFim: f('n-hfim'), tipos: tipos.join(','), evento: m.dataset.evento || '', eventoNome: m.dataset.eventoNome || '' });
+        [...q.keys()].forEach(k => { if (!q.get(k)) q.delete(k); });
+        location.href = 'opo_inteligente.html?' + q.toString();
+    }
+
+    // ── Documento da OPO salva (gravado pela OPO Inteligente ao salvar) ──
+    let DOC_ATUAL = null;
+    async function abrirDocumento(it) {
+        const m = document.getElementById('co-doc');
+        document.getElementById('co-doc-tit').textContent = '📄 ' + it.nome;
+        const corpo = document.getElementById('co-doc-corpo');
+        corpo.innerHTML = '<div class="co-vazio">⏳ Carregando documento…</div>';
+        document.getElementById('co-doc-word').disabled = true;
+        document.getElementById('co-doc-pdf').disabled = true;
+        m.classList.add('aberto');
+        DOC_ATUAL = await fetch(`${DB}/opo_documentos/${encodeURIComponent(it.id)}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
+        document.getElementById('co-doc-refazer').onclick = () => { m.classList.remove('aberto'); abrirNovaOPO(prefillOpo(it)); };
+        if (!DOC_ATUAL || !DOC_ATUAL.html) {
+            corpo.innerHTML = `<div class="co-aviso">Esta OPO foi salva antes de o sistema guardar o documento (ou sem gerar a OPO em tela).
+                Use <strong>“🔁 Gerar novamente”</strong> para abrir a OPO Inteligente com os mesmos parâmetros, gerar o documento e salvar.</div>
+                <div class="co-det-meta" style="margin-top:.7rem;">Cidades: ${esc(it.cidades.join(', ') || '—')} · Período de análise: ${esc((it.raw || {}).periodoDias || '—')} dias ·
+                ${(it.raw || {}).alocacoes ? (it.raw.alocacoes.map(a => esc(a.cidade + ': ' + a.guarnicao)).join('<br>')) : ''}</div>`;
+            return;
+        }
+        corpo.innerHTML = '<iframe class="co-doc-frame" id="co-doc-frame" title="Documento da OPO"></iframe>';
+        document.getElementById('co-doc-frame').srcdoc = DOC_ATUAL.html;
+        document.getElementById('co-doc-word').disabled = !DOC_ATUAL.docxBase64;
+        document.getElementById('co-doc-pdf').disabled = false;
+    }
+    async function baixarWordDoc() {
+        if (!DOC_ATUAL || !DOC_ATUAL.docxBase64) return;
+        const nome = DOC_ATUAL.docxNome || 'OPO.docx';
+        const mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        if (window.pywebview) { // .exe não baixa arquivo → navegador padrão
+            try { await abrirNoNavegador({ tipo: 'arquivo', nome, base64: DOC_ATUAL.docxBase64, mime }); } catch (e) { alert('Não foi possível baixar: ' + e.message); }
+            return;
+        }
+        const b = atob(DOC_ATUAL.docxBase64), u8 = new Uint8Array(b.length);
+        for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([u8], { type: mime })); a.download = nome;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    }
+    async function pdfDoc() {
+        if (!DOC_ATUAL || !DOC_ATUAL.html) return;
+        if (window.pywebview) {
+            const html = DOC_ATUAL.html.replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},900);};<\/script></body>');
+            try { await abrirNoNavegador({ tipo: 'impressao', html }); } catch (e) { alert('Não foi possível abrir: ' + e.message); }
+            return;
+        }
+        const fr = document.getElementById('co-doc-frame');
+        fr.contentWindow.focus(); fr.contentWindow.print(); // "Salvar como PDF" na janela de impressão
     }
 
     // ── Estatísticas ────────────────────────────────────────────────
@@ -500,13 +625,24 @@
         document.getElementById('f-relatorio').onclick = () => mostrar('relatorio');
         document.getElementById('r-filtros').onclick = () => mostrar('estatisticas');
         document.getElementById('r-imprimir').onclick = imprimir;
+        document.getElementById('co-btn-nova').onclick = () => abrirNovaOPO();
+        document.getElementById('n-escopo').onchange = e => { document.getElementById('n-bloco-cidade').style.display = e.target.value === 'bpm' ? 'none' : ''; };
+        document.getElementById('n-gerar').onclick = gerarOPOdoFormulario;
+        document.getElementById('co-doc-word').onclick = baixarWordDoc;
+        document.getElementById('co-doc-pdf').onclick = pdfDoc;
+        document.querySelectorAll('[data-fechar]').forEach(b => b.addEventListener('click', () => document.getElementById(b.dataset.fechar).classList.remove('aberto')));
+        ['co-nova', 'co-doc'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.currentTarget.classList.remove('aberto'); }));
         document.querySelectorAll('#btn-tema').forEach(b => b.addEventListener('click', () => setTimeout(() => {
             if (document.getElementById('view-estatisticas').classList.contains('ativa')) renderEstatisticas();
         }, 60)));
 
         try {
             await carregarTudo();
+            // ?dia=AAAA-MM-DD (volta da OPO Inteligente / link direto) → mês e dia abertos
+            const dia = new URLSearchParams(location.search).get('dia');
+            if (dia && parseData(dia)) { const d = parseData(dia); mesAtual = new Date(d.getFullYear(), d.getMonth(), 1); }
             renderGeral();
+            if (dia && parseData(dia)) abrirDia(dia);
         } catch (e) {
             console.error('[controle-operacoes]', e);
             document.getElementById('co-lista').innerHTML = `<div class="co-vazio">Erro ao carregar: ${esc(e.message)}</div>`;
