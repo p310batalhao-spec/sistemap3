@@ -12,6 +12,7 @@
     ?token=… (ver tools/atualizador-local/app.py). O token vale UMA vez.
       tipo "impressao"    → { html }                    — relatório pronto pra imprimir/salvar em PDF
       tipo "apresentacao" → { nome, pptxBase64, titulo? } — PowerPoint (Rede de Proteção ou Indicadores do Dashboard Cruzado): pré-visualiza e baixa
+      tipo "arquivo"      → { nome, base64, mime }        — download de um arquivo pronto (ex.: Word da OPO salva)
 -->
 <style>
     body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #1d1028; color: #fff; }
@@ -70,6 +71,27 @@
     if (dados.tipo === 'impressao') {
         // Já traz o próprio window.print() no onload.
         document.open(); document.write(dados.html); document.close();
+        return;
+    }
+
+    // tipo "arquivo" → { nome, base64, mime } — ex.: Word da OPO salva (Controle de Operações)
+    if (dados.tipo === 'arquivo' && dados.base64) {
+        const b = atob(dados.base64), u8 = new Uint8Array(b.length);
+        for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+        const arq = new Blob([u8], { type: dados.mime || 'application/octet-stream' });
+        const nomeArq = dados.nome || 'arquivo';
+        const baixarArq = () => {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(arq); a.download = nomeArq;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        };
+        document.title = nomeArq;
+        cont.innerHTML = `<div class="pronto"><div class="pronto-icone">✅</div><h2>Arquivo pronto</h2>
+            <p class="pronto-sub">${esc(nomeArq)}</p><button class="pronto-btn" id="btn-arq">⬇ Baixar</button>
+            <p class="pronto-aviso">O download começa automaticamente; se não começar, clique no botão.</p></div>`;
+        document.getElementById('btn-arq').addEventListener('click', baixarArq);
+        baixarArq();
         return;
     }
 
