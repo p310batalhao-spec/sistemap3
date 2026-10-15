@@ -1274,6 +1274,7 @@
 <body>
     <script src="../js/core/session.js"></script>
     <script src="../js/cumprimento-core.js"></script>
+    <script src="../js/dashboard-controle-opo.js"></script>
     <script src="../js/opo-estrategia.js"></script>
 
   <!-- ═══════ CABEÇALHO ═══════ -->
@@ -1362,7 +1363,7 @@
           <button id="btn-cluster" onclick="alternarMapa('cluster')">📍 CLUSTER</button>
         </div>
 
-        <label class="campo-label" style="margin-top:14px;">Tipo de Crime</label>
+        <label class="campo-label" style="margin-top:14px;">Mancha criminal no mapa</label>
         <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
           <label
             style="display:flex;align-items:center;gap:5px;cursor:pointer;color:rgba(255,255,255,.7);font-size:12px;">
@@ -1373,6 +1374,10 @@
             <input type="checkbox" id="chk-cvli" checked style="width:auto;padding:0;"> CVLI
           </label>
         </div>
+
+        <label class="campo-label" style="margin-top:14px;">Tipos de foco da operação</label>
+        <div id="opo-est-tipos-host" style="margin-top:4px;"></div>
+        <small style="display:block;color:rgba(255,255,255,.45);font-size:10px;margin:4px 0 2px;">Ao analisar, o Python calcula a análise preditiva de cada foco e o XERIFE redige a estratégia (entra na OPO e no Word).</small>
 
         <button class="btn-analisar" id="btn-analisar" onclick="executarAnalise()">
           🔍 ANALISAR ÁREA
@@ -2511,6 +2516,7 @@
       renderTatica(tatica, hotspots);
       document.getElementById('painel-tatica').style.display = 'block';
       document.getElementById('painel-estrategia').style.display = 'block';
+      window._estrategiaPromise = window.OPOEstrategia ? OPOEstrategia.gerar({ auto: true }) : Promise.resolve();
 
       // ── Gerar OPO ──
       document.getElementById('painel-gerar').style.display = 'block';
@@ -3191,12 +3197,9 @@
                 // Controle de OPO (Dashboard Cruzado → aba "Controle de OPO")
                 nome: (document.getElementById('inp-nome-opo')?.value || '').trim() || null,
                 vigenciaTexto: (document.getElementById('inp-vig-ini')?.value || '').trim() || null,
-                execucao: {
-                    dataIni: document.getElementById('inp-exec-ini')?.value || criadoEm.slice(0, 10),
-                    dataFim: document.getElementById('inp-exec-fim')?.value || document.getElementById('inp-exec-ini')?.value || null,
-                    horaIni: document.getElementById('inp-hora-ini')?.value || null,
-                    horaFim: document.getElementById('inp-hora-fim')?.value || null,
-                },
+                execucao: periodoExecucaoOPO(criadoEm),
+                eventoId: window._OPO_EVENTO ? window._OPO_EVENTO.id : null,
+                eventoNome: window._OPO_EVENTO ? window._OPO_EVENTO.nome : null,
                 cidades: escopo === 'bpm' ? alocacoes.map(a => a.cidade).filter(Boolean) : [cidade].filter(Boolean),
                 tiposCombate: window.OPOEstrategia ? OPOEstrategia.tiposSelecionados() : [],
             };
@@ -3205,8 +3208,24 @@
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
             });
             if (!res.ok) throw new Error('Falha ao gravar no Firebase');
+            const { name: opoId } = await res.json();
+
+            // Documento da OPO (HTML da tela + Word) — aberto/baixado depois pelo
+            // Controle de Operações ("📄 Ver OPO"). Falha aqui não desfaz o salvamento.
+            try {
+                if (btn) btn.textContent = '⏳ Salvando documento...';
+                const docOPO = await montarDocumentoOPO(payload.nome || 'OPO');
+                const r2 = await fetch(`${dbUrl}/opo_documentos/${opoId}.json`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(docOPO),
+                });
+                if (r2.ok) await fetch(`${dbUrl}/cartoes_programa/${opoId}/temDocumento.json`, { method: 'PUT', body: 'true' });
+            } catch (e) { console.warn('[OPO] documento não salvo:', e); }
 
             if (btn) btn.textContent = '✅ Salvo!';
+            if (window._OPO_ORIGEM === 'controle' && confirm('OPO salva. Voltar ao Controle de Operações?')) {
+                location.href = 'controle-operacoes.html?dia=' + encodeURIComponent(payload.execucao.dataIni || '');
+                return;
+            }
             setTimeout(() => { if (btn) { btn.disabled = false; btn.textContent = textoOriginal || '💾 SALVAR OPO'; } }, 3000);
         } catch (err) {
             console.error(err);
@@ -3215,7 +3234,7 @@
         }
     }
 
-    async function baixarDocx() {
+    async function baixarDocx(opts = {}) {
       if (!dadosAnalise) { alert('Gere a OPO primeiro.'); return; }
 
       const btn = document.getElementById('btn-docx');
@@ -3541,6 +3560,7 @@
 
         const blob = await Packer.toBlob(doc);
         const nomeArq = `OPO_${escopoLabel.replace(/[^a-zA-Z0-9]/g, '_').replace(/__+/g, '_')}_${dataDoc.replace(/\//g, '-')}.docx`;
+        if (opts.retornarBlob) return { blob, nomeArq };
         saveAs(blob, nomeArq);
 
       } catch (err) {
@@ -3821,10 +3841,112 @@
     }
 
 
+    // ══════════════════════════════════════════════════════════
+    //  PERÍODO DE EXECUÇÃO — campos de data → texto da vigência → hoje
+    //  (o calendário do Controle de Operações usa esse período)
+    // ══════════════════════════════════════════════════════════
+    const isoDataOPO = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    function periodoExecucaoOPO(criadoEm) {
+      const v = id => document.getElementById(id)?.value || '';
+      let ini = v('inp-exec-ini'), fim = v('inp-exec-fim');
+      if (!ini && window.ControleOPO) {
+        const p = ControleOPO.parseVigencia(v('inp-vig-ini'), new Date());
+        if (p) { ini = isoDataOPO(p.ini); fim = isoDataOPO(p.fim); }
+      }
+      ini = ini || String(criadoEm || new Date().toISOString()).slice(0, 10);
+      return { dataIni: ini, dataFim: fim && fim >= ini ? fim : ini, horaIni: v('inp-hora-ini') || null, horaFim: v('inp-hora-fim') || null };
+    }
+    // Ao digitar a vigência ("15 a 18/10/2026"), preenche as datas de execução vazias.
+    function sincronizarVigenciaExecucao() {
+      const vig = document.getElementById('inp-vig-ini');
+      if (!vig || !window.ControleOPO) return;
+      vig.addEventListener('change', () => {
+        const p = ControleOPO.parseVigencia(vig.value, new Date());
+        if (!p) return;
+        const ini = document.getElementById('inp-exec-ini'), fim = document.getElementById('inp-exec-fim');
+        if (ini && !ini.value) ini.value = isoDataOPO(p.ini);
+        if (fim && !fim.value) fim.value = isoDataOPO(p.fim);
+      });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  DOCUMENTO SALVO — HTML da OPO em tela (com o estilo da página)
+    //  + o mesmo Word do botão "BAIXAR COMO WORD"
+    // ══════════════════════════════════════════════════════════
+    async function montarDocumentoOPO(nome) {
+      const cont = document.getElementById('conteudo-opo');
+      if (!cont.innerHTML.trim() || cont.style.display === 'none') {
+        gerarOPO();
+        await new Promise(r => setTimeout(r, 2500)); // mapas da OPO carregarem os blocos
+      }
+      const clone = cont.cloneNode(true);
+      clone.querySelectorAll('.leaflet-control-container').forEach(e => e.remove());
+      const css = [...document.querySelectorAll('style')].map(e => e.textContent).join('\n');
+      const html = `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><base href="${location.href}"><title>${String(nome).replace(/</g, '&lt;')}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>${css}</style>
+<style>html,body{background:#fff!important;color:#000!important;height:auto!important;overflow:auto!important;margin:0}body{padding:12px}#conteudo-opo{display:block!important}</style>
+</head><body><div id="conteudo-opo">${clone.innerHTML}</div></body></html>`;
+      let docxBase64 = null, docxNome = null;
+      const r = await baixarDocx({ retornarBlob: true });
+      if (r && r.blob) {
+        docxNome = r.nomeArq;
+        docxBase64 = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(r.blob); });
+      }
+      return { nome, html, docxBase64, docxNome, criadoEm: new Date().toISOString() };
+    }
+
+    // ══════════════════════════════════════════════════════════
+    //  ABERTURA JÁ PREENCHIDA — Controle de Operações e Eventos
+    //  opo_inteligente.html?opo=1&escopo=cidade|bpm&cidade=&periodo=&turno=
+    //    &nome=&vigencia=&dataIni=&dataFim=&horaIni=&horaFim=&tipos=MVI,CVLI
+    //    &evento=ID&eventoNome=&origem=controle|eventos&auto=1
+    // ══════════════════════════════════════════════════════════
+    async function aplicarParametrosURL() {
+      const q = new URLSearchParams(location.search);
+      if (!q.has('opo')) return;
+      const g = k => (q.get(k) || '').trim();
+      window._OPO_ORIGEM = g('origem') || null;
+      if (g('evento')) window._OPO_EVENTO = { id: g('evento'), nome: g('eventoNome') || g('nome') };
+      setEscopo(g('escopo') === 'bpm' ? 'bpm' : 'cidade');
+      if (g('cidade')) {
+        const sel = document.getElementById('sel-cidade');
+        const alvo = normalizarCidade(g('cidade'));
+        const opt = [...sel.options].find(o => normalizarCidade(o.value) === alvo);
+        if (opt) sel.value = opt.value;
+      }
+      if (g('periodo')) document.getElementById('sel-periodo').value = g('periodo');
+      if (['manha', 'tarde', 'noite'].includes(g('turno'))) setTurno(g('turno'));
+      const set = (id, v) => { const el = document.getElementById(id); if (el && v) el.value = v; };
+      set('inp-nome-opo', g('nome'));
+      set('inp-exec-ini', g('dataIni'));
+      set('inp-exec-fim', g('dataFim') || g('dataIni'));
+      set('inp-hora-ini', g('horaIni'));
+      set('inp-hora-fim', g('horaFim'));
+      const br = v => v ? v.split('-').reverse().join('/') : '';
+      set('inp-vig-ini', g('vigencia') || (g('dataIni') ? (g('dataFim') && g('dataFim') !== g('dataIni') ? `${br(g('dataIni'))} a ${br(g('dataFim'))}` : br(g('dataIni'))) : ''));
+      if (g('tipos') && window.OPOEstrategia) OPOEstrategia.definirTipos(g('tipos').split(','));
+      if (g('auto') !== '1') return;
+      if (escopoAtual === 'cidade' && !document.getElementById('sel-cidade').value) {
+        alert('A cidade "' + g('cidade') + '" não tem ocorrências na base — selecione a cidade e clique em ANALISAR ÁREA.');
+        return;
+      }
+      // Analisa → espera a estratégia (Python + XERIFE) → gera a OPO completa.
+      window._estrategiaPromise = null;
+      executarAnalise();
+      for (let i = 0; i < 300 && !window._estrategiaPromise; i++) await new Promise(r => setTimeout(r, 100));
+      try { await window._estrategiaPromise; } catch (e) { /* estratégia é opcional */ }
+      // Deixa o mapa de calor terminar de desenhar antes de trocar para a aba da
+      // OPO (com o mapa oculto o leaflet.heat falha com canvas de largura 0).
+      await new Promise(r => setTimeout(r, 1500));
+      gerarOPO();
+    }
+
     //  INICIALIZAÇÃO — carrega banco ao abrir a página
     // ══════════════════════════════════════════════════════════
-    document.addEventListener('DOMContentLoaded', () => {
-      carregarBancoDados();
+    document.addEventListener('DOMContentLoaded', async () => {
+      sincronizarVigenciaExecucao();
+      await carregarBancoDados();
+      aplicarParametrosURL();
     });
   </script>
 <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
