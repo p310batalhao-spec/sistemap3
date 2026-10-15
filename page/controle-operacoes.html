@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Controle de Operações</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <style>
+        /* ══════════════════════════════════════════════════════════
+           CONTROLE DE OPERAÇÕES — tokens de css/theme.css (var(--p3-*)),
+           corretos no modo claro e no escuro.
+           ══════════════════════════════════════════════════════════ */
+        main { padding: 1.25rem 1.5rem; min-width: 0; }
+        .co-app { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 1.1rem; align-items: start; }
+
+        /* Menu interno */
+        .co-menu { background: linear-gradient(180deg, #0d2a52 0%, #0a1f3d 100%); border-radius: var(--p3-radius-lg); padding: 1rem .7rem; color: #fff; position: sticky; top: 1rem; }
+        .co-menu-marca { display: flex; align-items: center; gap: .55rem; padding: 0 .35rem .9rem; border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: .8rem; }
+        .co-menu-marca img { width: 38px; height: 38px; object-fit: contain; }
+        .co-menu-marca b { display: block; font-size: .95rem; letter-spacing: .02em; }
+        .co-menu-marca small { font-size: .68rem; opacity: .7; }
+        .co-menu-sec { font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; opacity: .55; padding: 0 .45rem .35rem; }
+        .co-menu button { display: flex; align-items: center; gap: .6rem; width: 100%; background: none; border: 0; color: rgba(255,255,255,.82);
+            font: 600 .8rem var(--p3-font); padding: .6rem .65rem; border-radius: 8px; cursor: pointer; text-align: left; margin-bottom: 2px; }
+        .co-menu button:hover { background: rgba(255,255,255,.08); }
+        .co-menu button.ativo { background: #1f4f99; color: #fff; box-shadow: inset 3px 0 0 #7fb3ff; }
+        .co-menu .co-ic { width: 26px; height: 26px; border-radius: 6px; background: rgba(255,255,255,.1); display: grid; place-items: center; font-size: .85rem; }
+        .co-menu-rodape { font-size: .66rem; opacity: .55; padding: .9rem .45rem 0; border-top: 1px solid rgba(255,255,255,.12); margin-top: .8rem; line-height: 1.5; }
+
+        .co-view { display: none; flex-direction: column; gap: 1rem; min-width: 0; }
+        .co-view.ativa { display: flex; }
+
+        /* KPIs */
+        .co-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: .8rem; }
+        .co-kpi { background: var(--p3-surface); border: 1px solid var(--p3-border); border-left: 4px solid var(--c, #2f5fdd); border-radius: var(--p3-radius-md); padding: .85rem 1rem; }
+        .co-kpi small { display: block; font-size: .68rem; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .05em; }
+        .co-kpi b { display: block; font-size: 1.6rem; color: var(--p3-text); margin: .15rem 0; }
+        .co-kpi span { font-size: .7rem; color: var(--p3-text-muted); }
+
+        .co-card { background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md); padding: 1rem 1.1rem; min-width: 0; }
+        .co-card-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: .6rem; flex-wrap: wrap; margin-bottom: .8rem; }
+        .co-card-topo h3 { font-size: .95rem; color: var(--p3-text); margin: 0; }
+        .co-card-topo p { font-size: .72rem; color: var(--p3-text-muted); margin: .15rem 0 0; }
+
+        .co-btn { padding: 7px 13px; border: 1.5px solid var(--p3-border); border-radius: 7px; background: var(--p3-surface); color: var(--p3-text);
+            font: 700 .78rem var(--p3-font); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+        .co-btn:hover { border-color: var(--p3-blue-700); }
+        .co-btn:disabled { opacity: .55; cursor: wait; }
+        .co-btn-pri { background: var(--p3-blue-700); border-color: var(--p3-blue-700); color: #fff; }
+        .co-btn-ico { padding: 6px 10px; }
+
+        /* Calendário + programação */
+        .co-grade { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 1rem; align-items: start; }
+        .co-cal-nav { display: flex; align-items: center; gap: .4rem; }
+        .co-cal-mes { font-weight: 700; font-size: .92rem; color: var(--p3-text); min-width: 150px; text-transform: capitalize; }
+        .co-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+        .co-cal-dow { font-size: .66rem; text-align: center; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .06em; padding-bottom: 3px; }
+        .co-dia { min-height: 86px; border: 1px solid var(--p3-border); border-radius: 8px; padding: 4px 5px; background: var(--p3-bg); cursor: pointer;
+            display: flex; flex-direction: column; gap: 3px; min-width: 0; transition: border-color .15s; }
+        .co-dia:hover { border-color: var(--p3-blue-500); }
+        .co-dia.fora { opacity: .35; }
+        .co-dia.hoje .co-dia-n { background: var(--p3-blue-700); color: #fff; }
+        .co-dia.sel { outline: 2px solid var(--p3-blue-500); }
+        .co-dia-n { font-size: .72rem; font-weight: 700; color: var(--p3-text); width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; }
+        .co-dia.dom .co-dia-n { color: #c0392b; }
+        .co-chip { font-size: .62rem; font-weight: 600; border-radius: 4px; padding: 1px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+        .co-chip.opo { background: #1f5fbf; }
+        .co-chip.medio { background: #e67e22; }
+        .co-chip.grande { background: #c0392b; }
+        .co-chip.mais { background: none; color: var(--p3-text-muted); padding: 0; }
+        .co-legenda { display: flex; flex-wrap: wrap; gap: .8rem; font-size: .7rem; color: var(--p3-text-muted); margin-top: .7rem; }
+        .co-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+
+        .co-lista { display: flex; flex-direction: column; gap: .5rem; max-height: 640px; overflow: auto; padding-right: 3px; }
+        .co-lista-sec { font-size: .68rem; font-weight: 700; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .06em; margin-top: .4rem; display: flex; justify-content: space-between; }
+        .co-item { display: flex; gap: .7rem; border: 1px solid var(--p3-border); border-radius: 9px; padding: .55rem .65rem; cursor: pointer; background: var(--p3-surface); }
+        .co-item:hover { border-color: var(--p3-blue-500); }
+        .co-item-data { min-width: 42px; text-align: center; border-right: 1px solid var(--p3-border); padding-right: .55rem; }
+        .co-item-data b { display: block; font-size: 1.05rem; color: var(--p3-text); }
+        .co-item-data small { font-size: .6rem; text-transform: uppercase; color: var(--p3-text-muted); }
+        .co-item-txt { min-width: 0; font-size: .74rem; color: var(--p3-text-muted); line-height: 1.4; }
+        .co-item-txt strong { display: block; color: var(--p3-text); font-size: .8rem; }
+        .co-res { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+        .co-res span { font-size: .64rem; background: rgba(47,95,221,.1); color: var(--p3-text); border-radius: 10px; padding: 1px 7px; }
+        .co-tag { font-size: .6rem; font-weight: 700; border-radius: 10px; padding: 1px 7px; color: #fff; margin-left: 4px; vertical-align: 1px; }
+        .co-vazio { font-size: .8rem; color: var(--p3-text-muted); padding: .5rem 0; }
+
+        /* Detalhe do dia (modal) */
+        .co-modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: none; align-items: flex-start; justify-content: center; z-index: 1000; padding: 4vh 16px; overflow: auto; }
+        .co-modal.aberto { display: flex; }
+        .co-modal-caixa { background: var(--p3-surface); color: var(--p3-text); border-radius: 12px; width: min(860px, 100%); padding: 1.2rem 1.3rem; box-shadow: var(--p3-shadow-lg); }
+        .co-modal-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
+        .co-modal-topo h3 { margin: 0; font-size: 1rem; }
+        .co-det { border: 1px solid var(--p3-border); border-left: 4px solid var(--c); border-radius: 9px; padding: .8rem .9rem; margin-bottom: .7rem; }
+        .co-det h4 { margin: 0 0 .3rem; font-size: .9rem; }
+        .co-det-meta { font-size: .74rem; color: var(--p3-text-muted); line-height: 1.55; }
+        .co-det-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: .45rem; margin: .6rem 0; }
+        .co-det-kpis div { background: var(--p3-bg); border: 1px solid var(--p3-border); border-radius: 7px; padding: .4rem .55rem; font-size: .66rem; color: var(--p3-text-muted); text-transform: uppercase; }
+        .co-det-kpis b { display: block; font-size: 1.05rem; color: var(--p3-text); text-transform: none; }
+        .co-det-acoes { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .4rem; }
+        .co-exec { display: none; flex-wrap: wrap; gap: .5rem; align-items: center; font-size: .75rem; margin-top: .5rem; }
+        .co-exec.aberto { display: flex; }
+        .co-exec input, .co-filtros input, .co-filtros select { background: var(--p3-bg); color: var(--p3-text); border: 1.5px solid var(--p3-border); border-radius: 6px; padding: 5px 8px; font-size: .78rem; }
+        .co-mini { width: 100%; border-collapse: collapse; font-size: .72rem; margin-top: .3rem; }
+        .co-mini td, .co-mini th { border-bottom: 1px solid var(--p3-border); padding: 3px 6px; text-align: left; }
+
+        /* Estatísticas / relatório */
+        .co-filtros { display: flex; flex-wrap: wrap; gap: .7rem 1rem; align-items: flex-end; }
+        .co-filtros label { display: flex; flex-direction: column; gap: 3px; font-size: .7rem; font-weight: 600; color: var(--p3-text-muted); text-transform: uppercase; letter-spacing: .04em; }
+        .co-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+        .co-graf { position: relative; height: 270px; }
+        .co-tab { width: 100%; border-collapse: collapse; font-size: .75rem; }
+        .co-tab th { text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--p3-border); color: var(--p3-text); background: rgba(47,95,221,.06); position: sticky; top: 0; }
+        .co-tab td { padding: 5px 8px; border-bottom: 1px solid var(--p3-border); color: var(--p3-text); vertical-align: top; }
+        .co-scroll { max-height: 420px; overflow: auto; }
+        .co-aviso { font-size: .78rem; background: rgba(181,134,10,.1); border: 1px solid rgba(181,134,10,.35); color: var(--p3-text); border-radius: 8px; padding: .55rem .8rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+        .co-previa { width: 100%; height: 900px; border: 1px solid var(--p3-border); border-radius: 8px; background: #fff; }
+        .co-status { font-size: .74rem; color: var(--p3-text-muted); }
+
+        @media (max-width: 1100px) { .co-grade { grid-template-columns: 1fr; } }
+        @media (max-width: 860px) {
+            main { padding: 1rem; }
+            .co-app { grid-template-columns: 1fr; }
+            .co-menu { position: static; display: flex; flex-wrap: wrap; gap: 4px; padding: .6rem; }
+            .co-menu-marca, .co-menu-sec, .co-menu-rodape { display: none; }
+            .co-menu button { width: auto; margin: 0; }
+            .co-graficos { grid-template-columns: 1fr; }
+            .co-dia { min-height: 58px; }
+            .co-chip { font-size: 0; height: 6px; padding: 0; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="controle-operacoes"></script>
+
+    <section class="pagecomplete">
+        <main>
+            <div class="co-app">
+                <aside class="co-menu">
+                    <div class="co-menu-marca"><img id="co-logo" src="../img/brasao.png" alt="">
+                        <div><b id="co-unidade">Unidade</b><small>Planejamento e Operações</small></div></div>
+                    <div class="co-menu-sec">Área de trabalho</div>
+                    <button class="ativo" data-view="geral"><span class="co-ic">🏠</span>Visão Geral</button>
+                    <button data-view="estatisticas"><span class="co-ic">📊</span>Estatísticas</button>
+                    <button data-view="relatorio"><span class="co-ic">🖨</span>Relatório</button>
+                    <div class="co-menu-rodape">OPOs: salvas na OPO Inteligente.<br>Eventos: cadastro de Eventos (médio e grande porte).<br>Resultados: CAD da unidade.</div>
+                </aside>
+
+                <div>
+                    <!-- ── VISÃO GERAL ── -->
+                    <section class="co-view ativa" id="view-geral">
+                        <div class="co-kpis" id="co-kpis-mes"></div>
+                        <div id="co-aviso-mes"></div>
+                        <div class="co-grade">
+                            <div class="co-card">
+                                <div class="co-card-topo">
+                                    <div><h3>Calendário operacional</h3><p>Operações (OPO) e eventos de médio e grande porte</p></div>
+                                    <div class="co-cal-nav">
+                                        <button class="co-btn co-btn-ico" id="co-ant" title="Mês anterior">‹</button>
+                                        <span class="co-cal-mes" id="co-mes"></span>
+                                        <button class="co-btn co-btn-ico" id="co-prox" title="Próximo mês">›</button>
+                                        <button class="co-btn" id="co-hoje">Mês atual</button>
+                                    </div>
+                                </div>
+                                <div class="co-cal" id="co-cal"></div>
+                                <div class="co-legenda"><span><i style="background:#1f5fbf"></i>Operação (OPO)</span><span><i style="background:#e67e22"></i>Evento de médio porte (501–1000)</span><span><i style="background:#c0392b"></i>Evento de grande porte (&gt;1000)</span></div>
+                            </div>
+                            <div class="co-card">
+                                <div class="co-card-topo">
+                                    <div><h3>Programação do mês</h3><p id="co-prog-sub"></p></div>
+                                    <button class="co-btn" id="co-recarregar" title="Recarregar">↻</button>
+                                </div>
+                                <div class="co-lista" id="co-lista"><div class="co-vazio">⏳ Carregando…</div></div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ── ESTATÍSTICAS ── -->
+                    <section class="co-view" id="view-estatisticas">
+                        <div class="co-card">
+                            <div class="co-filtros" id="co-filtros">
+                                <label>De <input type="date" id="f-de"></label>
+                                <label>Até <input type="date" id="f-ate"></label>
+                                <label>Cidade <select id="f-cidade"><option value="">Todas</option></select></label>
+                                <label>Tipo <select id="f-tipo"><option value="">Operações e eventos</option><option value="opo">Só operações (OPO)</option><option value="evento">Só eventos</option></select></label>
+                                <label>Porte do evento <select id="f-porte"><option value="">Médio e grande</option><option value="MÉDIO">Médio</option><option value="GRANDE">Grande</option></select></label>
+                                <button class="co-btn co-btn-pri" id="f-aplicar">Aplicar</button>
+                                <button class="co-btn" id="f-relatorio">🖨 Emitir relatório</button>
+                            </div>
+                        </div>
+                        <div id="co-aviso-est"></div>
+                        <div class="co-kpis" id="co-kpis-est"></div>
+                        <div class="co-graficos">
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Operações e eventos por mês</h3></div></div><div class="co-graf"><canvas id="g-mes"></canvas></div></div>
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Resultados por mês</h3><p>Prisões, armas e materiais apreendidos durante operações/eventos</p></div></div><div class="co-graf"><canvas id="g-res"></canvas></div></div>
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Ocorrências durante operações/eventos por cidade</h3></div></div><div class="co-graf"><canvas id="g-cidade"></canvas></div></div>
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Principais tipificações</h3><p>Ocorrências registradas durante as operações/eventos</p></div></div><div class="co-graf"><canvas id="g-tip"></canvas></div></div>
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Eventos por porte</h3></div></div><div class="co-graf"><canvas id="g-porte"></canvas></div></div>
+                            <div class="co-card"><div class="co-card-topo"><div><h3>Tipos de combate das OPOs</h3></div></div><div class="co-graf"><canvas id="g-combate"></canvas></div></div>
+                        </div>
+                        <div class="co-card"><div class="co-card-topo"><div><h3>Operações e eventos do período</h3><p id="co-tab-sub"></p></div></div>
+                            <div class="co-scroll" id="co-tabela"></div></div>
+                    </section>
+
+                    <!-- ── RELATÓRIO ── -->
+                    <section class="co-view" id="view-relatorio">
+                        <div class="co-card">
+                            <div class="co-card-topo">
+                                <div><h3>Relatório de operações e eventos</h3><p>Usa os filtros da aba Estatísticas (período, cidade, tipo e porte).</p></div>
+                                <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+                                    <button class="co-btn" id="r-filtros">⚙ Ajustar filtros</button>
+                                    <button class="co-btn co-btn-pri" id="r-imprimir">🖨 Imprimir / salvar PDF</button>
+                                </div>
+                            </div>
+                            <iframe class="co-previa" id="r-previa" title="Prévia do relatório"></iframe>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <div class="co-modal" id="co-modal"><div class="co-modal-caixa">
+        <div class="co-modal-topo"><h3 id="co-modal-tit"></h3><button class="co-btn co-btn-ico" id="co-modal-fechar">✕</button></div>
+        <div id="co-modal-corpo"></div>
+    </div></div>
+
+    <footer>
+        <div>
+            <h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4>
+        </div>
+    <div style="position:fixed;bottom:6px;right:10px;font-size:.65rem;opacity:.5;color:inherit;z-index:1;pointer-events:none;">Criado por 1º Tenente Calheiros</div>
+    </footer>
+
+    <script src="../js/core/atualizador-local.js"></script>
+    <!-- Cálculo dos resultados (o mesmo da aba "Controle de OPO" do Dashboard Cruzado) -->
+    <script src="../js/dashboard-controle-opo.js"></script>
+    <script src="../js/controle-operacoes.js"></script>
+</body>
+</html>
