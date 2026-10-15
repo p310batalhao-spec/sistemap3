@@ -72,15 +72,44 @@
         if (al.length) return [...new Set(al)];
         return o.cidade ? [o.cidade] : [];
     }
+    // Lê datas do texto livre de vigência da OPO Inteligente:
+    // "15/10/2026", "15 a 18/10/2026", "15/10 a 18/10/2026", "15/10/2026 a 18/10/2026",
+    // "15 e 16/10". Ano ausente → ano da referência. → { ini: Date, fim: Date } | null
+    function parseVigencia(txt, ref) {
+        const t = String(txt || '');
+        const ano = a => !a ? (ref || new Date()).getFullYear() : (a.length === 2 ? 2000 + +a : +a);
+        const ok = d => d && !isNaN(d) ? d : null;
+        const lista = [];
+        const m = t.match(/(?<![\d\/])(\d{1,2})\s*(?:a|à|ate|até|-|–|e)\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i);
+        if (m) lista.push(ok(new Date(ano(m[4]), +m[3] - 1, +m[1])), ok(new Date(ano(m[4]), +m[3] - 1, +m[2])));
+        const datas = [...t.matchAll(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/g)];
+        const anoComum = (datas.find(d => d[3]) || [])[3];
+        datas.forEach(d => lista.push(ok(new Date(ano(d[3] || anoComum), +d[2] - 1, +d[1]))));
+        const validas = lista.filter(Boolean).sort((a, b) => a - b);
+        return validas.length ? { ini: validas[0], fim: validas[validas.length - 1] } : null;
+    }
+
+    // Período da OPO: execução informada → vigência (texto) → estimado
+    // (criação → validade). fimPlanejado = fim real (pode ser futuro, p/ o
+    // calendário); fim = limitado a hoje (p/ o cálculo de resultados).
     function periodoPadrao(o) {
         const ex = o.execucao || {};
-        const criado = o.criadoEm ? new Date(o.criadoEm) : new Date();
-        const ini = parseData(ex.dataIni) || new Date(criado.getFullYear(), criado.getMonth(), criado.getDate());
-        let fim = parseData(ex.dataFim) || (o.validoAte ? new Date(o.validoAte) : new Date());
+        let ini = parseData(ex.dataIni), fim = parseData(ex.dataFim), fonte = 'execucao';
+        if (!ini) {
+            const v = parseVigencia(o.vigenciaTexto, o.criadoEm ? new Date(o.criadoEm) : new Date());
+            if (v) { ini = v.ini; fim = v.fim; fonte = 'vigencia'; }
+        }
+        if (!ini) {
+            const criado = o.criadoEm ? new Date(o.criadoEm) : new Date();
+            ini = new Date(criado.getFullYear(), criado.getMonth(), criado.getDate());
+            fim = o.validoAte ? new Date(o.validoAte) : new Date();
+            fonte = 'estimado';
+        }
+        if (!fim || fim < ini) fim = new Date(ini);
+        fim = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate());
         const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
-        if (fim > hoje) fim = hoje;
-        if (fim < ini) fim = new Date(ini);
-        return { ini: iso(ini), fim: iso(fim), hIni: ex.horaIni || '', hFim: ex.horaFim || '' };
+        const fimCalc = fim > hoje ? (hoje < ini ? ini : hoje) : fim;
+        return { ini: iso(ini), fim: iso(fimCalc), fimPlanejado: iso(fim), hIni: ex.horaIni || '', hFim: ex.horaFim || '', fonte };
     }
     const rotuloOpo = o => `${o.nome || 'OPO ' + (o.cidade || '')} — ${o.data || (o.criadoEm || '').slice(0, 10)}${o.criadoPor ? ' — ' + o.criadoPor : ''}`;
 
@@ -371,7 +400,7 @@
         const bpm = o.escopo === 'bpm' && !daOpo.length;
         document.getElementById('co-cidades').innerHTML = todas.map(([k, c]) =>
             `<label><input type="checkbox" value="${esc(c)}"${bpm || daOpo.includes(k) ? ' checked' : ''}> ${esc(c)}</label>`).join('');
-        const ex = o.execucao ? '' : ' · período estimado (OPO salva sem datas de execução: criação → validade)';
+        const ex = p.fonte === 'estimado' ? ' · período estimado (OPO salva sem datas de execução nem vigência: criação → validade)' : p.fonte === 'vigencia' ? ' · período lido da vigência' : '';
         document.getElementById('co-status').textContent = `${(o.tiposCombate || []).length ? 'Combate: ' + o.tiposCombate.join(', ') : ''}${ex}`;
     }
 
@@ -404,5 +433,5 @@
         }
     };
     // Reaproveitado pela página Controle de Operações (js/controle-operacoes.js).
-    window.ControleOPO = { criarJanela, periodoPadrao, cidadesDaOpo, calcular, rotuloOpo };
+    window.ControleOPO = { criarJanela, periodoPadrao, parseVigencia, cidadesDaOpo, calcular, rotuloOpo, carregarNo: no };
 })();
