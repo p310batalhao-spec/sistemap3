@@ -110,6 +110,14 @@
                 margin: 0;
             }
         }
+        /* Edição livre */
+        [contenteditable="true"]:hover { outline: 1px dashed #7fa7d9; outline-offset: 2px; }
+        [contenteditable="true"]:focus { outline: 2px solid #2f5fdd; outline-offset: 2px; background: #f7faff; }
+        .barra-opo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .dica-edicao { color: #fff; font: 13px Arial, sans-serif; opacity: .85; }
+        body.embed .so-avulso { display: none; }
+        body.embed { padding: 12px; }
+        @media print { [contenteditable="true"] { outline: none !important; background: none !important; } }
     </style>
     <!-- docx.js para geração de Word client-side -->
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
@@ -120,16 +128,18 @@
 <body>
     <script src="../js/core/session.js"></script>
 
-    <div class="no-print">
-        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-weight: bold;">🖨️ IMPRIMIR OPO</button>
-        <button onclick="baixarDocx()" style="padding: 10px 20px; cursor: pointer; font-weight: bold; background:#1a3d5d; color:white; border:none; border-radius:4px;">📄 BAIXAR COMO WORD</button>
+    <div class="no-print barra-opo">
+        <button class="so-avulso" onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-weight: bold;">🖨️ IMPRIMIR OPO</button>
+        <button class="so-avulso" onclick="baixarDocx()" style="padding: 10px 20px; cursor: pointer; font-weight: bold; background:#1a3d5d; color:white; border:none; border-radius:4px;">📄 BAIXAR COMO WORD</button>
         <button class="btn-add" onclick="addRow()">➕ ADICIONAR RECURSO</button>
+        <button class="btn-add" onclick="addSecao()">➕ ADICIONAR SEÇÃO</button>
+        <span class="dica-edicao">✏️ Clique em qualquer texto da OPO para editar.</span>
     </div>
 
     <div class="folha-a4">
-        <div class="protocolo">P3/10°BPM - OPO N° <span contenteditable="true">____</span>/2025</div>
+        <div class="protocolo" contenteditable="true">P3/10°BPM - OPO N° ____/<span id="ano-opo">2026</span></div>
 
-        <p>O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de
+        <p id="abertura" contenteditable="true">O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de
             Policiamento Ostensivo:</p>
 
         <table class="tab-mestra">
@@ -158,7 +168,7 @@
             </tr>
         </table>
 
-        <div class="secao-titulo">EFETIVO E MEIOS</div>
+        <div class="secao-titulo titulo-efetivo">EFETIVO E MEIOS</div>
         <table class="tabela-efetivo">
             <thead>
                 <tr style="background: #f2f2f2;">
@@ -179,7 +189,7 @@
             </tfoot>
         </table>
 
-        <div class="secao-titulo">1. ORIENTAÇÕES INICIAIS</div>
+        <div class="secao-titulo" contenteditable="true">1. ORIENTAÇÕES INICIAIS</div>
         <div class="editavel" contenteditable="true">
             O policiamento se destina ao cumprimento do artigo 144 da Constituição Federal c/c com o
             art. 5º, incisos X e XI, da Lei 14;751/2023.<br>
@@ -193,12 +203,12 @@
             que a realizará através dos sistemas integrados do CAD e do BNMP - MJ.
         </div>
 
-        <div class="secao-titulo">2. MODALIDADES DO POLICIAMENTO EMPREGADO</div>
+        <div class="secao-titulo" contenteditable="true">2. MODALIDADES DO POLICIAMENTO EMPREGADO</div>
         <div class="editavel" contenteditable="true">
             Policiamento rádio-motorizado.
         </div>
 
-        <div class="secao-titulo">3. APREENSÕES</div>
+        <div class="secao-titulo" contenteditable="true">3. APREENSÕES</div>
         <div class="editavel" contenteditable="true">
             O comandante da guarnição ficará responsável por possíveis materiais apreendidos por
             seus comandados. O material apreendido deverá ser encaminhado à delegacia plantonista.
@@ -214,7 +224,7 @@
             termo físico por escrito, que posteriormente será adicionado ao CAD e peticionado pela
             equipe da P3/10ºBPM.
         </div>
-        <div class="secao-titulo">4. PRESCRIÇÕES DIVERSAS</div>
+        <div class="secao-titulo" contenteditable="true">4. PRESCRIÇÕES DIVERSAS</div>
         <div class="editavel" id="prescricoes-diversas" contenteditable="true">
             As guarnições escaladas deverão se apresentar ao COPOM no início da operação
             informando os dados dos HTs digitais móveis e da viatura, para acompanhamento, controle
@@ -229,7 +239,7 @@
         </div>
 
 
-        <div style="margin-top: 60px; text-align: center;">
+        <div id="assinatura" contenteditable="true" style="margin-top: 60px; text-align: center;">
             ____________________________________________________<br>
             <b>ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - MAJ QOEM PM</b><br>
             Comandante do 10º BPM
@@ -239,65 +249,121 @@
     <script>
         const urlParams = new URLSearchParams(window.location.search);
         const ID = urlParams.get('id');
+        const OPO_ID = urlParams.get('opoId');            // reabrir OPO de evento já salva
+        const EMBED = urlParams.get('embed') === '1';     // dentro do modal do Controle de Operações
         let WEB_APP_URL = null; // definido em runtime a partir da unidade do usuário logado (ver js/core/session.js)
+        let DADOS_EVENTO = null;
 
-        window.onload = async function () {
+        const formatarHora = (valor) => {
+            if (!valor) return "00:00";
+            valor = String(valor);
+            if (valor.length > 8) {
+                const d = new Date(valor);
+                return d.getHours().toString().padStart(2, '0') + ":" + d.getMinutes().toString().padStart(2, '0');
+            }
+            const m = valor.match(/^(\d{1,2}):(\d{2})/);
+            return m ? m[1].padStart(2, '0') + ':' + m[2] : valor;
+        };
+
+        function preencher(data) {
+            DADOS_EVENTO = data;
+            document.getElementById('e-nome').innerText  = (data['NOME DO EVENTO'] || '').toUpperCase();
+            document.getElementById('e-data').innerText  = data['DATA'] || '';
+            document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'] || '';
+            document.getElementById('e-cidade').innerText = data['CIDADE'] || '';
+            document.getElementById('e-inicio').innerText = formatarHora(data['HORÁRIO DE INÍCIO']);
+            document.getElementById('e-fim').innerText    = formatarHora(data['HORÁRIO DE TÉRMINO']);
+
+            // ── Integração SUGESTAO_IA ──────────────────────────────
+            // Se o campo vier preenchido do banco, usa direto.
+            // Caso contrário, calcula em tempo real (regra 1/250, 3 PM/viatura).
+            let ia = data.SUGESTAO_IA;
+            if (typeof ia === 'string') { try { ia = JSON.parse(ia); } catch (e) { ia = null; } }
+
+            if (!ia || typeof ia !== 'object' || Object.keys(ia).length === 0) {
+                // Fallback: calcula localmente com a mesma lógica do Apps Script
+                const publico  = parseInt(data['ESTIMATIVA DE PÚBLICO']) || 0;
+                const viaturas = Math.ceil(publico / 750) || 1;
+                const nome     = (data['NOME DO EVENTO'] || '').toUpperCase();
+                ia = {
+                    ft:       viaturas,
+                    vtrsFixas: 0,
+                    pelopes:  publico > 1000 ? 2 : 0,
+                    oficiais: publico > 1000 ? 2 : 1,
+                    objetivo: `assegurar o policiamento ostensivo e preventivo durante a realização do evento ${nome}, visando a preservação da ordem pública e a incolumidade das pessoas e do patrimônio.`
+                };
+            }
+
+            document.getElementById('ia-objetivo').innerText = ia.objetivo || '';
+
+            if (ia.ft       > 0) addRow("FORÇA TAREFA",    ia.ft);
+            if (ia.vtrsFixas > 0) addRow("POLIC. CIDADE",  ia.vtrsFixas);
+            if (ia.pelopes   > 0) addRow("PELOPES",         ia.pelopes);
+
+            // ── Observações → Prescrições Diversas ─────────────────
+            const obs = (data['OBSERVACOES'] || '').trim();
+            if (obs) {
+                const divPrescricoes = document.getElementById('prescricoes-diversas');
+                if (divPrescricoes) {
+                    divPrescricoes.innerHTML += `<br><br><b>Observações do Operador:</b><br>${obs}`;
+                }
+            }
+        }
+
+        // Pronto quando os dados estiverem na folha (usado pelo modal do Controle).
+        const PRONTO = (async function () {
+            if (EMBED) document.body.classList.add('embed');
+            document.getElementById('ano-opo').innerText = new Date().getFullYear();
             const cfg = await P3.loadUnidadeConfig();
             WEB_APP_URL = cfg.gas.EVENTOS;
-            fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' })
-                .then(res => res.json())
-                .then(data => {
-                    document.getElementById('e-nome').innerText  = (data['NOME DO EVENTO'] || '').toUpperCase();
-                    document.getElementById('e-data').innerText  = data['DATA'] || '';
-                    document.getElementById('e-local').innerText = data['LOCAL DO EVENTO'] || '';
-                    document.getElementById('e-cidade').innerText = data['CIDADE'] || '';
+            if (OPO_ID) {
+                // OPO de evento já salva: volta exatamente como foi editada.
+                const doc = await fetch(`${cfg.firebase.databaseURL}/opo_documentos/${encodeURIComponent(OPO_ID)}.json`).then(r => r.ok ? r.json() : null);
+                if (doc && doc.folhaHTML) { document.querySelector('.folha-a4').innerHTML = doc.folhaHTML; calc(); return; }
+            }
+            // Evento vindo do Controle de Operações (mesma origem) — sem nova consulta à planilha.
+            let ev = null;
+            try { ev = window.parent !== window && window.parent.CO_EVENTO_OPO; } catch (e) { ev = null; }
+            if (ev) { preencher(ev); return; }
+            const data = await fetch(`${WEB_APP_URL}?action=getEvento&id=${ID}`, { redirect: 'follow' }).then(res => res.json());
+            preencher(data);
+        })();
 
-                    const formatarHora = (valor) => {
-                        if (!valor) return "00:00";
-                        if (valor.length > 8) {
-                            const d = new Date(valor);
-                            return d.getHours().toString().padStart(2, '0') + ":" +
-                                d.getMinutes().toString().padStart(2, '0');
-                        }
-                        return valor;
-                    };
-                    document.getElementById('e-inicio').innerText = formatarHora(data['HORÁRIO DE INÍCIO']);
-                    document.getElementById('e-fim').innerText    = formatarHora(data['HORÁRIO DE TÉRMINO']);
+        function addSecao() {
+            const ass = document.getElementById('assinatura');
+            const n = document.querySelectorAll('.folha-a4 .secao-titulo:not(.titulo-efetivo)').length + 1;
+            const t = document.createElement('div');
+            t.className = 'secao-titulo'; t.contentEditable = 'true'; t.innerText = `${n}. NOVA SEÇÃO`;
+            const c = document.createElement('div');
+            c.className = 'editavel'; c.contentEditable = 'true'; c.innerText = 'Digite aqui o texto da seção.';
+            ass.parentNode.insertBefore(t, ass); ass.parentNode.insertBefore(c, ass);
+            t.focus();
+        }
 
-                    // ── Integração SUGESTAO_IA ──────────────────────────────
-                    // Se o campo vier preenchido do banco, usa direto.
-                    // Caso contrário, calcula em tempo real (regra 1/250, 3 PM/viatura).
-                    let ia = data.SUGESTAO_IA;
-
-                    if (!ia || typeof ia !== 'object' || Object.keys(ia).length === 0) {
-                        // Fallback: calcula localmente com a mesma lógica do Apps Script
-                        const publico  = parseInt(data['ESTIMATIVA DE PÚBLICO']) || 0;
-                        const viaturas = Math.ceil(publico / 750) || 1;
-                        const nome     = (data['NOME DO EVENTO'] || '').toUpperCase();
-                        ia = {
-                            ft:       viaturas,
-                            vtrsFixas: 0,
-                            pelopes:  publico > 1000 ? 2 : 0,
-                            oficiais: publico > 1000 ? 2 : 1,
-                            objetivo: `assegurar o policiamento ostensivo e preventivo durante a realização do evento ${nome}, visando a preservação da ordem pública e a incolumidade das pessoas e do patrimônio.`
-                        };
-                    }
-
-                    document.getElementById('ia-objetivo').innerText = ia.objetivo || '';
-
-                    if (ia.ft       > 0) addRow("FORÇA TAREFA",    ia.ft);
-                    if (ia.vtrsFixas > 0) addRow("POLIC. CIDADE",  ia.vtrsFixas);
-                    if (ia.pelopes   > 0) addRow("PELOPES",         ia.pelopes);
-
-                    // ── Observações → Prescrições Diversas ─────────────────
-                    const obs = (data['OBSERVACOES'] || '').trim();
-                    if (obs) {
-                        const divPrescricoes = document.getElementById('prescricoes-diversas');
-                        if (divPrescricoes) {
-                            divPrescricoes.innerHTML += `<br><br><b>Observações do Operador:</b><br>${obs}`;
-                        }
-                    }
-                });
+        // ── API para o modal do Controle de Operações ──────────────
+        // folhaHTML: conteúdo editável (para reabrir e continuar editando);
+        // documentoHTML: página completa só-leitura (visualizar / PDF).
+        function folhaHTML() {
+            const folha = document.querySelector('.folha-a4');
+            folha.querySelectorAll('input').forEach(i => i.setAttribute('value', i.value));
+            return folha.innerHTML;
+        }
+        function documentoHTML() {
+            const clone = document.querySelector('.folha-a4').cloneNode(true);
+            clone.querySelectorAll('input').forEach(i => { i.replaceWith(document.createTextNode(i.value)); });
+            clone.querySelectorAll('.no-print').forEach(e => e.remove());
+            clone.querySelectorAll('[contenteditable]').forEach(e => e.removeAttribute('contenteditable'));
+            const css = [...document.querySelectorAll('style')].map(e => e.textContent).join('\n');
+            return `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><base href="${location.href}"><title>${(txt('e-nome') || 'OPO').replace(/</g, '&lt;')}</title>
+<style>${css}</style><style>body{background:#fff!important;padding:0!important;display:block!important}.folha-a4{box-shadow:none!important;margin:0 auto!important}</style>
+</head><body>${clone.outerHTML}</body></html>`;
+        }
+        const txt = id => { const el = document.getElementById(id); return el ? el.innerText.trim() : ''; };
+        window.OPOEvento = {
+            pronto: PRONTO,
+            folhaHTML, documentoHTML,
+            gerarDocx: () => baixarDocx({ retornarBlob: true }),
+            dados: () => ({ nome: txt('e-nome'), data: txt('e-data'), local: txt('e-local'), cidade: txt('e-cidade'), inicio: txt('e-inicio'), fim: txt('e-fim'), evento: DADOS_EVENTO }),
         };
 
         function addRow(nome = "NOVO RECURSO", qtd = 0) {
@@ -323,25 +389,29 @@
             document.getElementById('total-pracas').innerText = pracas;
         }
 
-        async function baixarDocx() {
+        async function baixarDocx(opts = {}) {
             const docxLib = window.docx || docx;
             const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
                     AlignmentType, BorderStyle, WidthType, ShadingType, VerticalAlign } = docxLib;
 
             // --- Coleta dados da página ---
-            const protocolo   = document.querySelector('.protocolo').innerText;
-            const nome        = document.getElementById('e-nome').innerText;
-            const data        = document.getElementById('e-data').innerText;
-            const local       = document.getElementById('e-local').innerText;
-            const cidade      = document.getElementById('e-cidade').innerText;
-            const inicio      = document.getElementById('e-inicio').innerText;
-            const fim         = document.getElementById('e-fim').innerText;
-            const objetivo    = document.getElementById('ia-objetivo').innerText;
-            const totalVtrs   = document.getElementById('total-vtrs').innerText;
-            const totalPracas = document.getElementById('total-pracas').innerText;
+            // Tudo lido da folha (edição livre): campos podem ter sido apagados/reescritos.
+            const tx = sel => { const el = document.querySelector(sel); return el ? el.innerText.trim() : ''; };
+            const protocolo   = tx('.protocolo');
+            const nome        = tx('#e-nome');
+            const data        = tx('#e-data');
+            const local       = tx('#e-local');
+            const cidade      = tx('#e-cidade');
+            // Linha "Horário" inteira (o usuário pode ter reescrito a célula)
+            const horarioTxt  = (() => { const td = document.getElementById('e-inicio')?.closest('td'); return td ? td.innerText.trim() : `${tx('#e-inicio')} às ${tx('#e-fim')}`; })();
+            const totalVtrs   = tx('#total-vtrs');
+            const totalPracas = tx('#total-pracas');
+            const abertura    = tx('#abertura') || 'O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de Policiamento Ostensivo:';
+            const assinatura  = (document.getElementById('assinatura')?.innerText || '').split('\n').map(l => l.trim()).filter(Boolean);
 
-            // Coleta seções editáveis (textos dos blocos contenteditable)
-            const secoes = Array.from(document.querySelectorAll('.editavel')).map(el => el.innerText.trim());
+            // Títulos e textos das seções, na ordem da folha (inclui seções adicionadas)
+            const blocos = Array.from(document.querySelectorAll('.folha-a4 .secao-titulo:not(.titulo-efetivo), .folha-a4 .editavel'))
+                .map(el => el.classList.contains('editavel') ? { tipo: 'texto', t: el.innerText.trim() } : { tipo: 'titulo', t: el.innerText.trim() });
 
             // Coleta linhas da tabela de efetivo
             const linhasEfetivo = [];
@@ -415,7 +485,7 @@
                     linha([celula('Data',       { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(data,  { width: { size: col2, type: WidthType.DXA } })]),
                     linha([celula('Local',      { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(local, { width: { size: col2, type: WidthType.DXA } })]),
                     linha([celula('Cidade',     { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(cidade,{ width: { size: col2, type: WidthType.DXA } })]),
-                    linha([celula('Horário',    { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(inicio + ' às ' + fim, { width: { size: col2, type: WidthType.DXA } })]),
+                    linha([celula('Horário',    { bold: true, width: { size: col1, type: WidthType.DXA } }), celula(horarioTxt, { width: { size: col2, type: WidthType.DXA } })]),
                 ]
             });
 
@@ -469,43 +539,27 @@
                         new Paragraph({
                             alignment: AlignmentType.JUSTIFIED,
                             spacing: { after: 180 },
-                            children: [new TextRun({ text: 'O Comandante do 10º BPM, no uso de suas atribuições legais, determina a execução da seguinte Ordem de Policiamento Ostensivo:', ...TNR24 })]
+                            children: [new TextRun({ text: abertura, ...TNR24 })]
                         }),
                         tabelaMestra,
                         secaoTitulo('EFETIVO E MEIOS'),
                         tabelaEfetivo,
                         new Paragraph({ spacing: { before: 80 } }),
-                        secaoTitulo('1. ORIENTAÇÕES INICIAIS'),
-                        ...secoes[0].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
-                        secaoTitulo('2. MODALIDADES DO POLICIAMENTO EMPREGADO'),
-                        ...secoes[1].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
-                        secaoTitulo('3. APREENSÕES'),
-                        ...secoes[2].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
-                        secaoTitulo('4. PRESCRIÇÕES DIVERSAS'),
-                        ...secoes[3].split('\n').filter(l => l.trim()).map(l => paragrafo(l)),
+                        ...blocos.flatMap(b => b.tipo === 'titulo' ? [secaoTitulo(b.t)] : b.t.split('\n').filter(l => l.trim()).map(l => paragrafo(l))),
 
-                        // ── Assinatura com espaçamento ampliado (militar) ──
-                        new Paragraph({
-                            spacing: { before: 1800, after: 0 }, // ~3cm acima da linha
+                        // ── Assinatura (lida da folha) com espaçamento ampliado (militar) ──
+                        ...(assinatura.length ? assinatura : ['____________________________________________________']).map((l, i) => new Paragraph({
+                            spacing: { before: i === 0 ? 1800 : 0, after: 0 }, // ~3cm acima da linha
                             alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: '____________________________________________________', ...TNR24 })]
-                        }),
-                        new Paragraph({
-                            spacing: { before: 0, after: 0 },
-                            alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: 'ANTÔNIO ANDRÉ ANDRADE DE OLIVEIRA BARBOSA - MAJ QOEM PM', bold: true, ...TNR24 })]
-                        }),
-                        new Paragraph({
-                            spacing: { before: 0, after: 0 },
-                            alignment: AlignmentType.CENTER,
-                            children: [new TextRun({ text: 'Comandante do 10º BPM', ...TNR24 })]
-                        }),
+                            children: [new TextRun({ text: l, bold: i === 1, ...TNR24 })]
+                        })),
                     ]
                 }]
             });
 
             const buffer = await Packer.toBlob(doc);
             const nomeArquivo = `OPO_${nome.replace(/\s+/g, '_') || 'Evento'}.docx`;
+            if (opts.retornarBlob) return { blob: buffer, nomeArq: nomeArquivo };
             saveAs(buffer, nomeArquivo);
         }
     </script>
