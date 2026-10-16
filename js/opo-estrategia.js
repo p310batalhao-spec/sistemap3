@@ -80,7 +80,7 @@
         const periodo = Math.max(periodoTela, BASE_MINIMA_DIAS);
         const ehBpm = (typeof escopoAtual !== 'undefined' && escopoAtual === 'bpm');
         const cidade = ehBpm ? '' : (document.getElementById('sel-cidade')?.value || '');
-        return { periodo, cidade, cidadeNorm: NORM(cidade), rotulo: ehBpm ? '10º BPM — área completa' : (cidade || 'área selecionada') };
+        return { periodo, periodoTela, cidade, cidadeNorm: NORM(cidade), rotulo: ehBpm ? '10º BPM — área completa' : (cidade || 'área selecionada') };
     }
 
     async function coletar(tipos, esc0) {
@@ -106,6 +106,7 @@
                     tipo, data: iso(d), hora: String(oc.HORA || oc.hora || ''),
                     cidade: String(oc.CIDADE || oc.cidade || ''), bairro: String(oc.BAIRRO || oc.bairro || ''),
                     lat: isNaN(lat) ? null : lat, lng: isNaN(lng) ? null : lng, peso: 1,
+                    boletim: String(oc.BOLETIM || oc['Nº Ocorrência'] || ''), natureza: String(oc.TIPIFICACAO_GERAL || oc.TIPIFICACAO || oc['TIPIFICAÇÃO'] || oc.TIPO_DROGA || oc.TIPO_ARMA || ''),
                 });
             }
         }
@@ -417,6 +418,9 @@
             </div>`;
         const host = document.getElementById('opo-est-tipos-host');
         if (host) host.innerHTML = chips;
+        document.getElementById('opo-est-tipos').addEventListener('change', () => {
+            if (typeof dadosAnalise !== 'undefined' && dadosAnalise) atualizarFocos().catch(() => {});
+        });
         el.innerHTML = `
             <h3>🎯 Estratégia por tipo de foco</h3>
             <p style="font-size:11px;color:rgba(255,255,255,.55);margin:0 0 8px;">${host ? 'Tipos de foco escolhidos nos parâmetros de análise.' : 'Escolha os crimes a combater.'} O Python calcula a análise preditiva (tendência, previsão, horários e locais de risco) e o XERIFE redige a estratégia repressiva e preventiva.</p>
@@ -430,6 +434,65 @@
         document.querySelectorAll('#opo-est-tipos input').forEach(i => { i.checked = set.has(i.value); });
     }
 
-    global.OPOEstrategia = { montarPainel, gerar, definirTipos, TIPOS, htmlSecao, docxBlocos, obterResultado: () => resultado, tiposSelecionados: () => (resultado ? resultado.tiposSelecionados : selecionados()), calcularLocal };
+    // ── Camada de FOCOS no mapa (MVI, Perturbação, VD, Armas, Drogas) ──
+    // A análise da OPO (mancha, hotspots, alocação) continua só com CVLI/CVP;
+    // os demais focos selecionados entram como pontos próprios, com cor e
+    // legenda, no mapa principal e nos mapas da OPO (tela, PDF e documento
+    // salvo). Mesmo recorte da análise: cidade/área, período e turno da tela.
+    const COR_FOCO = { MVI: '#111111', PERTURBACAO: '#0097a7', VD: '#c2185b', ARMAS: '#455a64', DROGAS: '#7cb342' };
+    let pontosFoco = [];
+    let camadaFocos = null, legendaFocos = null;
+    function noTurno(hora) {
+        const t = typeof turnoAtual !== 'undefined' ? turnoAtual : '';
+        const f = t && typeof FAIXAS_TURNO !== 'undefined' ? FAIXAS_TURNO[t] : null;
+        if (!f) return true;
+        const h = parseInt(String(hora).split(':')[0], 10);
+        if (isNaN(h)) return false;
+        return f.ini <= f.fim ? (h >= f.ini && h <= f.fim) : (h >= f.ini || h <= f.fim);
+    }
+    async function atualizarFocos() {
+        const tipos = selecionados().filter(t => COR_FOCO[t]);
+        const esc0 = escopoAtualOPO();
+        pontosFoco = !tipos.length ? [] : (await coletar(tipos, Object.assign({}, esc0, { periodo: esc0.periodoTela }))).ocorrencias
+            .filter(o => o.lat != null && o.lng != null && o.lat > -11 && o.lat < -7 && o.lng > -39 && o.lng < -34 && noTurno(o.hora));
+        desenharFocosPrincipal();
+        return pontosFoco;
+    }
+    const iconeFoco = (tipo, tam) => L.divIcon({
+        html: `<div style="width:${tam}px;height:${tam}px;background:${COR_FOCO[tipo]};transform:rotate(45deg);border:1.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
+        className: '', iconSize: [tam, tam], iconAnchor: [tam / 2, tam / 2],
+    });
+    const contagem = () => { const c = {}; pontosFoco.forEach(p => { c[p.tipo] = (c[p.tipo] || 0) + 1; }); return c; };
+    function desenharFocosPrincipal() {
+        const m = typeof mapa !== 'undefined' ? mapa : null;
+        if (!m || !global.L) return;
+        if (camadaFocos) m.removeLayer(camadaFocos);
+        camadaFocos = L.layerGroup(pontosFoco.map(p => L.marker([p.lat, p.lng], { icon: iconeFoco(p.tipo, 11) })
+            .bindPopup(`<b style="color:${COR_FOCO[p.tipo]}">${esc(NOME[p.tipo])}</b><br><b>Natureza:</b> ${esc(p.natureza || '—')}<br><b>Bairro:</b> ${esc(p.bairro || '—')}<br><b>Data:</b> ${esc(p.data.split('-').reverse().join('/'))} ${esc(p.hora)}<br><b>Boletim:</b> ${esc(p.boletim || '—')}`))).addTo(m);
+        if (legendaFocos) { m.removeControl(legendaFocos); legendaFocos = null; }
+        const c = contagem();
+        if (!Object.keys(c).length) return;
+        legendaFocos = L.control({ position: 'bottomleft' });
+        legendaFocos.onAdd = () => {
+            const d = L.DomUtil.create('div', 'mapa-legenda');
+            d.innerHTML = '<div class="mapa-legenda-titulo">FOCOS</div>' + Object.keys(COR_FOCO).filter(t => c[t]).map(t =>
+                `<div class="legenda-item"><div class="legenda-cor" style="background:${COR_FOCO[t]};transform:rotate(45deg);border-radius:1px;"></div> ${esc(NOME[t])} (${c[t]})</div>`).join('');
+            return d;
+        };
+        legendaFocos.addTo(m);
+    }
+    // Mapas da OPO: cidadeBloco = cidade do bloco (OPO 10ºBPM, um mapa por cidade) ou '' (todos).
+    function marcarFocos(m, cidadeBloco) {
+        if (!global.L || !pontosFoco.length) return;
+        const alvo = NORM(cidadeBloco);
+        pontosFoco.filter(p => !alvo || NORM(p.cidade) === alvo).forEach(p => L.marker([p.lat, p.lng], { icon: iconeFoco(p.tipo, 8) }).addTo(m));
+    }
+    function legendaFocosHTML() {
+        const c = contagem();
+        return Object.keys(COR_FOCO).filter(t => c[t]).map(t =>
+            `<div class="opo-leg-item"><div class="opo-leg-dot" style="background:${COR_FOCO[t]};border-radius:1px;transform:rotate(45deg);"></div> ${esc(NOME[t])} (${c[t]})</div>`).join('');
+    }
+
+    global.OPOEstrategia = { atualizarFocos, marcarFocos, legendaFocosHTML, obterPontosFoco: () => pontosFoco, montarPainel, gerar, definirTipos, TIPOS, htmlSecao, docxBlocos, obterResultado: () => resultado, tiposSelecionados: () => (resultado ? resultado.tiposSelecionados : selecionados()), calcularLocal };
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montarPainel); else montarPainel();
 })(window);
