@@ -142,6 +142,14 @@
             border: 1.5px solid var(--p3-border); border-radius: 16px; padding: 4px 11px; cursor: pointer; }
         .co-chips label:has(input:checked) { background: rgba(31,95,191,.14); border-color: #1f5fbf; }
 
+        .co-modo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: .6rem 0 .2rem; font-size: .72rem; color: var(--p3-text-muted); }
+        .co-modo button { border: 1.5px solid var(--p3-border); background: var(--p3-bg); color: var(--p3-text); border-radius: 16px; padding: 4px 11px; font: 600 .74rem var(--p3-font); cursor: pointer; }
+        .co-modo button.ativo { background: var(--p3-blue-700); border-color: var(--p3-blue-700); color: #fff; }
+        .co-listas { display: flex; flex-direction: column; gap: .35rem; margin-top: .6rem; }
+        .co-lista-det { border: 1px solid var(--p3-border); border-radius: 7px; padding: .4rem .6rem; }
+        .co-lista-det summary { cursor: pointer; font-size: .78rem; font-weight: 700; color: var(--p3-text); }
+        .co-lista-det[open] summary { margin-bottom: .35rem; }
+
         @media (max-width: 1100px) { .co-grade { grid-template-columns: 1fr; } }
         @media (max-width: 860px) {
             main { padding: 1rem; }
