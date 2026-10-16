@@ -164,6 +164,18 @@
             return { ocs, bols, drg, arm, mat, pres };
         };
         const A = recorte(janelaOPO), B = recorte(janelaAnt);
+        // Comparação com o MÊS ANTERIOR à vigência: mesmos dias do mês anterior
+        // (dia limitado ao último dia do mês), mesmo horário e mesmas cidades.
+        const mesAnt = d => { const x = new Date(d.getFullYear(), d.getMonth() - 1, 1); x.setDate(Math.min(d.getDate(), new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); return x; };
+        const mIni = mesAnt(f.ini), mFim = mesAnt(f.fim);
+        const C = recorte(criarJanela(mIni, mFim, f.hIni, f.hFim));
+        // [[chave, na OPO, no mês anterior]] — ordenado pelo período da OPO
+        const comparar = (a, c, fn) => {
+            const m = new Map();
+            const add = (x, i) => { const k = (fn(x) || 'Não informado').toUpperCase(); const v = m.get(k) || [0, 0]; v[i]++; m.set(k, v); };
+            a.forEach(x => add(x, 0)); c.forEach(x => add(x, 1));
+            return [...m.entries()].map(([k, [x, y]]) => [k, x, y]).sort((p, q) => q[1] - p[1] || q[2] - p[2]);
+        };
 
         const agrupar = (lista, chave, soma) => {
             const m = {};
@@ -177,7 +189,10 @@
         const qtdMaterial = m => Math.max(1, num(m.QUANTIDADE) || 1);
 
         return {
-            f, dias, antIni, antFim, temAutores: !!autores,
+            f, dias, antIni, antFim, temAutores: !!autores, mesIni: mIni, mesFim: mFim,
+            porCidadeComp: comparar(A.ocs, C.ocs, o => val(o.CIDADE)),
+            porBairroComp: comparar(A.ocs, C.ocs, o => val(o.BAIRRO)),
+            porTipComp: comparar(A.ocs, C.ocs, o => val(o.TIPIFICACAO_GERAL) || val(o.TIPIFICACAO)),
             ocorrencias: A.ocs.slice().sort((a, b) => (parseData(a.DATA) - parseData(b.DATA)) || String(a.HORA).localeCompare(String(b.HORA))),
             porTip: agrupar(A.ocs, o => val(o.TIPIFICACAO_GERAL) || val(o.TIPIFICACAO)),
             porCidade: agrupar(A.ocs, o => val(o.CIDADE)),
@@ -186,11 +201,12 @@
             materiais: A.mat, materiaisPorCat: agrupar(A.mat, m => val(m.CATEGORIA), qtdMaterial),
             prisoes: A.pres || [], prisoesPorSit: agrupar(A.pres || [], p => val(p.SITUACAO)),
             kpi: {
-                ocorrencias: [A.ocs.length, B.ocs.length],
-                prisoes: [A.pres ? A.pres.length : null, B.pres ? B.pres.length : null],
-                drogas: [pesoTotal(A.drg), pesoTotal(B.drg)],
-                armas: [A.arm.length, B.arm.length],
-                materiais: [A.mat.reduce((s, m) => s + qtdMaterial(m), 0), B.mat.reduce((s, m) => s + qtdMaterial(m), 0)],
+                // [na OPO, período imediatamente anterior, mesmos dias do mês anterior]
+                ocorrencias: [A.ocs.length, B.ocs.length, C.ocs.length],
+                prisoes: [A.pres ? A.pres.length : null, B.pres ? B.pres.length : null, C.pres ? C.pres.length : null],
+                drogas: [pesoTotal(A.drg), pesoTotal(B.drg), pesoTotal(C.drg)],
+                armas: [A.arm.length, B.arm.length, C.arm.length],
+                materiais: [A.mat.reduce((s, m) => s + qtdMaterial(m), 0), B.mat.reduce((s, m) => s + qtdMaterial(m), 0), C.mat.reduce((s, m) => s + qtdMaterial(m), 0)],
             },
         };
     }
