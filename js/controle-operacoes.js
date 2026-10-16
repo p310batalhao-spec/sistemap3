@@ -71,7 +71,7 @@
                 nome: o.nome || ('OPO ' + (o.cidade || '')), dias, ini, fim: p.fonte === 'estimado' ? parseData(p.fim) : fimPlan,
                 hIni: p.hIni, hFim: p.hFim, cidades: ControleOPO.cidadesDaOpo(o),
                 fonte: p.fonte, semExecucao: p.fonte === 'estimado', tiposCombate: o.tiposCombate || [],
-                eventoId: o.eventoId || null, eventoNome: o.eventoNome || null, temDocumento: !!o.temDocumento,
+                eventoId: o.eventoId || null, eventoNome: o.eventoNome || null, temDocumento: !!o.temDocumento, modelo: o.modelo || null,
                 detalhe: [o.criadoPor && 'Criada por ' + o.criadoPor, o.vigenciaTexto && 'Vigência: ' + o.vigenciaTexto].filter(Boolean).join(' · '),
             };
         });
@@ -105,6 +105,7 @@
         ITENS = [...opos, ...eventos].sort((a, b) => a.ini - b.ini);
         RES = res || {};
         montarCidades();
+        montarOpcoesOPO();
     }
 
     // ── Resultados (CAD) ────────────────────────────────────────────
@@ -121,19 +122,24 @@
     const modoItem = {};
     const modoDe = it => modoItem[it.chave] || modoPadrao;
     const L_MAX = 500; // limite de linhas guardadas por lista
-    async function computar(it, modo = 'horario') {
-        const fim = it.fim > hoje0() ? hoje0() : it.fim;
-        const parcial = it.fim >= hoje0(); // hoje ainda não terminou
+    // Calcula no CAD (sem gravar) o recorte de um item entre ini e fim.
+    async function calcularRecorte(it, ini, fim, modo) {
         const diaInteiro = modo === 'dia' || !temHorario(it);
-        const R = await ControleOPO.calcular({ nome: it.nome, ini: it.ini, fim, hIni: diaInteiro ? '' : it.hIni, hFim: diaInteiro ? '' : it.hFim, cidades: it.cidades });
+        const R = await ControleOPO.calcular({ nome: it.nome, ini, fim, hIni: diaInteiro ? '' : it.hIni, hFim: diaInteiro ? '' : it.hFim, cidades: it.cidades });
+        return resumirResultado(R, it, ini, fim, diaInteiro);
+    }
+    function resumirResultado(R, it, ini, fim, diaInteiro) {
         const k = R.kpi;
         const end = o => [val(o.LOGRADOURO), val(o.BAIRRO)].filter(Boolean).join(', ');
-        const resumo = {
+        const kp = i => ({ ocorrencias: k.ocorrencias[i], prisoes: k.prisoes[i], drogasG: +((k.drogas[i] || 0).toFixed(3)), armas: k.armas[i], materiais: k.materiais[i] });
+        return {
             tipo: it.tipo, refId: it.id, nome: it.nome, calculadoEm: new Date().toISOString(),
-            ini: iso(it.ini), fim: iso(fim), hIni: diaInteiro ? '' : (it.hIni || ''), hFim: diaInteiro ? '' : (it.hFim || ''), cidades: it.cidades,
-            parcial, modo: diaInteiro ? 'dia' : 'horario',
-            kpi: { ocorrencias: k.ocorrencias[0], prisoes: k.prisoes[0], drogasG: +k.drogas[0].toFixed(3), armas: k.armas[0], materiais: k.materiais[0] },
-            antes: { ocorrencias: k.ocorrencias[1], prisoes: k.prisoes[1], drogasG: +k.drogas[1].toFixed(3), armas: k.armas[1], materiais: k.materiais[1] },
+            ini: iso(ini), fim: iso(fim), hIni: diaInteiro ? '' : (it.hIni || ''), hFim: diaInteiro ? '' : (it.hFim || ''), cidades: it.cidades,
+            parcial: it.fim >= hoje0(), modo: diaInteiro ? 'dia' : 'horario',
+            kpi: kp(0), antes: kp(1),
+            // Mesmos dias do mês anterior à vigência, mesmo horário e cidades
+            mesAnterior: { ini: iso(R.mesIni), fim: iso(R.mesFim), kpi: kp(2) },
+            porBairroComp: R.porBairroComp.slice(0, 40), porCidadeComp: R.porCidadeComp.slice(0, 20), porTipComp: R.porTipComp.slice(0, 25),
             porTip: R.porTip.slice(0, 15), porCidade: R.porCidade.slice(0, 15),
             drogasPorTipo: R.drogasPorTipo, armasPorTipo: R.armasPorTipo, materiaisPorCat: R.materiaisPorCat, prisoesPorSit: R.prisoesPorSit,
             // Listas (sem nome de pessoa — ficam gravadas no Firebase da unidade)
@@ -143,20 +149,26 @@
             listaMateriais: R.materiais.slice(0, L_MAX).map(o => ({ d: val(o.DATA), b: val(o['N° DO BOU']), t: val(o.CATEGORIA), x: val(o['DESCRIÇÃO']), s: val(o.STATUS), q: val(o.QUANTIDADE) })),
             listaPrisoes: R.prisoes.slice(0, L_MAX).map(o => ({ b: val(o.BOLETIM), s: val(o.SITUACAO), t: val(o.TIPIFICACAO), c: val(o.CIDADE) })),
         };
+    }
+    async function computar(it, modo = 'horario') {
+        const fim = it.fim > hoje0() ? hoje0() : it.fim;
+        const resumo = await calcularRecorte(it, it.ini, fim, modo);
         const chave = chaveRes(it, resumo.modo);
         const r = await fetch(`${DB}/${NO_RES}/${chave}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resumo) });
         if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
         RES[chave] = resumo;
         return resumo;
     }
+    // Resultado de um item no recorte pedido ('horario' | 'dia').
+    const resDe = (it, rec = 'horario') => RES[chaveRes(it, rec)];
     // Pendentes = já começaram e (sem resultado OU resultado parcial calculado antes do fim).
-    const pendente = it => podeCalcular(it) && (!RES[it.chave] || (RES[it.chave].parcial && RES[it.chave].calculadoEm.slice(0, 10) < iso(new Date())));
-    async function computarVarios(lista, btn) {
+    const pendente = (it, rec = 'horario') => { const r = resDe(it, rec); return podeCalcular(it) && (!r || (r.parcial && r.calculadoEm.slice(0, 10) < iso(new Date()))); };
+    async function computarVarios(lista, btn, rec = 'horario') {
         const txt = btn.textContent; btn.disabled = true;
         let ok = 0, erro = 0;
         for (const it of lista) {
             btn.textContent = `⏳ ${ok + erro + 1}/${lista.length} — ${it.nome.slice(0, 28)}…`;
-            try { await computar(it); ok++; } catch (e) { console.error('[controle-operacoes]', it.nome, e); erro++; }
+            try { await computar(it, rec); ok++; } catch (e) { console.error('[controle-operacoes]', it.nome, e); erro++; }
         }
         btn.disabled = false; btn.textContent = txt;
         if (erro) alert(`${ok} resultado(s) computado(s); ${erro} com erro (ver console).`);
@@ -164,9 +176,9 @@
 
     // ── Visão geral: KPIs, calendário, programação ──────────────────
     const doMes = (it, mes) => it.dias.some(d => d.slice(0, 7) === iso(mes).slice(0, 7));
-    function somaRes(lista) {
+    function somaRes(lista, rec = 'horario') {
         const t = { ocorrencias: 0, prisoes: 0, drogasG: 0, armas: 0, materiais: 0, com: 0 };
-        lista.forEach(it => { const r = RES[it.chave]; if (!r) return; t.com++; Object.keys(r.kpi || {}).forEach(k => { t[k] += r.kpi[k] || 0; }); });
+        lista.forEach(it => { const r = resDe(it, rec); if (!r) return; t.com++; Object.keys(r.kpi || {}).forEach(k => { t[k] += r.kpi[k] || 0; }); });
         return t;
     }
     const kpi = (cor, rot, v, sub) => `<div class="co-kpi" style="--c:${cor}"><small>${rot}</small><b>${v}</b><span>${sub || ''}</span></div>`;
@@ -183,7 +195,7 @@
             kpi('#c0392b', 'Prisões / apreensões', fmtN(t.prisoes), 'autores presos/apreendidos') +
             kpi('#2e7d32', 'Drogas apreendidas', peso(t.drogasG), '') +
             kpi('#455a64', 'Armas · materiais', `${fmtN(t.armas)} · ${fmtN(t.materiais)}`, 'apreendidos');
-        const pend = lista.filter(pendente);
+        const pend = lista.filter(it => pendente(it));
         document.getElementById('co-aviso-mes').innerHTML = pend.length
             ? `<div class="co-aviso">⚠️ ${pend.length} operação(ões)/evento(s) deste mês sem resultado computado (ou com resultado parcial).
                 <button class="co-btn co-btn-pri" id="co-computar-mes">⚙ Computar resultados do CAD</button></div>` : '';
@@ -253,6 +265,10 @@
         corpo.querySelector('[data-nova-dia]').addEventListener('click', () => abrirNovaOPO({ dataIni: dia, dataFim: dia }));
         corpo.querySelectorAll('[data-nova-evento]').forEach(b => b.addEventListener('click', () => abrirNovaOPO(prefillEvento(ITENS.find(x => x.chave === b.dataset.novaEvento)))));
         corpo.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => abrirDocumento(ITENS.find(x => x.chave === b.dataset.doc))));
+        corpo.querySelectorAll('[data-relatorio]').forEach(b => b.addEventListener('click', () => abrirRelatorioOPO(ITENS.find(x => x.chave === b.dataset.relatorio), dia)));
+        ligarOcorrencias(corpo);
+        corpo.querySelectorAll('[data-opo-evento]').forEach(b => b.addEventListener('click', () => abrirOPOEvento(ITENS.find(x => x.chave === b.dataset.opoEvento), null)));
+        corpo.querySelectorAll('[data-editar-opo]').forEach(b => b.addEventListener('click', () => { const o = ITENS.find(x => x.chave === b.dataset.editarOpo); abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(o.eventoId)) || null, o); }));
         corpo.querySelectorAll('[data-computar]').forEach(b => b.addEventListener('click', async () => {
             const it = ITENS.find(x => x.chave === b.dataset.computar);
             b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
@@ -283,13 +299,229 @@
         if (!r.listaOcorrencias) return '<div class="co-det-meta" style="margin-top:.4rem;">ℹ️ Clique em “↻ Recalcular resultados” para ver a lista detalhada de ocorrências e apreensões.</div>';
         const quant = l => l.q ? `${l.q} ${(l.u || '').toLowerCase()}`.trim() : '—';
         return `<div class="co-listas">
-            ${tabLista('📋 Ocorrências', [['Data', l => l.d], ['Hora', l => l.h], ['Boletim', l => l.b], ['Cidade', l => l.c], ['Endereço', l => l.e], ['Tipificação', l => l.t], ['Solução', l => l.s]], r.listaOcorrencias)}
+            ${listaOcorrenciasHTML(r.listaOcorrencias)}
             ${tabLista('💊 Drogas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Quantidade', quant], ['Cidade', l => l.c], ['Obs.', l => l.x]], r.listaDrogas || [])}
             ${tabLista('🔫 Armas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Marca / modelo / calibre', l => l.m], ['Situação', l => l.s], ['Cidade', l => l.c]], r.listaArmas || [])}
             ${tabLista('📦 Materiais apreendidos', [['Data', l => l.d], ['BOU', l => l.b], ['Categoria', l => l.t], ['Descrição', l => l.x], ['Status', l => l.s]], r.listaMateriais || [])}
             ${tabLista('🔒 Prisões / apreensões', [['Boletim', l => l.b], ['Situação', l => l.s], ['Tipificação', l => l.t], ['Cidade', l => l.c]], r.listaPrisoes || [])}
         </div>`;
     }
+    // ── Comparação com o mês anterior (mesmos dias, horário e cidades) ──
+    const variaTxt = (a, b) => { if (a == null || b == null) return ''; if (!b) return a ? '<span class="co-up">▲ novo</span>' : '<span>=</span>'; const p = (a - b) / b * 100; return p ? `<span class="${p > 0 ? 'co-up' : 'co-down'}">${p > 0 ? '▲' : '▼'} ${fmtN(Math.abs(p))}%</span>` : '<span>=</span>'; };
+    function comparacaoMesHTML(r, it) {
+        if (!r.mesAnterior) return '<div class="co-det-meta" style="margin:.3rem 0;">ℹ️ Clique em “↻ Recalcular resultados” para ver a comparação com o mês anterior.</div>';
+        const m = r.mesAnterior, k = r.kpi, a = m.kpi;
+        const linha = (rot, x, y, fmt = fmtN) => `<tr><td>${rot}</td><td>${x == null ? '—' : fmt(x)}</td><td>${y == null ? '—' : fmt(y)}</td><td>${variaTxt(x, y)}</td></tr>`;
+        const tabComp = (tit, linhas) => linhas && linhas.length ? `<div class="co-scroll" style="max-height:220px;"><table class="co-mini"><tr><th>${tit}</th><th>OPO</th><th>Mês ant.</th><th>Var.</th></tr>${linhas.map(([n, x, y]) => `<tr><td>${esc(n)}</td><td>${x}</td><td>${y}</td><td>${variaTxt(x, y)}</td></tr>`).join('')}</table></div>` : '';
+        return `<details class="co-lista-det co-comp" open><summary>📆 Comparação com o mês anterior — ${br(parseData(m.ini))}${m.ini !== m.fim ? ' a ' + br(parseData(m.fim)) : ''}${r.hIni ? `, das ${r.hIni} às ${r.hFim}` : ', dias inteiros'} · ${esc((it.cidades || []).join(', ') || 'área')}</summary>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.6rem;align-items:start;">
+                <table class="co-mini"><tr><th>Indicador</th><th>OPO</th><th>Mês ant.</th><th>Var.</th></tr>
+                    ${linha('Ocorrências', k.ocorrencias, a.ocorrencias)}${linha('Prisões', k.prisoes, a.prisoes)}${linha('Drogas', k.drogasG, a.drogasG, peso)}${linha('Armas', k.armas, a.armas)}${linha('Materiais', k.materiais, a.materiais)}</table>
+                ${tabComp('Cidade', r.porCidadeComp)}
+                ${tabComp('Bairro', r.porBairroComp)}
+            </div></details>`;
+    }
+    // Tipificação clicável → ocorrências daquela tipificação (detalhe como no CAD)
+    function tabTip(r, it) {
+        const linhas = r.porTip || [];
+        if (!linhas.length) return '';
+        return `<table class="co-mini"><tr><th>Tipificação <small style="font-weight:400;">(clique para ver as ocorrências)</small></th><th style="text-align:right">Qtd.</th></tr>${linhas.slice(0, 12).map(([k, v]) =>
+            `<tr class="co-clicavel" data-tip="${esc(k)}" data-res="${esc(chaveRes(it, r.modo))}"><td>${esc(k)}</td><td style="text-align:right">${fmtN(v)}</td></tr>`).join('')}</table>`;
+    }
+    function listaOcorrenciasHTML(lista) {
+        const l = lista || [];
+        return `<details class="co-lista-det"><summary>📋 Ocorrências (${l.length}) <small style="font-weight:400;">— clique numa linha para ver a ocorrência completa</small></summary>${l.length
+            ? `<div class="co-scroll" style="max-height:300px;"><table class="co-mini"><tr><th>Data</th><th>Hora</th><th>Boletim</th><th>Cidade</th><th>Endereço</th><th>Tipificação</th><th>Solução</th></tr>${l.map(o =>
+                `<tr class="co-clicavel" data-bol="${esc(o.b)}"><td>${esc(o.d)}</td><td>${esc(o.h)}</td><td>${esc(o.b)}</td><td>${esc(o.c)}</td><td>${esc(o.e)}</td><td>${esc(o.t)}</td><td>${esc(o.s)}</td></tr>`).join('')}</table></div>`
+            : '<div class="co-det-meta">Nenhum registro.</div>'}</details>`;
+    }
+    function ligarOcorrencias(raiz) {
+        raiz.querySelectorAll('[data-tip]').forEach(tr => tr.addEventListener('click', () => {
+            const r = RES[tr.dataset.res];
+            abrirOcorrencias(`Tipificação: ${tr.dataset.tip}`, ((r && r.listaOcorrencias) || []).filter(o => o.t === tr.dataset.tip));
+        }));
+        raiz.querySelectorAll('[data-bol]').forEach(tr => tr.addEventListener('click', e => {
+            e.stopPropagation();
+            const lista = [...tr.closest('table').querySelectorAll('[data-bol]')].map(x => ({ d: x.cells[0].innerText, h: x.cells[1].innerText, b: x.dataset.bol, c: x.cells[3].innerText, e: x.cells[4].innerText, t: x.cells[5].innerText, s: x.cells[6].innerText }));
+            abrirOcorrencias('Ocorrências', lista, tr.dataset.bol);
+        }));
+    }
+
+    // ── Ocorrência completa (igual à Busca Integrada de Pessoas) ──
+    // 1º o registro do Firebase (/geral — todos os campos importados do CAD);
+    // depois, com o atualizador local, o detalhe completo direto do CAD
+    // (mesma rota da Busca Integrada: /pessoa/ocorrencia-detalhe?tipo=despacho).
+    const CAD_CACHE = {};
+    function abrirOcorrencias(titulo, lista, boletimInicial) {
+        const m = document.getElementById('co-ocor');
+        document.getElementById('co-ocor-tit').textContent = `🚨 ${titulo} (${lista.length})`;
+        document.getElementById('co-ocor-lista').innerHTML = lista.length ? `<table class="co-mini">${lista.map(o =>
+            `<tr class="co-clicavel" data-ver="${esc(o.b)}"><td>${esc(o.d)} ${esc(o.h)}</td><td><b>${esc(o.b)}</b></td><td>${esc(o.t)}</td><td>${esc(o.e || o.c)}</td></tr>`).join('')}</table>` : '<div class="co-vazio">Nenhuma ocorrência.</div>';
+        document.getElementById('co-ocor-det').innerHTML = '<div class="co-vazio">Selecione uma ocorrência na lista.</div>';
+        m.querySelectorAll('[data-ver]').forEach(tr => tr.addEventListener('click', () => verOcorrencia(tr.dataset.ver)));
+        m.classList.add('aberto');
+        if (boletimInicial || lista.length === 1) verOcorrencia(boletimInicial || lista[0].b);
+    }
+    const kvHTML = obj => '<div class="co-kv">' + Object.entries(obj || {}).filter(([, v]) => val(v)).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('') + '</div>';
+    const NOMES_GERAL = { BOLETIM: 'Nº Ocorrência', DATA: 'Data', HORA: 'Hora', CIDADE: 'Cidade', BAIRRO: 'Bairro', LOGRADOURO: 'Logradouro', ESTABELECIMENTO: 'Estabelecimento',
+        TIPIFICACAO_GERAL: 'Tipificação', TIPIFICACAO: 'Tipificação (despacho)', 'SOLUÇÃO': 'Solução', ATENDENTE: 'Atendente', SOLICITANTE: 'Solicitante',
+        ATENDIMENTO_INICIAL: 'Atendimento inicial', TEXTO_DESPACHANTE: 'Texto do despachante', OBITO: 'Óbito?', LATITUDE: 'Latitude', LONGITUDE: 'Longitude' };
+    async function verOcorrencia(bol) {
+        document.querySelectorAll('#co-ocor-lista [data-ver]').forEach(tr => tr.classList.toggle('sel', tr.dataset.ver === bol));
+        const det = document.getElementById('co-ocor-det');
+        const geral = (await ControleOPO.carregarNo('geral')).find(g => String(g.BOLETIM) === String(bol));
+        const base = {};
+        if (geral) Object.keys(NOMES_GERAL).forEach(k => { if (val(geral[k])) base[NOMES_GERAL[k]] = geral[k]; });
+        det.innerHTML = `<div class="co-card-topo"><div><h3>Ocorrência ${esc(bol)}</h3><p>${geral ? esc(val(geral.TIPIFICACAO_GERAL)) : 'não encontrada na base importada'}</p></div></div>
+            ${geral ? `<div class="co-ocor-bloco"><div class="co-ocor-sub">Dados importados do CAD (base do sistema)</div>${kvHTML(base)}</div>` : ''}
+            <div class="co-ocor-bloco" id="co-ocor-cad"><div class="co-det-meta">⏳ Buscando o detalhe completo no CAD (atualizador local)…</div></div>`;
+        const alvo = document.getElementById('co-ocor-cad');
+        try {
+            if (!window.P3AtualizadorLocal || !P3AtualizadorLocal.ocorrenciaDetalhe) throw new Error('atualizador local não carregado');
+            const resp = CAD_CACHE[bol] || await P3AtualizadorLocal.ocorrenciaDetalhe({ tipo: 'despacho', idOcor: bol });
+            if (!resp || !resp.ok) throw new Error((resp && resp.erro) || 'sem resposta');
+            CAD_CACHE[bol] = resp;
+            if (!document.getElementById('co-ocor-cad')) return;
+            const d = resp.detalhe || {};
+            const env = (d.envolvidos || []), vei = (d.veiculos || []);
+            alvo.innerHTML = `<div class="co-ocor-sub">Ocorrência completa — CAD</div>${kvHTML(d.campos)}
+                ${env.length ? `<div class="co-ocor-sub">Envolvidos (${env.length})</div>${env.map((p, i) => `<div class="co-ocor-env"><b>${i + 1}.</b> ${kvHTML(p)}</div>`).join('')}` : ''}
+                ${vei.length ? `<div class="co-ocor-sub">Veículos (${vei.length})</div>${vei.map((v, i) => `<div class="co-ocor-env"><b>${i + 1}.</b> ${kvHTML(v)}</div>`).join('')}` : ''}`;
+        } catch (e) {
+            const msg = String(e.message || e);
+            alvo.innerHTML = `<div class="co-det-meta">ℹ️ Detalhe completo do CAD indisponível (${esc(/Failed to fetch|NetworkError|carregado/i.test(msg) ? 'abra o Sistema P3 (atualizador local) com nível P2/ADMIN' : msg)}). Acima, os dados já importados.</div>`;
+        }
+    }
+
+    // ── Relatório da OPO: dia clicado ou geral/parcial (início → fim/hoje) ──
+    let REL_ATUAL = null;
+    function abrirRelatorioOPO(it, dia) {
+        const m = document.getElementById('co-rel');
+        const diaOk = dia && it.dias.includes(dia) && parseData(dia) <= hoje0() ? dia : iso(it.ini);
+        REL_ATUAL = { it, dia: diaOk, escopo: 'dia', modo: temHorario(it) ? modoDe(it) : 'horario' };
+        document.getElementById('co-rel-tit').textContent = '📊 Relatório — ' + it.nome;
+        const fimGeral = it.fim > hoje0() ? hoje0() : it.fim;
+        document.getElementById('co-rel-opcoes').innerHTML = `
+            <div class="co-modo"><span>Período:</span>
+                <button data-rel-esc="dia">📅 Dia ${br(parseData(diaOk))}</button>
+                <button data-rel-esc="geral">📈 ${it.fim > hoje0() ? 'Parcial' : 'Geral'} da OPO (${br(it.ini)} a ${br(fimGeral)})</button></div>
+            ${temHorario(it) ? `<div class="co-modo"><span>Recorte:</span>
+                <button data-rel-modo="horario">⏰ Somente no horário (${esc(it.hIni)}–${esc(it.hFim)})</button>
+                <button data-rel-modo="dia">📅 Dias inteiros</button></div>` : ''}`;
+        m.querySelectorAll('[data-rel-esc]').forEach(b => b.onclick = () => { REL_ATUAL.escopo = b.dataset.relEsc; gerarRelatorioOPO(); });
+        m.querySelectorAll('[data-rel-modo]').forEach(b => b.onclick = () => { REL_ATUAL.modo = b.dataset.relModo; gerarRelatorioOPO(); });
+        m.classList.add('aberto');
+        gerarRelatorioOPO();
+    }
+    async function gerarRelatorioOPO() {
+        const { it, dia, escopo, modo } = REL_ATUAL;
+        const m = document.getElementById('co-rel');
+        m.querySelectorAll('[data-rel-esc]').forEach(b => b.classList.toggle('ativo', b.dataset.relEsc === escopo));
+        m.querySelectorAll('[data-rel-modo]').forEach(b => b.classList.toggle('ativo', b.dataset.relModo === modo));
+        const fr = document.getElementById('co-rel-frame');
+        fr.srcdoc = '<p style="font:14px Arial;padding:20px;">⏳ Cruzando com o CAD…</p>';
+        document.getElementById('co-rel-imprimir').disabled = true;
+        try {
+            let r;
+            if (escopo === 'dia') r = await calcularRecorte(it, parseData(dia), parseData(dia), modo);
+            else {
+                r = resDe(it, modo);
+                if (!r || !r.mesAnterior || pendente(it, modo)) r = await computar(it, modo);
+            }
+            REL_ATUAL.html = htmlRelatorioOPO(it, r, escopo);
+            fr.srcdoc = REL_ATUAL.html;
+            document.getElementById('co-rel-imprimir').disabled = false;
+        } catch (e) {
+            fr.srcdoc = `<p style="font:14px Arial;padding:20px;color:#b00;">Não foi possível gerar: ${esc(e.message)}</p>`;
+        }
+    }
+    function htmlRelatorioOPO(it, r, escopo) {
+        const k = r.kpi, b = r.antes, ma = r.mesAnterior || { kpi: {} }, a = ma.kpi;
+        const per = `${br(parseData(r.ini))}${r.ini !== r.fim ? ' a ' + br(parseData(r.fim)) : ''}`;
+        const rec = r.hIni ? `somente das ${r.hIni} às ${r.hFim}` : 'dias inteiros';
+        const tab = (tit, cols, linhas) => `<h2>${tit} (${linhas.length})</h2><table><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr>${linhas.length ? linhas.map(l => `<tr>${cols.map(c => `<td>${esc(c[1](l))}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}">Nenhum registro.</td></tr>`}</table>`;
+        const comp = (tit, linhas) => `<table><caption>${tit}</caption><tr><th>${tit.split(' ')[0]}</th><th>OPO</th><th>Mês anterior</th><th>Variação</th></tr>${(linhas || []).length ? linhas.map(([n, x, y]) => `<tr><td>${esc(n)}</td><td>${x}</td><td>${y}</td><td>${variaTxt(x, y).replace(/<[^>]+>/g, '')}</td></tr>`).join('') : '<tr><td colspan="4">Nenhum registro.</td></tr>'}</table>`;
+        const ind = (rot, x, y, z, f = fmtN) => `<tr><td>${rot}</td><td><b>${x == null ? '—' : f(x)}</b></td><td>${y == null ? '—' : f(y)}</td><td>${variaTxt(x, y).replace(/<[^>]+>/g, '')}</td><td>${z == null ? '—' : f(z)}</td><td>${variaTxt(x, z).replace(/<[^>]+>/g, '')}</td></tr>`;
+        const quant = l => l.q ? `${l.q} ${(l.u || '').toLowerCase()}`.trim() : '—';
+        return `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Relatório — ${esc(it.nome)}</title><style>
+            body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:12mm;font-size:9.5pt}
+            .cab{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0b2545;padding-bottom:8px;margin-bottom:10px}.cab img{height:56px}
+            h1{font-size:13.5pt;margin:0;color:#0b2545;text-transform:uppercase}.sub{color:#444;font-size:9pt;margin-top:2px}
+            h2{font-size:10.5pt;color:#0b2545;border-bottom:1.5px solid #0b2545;padding-bottom:2px;margin:14px 0 6px;text-transform:uppercase}
+            table{border-collapse:collapse;width:100%;margin:4px 0 8px;font-size:8.5pt}caption{text-align:left;font-weight:bold;margin-bottom:2px}
+            th,td{border:1px solid #bbb;padding:3px 5px;text-align:left;vertical-align:top}th{background:#e8eef7}
+            .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start}.nota{font-size:7.5pt;color:#555;margin-top:12px;border-top:1px solid #ccc;padding-top:5px}
+        </style></head><body>
+            <div class="cab">${CFG.logoUrl ? `<img src="${esc(new URL(CFG.logoUrl, location.href).href)}" alt="">` : ''}<div>
+                <h1>Relatório da Operação — ${escopo === 'dia' ? 'dia ' + per : (r.parcial ? 'parcial' : 'geral')}</h1>
+                <div class="sub"><b>${esc(it.nome)}</b> · ${esc(CFG.nome || '')}</div>
+                <div class="sub">Período: ${per} · ${rec} · Cidades: ${esc((it.cidades || []).join(', ') || 'área completa')}${it.eventoNome ? ' · Evento: ' + esc(it.eventoNome) : ''} · Emitido em ${new Date().toLocaleString('pt-BR')}</div></div></div>
+            <h2>1. Indicadores</h2>
+            <table><tr><th>Indicador</th><th>Na operação</th><th>Período imediatamente anterior</th><th>Var.</th><th>Mesmos dias do mês anterior${ma.ini ? ` (${br(parseData(ma.ini))}${ma.ini !== ma.fim ? ' a ' + br(parseData(ma.fim)) : ''})` : ''}</th><th>Var.</th></tr>
+                ${ind('Ocorrências', k.ocorrencias, b.ocorrencias, a.ocorrencias)}${ind('Prisões / apreensões', k.prisoes, b.prisoes, a.prisoes)}
+                ${ind('Drogas apreendidas', k.drogasG, b.drogasG, a.drogasG, peso)}${ind('Armas apreendidas', k.armas, b.armas, a.armas)}${ind('Materiais apreendidos', k.materiais, b.materiais, a.materiais)}</table>
+            <h2>2. Comparação com o mês anterior</h2>
+            <div class="grid">${comp('Cidade', r.porCidadeComp)}${comp('Bairro', (r.porBairroComp || []).slice(0, 25))}</div>
+            ${comp('Tipificação', (r.porTipComp || []).slice(0, 20))}
+            ${tab('3. Ocorrências durante a operação', [['Data', l => l.d], ['Hora', l => l.h], ['Boletim', l => l.b], ['Cidade', l => l.c], ['Endereço', l => l.e], ['Tipificação', l => l.t], ['Solução', l => l.s]], r.listaOcorrencias || [])}
+            ${tab('4. Drogas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Quantidade', quant], ['Cidade', l => l.c]], r.listaDrogas || [])}
+            ${tab('5. Armas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Marca / modelo / calibre', l => l.m], ['Situação', l => l.s]], r.listaArmas || [])}
+            ${tab('6. Materiais apreendidos', [['Data', l => l.d], ['BOU', l => l.b], ['Categoria', l => l.t], ['Descrição', l => l.x], ['Status', l => l.s]], r.listaMateriais || [])}
+            ${tab('7. Prisões / apreensões', [['Boletim', l => l.b], ['Situação', l => l.s], ['Tipificação', l => l.t], ['Cidade', l => l.c]], r.listaPrisoes || [])}
+            <div class="nota">Fonte: CAD/SISP (ocorrências, drogas, armas, autores) e planilha de materiais apreendidos (pelo nº do BOU), nas cidades de vigência da operação. "Período imediatamente anterior" = mesmo número de dias logo antes; "mês anterior" = mesmos dias do mês anterior, mesmo horário. Sem nomes de pessoas.</div>
+            <script>window.onload=function(){if(window.__autoPrint)setTimeout(function(){window.print();},400);};<\/script>
+        </body></html>`;
+    }
+    async function imprimirRelatorioOPO() {
+        if (!REL_ATUAL || !REL_ATUAL.html) return;
+        if (window.pywebview) {
+            try { await abrirNoNavegador({ tipo: 'impressao', html: REL_ATUAL.html.replace('window.__autoPrint', 'true') }); } catch (e) { alert('Não foi possível abrir a impressão: ' + e.message); }
+            return;
+        }
+        const w = document.getElementById('co-rel-frame').contentWindow;
+        w.focus(); w.print();
+    }
+
+    // ── Busca de OPOs salvas (nome, cidade, bairro ou data) ─────────
+    function textoBusca(it) {
+        const o = it.raw || {};
+        const bairrosRes = [it.chave, it.chave + '_dia'].flatMap(k => ((RES[k] || {}).listaOcorrencias || []).map(x => x.e));
+        return nrm([it.nome, it.eventoNome, o.vigenciaTexto, o.local, ...(it.cidades || []), ...(o.bairros || []), ...(o.locais || []),
+            ...((o.alocacoes || []).map(a => `${a.cidade} ${a.guarnicao}`)), ...bairrosRes].filter(Boolean).join(' | '));
+    }
+    function buscarOPOs(q) {
+        const termo = nrm(q).trim();
+        if (termo.length < 2) return [];
+        const mData = termo.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+        return ITENS.filter(i => i.tipo === 'opo').filter(it => {
+            if (mData) {
+                const dd = mData[1].padStart(2, '0'), mm = mData[2].padStart(2, '0'), aa = mData[3] ? (mData[3].length === 2 ? '20' + mData[3] : mData[3]) : null;
+                return it.dias.some(d => d.slice(8, 10) === dd && d.slice(5, 7) === mm && (!aa || d.slice(0, 4) === aa));
+            }
+            const txt = textoBusca(it);
+            return termo.split(/\s+/).every(p => txt.includes(p));
+        }).sort((a, b) => b.ini - a.ini);
+    }
+    function renderBusca() {
+        const q = document.getElementById('co-busca').value;
+        const out = document.getElementById('co-busca-res');
+        const res = buscarOPOs(q);
+        if (nrm(q).trim().length < 2) { out.classList.remove('aberto'); out.innerHTML = ''; return; }
+        out.innerHTML = res.length ? res.slice(0, 30).map(it => `<div class="co-busca-item" data-ir="${esc(it.dias[0])}" data-chave="${esc(it.chave)}">
+                <b>${esc(it.nome)}</b>${it.eventoId ? ' <span class="co-tag" style="background:#6d4c41">EVENTO</span>' : ''}
+                <small>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''} · ${esc(it.cidades.join(', ') || 'área completa')}${it.hIni ? ` · ${it.hIni}–${it.hFim}` : ''}</small></div>`).join('')
+            + (res.length > 30 ? `<div class="co-det-meta" style="padding:.4rem .7rem;">+${res.length - 30} resultado(s) — refine a busca.</div>` : '')
+            : '<div class="co-det-meta" style="padding:.6rem .8rem;">Nenhuma OPO encontrada.</div>';
+        out.classList.add('aberto');
+        out.querySelectorAll('[data-ir]').forEach(el => el.addEventListener('click', () => {
+            const d = parseData(el.dataset.ir);
+            mesAtual = new Date(d.getFullYear(), d.getMonth(), 1);
+            renderGeral(); out.classList.remove('aberto');
+            abrirDia(el.dataset.ir);
+            setTimeout(() => { const alvo = [...document.querySelectorAll('#co-modal-corpo .co-det h4')].find(h => h.textContent.includes(ITENS.find(x => x.chave === el.dataset.chave).nome)); if (alvo) alvo.scrollIntoView({ block: 'start' }); }, 50);
+        }));
+    }
+
     function detalheItem(it) {
         const modo = temHorario(it) ? modoDe(it) : 'horario';
         const r = RES[chaveRes(it, modo)];
@@ -314,7 +546,8 @@
                 <div>Drogas<b>${peso(r.kpi.drogasG)}</b>antes: ${peso(r.antes.drogasG)}</div>
                 <div>Armas apreendidas<b>${fmtN(r.kpi.armas)}</b>antes: ${fmtN(r.antes.armas)}</div>
                 <div>Materiais apreendidos<b>${fmtN(r.kpi.materiais)}</b>antes: ${fmtN(r.antes.materiais)}</div></div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;align-items:start;">${tabMini('Tipificação', r.porTip)}${tabMini('Droga (peso)', r.drogasPorTipo, peso) || tabMini('Droga', [['Nenhuma', 0]])}${tabMini('Arma', r.armasPorTipo) || tabMini('Arma', [['Nenhuma', 0]])}${tabMini('Material', r.materiaisPorCat) || tabMini('Material', [['Nenhum', 0]])}</div>
+            ${comparacaoMesHTML(r, it)}
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;align-items:start;">${tabTip(r, it)}${tabMini('Droga (peso)', r.drogasPorTipo, peso) || tabMini('Droga', [['Nenhuma', 0]])}${tabMini('Arma', r.armasPorTipo) || tabMini('Arma', [['Nenhuma', 0]])}${tabMini('Material', r.materiaisPorCat) || tabMini('Material', [['Nenhum', 0]])}</div>
             ${listasHTML(r)}
             <div class="co-det-meta" style="margin-top:.4rem;">Computado em ${new Date(r.calculadoEm).toLocaleString('pt-BR')} (${br(parseData(r.ini))} a ${br(parseData(r.fim))}, ${r.hIni && r.hFim ? 'das ' + r.hIni + ' às ' + r.hFim : 'dia inteiro'})${r.parcial ? ' — PARCIAL, a operação ainda está em andamento' : ''}. "Antes" = mesmo intervalo e horário imediatamente anterior.</div>`
             : `<div class="co-det-meta" style="margin:.5rem 0;">${podeCalcular(it) ? 'Resultados ainda não computados.' : 'Ainda não iniciado — os resultados poderão ser computados a partir da data de início.'}</div>`;
@@ -328,9 +561,14 @@
             <div class="co-det-meta">${meta}</div>${filtro}<div class="co-det-res">${kp}</div>
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
+                ${it.tipo === 'opo' && it.modelo === 'evento' ? `<button class="co-btn co-btn-pri" data-editar-opo="${esc(it.chave)}">✏️ Editar OPO</button>` : ''}
                 ${it.tipo === 'opo' ? `<button class="co-btn" data-doc="${esc(it.chave)}">📄 Ver OPO (Word / PDF)</button>` : ''}
+                ${it.tipo === 'opo' && podeCalcular(it) ? `<button class="co-btn" data-relatorio="${esc(it.chave)}">📊 Relatório</button>` : ''}
                 ${it.tipo === 'opo' ? `<button class="co-btn" data-exec="${esc(it.chave)}">📅 Período de execução</button>` : ''}
-                ${it.tipo === 'evento' ? `<button class="co-btn co-btn-pri" data-nova-evento="${esc(it.chave)}">🎯 Gerar OPO deste evento</button>` : ''}
+                ${it.tipo === 'evento' ? (() => { const salva = opoDoEvento(it).find(o => o.modelo === 'evento');
+                    return salva ? `<button class="co-btn co-btn-pri" data-editar-opo="${esc(salva.chave)}">✏️ Abrir OPO do evento</button>`
+                                 : `<button class="co-btn co-btn-pri" data-opo-evento="${esc(it.chave)}">📝 Gerar OPO do evento</button>`; })() : ''}
+                ${it.tipo === 'evento' ? `<button class="co-btn" data-nova-evento="${esc(it.chave)}">🎯 OPO Inteligente do evento</button>` : ''}
                 ${it.tipo === 'evento' ? opoDoEvento(it).map(o => `<button class="co-btn" data-doc="${esc(o.chave)}">📄 ${esc(o.nome)}</button>`).join('') : ''}
             </div>${ex}</div>`;
     }
@@ -420,6 +658,108 @@
         location.href = 'opo_inteligente.html?' + q.toString();
     }
 
+    // ── OPO de EVENTO (modelo relatorios/gerar_opo.html) num modal ──
+    // Gera o modelo com os dados cadastrados do evento (ou reabre a OPO já
+    // salva), editável livremente; salva como OPO (aparece no calendário,
+    // vinculada ao evento, com resultados do CAD) + documento (Word/PDF).
+    let EVT_OPO = null; // { ev, opo (item salvo ou null) }
+    function abrirOPOEvento(ev, opo) {
+        EVT_OPO = { ev, opo };
+        window.CO_EVENTO_OPO = ev ? ev.raw : null; // lido pelo gerar_opo.html (mesma origem)
+        const m = document.getElementById('co-evtopo');
+        document.getElementById('co-evtopo-tit').textContent = `📝 OPO do evento — ${(opo && opo.eventoNome) || (ev && ev.nome) || ''}`;
+        document.getElementById('co-evtopo-status').textContent = opo ? 'OPO salva — edite e salve novamente para atualizar.' : 'Modelo preenchido com os dados do evento — edite livremente e salve.';
+        const q = new URLSearchParams({ embed: '1' });
+        if (opo) q.set('opoId', opo.id); else if (ev) q.set('id', ev.id);
+        document.getElementById('co-evtopo-frame').src = '../relatorios/gerar_opo.html?' + q.toString();
+        document.getElementById('co-modal').classList.remove('aberto');
+        m.classList.add('aberto');
+    }
+    async function apiOPOEvento() {
+        const w = document.getElementById('co-evtopo-frame').contentWindow;
+        for (let i = 0; i < 100 && !(w && w.OPOEvento); i++) await new Promise(r => setTimeout(r, 100));
+        if (!w || !w.OPOEvento) throw new Error('modelo da OPO não carregou');
+        await w.OPOEvento.pronto;
+        return w.OPOEvento;
+    }
+    const blobBase64 = blob => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(String(fr.result).split(',')[1]); fr.readAsDataURL(blob); });
+    async function salvarOPOEvento() {
+        const btn = document.getElementById('co-evtopo-salvar'), st = document.getElementById('co-evtopo-status');
+        btn.disabled = true; btn.textContent = '⏳ Salvando…';
+        try {
+            const api = await apiOPOEvento();
+            const d = api.dados();
+            const per = ControleOPO.parseVigencia(d.data, new Date());
+            if (!per) throw new Error('a data da OPO ("' + d.data + '") não está no formato dd/mm/aaaa');
+            const h = v => { const m = String(v || '').match(/(\d{1,2}):(\d{2})/); return m ? `${m[1].padStart(2, '0')}:${m[2]}` : null; };
+            const ev = EVT_OPO.ev, antigo = EVT_OPO.opo;
+            const nomeBase = (d.nome || (ev && ev.nome) || 'EVENTO').toUpperCase();
+            const sessao = window.P3 && P3.getSession ? P3.getSession() : null;
+            const registro = {
+                tipo: 'opo', modelo: 'evento', nome: /^OPO\b/.test(nomeBase) ? nomeBase : 'OPO — ' + nomeBase,
+                eventoId: ev ? ev.id : (antigo && antigo.eventoId) || null, eventoNome: ev ? ev.nome : (antigo && antigo.eventoNome) || nomeBase,
+                cidade: d.cidade || '', cidades: [d.cidade].filter(Boolean), escopo: 'cidade', local: d.local || '',
+                vigenciaTexto: d.data, execucao: { dataIni: iso(per.ini), dataFim: iso(per.fim), horaIni: h(d.inicio), horaFim: h(d.fim) },
+                temDocumento: true, atualizadoEm: new Date().toISOString(),
+            };
+            let id = antigo ? antigo.id : null;
+            if (id) {
+                const r = await fetch(`${DB}/cartoes_programa/${encodeURIComponent(id)}.json`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registro) });
+                if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
+            } else {
+                Object.assign(registro, { criadoEm: new Date().toISOString(), data: new Date().toLocaleDateString('pt-BR'),
+                    criadoPor: sessao ? [sessao.graduacao, sessao.nomeGuerra].filter(Boolean).join(' ') : null });
+                const r = await fetch(`${DB}/cartoes_programa.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registro) });
+                if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
+                id = (await r.json()).name;
+            }
+            btn.textContent = '⏳ Salvando documento…';
+            const dx = await api.gerarDocx();
+            const doc = { nome: registro.nome, modelo: 'evento', html: api.documentoHTML(), folhaHTML: api.folhaHTML(),
+                docxBase64: dx && dx.blob ? await blobBase64(dx.blob) : null, docxNome: dx ? dx.nomeArq : null, criadoEm: new Date().toISOString() };
+            const r2 = await fetch(`${DB}/opo_documentos/${encodeURIComponent(id)}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc) });
+            if (!r2.ok) throw new Error('documento não salvo (HTTP ' + r2.status + ')');
+            // Período/horário podem ter mudado → resultados antigos não valem mais.
+            const chave = 'opo_' + chaveFb(id);
+            await Promise.all([chave, chave + '_dia'].map(k => fetch(`${DB}/${NO_RES}/${k}.json`, { method: 'DELETE' }).catch(() => {})));
+            await carregarTudo();
+            EVT_OPO.opo = ITENS.find(x => x.chave === chave) || EVT_OPO.opo;
+            mesAtual = new Date(per.ini.getFullYear(), per.ini.getMonth(), 1);
+            renderGeral();
+            st.textContent = `✅ OPO salva em ${new Date().toLocaleTimeString('pt-BR')} — está no calendário (${br(per.ini)}${per.fim - per.ini ? ' a ' + br(per.fim) : ''}), vinculada ao evento.`;
+        } catch (e) {
+            console.error('[controle-operacoes] OPO do evento', e);
+            alert('Não foi possível salvar a OPO: ' + e.message);
+        } finally { btn.disabled = false; btn.textContent = '💾 Salvar OPO'; }
+    }
+    async function wordOPOEvento() {
+        try {
+            const api = await apiOPOEvento();
+            const dx = await api.gerarDocx();
+            if (!dx || !dx.blob) return;
+            if (window.pywebview) { // .exe não baixa arquivo → navegador padrão
+                await abrirNoNavegador({ tipo: 'arquivo', nome: dx.nomeArq, base64: await blobBase64(dx.blob), mime: dx.blob.type || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                return;
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(dx.blob); a.download = dx.nomeArq;
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+        } catch (e) { alert('Não foi possível gerar o Word: ' + e.message); }
+    }
+    async function pdfOPOEvento() {
+        try {
+            const api = await apiOPOEvento();
+            if (window.pywebview) {
+                const html = api.documentoHTML().replace('</body>', '<script>window.onload=function(){setTimeout(function(){window.print();},700);};<\/script></body>');
+                await abrirNoNavegador({ tipo: 'impressao', html });
+                return;
+            }
+            const w = document.getElementById('co-evtopo-frame').contentWindow;
+            w.focus(); w.print(); // "Salvar como PDF" na janela de impressão
+        } catch (e) { alert('Não foi possível abrir a impressão: ' + e.message); }
+    }
+
     // ── Documento da OPO salva (gravado pela OPO Inteligente ao salvar) ──
     let DOC_ATUAL = null;
     async function abrirDocumento(it) {
@@ -431,7 +771,12 @@
         document.getElementById('co-doc-pdf').disabled = true;
         m.classList.add('aberto');
         DOC_ATUAL = await fetch(`${DB}/opo_documentos/${encodeURIComponent(it.id)}.json`).then(r => r.ok ? r.json() : null).catch(() => null);
-        document.getElementById('co-doc-refazer').onclick = () => { m.classList.remove('aberto'); abrirNovaOPO(prefillOpo(it)); };
+        document.getElementById('co-doc-refazer').textContent = it.modelo === 'evento' ? '✏️ Editar OPO' : '🔁 Gerar novamente';
+        document.getElementById('co-doc-refazer').onclick = () => {
+            m.classList.remove('aberto');
+            if (it.modelo === 'evento') abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(it.eventoId)) || null, it);
+            else abrirNovaOPO(prefillOpo(it));
+        };
         if (!DOC_ATUAL || !DOC_ATUAL.html) {
             corpo.innerHTML = `<div class="co-aviso">Esta OPO foi salva antes de o sistema guardar o documento (ou sem gerar a OPO em tela).
                 Use <strong>“🔁 Gerar novamente”</strong> para abrir a OPO Inteligente com os mesmos parâmetros, gerar o documento e salvar.</div>
@@ -480,9 +825,19 @@
     }
     function lerFiltros() {
         const de = parseData(document.getElementById('f-de').value), ate = parseData(document.getElementById('f-ate').value);
-        return { de, ate, cidade: document.getElementById('f-cidade').value, tipo: document.getElementById('f-tipo').value, porte: document.getElementById('f-porte').value };
+        return { de, ate, cidade: document.getElementById('f-cidade').value, tipo: document.getElementById('f-tipo').value, porte: document.getElementById('f-porte').value,
+            opo: document.getElementById('f-opo').value, recorte: document.getElementById('f-recorte').value === 'dia' ? 'dia' : 'horario' };
+    }
+    // Lista de OPOs para o filtro "Operação (OPO)" — mais recentes primeiro.
+    function montarOpcoesOPO() {
+        const sel = document.getElementById('f-opo'), atual = sel.value;
+        const opos = ITENS.filter(i => i.tipo === 'opo').sort((a, b) => b.ini - a.ini);
+        sel.innerHTML = '<option value="">Todas as operações e eventos do filtro</option>' + opos.map(o =>
+            `<option value="${esc(o.chave)}">${br(o.ini)}${o.fim - o.ini ? ' a ' + br(o.fim) : ''} — ${esc(o.nome)} (${esc(o.cidades.join(', ') || 'área completa')})</option>`).join('');
+        sel.value = opos.some(o => o.chave === atual) ? atual : '';
     }
     function filtrar(f) {
+        if (f.opo) return ITENS.filter(it => it.chave === f.opo); // OPO específica: ignora os demais filtros
         return ITENS.filter(it => {
             if (f.de && it.fim < f.de) return false;
             if (f.ate && it.ini > f.ate) return false;
@@ -492,26 +847,26 @@
             return true;
         });
     }
-    function agregar(lista) {
-        const somaPares = (campo) => { const m = {}; lista.forEach(it => ((RES[it.chave] || {})[campo] || []).forEach(([k, v]) => { m[k] = (m[k] || 0) + v; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
+    function agregar(lista, rec = 'horario') {
+        const somaPares = (campo) => { const m = {}; lista.forEach(it => ((resDe(it, rec) || {})[campo] || []).forEach(([k, v]) => { m[k] = (m[k] || 0) + v; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
         const meses = {};
         lista.forEach(it => {
             const k = iso(it.ini).slice(0, 7);
             const m = meses[k] || (meses[k] = { opo: 0, evento: 0, prisoes: 0, armas: 0, materiais: 0, drogasG: 0, ocorrencias: 0 });
             m[it.tipo]++;
-            const r = RES[it.chave]; if (r) ['prisoes', 'armas', 'materiais', 'drogasG', 'ocorrencias'].forEach(c => { m[c] += r.kpi[c] || 0; });
+            const r = resDe(it, rec); if (r) ['prisoes', 'armas', 'materiais', 'drogasG', 'ocorrencias'].forEach(c => { m[c] += r.kpi[c] || 0; });
         });
         const combate = {};
         lista.filter(i => i.tipo === 'opo').forEach(i => i.tiposCombate.forEach(t => { combate[t] = (combate[t] || 0) + 1; }));
         const evs = lista.filter(i => i.tipo === 'evento');
         return {
-            lista, opos: lista.filter(i => i.tipo === 'opo'), evs, tot: somaRes(lista),
+            lista, rec, opos: lista.filter(i => i.tipo === 'opo'), evs, tot: somaRes(lista, rec),
             publico: evs.reduce((s, e) => s + (e.publico || 0), 0),
             meses: Object.entries(meses).sort((a, b) => a[0].localeCompare(b[0])),
             porCidade: somaPares('porCidade'), porTip: somaPares('porTip'), drogas: somaPares('drogasPorTipo'), armas: somaPares('armasPorTipo'), materiais: somaPares('materiaisPorCat'),
             porte: { 'MÉDIO': evs.filter(e => e.porte === 'MÉDIO').length, GRANDE: evs.filter(e => e.porte === 'GRANDE').length },
             combate: Object.entries(combate).sort((a, b) => b[1] - a[1]),
-            pend: lista.filter(pendente),
+            pend: lista.filter(it => pendente(it, rec)),
         };
     }
     const NOME_COMBATE = { MVI: 'MVI', CVLI: 'CVLI', CVP: 'CVP', PERTURBACAO: 'Perturbação do Sossego', VD: 'Violência Doméstica', ARMAS: 'Armas', DROGAS: 'Drogas' };
@@ -529,8 +884,11 @@
 
     function renderEstatisticas() {
         FILTRO = lerFiltros();
-        const A = agregar(filtrar(FILTRO));
-        const per = `${FILTRO.de ? br(FILTRO.de) : 'início'} a ${FILTRO.ate ? br(FILTRO.ate) : 'hoje'}`;
+        const A = agregar(filtrar(FILTRO), FILTRO.recorte);
+        // Com uma OPO escolhida, os filtros de período/cidade/tipo/porte não se aplicam.
+        ['f-de', 'f-ate', 'f-cidade', 'f-tipo', 'f-porte'].forEach(id => { document.getElementById(id).disabled = !!FILTRO.opo; });
+        renderPainelOPO(A);
+        const per = FILTRO.opo && A.lista[0] ? `${br(A.lista[0].ini)} a ${br(A.lista[0].fim)}` : `${FILTRO.de ? br(FILTRO.de) : 'início'} a ${FILTRO.ate ? br(FILTRO.ate) : 'hoje'}`;
         document.getElementById('co-kpis-est').innerHTML =
             kpi('#1f5fbf', 'Operações (OPO)', A.opos.length, per) +
             kpi('#e67e22', 'Eventos médio/grande', A.evs.length, `${fmtN(A.publico)} pessoas (público estimado)`) +
@@ -543,7 +901,7 @@
             ? `<div class="co-aviso">⚠️ ${A.pend.length} item(ns) do filtro sem resultado computado — os totais de resultados ficam incompletos.
                 <button class="co-btn co-btn-pri" id="co-computar-est">⚙ Computar agora</button></div>` : '';
         const b = document.getElementById('co-computar-est');
-        if (b) b.onclick = async () => { await computarVarios(A.pend, b); renderEstatisticas(); renderGeral(); };
+        if (b) b.onclick = async () => { await computarVarios(A.pend, b, FILTRO.recorte); renderEstatisticas(); renderGeral(); };
 
         const lbl = A.meses.map(([k]) => rotMes(k));
         grafico('g-mes', { type: 'bar', data: { labels: lbl, datasets: [
@@ -563,20 +921,73 @@
 
         document.getElementById('co-tab-sub').textContent = `${A.lista.length} item(ns) · ${per}`;
         document.getElementById('co-tabela').innerHTML = A.lista.length ? `<table class="co-tab"><thead><tr><th>Data</th><th>Tipo</th><th>Nome</th><th>Cidades</th><th>Horário</th><th>Ocorr.</th><th>Prisões</th><th>Drogas</th><th>Armas</th><th>Mat.</th></tr></thead><tbody>
-            ${A.lista.map(it => { const r = RES[it.chave]; const k = r ? r.kpi : null; return `<tr>
+            ${A.lista.map(it => { const r = resDe(it, A.rec); const k = r ? r.kpi : null; return `<tr>
                 <td>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''}</td><td>${it.tipo === 'opo' ? 'OPO' : 'Evento ' + it.porte.toLowerCase()}</td><td>${esc(it.nome)}</td>
-                <td>${esc(it.cidades.join(', '))}</td><td>${it.hIni ? it.hIni + (it.hFim ? '–' + it.hFim : '') : 'dia inteiro'}</td>
+                <td>${esc(it.cidades.join(', '))}</td><td>${horarioRecorte(it, A.rec)}</td>
                 <td>${k ? k.ocorrencias : '—'}</td><td>${k ? (k.prisoes ?? '—') : '—'}</td><td>${k ? peso(k.drogasG) : '—'}</td><td>${k ? k.armas : '—'}</td><td>${k ? k.materiais : '—'}</td></tr>`; }).join('')}
             </tbody></table>` : '<div class="co-vazio">Nenhuma operação ou evento no filtro.</div>';
         return A;
     }
 
+    // Horário efetivamente usado no recorte (para tabelas e relatório)
+    const horarioRecorte = (it, rec) => temHorario(it) && rec !== 'dia' ? `${it.hIni}–${it.hFim}` : (temHorario(it) ? `dia inteiro (OPO: ${it.hIni}–${it.hFim})` : 'dia inteiro');
+    const descRecorte = (it, rec) => `${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''} · ${temHorario(it) && rec !== 'dia' ? `somente das ${it.hIni} às ${it.hFim}` : 'dias inteiros (sem considerar o horário)'} · ${esc(it.cidades.join(', ') || 'área completa')}`;
+
+    // Painel de resultados de UMA OPO (filtro "Operação (OPO)")
+    function renderPainelOPO(A) {
+        const el = document.getElementById('co-opo-det');
+        if (!FILTRO.opo || !A.lista[0]) { el.innerHTML = ''; return; }
+        const it = A.lista[0], r = resDe(it, A.rec);
+        const varia = (a, b) => { if (a == null || b == null) return ''; if (!b) return a ? ' <span class="co-up">▲ novo</span>' : ''; const p = (a - b) / b * 100; return p ? ` <span class="${p > 0 ? 'co-up' : 'co-down'}">${p > 0 ? '▲' : '▼'} ${fmtN(Math.abs(p))}%</span>` : ' ='; };
+        const corpo = !r
+            ? `<div class="co-det-meta" style="margin:.5rem 0;">${podeCalcular(it) ? 'Resultado deste recorte ainda não computado.' : 'Operação ainda não iniciada.'}</div>
+               ${podeCalcular(it) ? '<button class="co-btn co-btn-pri" id="co-opo-computar">⚙ Computar resultados do CAD</button>' : ''}`
+            : `<div class="co-det-kpis">
+                <div>Ocorrências<b>${fmtN(r.kpi.ocorrencias)}</b>antes: ${fmtN(r.antes.ocorrencias)}${varia(r.kpi.ocorrencias, r.antes.ocorrencias)}</div>
+                <div>Prisões<b>${r.kpi.prisoes ?? '—'}</b>antes: ${r.antes.prisoes ?? '—'}${varia(r.kpi.prisoes, r.antes.prisoes)}</div>
+                <div>Drogas apreendidas<b>${peso(r.kpi.drogasG)}</b>antes: ${peso(r.antes.drogasG)}${varia(r.kpi.drogasG, r.antes.drogasG)}</div>
+                <div>Armas apreendidas<b>${fmtN(r.kpi.armas)}</b>antes: ${fmtN(r.antes.armas)}${varia(r.kpi.armas, r.antes.armas)}</div>
+                <div>Materiais apreendidos<b>${fmtN(r.kpi.materiais)}</b>antes: ${fmtN(r.antes.materiais)}${varia(r.kpi.materiais, r.antes.materiais)}</div></div>
+               ${comparacaoMesHTML(r, it)}
+               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;align-items:start;">${tabTip(r, it)}${tabMini('Droga (peso)', r.drogasPorTipo, peso) || tabMini('Droga', [['Nenhuma', 0]])}${tabMini('Arma', r.armasPorTipo) || tabMini('Arma', [['Nenhuma', 0]])}${tabMini('Material', r.materiaisPorCat) || tabMini('Material', [['Nenhum', 0]])}</div>
+               ${listasHTML(r)}
+               <div class="co-det-meta" style="margin-top:.4rem;">Computado em ${new Date(r.calculadoEm).toLocaleString('pt-BR')}${r.parcial ? ' — PARCIAL, operação em andamento' : ''}. "Antes" = mesmo número de dias (e mesmo horário, se houver) imediatamente anterior à OPO.
+               <button class="co-btn" id="co-opo-computar" style="margin-left:.4rem;">↻ Recalcular</button></div>`;
+        el.innerHTML = `<div class="co-card co-det" style="--c:${COR.opo}">
+            <div class="co-card-topo"><div><h3>🎯 ${esc(it.nome)}</h3><p>${descRecorte(it, A.rec)}</p></div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">${podeCalcular(it) ? '<button class="co-btn" id="co-opo-rel">📊 Relatório</button>' : ''}<button class="co-btn" id="co-opo-ver">📄 Ver OPO (Word / PDF)</button></div></div>${corpo}</div>`;
+        document.getElementById('co-opo-ver').onclick = () => abrirDocumento(it);
+        const br2 = document.getElementById('co-opo-rel');
+        if (br2) br2.onclick = () => abrirRelatorioOPO(it, null);
+        ligarOcorrencias(el);
+        const b = document.getElementById('co-opo-computar');
+        if (b) b.onclick = async () => {
+            b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
+            try { await computar(it, A.rec); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+            renderEstatisticas(); renderGeral();
+        };
+    }
+
     // ── Relatório ───────────────────────────────────────────────────
+    // Relatório de UMA OPO: listas detalhadas (sem nomes de pessoas).
+    function listasRelatorio(it, rec) {
+        const r = it ? resDe(it, rec) : null;
+        if (!r || !r.listaOcorrencias) return '';
+        const tab = (tit, cols, linhas) => `<section><h2>${tit} (${linhas.length})</h2><table><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr>${linhas.length ? linhas.map(l => `<tr>${cols.map(c => `<td>${esc(c[1](l))}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}">Nenhum registro.</td></tr>`}</table></section>`;
+        const quant = l => l.q ? `${l.q} ${(l.u || '').toLowerCase()}`.trim() : '—';
+        return tab('6. Ocorrências durante a operação', [['Data', l => l.d], ['Hora', l => l.h], ['Boletim', l => l.b], ['Cidade', l => l.c], ['Endereço', l => l.e], ['Tipificação', l => l.t], ['Solução', l => l.s]], r.listaOcorrencias)
+            + tab('7. Drogas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Quantidade', quant], ['Cidade', l => l.c]], r.listaDrogas || [])
+            + tab('8. Armas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Marca / modelo / calibre', l => l.m], ['Situação', l => l.s]], r.listaArmas || [])
+            + tab('9. Materiais apreendidos', [['Data', l => l.d], ['BOU', l => l.b], ['Categoria', l => l.t], ['Descrição', l => l.x], ['Status', l => l.s]], r.listaMateriais || [])
+            + tab('10. Prisões / apreensões', [['Boletim', l => l.b], ['Situação', l => l.s], ['Tipificação', l => l.t], ['Cidade', l => l.c]], r.listaPrisoes || []);
+    }
     function htmlRelatorio(A) {
-        const f = FILTRO, per = `${f.de ? br(f.de) : 'início'} a ${f.ate ? br(f.ate) : br(new Date())}`;
+        const f = FILTRO, per = f.opo && A.lista[0] ? `${br(A.lista[0].ini)} a ${br(A.lista[0].fim)}` : `${f.de ? br(f.de) : 'início'} a ${f.ate ? br(f.ate) : br(new Date())}`;
         const img = id => CHARTS[id] ? `<img src="${CHARTS[id].toBase64Image()}" alt="">` : '';
         const tab = (tit, linhas, fmt) => `<table><caption>${tit}</caption><tr><th>Item</th><th>Qtd.</th></tr>${linhas.length ? linhas.slice(0, 15).map(([a, b]) => `<tr><td>${esc(a)}</td><td>${fmt ? fmt(b) : fmtN(b)}</td></tr>`).join('') : '<tr><td colspan="2">Nenhum registro</td></tr>'}</table>`;
-        const filtrosTxt = [f.cidade ? 'Cidade: ' + f.cidade : 'Todas as cidades', f.tipo === 'opo' ? 'Somente operações' : f.tipo === 'evento' ? 'Somente eventos' : 'Operações e eventos', f.porte ? 'Eventos de ' + f.porte.toLowerCase() + ' porte' : ''].filter(Boolean).join(' · ');
+        const opoSel = f.opo ? A.lista[0] : null;
+        const recTxt = f.recorte === 'dia' ? 'Resultados: dias inteiros da vigência (sem considerar o horário)' : 'Resultados: dias e horário de vigência da operação';
+        const filtrosTxt = opoSel ? `Operação: ${opoSel.nome} · ${recTxt}` : [recTxt, f.cidade ? 'Cidade: ' + f.cidade : 'Todas as cidades', f.tipo === 'opo' ? 'Somente operações' : f.tipo === 'evento' ? 'Somente eventos' : 'Operações e eventos', f.porte ? 'Eventos de ' + f.porte.toLowerCase() + ' porte' : ''].filter(Boolean).join(' · ');
         return `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Relatório de Operações — ${esc(CFG.nome || '')}</title><style>
             body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:12mm;font-size:10pt}
             .cab{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0b2545;padding-bottom:8px;margin-bottom:10px}.cab img{height:58px}
@@ -605,7 +1016,8 @@
             <section><h2>3. Ocorrências durante as operações/eventos</h2><div class="grid">${tab('Por cidade', A.porCidade)}${tab('Por tipificação', A.porTip)}</div></section>
             <section><h2>4. Apreensões</h2><div class="grid">${tab('Drogas por tipo (peso)', A.drogas, peso)}${tab('Armas por tipo', A.armas)}${tab('Materiais por categoria', A.materiais)}${tab('Eventos por porte', Object.entries(A.porte))}</div></section>
             <section><h2>5. Operações e eventos do período</h2><table><tr><th>Data</th><th>Tipo</th><th>Nome</th><th>Cidades</th><th>Horário</th><th>Ocorr.</th><th>Prisões</th><th>Drogas</th><th>Armas</th><th>Mat.</th></tr>
-                ${A.lista.map(it => { const r = RES[it.chave]; const k = r ? r.kpi : null; return `<tr><td>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''}</td><td>${it.tipo === 'opo' ? 'OPO' : 'Evento ' + it.porte.toLowerCase()}</td><td>${esc(it.nome)}</td><td>${esc(it.cidades.join(', '))}</td><td>${it.hIni ? it.hIni + (it.hFim ? '–' + it.hFim : '') : 'dia inteiro'}</td><td>${k ? k.ocorrencias : '—'}</td><td>${k ? (k.prisoes ?? '—') : '—'}</td><td>${k ? peso(k.drogasG) : '—'}</td><td>${k ? k.armas : '—'}</td><td>${k ? k.materiais : '—'}</td></tr>`; }).join('') || '<tr><td colspan="10">Nenhum item no filtro.</td></tr>'}</table></section>
+                ${A.lista.map(it => { const r = resDe(it, A.rec); const k = r ? r.kpi : null; return `<tr><td>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''}</td><td>${it.tipo === 'opo' ? 'OPO' : 'Evento ' + it.porte.toLowerCase()}</td><td>${esc(it.nome)}</td><td>${esc(it.cidades.join(', '))}</td><td>${horarioRecorte(it, A.rec)}</td><td>${k ? k.ocorrencias : '—'}</td><td>${k ? (k.prisoes ?? '—') : '—'}</td><td>${k ? peso(k.drogasG) : '—'}</td><td>${k ? k.armas : '—'}</td><td>${k ? k.materiais : '—'}</td></tr>`; }).join('') || '<tr><td colspan="10">Nenhum item no filtro.</td></tr>'}</table></section>
+            ${listasRelatorio(opoSel, A.rec)}
             <div class="nota">Resultados = registros do CAD no período, horário e cidades de cada operação/evento (ocorrências, autores presos/apreendidos, drogas, armas) e planilha de materiais apreendidos (pelo nº do BOU). "—" = resultado ainda não computado. Eventos: cadastro de Eventos da unidade, médio porte 501–1000 e grande porte acima de 1000 pessoas.</div>
             <script>window.onload=function(){if(window.__autoPrint)setTimeout(function(){window.print();},400);};<\/script>
         </body></html>`;
@@ -675,6 +1087,9 @@
         document.getElementById('co-modal-fechar').onclick = () => document.getElementById('co-modal').classList.remove('aberto');
         document.getElementById('co-modal').addEventListener('click', e => { if (e.target.id === 'co-modal') e.currentTarget.classList.remove('aberto'); });
         document.getElementById('f-aplicar').onclick = renderEstatisticas;
+        document.getElementById('f-recorte').value = modoPadrao;
+        document.getElementById('f-opo').onchange = renderEstatisticas;
+        document.getElementById('f-recorte').onchange = renderEstatisticas;
         document.getElementById('f-relatorio').onclick = () => mostrar('relatorio');
         document.getElementById('r-filtros').onclick = () => mostrar('estatisticas');
         document.getElementById('r-imprimir').onclick = imprimir;
@@ -683,8 +1098,16 @@
         document.getElementById('n-gerar').onclick = gerarOPOdoFormulario;
         document.getElementById('co-doc-word').onclick = baixarWordDoc;
         document.getElementById('co-doc-pdf').onclick = pdfDoc;
+        document.getElementById('co-evtopo-salvar').onclick = salvarOPOEvento;
+        document.getElementById('co-rel-imprimir').onclick = imprimirRelatorioOPO;
+        const busca = document.getElementById('co-busca');
+        busca.addEventListener('input', renderBusca);
+        busca.addEventListener('focus', renderBusca);
+        document.addEventListener('click', e => { if (!e.target.closest('.co-busca-wrap')) document.getElementById('co-busca-res').classList.remove('aberto'); });
+        document.getElementById('co-evtopo-word').onclick = wordOPOEvento;
+        document.getElementById('co-evtopo-pdf').onclick = pdfOPOEvento;
         document.querySelectorAll('[data-fechar]').forEach(b => b.addEventListener('click', () => document.getElementById(b.dataset.fechar).classList.remove('aberto')));
-        ['co-nova', 'co-doc'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.currentTarget.classList.remove('aberto'); }));
+        ['co-nova', 'co-doc', 'co-evtopo', 'co-rel', 'co-ocor'].forEach(id => document.getElementById(id).addEventListener('click', e => { if (e.target.id === id) e.currentTarget.classList.remove('aberto'); }));
         document.querySelectorAll('#btn-tema').forEach(b => b.addEventListener('click', () => setTimeout(() => {
             if (document.getElementById('view-estatisticas').classList.contains('ativa')) renderEstatisticas();
         }, 60)));
