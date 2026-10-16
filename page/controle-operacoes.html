@@ -142,6 +142,33 @@
             border: 1.5px solid var(--p3-border); border-radius: 16px; padding: 4px 11px; cursor: pointer; }
         .co-chips label:has(input:checked) { background: rgba(31,95,191,.14); border-color: #1f5fbf; }
 
+        .co-evtopo-frame { height: 76vh; background: #555; }
+        .co-barra-acoes > div:first-child { flex: 1 1 260px; }
+        .co-busca-wrap { position: relative; flex: 1 1 360px; max-width: 520px; }
+        .co-busca-wrap input { width: 100%; box-sizing: border-box; background: var(--p3-surface); color: var(--p3-text); border: 1.5px solid var(--p3-border); border-radius: 8px; padding: 9px 12px; font-size: .84rem; }
+        .co-busca-wrap input:focus { outline: none; border-color: var(--p3-blue-500); }
+        .co-busca-res { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 50; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 9px; box-shadow: var(--p3-shadow-lg); max-height: 380px; overflow: auto; }
+        .co-busca-res.aberto { display: block; }
+        .co-busca-item { padding: .55rem .8rem; border-bottom: 1px solid var(--p3-border); cursor: pointer; font-size: .8rem; color: var(--p3-text); }
+        .co-busca-item:hover { background: rgba(31,95,191,.08); }
+        .co-busca-item small { display: block; color: var(--p3-text-muted); font-size: .72rem; margin-top: 2px; }
+        .co-clicavel { cursor: pointer; }
+        .co-clicavel:hover td { background: rgba(31,95,191,.08); }
+        .co-clicavel.sel td { background: rgba(31,95,191,.16); }
+        .co-ocor-grade { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(0, 1.6fr); gap: .8rem; height: 72vh; }
+        .co-ocor-lista { max-height: none; height: 100%; border: 1px solid var(--p3-border); border-radius: 8px; }
+        .co-ocor-det { overflow: auto; border: 1px solid var(--p3-border); border-radius: 8px; padding: .8rem; }
+        .co-ocor-bloco { margin-bottom: .8rem; }
+        .co-ocor-sub { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--p3-blue-700); margin: .6rem 0 .35rem; }
+        .co-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 14px; font-size: .78rem; color: var(--p3-text); }
+        .co-kv div { border-bottom: 1px dotted var(--p3-border); padding: 2px 0; word-break: break-word; }
+        .co-ocor-env { border: 1px solid var(--p3-border); border-radius: 7px; padding: .4rem .6rem; margin-bottom: .4rem; }
+        .co-comp summary { color: var(--p3-blue-700); }
+        @media (max-width: 860px) { .co-ocor-grade { grid-template-columns: 1fr; height: auto; } .co-ocor-lista { max-height: 260px; } }
+        .co-filtro-largo { flex: 1 1 340px; }
+        .co-filtro-largo select { width: 100%; }
+        .co-filtros select:disabled, .co-filtros input:disabled { opacity: .45; }
+        .co-up { color: #c62828; font-weight: 700; } .co-down { color: #2e7d32; font-weight: 700; }
         .co-modo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: .6rem 0 .2rem; font-size: .72rem; color: var(--p3-text-muted); }
         .co-modo button { border: 1.5px solid var(--p3-border); background: var(--p3-bg); color: var(--p3-text); border-radius: 16px; padding: 4px 11px; font: 600 .74rem var(--p3-font); cursor: pointer; }
         .co-modo button.ativo { background: var(--p3-blue-700); border-color: var(--p3-blue-700); color: #fff; }
@@ -186,6 +213,10 @@
                     <section class="co-view ativa" id="view-geral">
                         <div class="co-barra-acoes">
                             <div><h2>Controle de Operações</h2><p>Operações (OPO), eventos de médio e grande porte e resultados do CAD</p></div>
+                            <div class="co-busca-wrap">
+                                <input type="search" id="co-busca" placeholder="🔎 Buscar OPO por nome, cidade, bairro ou data (ex.: 15/10)" autocomplete="off">
+                                <div class="co-busca-res" id="co-busca-res"></div>
+                            </div>
                             <button class="co-btn co-btn-pri" id="co-btn-nova">➕ Nova OPO Inteligente</button>
                         </div>
                         <div class="co-kpis" id="co-kpis-mes"></div>
@@ -218,6 +249,10 @@
                     <section class="co-view" id="view-estatisticas">
                         <div class="co-card">
                             <div class="co-filtros" id="co-filtros">
+                                <label class="co-filtro-largo">Operação (OPO) <select id="f-opo"><option value="">Todas as operações e eventos do filtro</option></select></label>
+                                <label>Recorte dos resultados <select id="f-recorte">
+                                    <option value="horario">a) Dias e horário da OPO (cidades de vigência)</option>
+                                    <option value="dia">b) Dias da OPO, sem o horário (cidades de vigência)</option></select></label>
                                 <label>De <input type="date" id="f-de"></label>
                                 <label>Até <input type="date" id="f-ate"></label>
                                 <label>Cidade <select id="f-cidade"><option value="">Todas</option></select></label>
@@ -228,6 +263,7 @@
                             </div>
                         </div>
                         <div id="co-aviso-est"></div>
+                        <div id="co-opo-det"></div>
                         <div class="co-kpis" id="co-kpis-est"></div>
                         <div class="co-graficos">
                             <div class="co-card"><div class="co-card-topo"><div><h3>Operações e eventos por mês</h3></div></div><div class="co-graf"><canvas id="g-mes"></canvas></div></div>
@@ -284,6 +320,32 @@
         <div style="display:flex;justify-content:flex-end;gap:.5rem;"><button class="co-btn" data-fechar="co-nova">Cancelar</button><button class="co-btn co-btn-pri" id="n-gerar">🎯 Gerar OPO Inteligente</button></div>
     </div></div>
 
+    <!-- OPO de evento: modelo relatorios/gerar_opo.html editável (gerar / editar / salvar / Word / PDF) -->
+    <div class="co-modal" id="co-evtopo"><div class="co-modal-caixa co-modal-largo">
+        <div class="co-modal-topo"><div><h3 id="co-evtopo-tit">📝 OPO do evento</h3><div class="co-det-meta" id="co-evtopo-status"></div></div>
+            <div style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                <button class="co-btn co-btn-pri" id="co-evtopo-salvar">💾 Salvar OPO</button>
+                <button class="co-btn" id="co-evtopo-word">⬇ Word (.docx)</button>
+                <button class="co-btn" id="co-evtopo-pdf">🖨 PDF</button>
+                <button class="co-btn co-btn-ico" data-fechar="co-evtopo">✕</button></div></div>
+        <iframe class="co-doc-frame co-evtopo-frame" id="co-evtopo-frame" title="OPO do evento (editável)"></iframe>
+    </div></div>
+
+    <!-- Relatório da OPO: dia clicado ou geral/parcial -->
+    <div class="co-modal" id="co-rel"><div class="co-modal-caixa co-modal-largo">
+        <div class="co-modal-topo"><h3 id="co-rel-tit">📊 Relatório</h3>
+            <div style="display:flex;gap:.4rem;"><button class="co-btn co-btn-pri" id="co-rel-imprimir" disabled>🖨 Imprimir / PDF</button>
+            <button class="co-btn co-btn-ico" data-fechar="co-rel">✕</button></div></div>
+        <div id="co-rel-opcoes"></div>
+        <iframe class="co-doc-frame" id="co-rel-frame" title="Relatório da operação"></iframe>
+    </div></div>
+
+    <!-- Ocorrências (detalhe completo, como na Busca Integrada) -->
+    <div class="co-modal" id="co-ocor" style="z-index:1100;"><div class="co-modal-caixa co-modal-largo">
+        <div class="co-modal-topo"><h3 id="co-ocor-tit">🚨 Ocorrências</h3><button class="co-btn co-btn-ico" data-fechar="co-ocor">✕</button></div>
+        <div class="co-ocor-grade"><div class="co-scroll co-ocor-lista" id="co-ocor-lista"></div><div class="co-ocor-det" id="co-ocor-det"></div></div>
+    </div></div>
+
     <!-- Documento da OPO salva -->
     <div class="co-modal" id="co-doc"><div class="co-modal-caixa co-modal-largo">
         <div class="co-modal-topo"><h3 id="co-doc-tit">📄 OPO</h3>
@@ -308,4 +370,3 @@
     <script src="../js/controle-operacoes.js"></script>
 </body>
 </html>
-
