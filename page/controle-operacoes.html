@@ -166,6 +166,9 @@
         .co-comp summary { color: var(--p3-blue-700); }
         @media (max-width: 860px) { .co-ocor-grade { grid-template-columns: 1fr; height: auto; } .co-ocor-lista { max-height: 260px; } }
         .co-filtro-largo { flex: 1 1 340px; }
+        .co-comp-grade { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, 1fr); gap: 1rem; align-items: center; margin-bottom: .8rem; }
+        .co-comp-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .8rem; align-items: start; }
+        @media (max-width: 860px) { .co-comp-grade { grid-template-columns: 1fr; } }
         .co-filtro-largo select { width: 100%; }
         .co-filtros select:disabled, .co-filtros input:disabled { opacity: .45; }
         .co-up { color: #c62828; font-weight: 700; } .co-down { color: #2e7d32; font-weight: 700; }
@@ -264,6 +267,7 @@
                         </div>
                         <div id="co-aviso-est"></div>
                         <div id="co-opo-det"></div>
+                        <div class="co-card" id="co-comp-est"></div>
                         <div class="co-kpis" id="co-kpis-est"></div>
                         <div class="co-graficos">
                             <div class="co-card"><div class="co-card-topo"><div><h3>Operações e eventos por mês</h3></div></div><div class="co-graf"><canvas id="g-mes"></canvas></div></div>
