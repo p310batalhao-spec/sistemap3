@@ -162,7 +162,9 @@
     // Resultado de um item no recorte pedido ('horario' | 'dia').
     const resDe = (it, rec = 'horario') => RES[chaveRes(it, rec)];
     // Pendentes = já começaram e (sem resultado OU resultado parcial calculado antes do fim).
-    const pendente = (it, rec = 'horario') => { const r = resDe(it, rec); return podeCalcular(it) && (!r || (r.parcial && r.calculadoEm.slice(0, 10) < iso(new Date()))); };
+    // Pendente = já começou e (sem resultado | parcial de outro dia | calculado
+    // antes da comparação com o mês anterior existir).
+    const pendente = (it, rec = 'horario') => { const r = resDe(it, rec); return podeCalcular(it) && (!r || !r.mesAnterior || (r.parcial && r.calculadoEm.slice(0, 10) < iso(new Date()))); };
     async function computarVarios(lista, btn, rec = 'horario') {
         const txt = btn.textContent; btn.disabled = true;
         let ok = 0, erro = 0;
@@ -197,7 +199,7 @@
             kpi('#455a64', 'Armas · materiais', `${fmtN(t.armas)} · ${fmtN(t.materiais)}`, 'apreendidos');
         const pend = lista.filter(it => pendente(it));
         document.getElementById('co-aviso-mes').innerHTML = pend.length
-            ? `<div class="co-aviso">⚠️ ${pend.length} operação(ões)/evento(s) deste mês sem resultado computado (ou com resultado parcial).
+            ? `<div class="co-aviso">⚠️ ${pend.length} operação(ões)/evento(s) deste mês sem resultado computado, com resultado parcial ou sem a comparação com o mês anterior.
                 <button class="co-btn co-btn-pri" id="co-computar-mes">⚙ Computar resultados do CAD</button></div>` : '';
         const b = document.getElementById('co-computar-mes');
         if (b) b.onclick = async () => { await computarVarios(pend, b); renderGeral(); };
@@ -307,7 +309,7 @@
         </div>`;
     }
     // ── Comparação com o mês anterior (mesmos dias, horário e cidades) ──
-    const variaTxt = (a, b) => { if (a == null || b == null) return ''; if (!b) return a ? '<span class="co-up">▲ novo</span>' : '<span>=</span>'; const p = (a - b) / b * 100; return p ? `<span class="${p > 0 ? 'co-up' : 'co-down'}">${p > 0 ? '▲' : '▼'} ${fmtN(Math.abs(p))}%</span>` : '<span>=</span>'; };
+    const variaTxt = (a, b) => { if (a == null || b == null) return ''; if (!b) return a ? '<span class="co-up">▲ novo</span>' : '<span>=</span>'; const p = (a - b) / b * 100; return p ? `<span class="${p > 0 ? 'co-up' : 'co-down'}">${p > 0 ? '▲' : '▼'} ${Math.abs(p) > 999 ? '>999' : fmtN(Math.abs(p))}%</span>` : '<span>=</span>'; };
     function comparacaoMesHTML(r, it) {
         if (!r.mesAnterior) return '<div class="co-det-meta" style="margin:.3rem 0;">ℹ️ Clique em “↻ Recalcular resultados” para ver a comparação com o mês anterior.</div>';
         const m = r.mesAnterior, k = r.kpi, a = m.kpi;
@@ -847,6 +849,33 @@
             return true;
         });
     }
+    // Durante a operação × mesmos dias do mês anterior (mesmo horário e cidades),
+    // somando apenas os itens cujo resultado já traz o mês anterior.
+    function agregarComparacao(lista, rec) {
+        const campos = ['ocorrencias', 'prisoes', 'drogasG', 'armas', 'materiais'];
+        const dur = Object.fromEntries(campos.map(c => [c, 0])), ant = Object.fromEntries(campos.map(c => [c, 0]));
+        const soma3 = campo => {
+            const m = new Map();
+            lista.forEach(it => { const r = resDe(it, rec); if (!r || !r.mesAnterior) return;
+                (r[campo] || []).forEach(([k, x, y]) => { const v = m.get(k) || [0, 0]; v[0] += x; v[1] += y; m.set(k, v); }); });
+            return [...m.entries()].map(([k, [x, y]]) => [k, x, y]).sort((p, q) => q[1] - p[1] || q[2] - p[2]);
+        };
+        const porMes = {};
+        let com = 0;
+        lista.forEach(it => {
+            const r = resDe(it, rec); if (!r || !r.mesAnterior) return;
+            com++;
+            campos.forEach(c => { dur[c] += r.kpi[c] || 0; ant[c] += r.mesAnterior.kpi[c] || 0; });
+            const k = iso(it.ini).slice(0, 7), pm = porMes[k] || (porMes[k] = [0, 0]);
+            pm[0] += r.kpi.ocorrencias || 0; pm[1] += r.mesAnterior.kpi.ocorrencias || 0;
+        });
+        return { com, dur, ant, porCidade: soma3('porCidadeComp'), porBairro: soma3('porBairroComp'), porTip: soma3('porTipComp'),
+            porMes: Object.entries(porMes).sort((a, b) => a[0].localeCompare(b[0])) };
+    }
+    const tabComp3 = (tit, linhas, max = 15) => `<div><div class="co-card-tit" style="font-size:.8rem;margin-bottom:.3rem;">${tit}</div>${linhas.length
+        ? `<div class="co-scroll" style="max-height:300px;"><table class="co-mini"><tr><th>${tit}</th><th>Durante</th><th>Mês ant.</th><th>Var.</th></tr>${linhas.slice(0, max).map(([n, x, y]) =>
+            `<tr><td>${esc(n)}</td><td>${fmtN(x)}</td><td>${fmtN(y)}</td><td>${variaTxt(x, y)}</td></tr>`).join('')}</table></div>` : '<div class="co-det-meta">Sem dados.</div>'}</div>`;
+
     function agregar(lista, rec = 'horario') {
         const somaPares = (campo) => { const m = {}; lista.forEach(it => ((resDe(it, rec) || {})[campo] || []).forEach(([k, v]) => { m[k] = (m[k] || 0) + v; })); return Object.entries(m).sort((a, b) => b[1] - a[1]); };
         const meses = {};
@@ -867,6 +896,7 @@
             porte: { 'MÉDIO': evs.filter(e => e.porte === 'MÉDIO').length, GRANDE: evs.filter(e => e.porte === 'GRANDE').length },
             combate: Object.entries(combate).sort((a, b) => b[1] - a[1]),
             pend: lista.filter(it => pendente(it, rec)),
+            comp: agregarComparacao(lista, rec),
         };
     }
     const NOME_COMBATE = { MVI: 'MVI', CVLI: 'CVLI', CVP: 'CVP', PERTURBACAO: 'Perturbação do Sossego', VD: 'Violência Doméstica', ARMAS: 'Armas', DROGAS: 'Drogas' };
@@ -889,16 +919,19 @@
         ['f-de', 'f-ate', 'f-cidade', 'f-tipo', 'f-porte'].forEach(id => { document.getElementById(id).disabled = !!FILTRO.opo; });
         renderPainelOPO(A);
         const per = FILTRO.opo && A.lista[0] ? `${br(A.lista[0].ini)} a ${br(A.lista[0].fim)}` : `${FILTRO.de ? br(FILTRO.de) : 'início'} a ${FILTRO.ate ? br(FILTRO.ate) : 'hoje'}`;
+        const C = A.comp;
+        const subMes = (c, so, f = fmtN) => C.com ? `${so ? '' : '<br>'}mês anterior: ${f(C.ant[c])} ${variaTxt(C.dur[c], C.ant[c])}` : '';
         document.getElementById('co-kpis-est').innerHTML =
             kpi('#1f5fbf', 'Operações (OPO)', A.opos.length, per) +
             kpi('#e67e22', 'Eventos médio/grande', A.evs.length, `${fmtN(A.publico)} pessoas (público estimado)`) +
-            kpi('#5e35b1', 'Ocorrências durante', fmtN(A.tot.ocorrencias), `${A.tot.com} de ${A.lista.length} com resultado`) +
-            kpi('#c0392b', 'Prisões / apreensões', fmtN(A.tot.prisoes), '') +
-            kpi('#2e7d32', 'Drogas apreendidas', peso(A.tot.drogasG), '') +
-            kpi('#455a64', 'Armas apreendidas', fmtN(A.tot.armas), '') +
-            kpi('#6d4c41', 'Materiais apreendidos', fmtN(A.tot.materiais), '');
+            kpi('#5e35b1', 'Ocorrências durante', fmtN(A.tot.ocorrencias), `${A.tot.com} de ${A.lista.length} com resultado${subMes('ocorrencias')}`) +
+            kpi('#c0392b', 'Prisões / apreensões', fmtN(A.tot.prisoes), subMes('prisoes', true)) +
+            kpi('#2e7d32', 'Drogas apreendidas', peso(A.tot.drogasG), subMes('drogasG', true, peso)) +
+            kpi('#455a64', 'Armas apreendidas', fmtN(A.tot.armas), subMes('armas', true)) +
+            kpi('#6d4c41', 'Materiais apreendidos', fmtN(A.tot.materiais), subMes('materiais', true));
+        renderComparacaoEst(A);
         document.getElementById('co-aviso-est').innerHTML = A.pend.length
-            ? `<div class="co-aviso">⚠️ ${A.pend.length} item(ns) do filtro sem resultado computado — os totais de resultados ficam incompletos.
+            ? `<div class="co-aviso">⚠️ ${A.pend.length} item(ns) do filtro sem resultado computado ou sem a comparação com o mês anterior — totais e comparação ficam incompletos.
                 <button class="co-btn co-btn-pri" id="co-computar-est">⚙ Computar agora</button></div>` : '';
         const b = document.getElementById('co-computar-est');
         if (b) b.onclick = async () => { await computarVarios(A.pend, b, FILTRO.recorte); renderEstatisticas(); renderGeral(); };
@@ -968,6 +1001,27 @@
         };
     }
 
+    function renderComparacaoEst(A) {
+        const C = A.comp, el = document.getElementById('co-comp-est');
+        if (!C.com) {
+            el.innerHTML = `<div class="co-card-topo"><div><h3>📆 Durante a operação × mesmo período do mês anterior</h3><p>Nenhum item do filtro tem a comparação calculada — use “⚙ Computar agora” acima.</p></div></div>`;
+            if (CHARTS['g-comp']) { CHARTS['g-comp'].destroy(); delete CHARTS['g-comp']; }
+            return;
+        }
+        el.innerHTML = `<div class="co-card-topo"><div><h3>📆 Durante a operação × mesmo período do mês anterior</h3>
+                <p>Mesmos dias do mês anterior ao início de cada operação/evento, no mesmo horário e nas mesmas cidades · ${C.com} de ${A.lista.length} item(ns) com comparação</p></div></div>
+            <div class="co-comp-grade">
+                <div class="co-graf" style="height:250px;"><canvas id="g-comp"></canvas></div>
+                <table class="co-mini"><tr><th>Indicador</th><th>Durante</th><th>Mês ant.</th><th>Var.</th></tr>
+                    ${[['Ocorrências', 'ocorrencias'], ['Prisões / apreensões', 'prisoes'], ['Drogas', 'drogasG', peso], ['Armas', 'armas'], ['Materiais', 'materiais']].map(([n, c, f = fmtN]) =>
+                        `<tr><td>${n}</td><td><b>${f(C.dur[c])}</b></td><td>${f(C.ant[c])}</td><td>${variaTxt(C.dur[c], C.ant[c])}</td></tr>`).join('')}</table>
+            </div>
+            <div class="co-comp-tabs">${tabComp3('Cidade', C.porCidade)}${tabComp3('Bairro', C.porBairro, 30)}${tabComp3('Tipificação', C.porTip)}</div>`;
+        grafico('g-comp', { type: 'bar', data: { labels: ['Ocorrências', 'Prisões', 'Armas', 'Materiais'], datasets: [
+            { label: 'Durante a operação', data: [C.dur.ocorrencias, C.dur.prisoes, C.dur.armas, C.dur.materiais], backgroundColor: '#1f5fbf' },
+            { label: 'Mesmo período do mês anterior', data: [C.ant.ocorrencias, C.ant.prisoes, C.ant.armas, C.ant.materiais], backgroundColor: '#9aa5b1' }] } });
+    }
+
     // ── Relatório ───────────────────────────────────────────────────
     // Relatório de UMA OPO: listas detalhadas (sem nomes de pessoas).
     function listasRelatorio(it, rec) {
@@ -980,6 +1034,18 @@
             + tab('8. Armas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Marca / modelo / calibre', l => l.m], ['Situação', l => l.s]], r.listaArmas || [])
             + tab('9. Materiais apreendidos', [['Data', l => l.d], ['BOU', l => l.b], ['Categoria', l => l.t], ['Descrição', l => l.x], ['Status', l => l.s]], r.listaMateriais || [])
             + tab('10. Prisões / apreensões', [['Boletim', l => l.b], ['Situação', l => l.s], ['Tipificação', l => l.t], ['Cidade', l => l.c]], r.listaPrisoes || []);
+    }
+    function secaoComparacaoRel(A, img) {
+        const C = A.comp;
+        const v = (x, y) => variaTxt(x, y).replace(/<[^>]+>/g, '');
+        if (!C.com) return '<section><h2>1.1 Comparação com o mês anterior</h2><p>Nenhum item com a comparação calculada (computar os resultados na aba Estatísticas).</p></section>';
+        const t = (tit, linhas, max = 20) => `<table><caption>${tit}</caption><tr><th>${tit}</th><th>Durante</th><th>Mês anterior</th><th>Var.</th></tr>${linhas.length ? linhas.slice(0, max).map(([n, x, y]) => `<tr><td>${esc(n)}</td><td>${fmtN(x)}</td><td>${fmtN(y)}</td><td>${v(x, y)}</td></tr>`).join('') : '<tr><td colspan="4">Sem dados.</td></tr>'}</table>`;
+        return `<section><h2>1.1 Comparação: durante a operação × mesmo período do mês anterior</h2>
+            <p style="margin:2px 0 6px;color:#444;">Mesmos dias do mês anterior ao início de cada operação/evento, no mesmo horário e cidades (${C.com} de ${A.lista.length} item(ns) com comparação).</p>
+            <div class="grid"><table><tr><th>Indicador</th><th>Durante</th><th>Mês anterior</th><th>Var.</th></tr>
+                ${[['Ocorrências', 'ocorrencias'], ['Prisões / apreensões', 'prisoes'], ['Drogas apreendidas', 'drogasG', peso], ['Armas apreendidas', 'armas'], ['Materiais apreendidos', 'materiais']].map(([n, c, f = fmtN]) =>
+                    `<tr><td>${n}</td><td><b>${f(C.dur[c])}</b></td><td>${f(C.ant[c])}</td><td>${v(C.dur[c], C.ant[c])}</td></tr>`).join('')}</table>${img('g-comp')}</div>
+            <div class="grid">${t('Cidade', C.porCidade)}${t('Bairro', C.porBairro, 25)}</div>${t('Tipificação', C.porTip)}</section>`;
     }
     function htmlRelatorio(A) {
         const f = FILTRO, per = f.opo && A.lista[0] ? `${br(A.lista[0].ini)} a ${br(A.lista[0].fim)}` : `${f.de ? br(f.de) : 'início'} a ${f.ate ? br(f.ate) : br(new Date())}`;
@@ -1012,6 +1078,7 @@
                 <div class="kpi"><span>Armas apreendidas</span><b>${fmtN(A.tot.armas)}</b></div>
                 <div class="kpi"><span>Materiais apreendidos</span><b>${fmtN(A.tot.materiais)}</b></div>
                 <div class="kpi"><span>Com resultado computado</span><b>${A.tot.com}/${A.lista.length}</b></div></div></section>
+            ${secaoComparacaoRel(A, img)}
             <section><h2>2. Evolução mensal</h2><div class="grid">${img('g-mes')}${img('g-res')}</div></section>
             <section><h2>3. Ocorrências durante as operações/eventos</h2><div class="grid">${tab('Por cidade', A.porCidade)}${tab('Por tipificação', A.porTip)}</div></section>
             <section><h2>4. Apreensões</h2><div class="grid">${tab('Drogas por tipo (peso)', A.drogas, peso)}${tab('Armas por tipo', A.armas)}${tab('Materiais por categoria', A.materiais)}${tab('Eventos por porte', Object.entries(A.porte))}</div></section>
