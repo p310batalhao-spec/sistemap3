@@ -451,3 +451,4 @@
     // Reaproveitado pela página Controle de Operações (js/controle-operacoes.js).
     window.ControleOPO = { criarJanela, periodoPadrao, parseVigencia, cidadesDaOpo, calcular, rotuloOpo, carregarNo: no };
 })();
+
