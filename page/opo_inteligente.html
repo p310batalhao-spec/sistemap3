@@ -3205,6 +3205,9 @@
                 eventoNome: window._OPO_EVENTO ? window._OPO_EVENTO.nome : null,
                 cidades: escopo === 'bpm' ? alocacoes.map(a => a.cidade).filter(Boolean) : [cidade].filter(Boolean),
                 tiposCombate: window.OPOEstrategia ? OPOEstrategia.tiposSelecionados() : [],
+                // Bairros/locais dos hotspots — busca por bairro no Controle de Operações
+                bairros: [...new Set((dadosAnalise.hotspots || []).flatMap(h => (h.ocorrencias || []).map(o => (o.bairro || '').trim()).filter(b => b && b !== '---')))].slice(0, 40),
+                locais: (dadosAnalise.hotspots || []).map(h => h.local).filter(Boolean).slice(0, 20),
             };
 
             const res = await fetch(`${dbUrl}/cartoes_programa.json`, {
