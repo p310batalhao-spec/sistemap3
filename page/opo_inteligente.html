@@ -2516,7 +2516,9 @@
       renderTatica(tatica, hotspots);
       document.getElementById('painel-tatica').style.display = 'block';
       document.getElementById('painel-estrategia').style.display = 'block';
-      window._estrategiaPromise = window.OPOEstrategia ? OPOEstrategia.gerar({ auto: true }) : Promise.resolve();
+      window._estrategiaPromise = window.OPOEstrategia
+        ? Promise.all([OPOEstrategia.gerar({ auto: true }), OPOEstrategia.atualizarFocos().catch(e => console.warn('[focos]', e))])
+        : Promise.resolve();
 
       // ── Gerar OPO ──
       document.getElementById('painel-gerar').style.display = 'block';
@@ -3074,6 +3076,7 @@
       <div class="opo-mapa-legenda" style="margin-bottom:8px;">
         <div class="opo-leg-item"><div class="opo-leg-dot" style="background:#d63031;"></div> CVLI</div>
         <div class="opo-leg-item"><div class="opo-leg-dot" style="background:#e8a020;"></div> CVP</div>
+        ${window.OPOEstrategia ? OPOEstrategia.legendaFocosHTML() : ''}
         <div class="opo-leg-item"><div class="opo-leg-dot" style="width:12px;height:12px;border-radius:2px;background:rgba(108,92,231,.25);border:1.5px dashed #6c5ce7;"></div> Hotspot</div>
       </div>
       <!-- Blocos de mapa por cidade — gerados dinamicamente por renderMapaOPO() -->
@@ -3677,6 +3680,8 @@
           });
           L.marker([oc.lat, oc.lng], { icon }).addTo(m);
         });
+        // Demais focos selecionados (MVI, Perturbação, VD, Armas, Drogas)
+        if (window.OPOEstrategia) OPOEstrategia.marcarFocos(m, dadosAnalise?.escopo === 'bpm' ? cidade : '');
 
         // Hotspots: círculos + rótulos
         hotspots.forEach((h, i) => {
