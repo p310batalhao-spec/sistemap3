@@ -108,24 +108,45 @@
     }
 
     // ── Resultados (CAD) ────────────────────────────────────────────
+    // Dois recortes por operação (filtro no detalhe do dia):
+    //   'horario' → só as ocorrências dentro do horário diário da operação
+    //               (chave = it.chave — é o usado em KPIs/estatísticas/relatório)
+    //   'dia'     → todas as ocorrências dos dias de vigência (chave = it.chave + '_dia')
+    // Sem horário definido os dois são iguais e o filtro nem aparece.
     const podeCalcular = it => it.ini <= hoje0();
-    async function computar(it) {
+    const temHorario = it => !!(it.hIni && it.hFim && it.hIni !== it.hFim);
+    const chaveRes = (it, modo) => modo === 'dia' && temHorario(it) ? it.chave + '_dia' : it.chave;
+    const LS_MODO = 'p3_controle_operacoes_modo';
+    let modoPadrao = (() => { try { return localStorage.getItem(LS_MODO) === 'dia' ? 'dia' : 'horario'; } catch (e) { return 'horario'; } })();
+    const modoItem = {};
+    const modoDe = it => modoItem[it.chave] || modoPadrao;
+    const L_MAX = 500; // limite de linhas guardadas por lista
+    async function computar(it, modo = 'horario') {
         const fim = it.fim > hoje0() ? hoje0() : it.fim;
         const parcial = it.fim >= hoje0(); // hoje ainda não terminou
-        const R = await ControleOPO.calcular({ nome: it.nome, ini: it.ini, fim, hIni: it.hIni, hFim: it.hFim, cidades: it.cidades });
+        const diaInteiro = modo === 'dia' || !temHorario(it);
+        const R = await ControleOPO.calcular({ nome: it.nome, ini: it.ini, fim, hIni: diaInteiro ? '' : it.hIni, hFim: diaInteiro ? '' : it.hFim, cidades: it.cidades });
         const k = R.kpi;
+        const end = o => [val(o.LOGRADOURO), val(o.BAIRRO)].filter(Boolean).join(', ');
         const resumo = {
             tipo: it.tipo, refId: it.id, nome: it.nome, calculadoEm: new Date().toISOString(),
-            ini: iso(it.ini), fim: iso(fim), hIni: it.hIni || '', hFim: it.hFim || '', cidades: it.cidades,
-            parcial,
+            ini: iso(it.ini), fim: iso(fim), hIni: diaInteiro ? '' : (it.hIni || ''), hFim: diaInteiro ? '' : (it.hFim || ''), cidades: it.cidades,
+            parcial, modo: diaInteiro ? 'dia' : 'horario',
             kpi: { ocorrencias: k.ocorrencias[0], prisoes: k.prisoes[0], drogasG: +k.drogas[0].toFixed(3), armas: k.armas[0], materiais: k.materiais[0] },
             antes: { ocorrencias: k.ocorrencias[1], prisoes: k.prisoes[1], drogasG: +k.drogas[1].toFixed(3), armas: k.armas[1], materiais: k.materiais[1] },
             porTip: R.porTip.slice(0, 15), porCidade: R.porCidade.slice(0, 15),
             drogasPorTipo: R.drogasPorTipo, armasPorTipo: R.armasPorTipo, materiaisPorCat: R.materiaisPorCat, prisoesPorSit: R.prisoesPorSit,
+            // Listas (sem nome de pessoa — ficam gravadas no Firebase da unidade)
+            listaOcorrencias: R.ocorrencias.slice(0, L_MAX).map(o => ({ d: val(o.DATA), h: val(o.HORA), b: val(o.BOLETIM), c: val(o.CIDADE), e: end(o), t: val(o.TIPIFICACAO_GERAL) || val(o.TIPIFICACAO), s: val(o['SOLUÇÃO']) })),
+            listaDrogas: R.drogas.slice(0, L_MAX).map(o => ({ d: val(o.DATA), h: val(o.HORA), b: val(o.BOLETIM), t: val(o.TIPO_DROGA), q: val(o.QUANTIDADE || o.PESO), u: val(o.UNIDADE_MEDIDA), c: val(o.CIDADE), x: val(o.OBSERVACAO) })),
+            listaArmas: R.armas.slice(0, L_MAX).map(o => ({ d: val(o.DATA), h: val(o.HORA), b: val(o.BOLETIM), t: val(o.TIPO_ARMA), m: [val(o.MARCA), val(o.MODELO), val(o.CALIBRE)].filter(Boolean).join(' · '), s: val(o.SITUACAO_ARMA), c: val(o.CIDADE) })),
+            listaMateriais: R.materiais.slice(0, L_MAX).map(o => ({ d: val(o.DATA), b: val(o['N° DO BOU']), t: val(o.CATEGORIA), x: val(o['DESCRIÇÃO']), s: val(o.STATUS), q: val(o.QUANTIDADE) })),
+            listaPrisoes: R.prisoes.slice(0, L_MAX).map(o => ({ b: val(o.BOLETIM), s: val(o.SITUACAO), t: val(o.TIPIFICACAO), c: val(o.CIDADE) })),
         };
-        const r = await fetch(`${DB}/${NO_RES}/${it.chave}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resumo) });
+        const chave = chaveRes(it, resumo.modo);
+        const r = await fetch(`${DB}/${NO_RES}/${chave}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(resumo) });
         if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
-        RES[it.chave] = resumo;
+        RES[chave] = resumo;
         return resumo;
     }
     // Pendentes = já começaram e (sem resultado OU resultado parcial calculado antes do fim).
@@ -197,7 +218,7 @@
         const r = RES[it.chave];
         if (!r) return podeCalcular(it) ? '<div class="co-res"><span>sem resultado computado</span></div>' : '<div class="co-res"><span>programado</span></div>';
         const k = r.kpi;
-        return `<div class="co-res"><span>🚨 ${k.ocorrencias} ocorr.</span><span>🔒 ${k.prisoes ?? '—'} prisões</span>${k.drogasG ? `<span>💊 ${peso(k.drogasG)}</span>` : ''}${k.armas ? `<span>🔫 ${k.armas}</span>` : ''}${k.materiais ? `<span>📦 ${k.materiais}</span>` : ''}${r.parcial ? '<span>parcial</span>' : ''}</div>`;
+        return `<div class="co-res"><span>🚨 ${k.ocorrencias} ocorr.</span><span>🔒 ${k.prisoes ?? '—'} prisões</span><span>💊 ${peso(k.drogasG)}</span><span>🔫 ${fmtN(k.armas)} armas</span><span>📦 ${fmtN(k.materiais)} materiais</span>${r.parcial ? '<span>parcial</span>' : ''}</div>`;
     }
     function cardItem(it) {
         const d = it.ini;
@@ -235,16 +256,47 @@
         corpo.querySelectorAll('[data-computar]').forEach(b => b.addEventListener('click', async () => {
             const it = ITENS.find(x => x.chave === b.dataset.computar);
             b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
-            try { await computar(it); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+            try { await computar(it, modoDe(it)); } catch (e) { alert('Não foi possível computar: ' + e.message); }
             abrirDia(dia); renderGeral();
+        }));
+        // Filtro: só no horário da operação × dias inteiros da vigência
+        corpo.querySelectorAll('[data-modo]').forEach(b => b.addEventListener('click', async () => {
+            const it = ITENS.find(x => x.chave === b.dataset.item);
+            const modo = b.dataset.modo;
+            modoItem[it.chave] = modo; modoPadrao = modo;
+            try { localStorage.setItem(LS_MODO, modo); } catch (e) { /* preferência opcional */ }
+            if (!RES[chaveRes(it, modo)] && podeCalcular(it)) {
+                b.closest('.co-det').querySelector('.co-det-res').innerHTML = '<div class="co-det-meta" style="margin:.6rem 0;">⏳ Cruzando com o CAD…</div>';
+                try { await computar(it, modo); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+            }
+            abrirDia(dia);
         }));
         corpo.querySelectorAll('[data-exec]').forEach(b => b.addEventListener('click', () => document.getElementById('exec-' + b.dataset.exec).classList.toggle('aberto')));
         corpo.querySelectorAll('[data-salvar-exec]').forEach(b => b.addEventListener('click', () => salvarExecucao(b.dataset.salvarExec)));
         document.getElementById('co-modal').classList.add('aberto');
     }
     const tabMini = (tit, linhas, fmt) => linhas && linhas.length ? `<table class="co-mini"><tr><th>${tit}</th><th style="text-align:right">Qtd.</th></tr>${linhas.slice(0, 8).map(([k, v]) => `<tr><td>${esc(k)}</td><td style="text-align:right">${fmt ? fmt(v) : fmtN(v)}</td></tr>`).join('')}</table>` : '';
+    const tabLista = (tit, cols, linhas) => `<details class="co-lista-det"><summary>${tit} (${linhas.length})</summary>${linhas.length
+        ? `<div class="co-scroll" style="max-height:260px;"><table class="co-mini"><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr>${linhas.map(l => `<tr>${cols.map(c => `<td>${esc(c[1](l))}</td>`).join('')}</tr>`).join('')}</table></div>`
+        : '<div class="co-det-meta">Nenhum registro.</div>'}</details>`;
+    function listasHTML(r) {
+        if (!r.listaOcorrencias) return '<div class="co-det-meta" style="margin-top:.4rem;">ℹ️ Clique em “↻ Recalcular resultados” para ver a lista detalhada de ocorrências e apreensões.</div>';
+        const quant = l => l.q ? `${l.q} ${(l.u || '').toLowerCase()}`.trim() : '—';
+        return `<div class="co-listas">
+            ${tabLista('📋 Ocorrências', [['Data', l => l.d], ['Hora', l => l.h], ['Boletim', l => l.b], ['Cidade', l => l.c], ['Endereço', l => l.e], ['Tipificação', l => l.t], ['Solução', l => l.s]], r.listaOcorrencias)}
+            ${tabLista('💊 Drogas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Quantidade', quant], ['Cidade', l => l.c], ['Obs.', l => l.x]], r.listaDrogas || [])}
+            ${tabLista('🔫 Armas apreendidas', [['Data', l => l.d], ['Boletim', l => l.b], ['Tipo', l => l.t], ['Marca / modelo / calibre', l => l.m], ['Situação', l => l.s], ['Cidade', l => l.c]], r.listaArmas || [])}
+            ${tabLista('📦 Materiais apreendidos', [['Data', l => l.d], ['BOU', l => l.b], ['Categoria', l => l.t], ['Descrição', l => l.x], ['Status', l => l.s]], r.listaMateriais || [])}
+            ${tabLista('🔒 Prisões / apreensões', [['Boletim', l => l.b], ['Situação', l => l.s], ['Tipificação', l => l.t], ['Cidade', l => l.c]], r.listaPrisoes || [])}
+        </div>`;
+    }
     function detalheItem(it) {
-        const r = RES[it.chave];
+        const modo = temHorario(it) ? modoDe(it) : 'horario';
+        const r = RES[chaveRes(it, modo)];
+        const filtro = temHorario(it) ? `<div class="co-modo" role="group" aria-label="Recorte dos resultados">
+                <span>Resultados:</span>
+                <button class="${modo === 'horario' ? 'ativo' : ''}" data-modo="horario" data-item="${esc(it.chave)}">⏰ Somente no horário da operação (${esc(it.hIni)}–${esc(it.hFim)})</button>
+                <button class="${modo === 'dia' ? 'ativo' : ''}" data-modo="dia" data-item="${esc(it.chave)}">📅 Dias inteiros da vigência</button></div>` : '';
         const cor = it.tipo === 'opo' ? COR.opo : COR[it.porte];
         const horario = it.hIni ? `${it.hIni}${it.hFim ? ' às ' + it.hFim : ''}` : 'dia inteiro';
         const meta = [
@@ -260,10 +312,11 @@
                 <div>Ocorrências<b>${fmtN(r.kpi.ocorrencias)}</b>antes: ${fmtN(r.antes.ocorrencias)}</div>
                 <div>Prisões<b>${r.kpi.prisoes ?? '—'}</b>antes: ${r.antes.prisoes ?? '—'}</div>
                 <div>Drogas<b>${peso(r.kpi.drogasG)}</b>antes: ${peso(r.antes.drogasG)}</div>
-                <div>Armas<b>${fmtN(r.kpi.armas)}</b>antes: ${fmtN(r.antes.armas)}</div>
-                <div>Materiais<b>${fmtN(r.kpi.materiais)}</b>antes: ${fmtN(r.antes.materiais)}</div></div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.6rem;">${tabMini('Tipificação', r.porTip)}${tabMini('Droga', r.drogasPorTipo, peso)}${tabMini('Arma', r.armasPorTipo)}${tabMini('Material', r.materiaisPorCat)}</div>
-            <div class="co-det-meta" style="margin-top:.4rem;">Computado em ${new Date(r.calculadoEm).toLocaleString('pt-BR')} (${br(parseData(r.ini))} a ${br(parseData(r.fim))})${r.parcial ? ' — PARCIAL, a operação ainda está em andamento' : ''}. "Antes" = mesmo intervalo e horário imediatamente anterior.</div>`
+                <div>Armas apreendidas<b>${fmtN(r.kpi.armas)}</b>antes: ${fmtN(r.antes.armas)}</div>
+                <div>Materiais apreendidos<b>${fmtN(r.kpi.materiais)}</b>antes: ${fmtN(r.antes.materiais)}</div></div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:.6rem;align-items:start;">${tabMini('Tipificação', r.porTip)}${tabMini('Droga (peso)', r.drogasPorTipo, peso) || tabMini('Droga', [['Nenhuma', 0]])}${tabMini('Arma', r.armasPorTipo) || tabMini('Arma', [['Nenhuma', 0]])}${tabMini('Material', r.materiaisPorCat) || tabMini('Material', [['Nenhum', 0]])}</div>
+            ${listasHTML(r)}
+            <div class="co-det-meta" style="margin-top:.4rem;">Computado em ${new Date(r.calculadoEm).toLocaleString('pt-BR')} (${br(parseData(r.ini))} a ${br(parseData(r.fim))}, ${r.hIni && r.hFim ? 'das ' + r.hIni + ' às ' + r.hFim : 'dia inteiro'})${r.parcial ? ' — PARCIAL, a operação ainda está em andamento' : ''}. "Antes" = mesmo intervalo e horário imediatamente anterior.</div>`
             : `<div class="co-det-meta" style="margin:.5rem 0;">${podeCalcular(it) ? 'Resultados ainda não computados.' : 'Ainda não iniciado — os resultados poderão ser computados a partir da data de início.'}</div>`;
         const ex = it.tipo === 'opo' ? `
             <div class="co-exec" id="exec-${esc(it.chave)}">
@@ -272,7 +325,7 @@
                 <button class="co-btn co-btn-pri" data-salvar-exec="${esc(it.chave)}">Salvar execução</button></div>` : '';
         return `<div class="co-det" style="--c:${cor}">
             <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}</h4>
-            <div class="co-det-meta">${meta}</div>${kp}
+            <div class="co-det-meta">${meta}</div>${filtro}<div class="co-det-res">${kp}</div>
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
                 ${it.tipo === 'opo' ? `<button class="co-btn" data-doc="${esc(it.chave)}">📄 Ver OPO (Word / PDF)</button>` : ''}
@@ -292,8 +345,8 @@
         const r = await fetch(`${DB}/cartoes_programa/${encodeURIComponent(it.id)}/execucao.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(execucao) });
         if (!r.ok) { alert('Não foi possível salvar (HTTP ' + r.status + ').'); return; }
         // O resultado antigo foi calculado com outro período — descarta.
-        await fetch(`${DB}/${NO_RES}/${it.chave}.json`, { method: 'DELETE' }).catch(() => {});
-        delete RES[it.chave];
+        await Promise.all([it.chave, it.chave + '_dia'].map(k => fetch(`${DB}/${NO_RES}/${k}.json`, { method: 'DELETE' }).catch(() => {})));
+        delete RES[it.chave]; delete RES[it.chave + '_dia'];
         await carregarTudo();
         document.getElementById('co-modal').classList.remove('aberto');
         mesAtual = new Date(parseData(execucao.dataIni).getFullYear(), parseData(execucao.dataIni).getMonth(), 1);
