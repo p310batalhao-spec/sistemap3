@@ -115,12 +115,13 @@
         const s = { foto: fp ? fp.id : null, imovel: fotoImovel ? fotoImovel.id : null, registro: new Set(), endereco: 0, fc,
             info: textoLimpo((f.informacoes || []).filter(informePadrao)[0]?.texto || f.dados.observacoes).slice(0, 700),
             informes: new Set((f.informacoes || []).map((x, i) => informePadrao(x) ? i : -1).filter(i => i >= 0)) };
-        if (salvo) Object.assign(s, salvo, { registro: new Set(salvo.registro || []), fc: new Set(salvo.fc || []), informes: salvo.informes ? new Set(salvo.informes) : s.informes });
+        if (salvo) Object.assign(s, salvo, { registro: new Set(salvo.registro || []), fc: new Set(salvo.fc || []), informes: salvo.informes ? new Set(salvo.informes) : s.informes,
+            cb: salvo.cb ? new Set(salvo.cb) : null, detalhar: salvo.detalhar ? new Set(salvo.detalhar) : null });
         return s;
     }
     async function adicionarAlvo(id, extras = {}) {
         if (E.alvos.some(a => String(a.id) === String(id))) return;
-        const marcador = { id, ficha: null, funcao: extras.funcao || '', carregando: true, sel: null, consulta: extras.consulta || null };
+        const marcador = { id, ficha: null, funcao: extras.funcao || '', carregando: true, sel: null, consulta: extras.consulta || null, consultaRaw: extras.consultaRaw || null, detalhes: extras.detalhes || {} };
         E.alvos.push(marcador); renderAlvos();
         try {
             marcador.ficha = (await api('/relint/ficha?id=' + encodeURIComponent(id))).ficha;
@@ -154,7 +155,7 @@
         if (!E.alvos.length) { el.innerHTML = '<div class="ri-vazio">Nenhum alvo adicionado.</div>'; return; }
         el.innerHTML = E.alvos.map((a, i) => {
             if (a.carregando) return `<div class="ri-alvo"><span class="ri-n">${String(i + 1).padStart(2, '0')}</span><span></span><div class="ri-carregando">⏳ Carregando a Ficha Alvo…</div></div>`;
-            const f = a.ficha, fp = (f.fotos || []).find(x => x.id === a.sel.foto) || fotoPrincipal(f);
+            const f = a.ficha, fp = a.sel.fotoExt ? { url: a.sel.fotoExt } : (f.fotos || []).find(x => x.id === a.sel.foto) || fotoPrincipal(f);
             return `<div class="ri-alvo${i === E.ativo ? ' ativo' : ''}" data-i="${i}">
                 <span class="ri-n">${String(i + 1).padStart(2, '0')}</span>
                 <img src="${esc(fp ? fp.url : '../img/relint/sem-foto.jpg')}" alt="">
@@ -232,17 +233,110 @@
             <div class="ri-meta">${esc(r.tipo || 'BO')} nº ${esc(r.numero || '—')} · ${esc(dataBR(r.dataFato))} · papel: <b>${esc(r.papel || '—')}</b></div></div>`).join('') + '</div>' : vazio('Nenhum registro criminal.');
         return '';
     }
+    // ── Consulta Integrada: helpers sobre o resultado bruto ──────────
+    const SECOES_CI = [['fotos', '📷 Fotos (Alcatraz / IDSEG-Quimera)'], ['cad', '🚓 Ocorrências — CAD'], ['ppe', '🚔 Ocorrências policiais — PPE'], ['pc', '🗂 Registros anteriores'],
+        ['end', '📍 Endereços'], ['vinc', '👪 Vínculos'], ['bnmp', '⚖ BNMP'], ['proc', '🏛 Processos'], ['tempo', '🕒 Linha do tempo']];
+    function fotosConsulta(r) {
+        const fotos = (r.fotos || []).filter(Boolean);
+        const qQuimera = r.fotoQuimera && r.fotoQuimera.temFoto ? (r.fotoQuimera.quantidade || 1) : 0;
+        return fotos.map((url, i) => ({ url, fonte: i < qQuimera ? 'IDSEG/Quimera (RG)' : 'Alcatraz' }));
+    }
+    function enderecosConsulta(r) {
+        const vistos = new Set(), lista = [];
+        const campo = o => { if (!o) return null; const k = Object.keys(o).find(x => /endere/i.test(x)); return k ? o[k] : null; };
+        const add = (e, data, fonte) => { const t = textoLimpo(e); const k = semAcento(t).toUpperCase().replace(/\s+/g, ' '); if (!t || vistos.has(k)) return; vistos.add(k); lista.push({ endereco: t, data, fonte }); };
+        (r.idnet || []).forEach(reg => add(campo(reg), reg['Data de Atendimento no IC'], 'Identificação civil'));
+        add(campo(r.cnh), null, 'CNH');
+        (r.enderecosEquatorial || []).forEach(e => add(e.endereco, null, 'Equatorial'));
+        return lista;
+    }
+    const ordData = d => { const m = String(d || '').match(/(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?/); return m ? `${m[3]}${m[2]}${m[1]}${m[4] || '00'}${m[5] || '00'}` : String(d || ''); };
+    function linhaTempo(r) {
+        const it = [];
+        (r.ocorrenciasDespacho || []).forEach(o => it.push({ data: val(o.dt_ocor), texto: `${val(o.ds_ocor_sgrup) || 'Ocorrência'}${o.id_ocor_fk ? ' — nº ' + o.id_ocor_fk : ''}`, env: val(o.ds_oco_despc_tipo_envl), fonte: 'CAD' }));
+        (r.ocorrenciasPpe || []).forEach(o => it.push({ data: val(o.dt_ocorrencia), texto: val(o.no_natureza_ocorrencia) || 'Ocorrência', env: val(o.tipo_envolvimento), fonte: 'PPE' }));
+        (r.ocorrenciasPcAntigo || []).forEach(o => it.push({ data: val(o.data_hora_registro), texto: `Boletim ${val(o.attr_numero_bo) || '—'}`, env: '', fonte: 'Registro anterior' }));
+        (r.processos || []).forEach(p => { const m = p.ultimoMovimento || {}; if (m.dataHora) it.push({ data: new Date(m.dataHora).toLocaleDateString('pt-BR'), texto: `Processo ${p.numeroProcesso} — ${val(m.textoCompleto || m.nome).slice(0, 90)}`, env: '', fonte: p.tribunal || 'Tribunal' }); });
+        return it.sort((a, b) => ordData(b.data).localeCompare(ordData(a.data)));
+    }
+    const camposDetalhe = d => (d && (d.campos || d)) || {};
+    async function carregarDetalhe(a, tipo, chave, params) {
+        a.detalhes = a.detalhes || {};
+        const k = tipo + ':' + chave;
+        if (a.detalhes[k]) return a.detalhes[k];
+        if (tipo === 'despacho') {
+            const pronto = ((a.consultaRaw || {}).detalhesOcorrencias || []).find(d => String(d.idOcorrencia) === String(chave));
+            if (pronto) return (a.detalhes[k] = { campos: pronto.campos || {}, envolvidos: pronto.envolvidos || [], veiculos: pronto.veiculos || [] });
+        }
+        const resp = await P3AtualizadorLocal.ocorrenciaDetalhe(params);
+        if (!resp || !resp.ok) throw new Error((resp && resp.erro) || 'sem resposta');
+        let d = resp.detalhe;
+        if (Array.isArray(d)) d = { campos: d.reduce((acc, bloco, i) => { Object.entries(bloco || {}).forEach(([x, v]) => { acc[`${x} (envolvido ${i + 1})`] = v; }); return acc; }, {}) };
+        return (a.detalhes[k] = { campos: camposDetalhe(d), envolvidos: (d && d.envolvidos) || [], veiculos: (d && d.veiculos) || [] });
+    }
+    const kvDet = d => kv(Object.entries(d.campos || {}).map(([k, v]) => [k, textoLimpo(v)]))
+        + ((d.envolvidos || []).length ? `<div class="ri-sub" style="margin:8px 0 4px;">Envolvidos (${d.envolvidos.length})</div>` + d.envolvidos.map(e => kv(Object.entries(e))).join('<hr style="border:0;border-top:1px dotted rgba(255,255,255,.15);">') : '')
+        + ((d.veiculos || []).length ? `<div class="ri-sub" style="margin:8px 0 4px;">Veículos (${d.veiculos.length})</div>` + d.veiculos.map(v => kv(Object.entries(v))).join('') : '');
+
     function abaConsulta(a) {
-        const c = a.consulta, cpf = String(a.ficha.dados.cpf || '').replace(/\D/g, '');
-        const botao = `<button class="ri-btn ri-btn-pri" data-consulta-aba ${cpf.length === 11 ? '' : 'disabled'}>${c ? '↻ Consultar novamente' : '🔎 Executar Consulta Integrada'} (CAD/SISP, BNMP, TJAL/TJSP)</button>`;
-        if (!c) return `<p class="ri-sub" style="margin:0 0 10px;">${cpf.length === 11 ? 'A mesma consulta da página “Consulta Integrada de Pessoas”, pelo CPF do alvo. Os resultados entram no histórico de ocorrências, nos mandados e nos processos ativos do relatório.' : '⚠️ Ficha sem CPF — a Consulta Integrada exige CPF.'}</p>${botao}`;
-        const oc = ocorrenciasAutor(a), pa = processosAtivos(a);
-        return `<p class="ri-sub" style="margin:0 0 10px;">Consultado em ${esc(new Date(c.consultadoEm).toLocaleString('pt-BR'))} · ${c.ocorrencias.length} ocorrência(s), ${oc.length} como autor/suspeito · ${c.processos.length} processo(s), ${pa.length} ativo(s).</p>
+        const c = a.consulta, r = a.consultaRaw, cpf = String(a.ficha.dados.cpf || '').replace(/\D/g, '');
+        const botao = `<button class="ri-btn ri-btn-pri" data-consulta-aba ${cpf.length === 11 ? '' : 'disabled'}>${c ? '↻ Consultar novamente' : '🔎 Executar Consulta Integrada'} (CAD, PPE, Alcatraz, IDSEG/Quimera, BNMP, Tribunais)</button>`;
+        if (!c || !r) return `<p class="ri-sub" style="margin:0 0 10px;">${cpf.length === 11 ? 'A mesma consulta da página “Consulta Integrada de Pessoas”, pelo CPF do alvo. Os resultados aparecem aqui e podem ir para o relatório (Anexo B), com detalhe completo das ocorrências.' : '⚠️ Ficha sem CPF — a Consulta Integrada exige CPF.'}</p>${botao}`;
+        const s = a.sel, inc = k => `<label class="ri-inc"><input type="checkbox" data-cb="${k}" ${s.cb && s.cb.has(k) ? 'checked' : ''}> incluir no relatório</label>`;
+        const sec = (k, titulo, corpo, n) => `<div class="ri-item"><h4>${titulo}${n != null ? ` <em class="ri-n2">${n}</em>` : ''} ${inc(k)}</h4>${corpo}</div>`;
+        const fotos = fotosConsulta(r);
+        const fotosH = fotos.length ? `<div class="ri-fotos">${fotos.map((f, i) => `<div class="ri-foto"><img src="${esc(f.url)}" alt="" data-zoom="${esc(f.url)}" data-leg="${esc(f.fonte)}">
+            <div><span class="ri-leg">${esc(f.fonte)}</span><button class="ri-btn ri-btn-mini${s.fotoExt === f.url ? ' on' : ''}" data-ci-foto="${i}" title="Foto do Anexo A">👤</button>
+            <button class="ri-btn ri-btn-mini${(s.registroExt || []).includes(f.url) ? ' on' : ''}" data-ci-reg="${i}" title="Registro fotográfico">📷</button></div></div>`).join('')}</div>`
+            : `<div class="ri-meta">${r.fotoQuimera && r.fotoQuimera.consultado ? 'Quimera consultado: ' + (r.fotoQuimera.motivo === 'pessoa_nao_encontrada' ? 'pessoa não encontrada.' : 'sem foto cadastrada.') : 'Nenhuma foto encontrada.'}</div>`;
+        const tabOc = (lista, cols, tipo, chaveFn, paramsFn) => lista.length ? `<div class="ri-scroll"><table class="ri-tab"><tr>${cols.map(x => `<th>${x[0]}</th>`).join('')}<th>Relatório</th></tr>${lista.map((o, i) => {
+                const ch = chaveFn(o, i), key = tipo + ':' + ch;
+                return `<tr class="ri-oc" data-oc-tipo="${tipo}" data-oc-i="${i}">${cols.map(x => `<td>${esc(x[1](o))}</td>`).join('')}<td><label class="ri-inc" onclick="event.stopPropagation()"><input type="checkbox" data-detalhar="${esc(key)}" ${s.detalhar && s.detalhar.has(key) ? 'checked' : ''}> detalhar</label></td></tr>
+                    <tr class="ri-oc-det" id="det-${esc(tipo)}-${i}"><td colspan="${cols.length + 1}">${a.detalhes && a.detalhes[key] ? kvDet(a.detalhes[key]) : ''}</td></tr>`; }).join('')}</table></div>` : '<div class="ri-meta">Nenhuma.</div>';
+        const desp = r.ocorrenciasDespacho || [], ppe = r.ocorrenciasPpe || [], pc = r.ocorrenciasPcAntigo || [];
+        const ends = enderecosConsulta(r), vo = r.vinculosOcorrencia || [], p = r.pessoa || {};
+        const tempo = linhaTempo(r);
+        return `<p class="ri-sub" style="margin:0 0 10px;">Consultado em ${esc(new Date(c.consultadoEm).toLocaleString('pt-BR'))}. Clique numa ocorrência para ver o detalhe completo do CAD; marque “detalhar” para levá-lo ao relatório (Anexo B).</p>
             <div class="ri-lista">
-                <div class="ri-item"><h4>⚖ BNMP — mandados de prisão <span class="ri-tag${c.bnmp.possui ? ' v' : ''}">${c.bnmp.possui ? 'MANDADO EM ABERTO' : 'nada consta'}</span></h4>${c.bnmp.detalhe ? kv(Object.entries(c.bnmp.detalhe)) : ''}</div>
-                <div class="ri-item"><h4>🚨 Ocorrências como autor/suspeito (${oc.length})</h4>${oc.length ? oc.map(o => `<div class="ri-meta">${esc(o.data.slice(0, 10))} · <b>${esc(o.natureza)}</b>${o.numero ? ' · nº ' + esc(o.numero) : ''} · ${esc(o.envolvimento || o.fonte)}${o.situacao ? ' · ' + esc(o.situacao) : ''}</div>`).join('') : '<div class="ri-meta">Nenhuma.</div>'}</div>
-                <div class="ri-item"><h4>🏛 Processos (${c.processos.length}) — ativos: ${pa.length}</h4>${c.processos.length ? c.processos.map(p => `<div class="ri-meta">${p.ativo ? '🟢' : '⚪'} <b>${esc(p.tribunal)} ${esc(p.numero)}</b> · ${esc([p.classe, p.assunto].filter(Boolean).join(' — ') || '—')}${p.ultimo ? ' · último andamento: ' + esc(p.ultimo.slice(0, 120)) : ''}</div>`).join('') : '<div class="ri-meta">Nenhum.</div>'}</div>
+            ${sec('fotos', '📷 Fotos — Alcatraz / IDSEG-Quimera', fotosH, fotos.length)}
+            ${sec('cad', '🚓 Ocorrências — CAD (despacho)', tabOc(desp, [['Nº', o => val(o.id_ocor_fk || o._id_ocor)], ['Data', o => val(o.dt_ocor)], ['Natureza', o => val(o.ds_ocor_sgrup)], ['Envolvimento', o => val(o.ds_oco_despc_tipo_envl)], ['Situação', o => val(o.ds_ocor_despc_envl_pess_sitc)]], 'despacho', o => val(o._id_ocor || o.id_ocor_fk)), desp.length)}
+            ${sec('ppe', '🚔 Ocorrências policiais — PPE', tabOc(ppe, [['Data', o => val(o.dt_ocorrencia)], ['Natureza', o => val(o.no_natureza_ocorrencia)], ['Envolvimento', o => val(o.tipo_envolvimento)], ['Sexo', o => val(o.sexo)]], 'ppe', (o, i) => val(o._id) || String(i)), ppe.length)}
+            ${pc.length ? sec('pc', '🗂 Registros anteriores (PC)', tabOc(pc, [['Nº BO', o => val(o.attr_numero_bo)], ['Data', o => val(o.data_hora_registro)]], 'pc_antigo', o => val(o._env || o.attr_numero_bo)), pc.length) : ''}
+            ${sec('end', '📍 Endereços (identificação civil / CNH)', ends.length ? ends.map(e => `<div class="ri-meta">🏠 <b>${esc(e.endereco)}</b> · ${esc(e.fonte)}${e.data ? ' · ' + esc(e.data) : ''}</div>`).join('') : '<div class="ri-meta">Nenhum.</div>', ends.length)}
+            ${sec('vinc', '👪 Vínculos', `${p.mae || p.pai ? kv([['Mãe', p.mae], ['Pai', p.pai]]) : ''}${vo.length ? `<div class="ri-scroll" style="margin-top:6px;"><table class="ri-tab"><tr><th>Nome</th><th>Envolvimento</th><th>Ocorrência</th><th>Data</th><th>Tipificação</th></tr>${vo.map(v => `<tr><td>${esc(v.nome)}${v.cpf ? '<br><small>CPF ' + esc(cpfFmt(v.cpf)) + '</small>' : ''}</td><td>${esc(v.tipoEnvolvimento)}</td><td>${esc(v.numeroOcorrencia)}</td><td>${esc(v.data)}</td><td>${esc(v.tipificacao)}</td></tr>`).join('')}</table></div>` : '<div class="ri-meta">Sem vínculos por ocorrência.</div>'}`, vo.length)}
+            ${sec('bnmp', '⚖ BNMP — mandados de prisão', `<span class="ri-tag${c.bnmp.possui ? ' v' : ''}">${c.bnmp.possui ? 'MANDADO EM ABERTO' : 'nada consta'}</span>${c.bnmp.detalhe ? kv(Object.entries(c.bnmp.detalhe)) : ''}`)}
+            ${sec('proc', '🏛 Processos (TJAL / TJSP)', c.processos.length ? c.processos.map(x => `<div class="ri-meta">${x.ativo ? '🟢' : '⚪'} <b>${esc(x.tribunal)} ${esc(x.numero)}</b> · ${esc([x.classe, x.assunto].filter(Boolean).join(' — ') || '—')}${x.ultimo ? ' · último andamento: ' + esc(x.ultimo.slice(0, 140)) : ''}</div>`).join('') : '<div class="ri-meta">Nenhum.</div>', c.processos.length)}
+            ${sec('tempo', '🕒 Linha do tempo', tempo.length ? tempo.map(t => `<div class="ri-meta"><b>${esc(t.data || '—')}</b> · ${esc(t.texto)}${t.env ? ' (' + esc(t.env) + ')' : ''} <span class="ri-tag">${esc(t.fonte)}</span></div>`).join('') : '<div class="ri-meta">Sem eventos datados.</div>', tempo.length)}
             </div><div style="margin-top:10px;">${botao}</div>`;
+    }
+    function ligarAbaConsulta(el, a) {
+        const s = a.sel, r = a.consultaRaw;
+        if (!r) return;
+        el.querySelectorAll('[data-cb]').forEach(cb => cb.onchange = () => { s.cb = s.cb || new Set(); cb.checked ? s.cb.add(cb.dataset.cb) : s.cb.delete(cb.dataset.cb); });
+        el.querySelectorAll('[data-detalhar]').forEach(cb => cb.onchange = async () => {
+            s.detalhar = s.detalhar || new Set();
+            const key = cb.dataset.detalhar;
+            if (!cb.checked) { s.detalhar.delete(key); return; }
+            s.detalhar.add(key);
+            const tr = cb.closest('tr'); if (tr && !(a.detalhes || {})[key]) tr.click(); // já carrega o detalhe para o relatório
+        });
+        const fotos = fotosConsulta(r);
+        el.querySelectorAll('[data-ci-foto]').forEach(b => b.onclick = () => { const u = fotos[+b.dataset.ciFoto].url; s.fotoExt = s.fotoExt === u ? null : u; renderFicha(); renderAlvos(); });
+        el.querySelectorAll('[data-ci-reg]').forEach(b => b.onclick = () => { const u = fotos[+b.dataset.ciReg].url; s.registroExt = s.registroExt || []; const k = s.registroExt.indexOf(u); k >= 0 ? s.registroExt.splice(k, 1) : s.registroExt.push(u); renderFicha(); });
+        el.querySelectorAll('tr.ri-oc').forEach(tr => tr.onclick = async () => {
+            const tipo = tr.dataset.ocTipo, i = +tr.dataset.ocI, det = document.getElementById(`det-${tipo}-${i}`);
+            if (!det) return;
+            if (det.classList.contains('aberto')) { det.classList.remove('aberto'); return; }
+            det.classList.add('aberto');
+            const lista = tipo === 'despacho' ? r.ocorrenciasDespacho : tipo === 'ppe' ? r.ocorrenciasPpe : r.ocorrenciasPcAntigo;
+            const o = lista[i];
+            const chave = tipo === 'despacho' ? val(o._id_ocor || o.id_ocor_fk) : tipo === 'ppe' ? (val(o._id) || String(i)) : val(o._env || o.attr_numero_bo);
+            const params = tipo === 'despacho' ? { tipo: 'despacho', idOcor: chave } : tipo === 'ppe' ? { tipo: 'ppe', id: val(o._id), hash: val(o._hash) } : { tipo: 'pc_antigo', numeroBo: chave };
+            const td = det.querySelector('td');
+            if (!td.innerHTML.trim()) td.innerHTML = '<div class="ri-meta">⏳ Carregando o detalhe no CAD…</div>';
+            try { td.innerHTML = kvDet(await carregarDetalhe(a, tipo, chave, params)); }
+            catch (e) { td.innerHTML = `<div class="ri-meta">⚠️ ${esc(e.message)}</div>`; }
+        });
     }
     const fotoCard = s => x => `<div class="ri-foto"><img src="${esc(x.url)}" alt="" data-zoom="${esc(x.url)}" data-leg="${esc(x.legenda || '')}">
         <div><span class="ri-leg">${esc(x.legenda || (x.tipo === 'residencia' ? 'Imóvel' : x.tipo === 'veiculo' ? 'Veículo' : 'Pessoa'))}</span>
@@ -260,6 +354,7 @@
         el.querySelectorAll('[data-fc]').forEach(c => c.onchange = () => { const i = +c.dataset.fc; c.checked ? s.fc.add(i) : s.fc.delete(i); renderAlvos(); });
         el.querySelectorAll('[data-usar-info]').forEach(b => b.onclick = () => { s.info = textoLimpo(a.ficha.informacoes[+b.dataset.usarInfo].texto); b.textContent = '✔ usado no Anexo A'; });
         const bc = el.querySelector('[data-consulta-aba]'); if (bc) bc.onclick = () => { bc.disabled = true; consultarIntegrada(a, bc); };
+        if (E.aba === 'consulta') ligarAbaConsulta(el, a);
         const ta = el.querySelector('[data-info]'); if (ta) ta.oninput = () => { s.info = ta.value; };
         el.querySelectorAll('[data-zoom]').forEach(img => img.onclick = () => { $('ri-zoom-img').src = img.dataset.zoom; $('ri-zoom-tit').textContent = img.dataset.leg || 'Foto'; $('ri-modal-zoom').classList.add('aberto'); });
     }
@@ -368,7 +463,12 @@
         try {
             a.consultando = true;
             const r = await P3AtualizadorLocal.consultarPessoaStream(cpf, ev => { if (botao && ev.fonte) botao.textContent = `⏳ ${ev.fonte}…`; });
-            a.consulta = resumirConsulta(r || {});
+            a.consultaRaw = r || {};
+            a.consulta = resumirConsulta(a.consultaRaw);
+            a.detalhes = {};
+            // padrão: todas as seções entram no Anexo B; ocorrências detalhadas = nenhuma
+            a.sel.cb = new Set(['fotos', 'cad', 'ppe', 'pc', 'end', 'vinc', 'bnmp', 'proc', 'tempo']);
+            a.sel.detalhar = new Set();
         } catch (e) { alert(`Consulta Integrada de ${a.ficha.dados.nome}: ${e.message}`); }
         a.consultando = false;
         if (botao) botao.textContent = txt;
@@ -464,6 +564,8 @@
             if (linhas.length) ps.push(P(`${k}-info${j}`, rot('informes de inteligência' + (j ? ' (2)' : '')), esc(linhas.join(' ')), true));
         });
         ps.push(P(k + '-hist', rot('antecedentes'), historicoTexto(a, ref)));
+        const comoVitima = ((a.consulta || {}).ocorrencias || []).filter(o => /V[IÍ]TIMA/i.test(o.envolvimento || ''));
+        if (comoVitima.length) ps.push(P(k + '-vit', rot('ocorrências como vítima'), `Registra, ainda, ocorrência(s) em que ${ref} figura como vítima, a saber: ${listaE(comoVitima.slice(0, 6).map(o => `${esc(normalizarCaixa(o.natureza).toLowerCase() || 'ocorrência')} (${o.numero ? 'nº ' + esc(o.numero) + ', ' : ''}${esc(val(o.data).slice(0, 10))})`))}, circunstância a ser considerada na avaliação de risco e de eventual envolvimento em conflitos.`));
         situacaoJudicialTexto(a, ref).forEach((t, j) => ps.push(P(`${k}-jud${j}`, rot('situação judicial'), t)));
         if ((f.veiculos || []).length) ps.push(P(k + '-veic', rot('veículos'), `Há registro de que ${ref} utilizaria ${f.veiculos.map(x => `o veículo ${esc(up(x.modelo))}${x.cor ? ', cor ' + esc(x.cor.toLowerCase()) : ''}${x.placa ? ', placa ' + esc(up(x.placa)) : ''}`).join('; ')}.`));
         const vinc = (f.vinculos || []).filter(x => val(x.nome)).slice(0, 4);
@@ -570,7 +672,7 @@
         const sigilo = 'O sigilo deste documento é protegido e controlado pela Lei n.º 12.527/11. A divulgação, o fornecimento, a utilização ou a reprodução desautorizada do seu conteúdo, a qualquer tempo ou por qualquer meio ou modo, inclusive mediante acesso ou facilitação de acesso indevidos, constituem condutas ilícitas que ensejam responsabilidades penais, civis e administrativas.';
         const fotoDe = (a, id) => (a.ficha.fotos || []).find(x => x.id === id);
         const anexo = prontos.map((a, i) => {
-            const f = a.ficha, d = f.dados, fp = fotoDe(a, a.sel.foto), end = enderecoSel(a), im = fotoDe(a, a.sel.imovel);
+            const f = a.ficha, d = f.dados, fp = a.sel.fotoExt ? { url: a.sel.fotoExt } : fotoDe(a, a.sel.foto), end = enderecoSel(a), im = fotoDe(a, a.sel.imovel);
             const n = String(i + 1).padStart(2, '0'), quem = `${n} ${vulgo(f) ? up(vulgo(f)) : up(d.nome).split(' ')[0]}`;
             const regs = registrosSel(a), cad = ocorrenciasAutor(a), pa = processosAtivos(a), cons = a.consulta;
             const mandEx = (f.mandados || []).filter(m => !/cumprid|baixad|revogad/i.test(m.status || ''));
@@ -594,7 +696,8 @@
                     <td class="qual-imovel">${im ? `<img src="${esc(im.url)}" alt="">` : '<div class="sem-img">Sem foto do imóvel</div>'}</td></tr>
             </table>`;
         }).join('<div class="quebra"></div>');
-        const registro = prontos.flatMap(a => [...a.sel.registro].map(id => ({ a, x: fotoDe(a, id) })).filter(r => r.x));
+        const registro = prontos.flatMap(a => [...a.sel.registro].map(id => ({ a, x: fotoDe(a, id) })).filter(r => r.x)
+            .concat((a.sel.registroExt || []).map(u => ({ a, x: { url: u, legenda: '', tipo: 'pessoa' } }))));
         const regHtml = registro.length ? `<div ${B('reg', 'Registro fotográfico')}><div class="quebra"></div><div class="tit-centro">REGISTRO FOTOGRÁFICO</div>` + registro.map(({ a, x }, j) =>
             `<table class="reg" ${B('reg' + j, `Foto ${j + 1} — ${up(vulgo(a.ficha) || a.ficha.dados.nome.split(' ')[0])}`)}><tr><td><img src="${esc(x.url)}" alt=""><div class="reg-leg">${esc(normalizarCaixa(textoLimpo(x.legenda)) || `${vulgo(a.ficha) ? '“' + up(vulgo(a.ficha)) + '”' : up(a.ficha.dados.nome)} — registro fotográfico ${x.tipo === 'residencia' ? 'do imóvel' : x.tipo === 'veiculo' ? 'do veículo' : 'do indivíduo'}.`)}</div></td></tr></table>`).join('') + '</div>' : '';
         const hist = prontos.map((a, i) => {
@@ -643,6 +746,11 @@
             table.reg img { max-width: 100%; max-height: 135mm; object-fit: contain; display: block; margin: 0 auto 3px; } .reg-leg { font-size: 10.5pt; line-height: 1.3; padding: 0 10mm 3px; }
             .hist-tit { text-align: center; font-weight: bold; font-size: 10.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
             table.hist { width: 100%; border-collapse: collapse; font-size: 9.5pt; break-inside: avoid; } table.hist td { border: 1px solid #777; padding: 4px 6px; width: 50%; }
+            .ci-alvo { margin-bottom: 6mm; } .ci-nome { font-weight: bold; font-size: 10.5pt; border-bottom: 1.5px solid #000; padding-bottom: 1mm; margin-bottom: 2mm; }
+            .ci-sec { margin-bottom: 3mm; font-size: 9pt; line-height: 1.3; } .ci-tit { font-weight: bold; font-size: 9.5pt; margin: 2mm 0 1mm; break-after: avoid; }
+            table.ci { width: 100%; border-collapse: collapse; font-size: 8.5pt; } table.ci th, table.ci td { border: 1px solid #000; padding: 2px 4px; text-align: left; vertical-align: top; } table.ci th { background: #eee; }
+            .ci-fotos { display: flex; gap: 4mm; flex-wrap: wrap; } .ci-fotos figure { margin: 0; text-align: center; font-size: 8pt; } .ci-fotos img { height: 40mm; max-width: 60mm; object-fit: contain; border: 1px solid #000; }
+            .ci-det { border: 1px solid #777; padding: 2mm 3mm; margin-top: 2mm; font-size: 8.5pt; line-height: 1.3; break-inside: avoid; } .ci-det-tit { font-weight: bold; margin-bottom: 1mm; }
             @media screen { body { background: #6b7280; } .pg { background: #fff; max-width: 210mm; margin: 12px auto; box-shadow: 0 4px 18px rgba(0,0,0,.35); } }
         </style></head><body>
             <div class="marca">${esc(c.marca)}</div>
@@ -657,10 +765,46 @@
                     ${assinatura}
                     <div class="separa">X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X</div>
                     ${prontos.length ? `<div ${B('anexo', 'Anexo A (inteiro)')}><div class="quebra"></div><div class="tit-centro">ANEXO A – QUALIFICAÇÃO DOS ENVOLVIDOS</div>${anexo}</div>` : ''}
-                    ${regHtml}${hist}
+                    ${regHtml}${hist}${anexoConsulta(prontos)}
                 </td></tr></tbody>
             </table>
         </body></html>`;
+    }
+
+    // ANEXO B — Consulta Integrada (CAD, PPE, Alcatraz, IDSEG/Quimera, endereços,
+    // vínculos, BNMP, processos, linha do tempo) — cada seção é um bloco da prévia.
+    const CAMPOS_DET = /Data\/Hora Abert|Tipo de Ocorr|Tipicidade|Natureza|Logradouro|^N[ºo°]:?$|Bairro|Cidade|Ambiente|Estabelecimento|Atendimento Inicial|Relato|Solu[cç][aã]o|Situa[cç][aã]o|Fechamento|Integrantes|Envolv/i;
+    function anexoConsulta(prontos) {
+        const comCons = prontos.map((a, i) => ({ a, i })).filter(x => x.a.consultaRaw && x.a.consulta);
+        if (!comCons.length) return '';
+        const T = (cols, linhas) => `<table class="ci"><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr>${linhas.length ? linhas.join('') : `<tr><td colspan="${cols.length}">Nada consta.</td></tr>`}</table>`;
+        const corpo = comCons.map(({ a, i }) => {
+            const r = a.consultaRaw, c = a.consulta, s = a.sel, n = String(i + 1).padStart(2, '0');
+            const quem = `${n} ${vulgo(a.ficha) ? up(vulgo(a.ficha)) : up(a.ficha.dados.nome).split(' ')[0]}`;
+            const tem = k => s.cb ? s.cb.has(k) : true;
+            const bl = (k, tit, html) => tem(k) ? `<div class="ci-sec" ${B(`ci${i}-${k}`, `${quem} — ${tit}`)}><div class="ci-tit">${tit}</div>${html}</div>` : '';
+            const fotos = fotosConsulta(r);
+            const det = (tipo, chave, rotulo) => {
+                const d = (a.detalhes || {})[tipo + ':' + chave];
+                if (!d || !(s.detalhar || new Set()).has(tipo + ':' + chave)) return '';
+                const campos = Object.entries(d.campos || {}).filter(([k, v]) => CAMPOS_DET.test(k) && val(v));
+                return `<div class="ci-det" ${B(`ci${i}-det-${tipo}-${chave}`, `${quem} — detalhe ${rotulo}`)}><div class="ci-det-tit">DETALHE — ${esc(rotulo)}</div>${campos.map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(textoLimpo(v))}</div>`).join('')}
+                    ${(d.envolvidos || []).length ? `<div style="margin-top:3px;"><b>Envolvidos:</b> ${d.envolvidos.map(e => esc([e.Nome || e.nome, e.Envolvimento || e.envolvimento, e['Situação'] || e.situacao].filter(Boolean).join(' – '))).join('; ')}</div>` : ''}</div>`;
+            };
+            const desp = r.ocorrenciasDespacho || [], ppe = r.ocorrenciasPpe || [], pc = r.ocorrenciasPcAntigo || [];
+            return `<div class="ci-alvo" ${B(`ci${i}`, `Anexo B — ${quem}`)}><div class="ci-nome">Nº ${n} — ${esc(up(a.ficha.dados.nome))}${a.ficha.dados.cpf ? ' — CPF ' + esc(cpfFmt(a.ficha.dados.cpf)) : ''}</div>
+                ${bl('fotos', 'FOTOS (ALCATRAZ / IDSEG-QUIMERA)', fotos.length ? `<div class="ci-fotos">${fotos.map(f => `<figure><img src="${esc(f.url)}" alt=""><figcaption>${esc(f.fonte)}</figcaption></figure>`).join('')}</div>` : '<div>Nenhuma foto encontrada.</div>')}
+                ${bl('cad', 'OCORRÊNCIAS — CAD', T(['Nº', 'Data', 'Natureza', 'Envolvimento', 'Situação'], desp.map(o => `<tr><td>${esc(val(o.id_ocor_fk || o._id_ocor))}</td><td>${esc(val(o.dt_ocor))}</td><td>${esc(up(o.ds_ocor_sgrup))}</td><td>${esc(up(o.ds_oco_despc_tipo_envl))}</td><td>${esc(up(o.ds_ocor_despc_envl_pess_sitc))}</td></tr>`)) + desp.map(o => det('despacho', val(o._id_ocor || o.id_ocor_fk), `ocorrência nº ${val(o.id_ocor_fk || o._id_ocor)}`)).join(''))}
+                ${bl('ppe', 'OCORRÊNCIAS POLICIAIS — PPE', T(['Data', 'Natureza', 'Envolvimento'], ppe.map(o => `<tr><td>${esc(val(o.dt_ocorrencia))}</td><td>${esc(up(o.no_natureza_ocorrencia))}</td><td>${esc(up(o.tipo_envolvimento))}</td></tr>`)) + ppe.map((o, k) => det('ppe', val(o._id) || String(k), `PPE ${val(o.dt_ocorrencia)}`)).join(''))}
+                ${pc.length ? bl('pc', 'REGISTROS ANTERIORES', T(['Nº BO', 'Data'], pc.map(o => `<tr><td>${esc(val(o.attr_numero_bo))}</td><td>${esc(val(o.data_hora_registro))}</td></tr>`)) + pc.map(o => det('pc_antigo', val(o._env || o.attr_numero_bo), `BO ${val(o.attr_numero_bo)}`)).join('')) : ''}
+                ${bl('end', 'ENDEREÇOS (IDENTIFICAÇÃO CIVIL / CNH)', T(['Endereço', 'Fonte', 'Data'], enderecosConsulta(r).map(e => `<tr><td>${esc(up(e.endereco))}</td><td>${esc(e.fonte)}</td><td>${esc(e.data || '—')}</td></tr>`)))}
+                ${bl('vinc', 'VÍNCULOS', `${r.pessoa && (r.pessoa.mae || r.pessoa.pai) ? `<div>Filiação: ${esc(up([r.pessoa.mae, r.pessoa.pai].filter(Boolean).join(' e ')))}</div>` : ''}` + T(['Nome', 'Envolvimento', 'Ocorrência', 'Data'], (r.vinculosOcorrencia || []).map(v => `<tr><td>${esc(up(v.nome))}</td><td>${esc(up(v.tipoEnvolvimento))}</td><td>${esc(v.numeroOcorrencia)}</td><td>${esc(v.data)}</td></tr>`)))}
+                ${bl('bnmp', 'BNMP — MANDADOS DE PRISÃO', c.bnmp.possui ? `<div><b>MANDADO EM ABERTO.</b></div>${c.bnmp.detalhe ? Object.entries(c.bnmp.detalhe).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('') : ''}` : '<div>Nada consta.</div>')}
+                ${bl('proc', 'PROCESSOS (TJAL / TJSP)', T(['Tribunal', 'Nº', 'Classe / assunto', 'Último andamento', 'Situação'], c.processos.map(x => `<tr><td>${esc(x.tribunal)}</td><td>${esc(x.numero)}</td><td>${esc(up([x.classe, x.assunto].filter(Boolean).join(' / ')))}</td><td>${esc(x.ultimo.slice(0, 160))}</td><td>${x.ativo ? 'EM TRAMITAÇÃO' : 'ENCERRADO'}</td></tr>`)))}
+                ${bl('tempo', 'LINHA DO TEMPO', T(['Data', 'Evento', 'Fonte'], linhaTempo(r).map(t => `<tr><td>${esc(t.data || '—')}</td><td>${esc(up(t.texto))}${t.env ? ' (' + esc(up(t.env)) + ')' : ''}</td><td>${esc(t.fonte)}</td></tr>`)))}
+            </div>`;
+        }).join('');
+        return `<div ${B('anexoB', 'Anexo B (inteiro)')}><div class="quebra"></div><div class="tit-centro">ANEXO B – CONSULTA INTEGRADA (CAD/SISP, PPE, ALCATRAZ, IDSEG/QUIMERA, BNMP E TRIBUNAIS)</div>${corpo}</div>`;
     }
 
     // ── PRÉVIA: documento editável + caixas de seleção por bloco ────
@@ -674,9 +818,9 @@
         const vistos = new Map();
         doc.querySelectorAll('[data-bloco]').forEach(el => { if (!vistos.has(el.dataset.bloco)) vistos.set(el.dataset.bloco, el.dataset.rotulo || el.dataset.bloco); });
         const grupos = { cab: [], corpo: [], anexo: [], outros: [] };
-        vistos.forEach((rot, k) => (/^(cab-|inst|titulo|ass)/.test(k) ? grupos.cab : /^(intro|alvo|concl|fecho)/.test(k) ? grupos.corpo : /^anx|^anexo/.test(k) ? grupos.anexo : grupos.outros).push([k, rot]));
+        vistos.forEach((rot, k) => (/^(cab-|inst|titulo|ass)/.test(k) ? grupos.cab : /^(intro|alvo|concl|fecho)/.test(k) ? grupos.corpo : /^anx|^anexo$/.test(k) ? grupos.anexo : /^ci|^anexoB/.test(k) ? (grupos.ci = grupos.ci || []) : grupos.outros).push([k, rot]));
         const sec = (t, l) => l.length ? `<div class="ri-blocos-sec">${t}</div>` + l.map(([k, r]) => `<label><input type="checkbox" data-bl="${esc(k)}" ${E.ocultos.has(k) ? '' : 'checked'}> ${esc(r)}</label>`).join('') : '';
-        $('ri-blocos').innerHTML = sec('Cabeçalho', grupos.cab) + sec('Texto do relatório', grupos.corpo) + sec('Anexo A', grupos.anexo) + sec('Fotos e histórico', grupos.outros);
+        $('ri-blocos').innerHTML = sec('Cabeçalho', grupos.cab) + sec('Texto do relatório', grupos.corpo) + sec('Anexo A', grupos.anexo) + sec('Fotos e histórico', grupos.outros) + sec('Anexo B — Consulta Integrada', grupos.ci || []);
         $('ri-blocos').querySelectorAll('[data-bl]').forEach(cb => cb.onchange = () => { cb.checked ? E.ocultos.delete(cb.dataset.bl) : E.ocultos.add(cb.dataset.bl); aplicarOcultos(doc); });
     }
     function prepararDoc(fr) {
@@ -711,9 +855,18 @@
 
     // ── rascunho (só neste navegador) ───────────────────────────────
     function salvarRascunho() {
+        const salvoEm = new Date().toISOString();
         lsSet(LS_RASCUNHO, { cab: lerCab(), corpo: $('ri-corpo').innerHTML, grupo: E.grupo ? { nome: $('ri-grupo-nome').value, tipo: E.grupo.tipo } : null,
-            alvos: E.alvos.filter(a => a.ficha).map(a => ({ id: a.id, funcao: a.funcao, consulta: a.consulta || null, sel: Object.assign({}, a.sel, { registro: [...a.sel.registro], fc: [...a.sel.fc], informes: [...(a.sel.informes || [])] }) })),
-            ocultos: [...E.ocultos], salvoEm: new Date().toISOString() });
+            alvos: E.alvos.filter(a => a.ficha).map(a => ({ id: a.id, funcao: a.funcao, consulta: a.consulta || null, detalhes: a.detalhes || null,
+                consultaRaw: a.consultaRaw ? Object.assign({}, a.consultaRaw, { webmii: undefined, inteligencia: undefined }) : null,
+                sel: Object.assign({}, a.sel, { registro: [...a.sel.registro], fc: [...a.sel.fc], informes: [...(a.sel.informes || [])], cb: a.sel.cb ? [...a.sel.cb] : null, detalhar: a.sel.detalhar ? [...a.sel.detalhar] : null }) })),
+            ocultos: [...E.ocultos], salvoEm });
+        if (lsGet(LS_RASCUNHO, {}).salvoEm !== salvoEm) { /* sem espaço: guarda sem as fotos da consulta */
+            const r0 = { cab: lerCab(), corpo: $('ri-corpo').innerHTML, ocultos: [...E.ocultos], salvoEm: new Date().toISOString(), semFotos: true,
+                alvos: E.alvos.filter(a => a.ficha).map(a => ({ id: a.id, funcao: a.funcao, consulta: a.consulta || null, consultaRaw: a.consultaRaw ? Object.assign({}, a.consultaRaw, { fotos: [], webmii: undefined, inteligencia: undefined }) : null,
+                    sel: Object.assign({}, a.sel, { registro: [...a.sel.registro], fc: [...a.sel.fc], informes: [...(a.sel.informes || [])], cb: a.sel.cb ? [...a.sel.cb] : null, detalhar: a.sel.detalhar ? [...a.sel.detalhar] : null, fotoExt: null, registroExt: [] }) })) };
+            lsSet(LS_RASCUNHO, r0);
+        }
         const b = $('ri-salvar'); b.textContent = '✅ Rascunho salvo'; setTimeout(() => { b.textContent = '💾 Salvar rascunho'; }, 2000);
     }
     async function restaurar() {
@@ -723,7 +876,7 @@
         if (r.corpo) $('ri-corpo').innerHTML = r.corpo;
         if (r.grupo) { E.grupo = { nome: r.grupo.nome, tipo: r.grupo.tipo }; $('ri-grupo-nome').value = r.grupo.nome || ''; }
         E.ocultos = new Set(r.ocultos || []);
-        for (const a of r.alvos || []) await adicionarAlvo(a.id, { funcao: a.funcao, sel: a.sel, consulta: a.consulta });
+        for (const a of r.alvos || []) await adicionarAlvo(a.id, { funcao: a.funcao, sel: a.sel, consulta: a.consulta, consultaRaw: a.consultaRaw, detalhes: a.detalhes });
     }
     function novo() {
         if (!confirm('Começar um novo relatório? O rascunho atual será apagado.')) return;
