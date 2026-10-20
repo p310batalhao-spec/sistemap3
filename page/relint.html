@@ -100,7 +100,15 @@
         .ri-modal.aberto { display: flex; }
         .ri-modal-caixa { background: #0f1a2e; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; width: min(1000px, 100%); padding: 14px; color: #e7ecf5; }
         .ri-modal-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: .6rem; }
-        .ri-previa { width: 100%; height: 82vh; border: 0; border-radius: 8px; background: #6b7280; }
+        .ri-previa { width: 100%; height: 80vh; border: 0; border-radius: 8px; background: #6b7280; }
+        .ri-modal-previa-caixa { width: min(1360px, 100%); }
+        .ri-previa-grade { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; }
+        .ri-blocos-painel { background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 10px; max-height: 80vh; overflow: auto; }
+        .ri-blocos-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: .82rem; }
+        #ri-blocos label { display: flex; gap: 7px; align-items: flex-start; font-size: .74rem; color: #dbe4f3; padding: 3px 2px; cursor: pointer; line-height: 1.3; }
+        #ri-blocos input { margin-top: 2px; }
+        .ri-blocos-sec { font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #ffb44d; margin: 10px 0 3px; }
+        @media (max-width: 900px) { .ri-previa-grade { grid-template-columns: 1fr; } .ri-blocos-painel { max-height: 30vh; } }
         .ri-zoom img { max-width: 100%; max-height: 82vh; display: block; margin: 0 auto; border-radius: 8px; }
         details.ri-cfg summary { cursor: pointer; font-size: .78rem; color: #9cc0ff; font-weight: 700; margin-top: 12px; }
         @media (max-width: 900px) {
@@ -145,6 +153,7 @@
                                 <button class="ri-btn ri-btn-mini" id="ri-grupo-limpar">✕ relatório individual</button>
                             </div>
                             <div class="ri-alvos" id="ri-alvos"><div class="ri-vazio">Nenhum alvo adicionado.</div></div>
+                            <div style="display:flex;justify-content:flex-end;margin-top:10px;"><button class="ri-btn" id="ri-consultar-todos" title="Consulta Integrada de Pessoas (CAD/SISP, BNMP, TJAL/TJSP) de todos os alvos com CPF — ocorrências, mandados e processos ativos">🔎 Consulta Integrada de todos</button></div>
                         </div>
                     </section>
 
@@ -180,6 +189,7 @@
                         </details>
                         <div class="ri-barra-ed">
                             <button class="ri-btn ri-btn-ouro" id="ri-gerar">✨ Gerar texto a partir das fichas</button>
+                            <button class="ri-btn" id="ri-xerife" title="IA local do XERIFE: refina a redação dos informes no padrão DNISP, sem acrescentar dados">🤠 Refinar redação com o XERIFE</button>
                             <button class="ri-btn ri-btn-mini" data-cmd="bold"><b>N</b></button>
                             <button class="ri-btn ri-btn-mini" data-cmd="italic"><i>I</i></button>
                             <button class="ri-btn ri-btn-mini" data-cmd="underline"><u>S</u></button>
@@ -199,10 +209,13 @@
         </main>
     </section>
 
-    <div class="ri-modal" id="ri-modal-previa"><div class="ri-modal-caixa">
-        <div class="ri-modal-topo"><b>👁 Prévia do RELINT (modelo oficial)</b>
+    <div class="ri-modal" id="ri-modal-previa"><div class="ri-modal-caixa ri-modal-previa-caixa">
+        <div class="ri-modal-topo"><div><b>👁 Prévia do RELINT (modelo oficial)</b><div class="ri-sub" style="margin:2px 0 0;">✏️ Clique no documento para editar livremente · desmarque ao lado o que não deve sair na impressão.</div></div>
             <div style="display:flex;gap:6px;"><button class="ri-btn ri-btn-ouro" id="ri-previa-imprimir">🖨 Imprimir / salvar PDF</button><button class="ri-btn" data-fechar="ri-modal-previa">✕</button></div></div>
-        <iframe class="ri-previa" id="ri-previa" title="Prévia do relatório"></iframe>
+        <div class="ri-previa-grade">
+            <aside class="ri-blocos-painel"><div class="ri-blocos-topo"><b>Blocos do documento</b><button class="ri-btn ri-btn-mini" id="ri-blocos-todos">marcar todos</button></div><div id="ri-blocos"></div></aside>
+            <iframe class="ri-previa" id="ri-previa" title="Prévia do relatório"></iframe>
+        </div>
     </div></div>
     <div class="ri-modal ri-zoom" id="ri-modal-zoom"><div class="ri-modal-caixa">
         <div class="ri-modal-topo"><b id="ri-zoom-tit">Foto</b><button class="ri-btn" data-fechar="ri-modal-zoom">✕</button></div>
