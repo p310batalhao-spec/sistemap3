@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Relatório de Inteligência</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        /* RELATÓRIO DE INTELIGÊNCIA — módulo P2 (mesma identidade escura de page/p2.html).
+           A tela mostra a Ficha Alvo do ExchelonX; a IMPRESSÃO segue o modelo oficial
+           (js/relint.js → montarDocumento). */
+        main { min-width: 0; flex: 1 1 0; }
+        .pagecomplete > .navegacao { flex-shrink: 0; }
+        .ri-shell { margin: -20px; padding: 0 0 60px; min-height: calc(100vh - 40px); color: #e7ecf5;
+            background: radial-gradient(1100px 480px at 12% -8%, rgba(60,120,220,.16), transparent 60%), radial-gradient(900px 460px at 100% 0%, rgba(230,140,40,.10), transparent 55%), #0a1220; }
+        .ri-hero { padding: 34px 36px 24px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; gap: 1rem; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; }
+        .ri-selo { display: inline-flex; gap: 7px; font-size: 11px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: #ffb44d;
+            background: rgba(255,160,40,.12); border: 1px solid rgba(255,160,40,.35); border-radius: 999px; padding: 5px 14px; margin-bottom: 12px; }
+        .ri-hero h1 { font: 900 1.9rem 'Inter', sans-serif; margin: 0 0 6px; color: #fff; letter-spacing: -.02em; }
+        .ri-hero p { font-size: .9rem; color: #9fb0c9; max-width: 720px; line-height: 1.55; margin: 0; }
+        .ri-status { font-size: .78rem; color: #9fb0c9; display: flex; align-items: center; gap: .5rem; }
+        .ri-status i { width: 9px; height: 9px; border-radius: 50%; background: #e0a43a; display: inline-block; }
+        .ri-status.ok i { background: #36c47a; } .ri-status.erro i { background: #e05252; }
+        .ri-wrap { padding: 24px 36px 0; display: flex; flex-direction: column; gap: 18px; max-width: 1500px; }
+        .ri-painel { background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015)); border: 1px solid rgba(255,255,255,.09); border-radius: 16px; padding: 18px 20px; min-width: 0; }
+        .ri-painel > h2 { font: 800 .95rem 'Inter', sans-serif; margin: 0 0 12px; color: #fff; display: flex; align-items: center; gap: .55rem; }
+        .ri-painel > h2 span { width: 24px; height: 24px; border-radius: 7px; background: rgba(90,150,255,.18); border: 1px solid rgba(120,170,255,.3); display: grid; place-items: center; font-size: .75rem; color: #9cc0ff; }
+        .ri-sub { font-size: .76rem; color: #8ea0bb; margin: -6px 0 12px; }
+        .ri-in, .ri-painel select, .ri-painel textarea { background: rgba(5,12,24,.7); color: #e7ecf5; border: 1px solid rgba(255,255,255,.14); border-radius: 9px; padding: 9px 12px; font: 500 .85rem 'Inter', sans-serif; width: 100%; box-sizing: border-box; }
+        .ri-in:focus, .ri-painel textarea:focus { outline: none; border-color: #5a8dff; }
+        .ri-btn { background: rgba(255,255,255,.06); color: #e7ecf5; border: 1px solid rgba(255,255,255,.16); border-radius: 9px; padding: 8px 14px; font: 700 .8rem 'Inter', sans-serif; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+        .ri-btn:hover { border-color: #7fa8ff; } .ri-btn:disabled { opacity: .5; cursor: wait; }
+        .ri-btn-pri { background: linear-gradient(135deg, #2f6bff, #1f4fc9); border-color: #3f78ff; }
+        .ri-btn-ouro { background: linear-gradient(135deg, #ffb44d, #e08a1a); border-color: #ffb44d; color: #1b1205; }
+        .ri-btn-mini { padding: 4px 9px; font-size: .72rem; border-radius: 7px; }
+        .ri-btn.on { background: rgba(54,196,122,.2); border-color: #36c47a; color: #bff3d6; }
+        .ri-busca { display: flex; gap: .6rem; }
+        .ri-res { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; margin-top: 12px; }
+        .ri-cartao { display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 9px; }
+        .ri-cartao img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; background: #1a2640; flex-shrink: 0; }
+        .ri-cartao div { min-width: 0; flex: 1; font-size: .74rem; color: #9fb0c9; line-height: 1.35; }
+        .ri-cartao b { display: block; color: #fff; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ri-grupo { border-color: rgba(255,180,77,.35); background: rgba(255,180,77,.06); }
+        .ri-grupo .ri-ic { width: 48px; height: 48px; border-radius: 10px; display: grid; place-items: center; font-size: 1.4rem; background: rgba(255,180,77,.15); flex-shrink: 0; }
+        .ri-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+        .ri-chip { font-size: .74rem; border: 1px solid rgba(255,180,77,.35); color: #ffd59a; background: rgba(255,180,77,.08); border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+        .ri-alvos { display: flex; flex-direction: column; gap: 8px; }
+        .ri-alvo { display: grid; grid-template-columns: 34px 52px minmax(0, 1fr) 220px auto; gap: 10px; align-items: center; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.09); border-radius: 12px; padding: 8px 10px; }
+        .ri-alvo.ativo { border-color: #5a8dff; background: rgba(90,141,255,.10); }
+        .ri-alvo .ri-n { font: 800 .8rem 'Inter'; color: #9cc0ff; text-align: center; }
+        .ri-alvo img { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; background: #1a2640; }
+        .ri-alvo b { color: #fff; font-size: .85rem; } .ri-alvo small { display: block; color: #8ea0bb; font-size: .72rem; }
+        .ri-grupo-nome { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-bottom: 10px; font-size: .8rem; color: #ffd59a; }
+        .ri-grupo-nome input { max-width: 420px; }
+        .ri-vazio { font-size: .82rem; color: #8ea0bb; padding: 8px 2px; }
+        .ri-carregando { font-size: .82rem; color: #9fb0c9; padding: 14px 4px; }
+        /* Ficha alvo */
+        .ri-ficha-topo { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 12px; }
+        .ri-ficha-topo img { width: 110px; height: 130px; object-fit: cover; border-radius: 12px; border: 1px solid rgba(255,255,255,.12); background: #1a2640; }
+        .ri-ficha-topo h3 { margin: 0 0 4px; font: 800 1.15rem 'Inter'; color: #fff; }
+        .ri-ficha-topo .ri-vulgo { color: #ffb44d; font-weight: 700; font-size: .85rem; }
+        .ri-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+        .ri-tag { font-size: .68rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(90,141,255,.15); border: 1px solid rgba(90,141,255,.35); color: #bcd2ff; }
+        .ri-tag.v { background: rgba(224,82,82,.15); border-color: rgba(224,82,82,.4); color: #ffc2c2; }
+        .ri-abas { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid rgba(255,255,255,.1); margin-bottom: 12px; }
+        .ri-aba { background: none; border: 0; border-bottom: 2px solid transparent; color: #8ea0bb; font: 700 .78rem 'Inter'; padding: 8px 12px; cursor: pointer; margin-bottom: -1px; }
+        .ri-aba.ativa { color: #fff; border-bottom-color: #5a8dff; }
+        .ri-aba em { font-style: normal; font-size: .66rem; background: rgba(255,255,255,.1); border-radius: 999px; padding: 1px 6px; margin-left: 4px; }
+        .ri-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px 18px; font-size: .82rem; }
+        .ri-kv div { border-bottom: 1px dotted rgba(255,255,255,.12); padding: 4px 0; color: #dbe4f3; word-break: break-word; }
+        .ri-kv b { color: #8ea0bb; font-weight: 600; margin-right: 4px; }
+        .ri-lista { display: flex; flex-direction: column; gap: 8px; }
+        .ri-item { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); border-radius: 11px; padding: 10px 12px; font-size: .8rem; color: #dbe4f3; line-height: 1.5; }
+        .ri-item h4 { margin: 0 0 4px; font-size: .84rem; color: #fff; display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+        .ri-item .ri-meta { color: #8ea0bb; font-size: .74rem; }
+        .ri-item label { display: inline-flex; gap: 6px; align-items: center; font-size: .74rem; color: #bff3d6; cursor: pointer; }
+        .ri-fotos { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+        .ri-foto { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.08); border-radius: 11px; overflow: hidden; }
+        .ri-foto img { width: 100%; height: 150px; object-fit: cover; display: block; cursor: zoom-in; background: #1a2640; }
+        .ri-foto div { padding: 6px 8px; display: flex; flex-wrap: wrap; gap: 4px; font-size: .68rem; color: #8ea0bb; }
+        .ri-foto .ri-leg { width: 100%; }
+        /* Relatório */
+        .ri-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 14px; }
+        .ri-form label { display: flex; flex-direction: column; gap: 4px; font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #8ea0bb; }
+        .ri-form .larga { grid-column: 1 / -1; }
+        .ri-barra-ed { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 14px 0 8px; }
+        .ri-editor { background: #fff; color: #111; border-radius: 10px; padding: 26px 30px; min-height: 360px; font: 12pt/1.5 Arial, Helvetica, sans-serif; text-align: justify; outline: none; }
+        .ri-editor p { text-indent: 1.25cm; margin: 0 0 6px; }
+        .ri-editor:focus { box-shadow: 0 0 0 2px #5a8dff; }
+        .ri-acoes { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; position: sticky; bottom: 10px; z-index: 5;
+            background: rgba(10,18,32,.92); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 10px 12px; backdrop-filter: blur(6px); }
+        .ri-modal { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: none; align-items: flex-start; justify-content: center; z-index: 2000; padding: 3vh 16px; }
+        .ri-modal.aberto { display: flex; }
+        .ri-modal-caixa { background: #0f1a2e; border: 1px solid rgba(255,255,255,.12); border-radius: 14px; width: min(1000px, 100%); padding: 14px; color: #e7ecf5; }
+        .ri-modal-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: .6rem; }
+        .ri-previa { width: 100%; height: 82vh; border: 0; border-radius: 8px; background: #6b7280; }
+        .ri-zoom img { max-width: 100%; max-height: 82vh; display: block; margin: 0 auto; border-radius: 8px; }
+        details.ri-cfg summary { cursor: pointer; font-size: .78rem; color: #9cc0ff; font-weight: 700; margin-top: 12px; }
+        @media (max-width: 900px) {
+            .ri-hero, .ri-wrap { padding-left: 16px; padding-right: 16px; }
+            .ri-alvo { grid-template-columns: 30px 44px minmax(0, 1fr); }
+            .ri-alvo > :nth-child(4), .ri-alvo > :nth-child(5) { grid-column: 1 / -1; }
+            .ri-ficha-topo { flex-direction: column; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="solucoesia"></script>
+    <section class="pagecomplete">
+        <main>
+            <div class="ri-shell">
+                <div class="ri-hero">
+                    <div>
+                        <span class="ri-selo">🔒 Acesso restrito · P2 / ADMIN</span>
+                        <h1>Relatório de Inteligência</h1>
+                        <p>Monte o RELINT a partir da <b>Ficha Alvo</b> do ExchelonX — um ou mais alvos, ou uma ORCRIM com seus integrantes.
+                            A tela mostra a ficha completa; a impressão sai no modelo oficial do relatório.</p>
+                    </div>
+                    <div class="ri-status" id="ri-status"><i></i><span>Verificando conexão com o ExchelonX…</span></div>
+                </div>
+
+                <div class="ri-wrap">
+                    <!-- 1. ALVOS -->
+                    <section class="ri-painel">
+                        <h2><span>1</span>Alvos do relatório</h2>
+                        <p class="ri-sub">Busque por nome, CPF, vulgo ou nome da ORCRIM/facção. Adicione um ou mais alvos — ou a ORCRIM inteira.</p>
+                        <div class="ri-busca">
+                            <input class="ri-in" id="ri-q" placeholder="🔎 Nome, CPF, vulgo ou ORCRIM…" autocomplete="off">
+                            <button class="ri-btn ri-btn-pri" id="ri-buscar">Buscar</button>
+                        </div>
+                        <div class="ri-chips" id="ri-grupos-lista"></div>
+                        <div class="ri-res" id="ri-res"></div>
+                        <div style="margin-top:16px;">
+                            <div class="ri-grupo-nome" id="ri-grupo-box" style="display:none;">
+                                🕸 ORCRIM: <input class="ri-in" id="ri-grupo-nome" placeholder="Nome da organização criminosa">
+                                <button class="ri-btn ri-btn-mini" id="ri-grupo-limpar">✕ relatório individual</button>
+                            </div>
+                            <div class="ri-alvos" id="ri-alvos"><div class="ri-vazio">Nenhum alvo adicionado.</div></div>
+                        </div>
+                    </section>
+
+                    <!-- 2. FICHA ALVO -->
+                    <section class="ri-painel" id="ri-ficha-painel">
+                        <h2><span>2</span>Ficha Alvo</h2>
+                        <p class="ri-sub">Dados do ExchelonX. Marque o que vai para o relatório: foto do Anexo, foto do imóvel, registro fotográfico, endereço, informações e registros criminais.</p>
+                        <div id="ri-ficha"><div class="ri-vazio">Selecione um alvo para ver a ficha.</div></div>
+                    </section>
+
+                    <!-- 3. RELATÓRIO -->
+                    <section class="ri-painel">
+                        <h2><span>3</span>Relatório</h2>
+                        <div class="ri-form">
+                            <label class="larga">Número<input class="ri-in" data-cab="numero"></label>
+                            <label>Data (produção)<input class="ri-in" data-cab="data"></label>
+                            <label class="larga">Assunto<input class="ri-in" data-cab="assunto"></label>
+                            <label>Origem<input class="ri-in" data-cab="origem"></label>
+                            <label>Difusão<input class="ri-in" data-cab="difusao"></label>
+                            <label>Difusão anterior<input class="ri-in" data-cab="difusaoAnterior"></label>
+                            <label>Referência<input class="ri-in" data-cab="referencia"></label>
+                            <label>Operação<input class="ri-in" data-cab="operacao"></label>
+                            <label>Anexo<input class="ri-in" data-cab="anexo"></label>
+                        </div>
+                        <details class="ri-cfg">
+                            <summary>⚙ Cabeçalho, marca d'água e assinatura (ficam salvos neste computador)</summary>
+                            <div class="ri-form" style="margin-top:10px;">
+                                <label class="larga">Linhas do cabeçalho institucional (uma por linha)<textarea rows="6" data-cfg="cabecalho"></textarea></label>
+                                <label>Marca d'água<input class="ri-in" data-cfg="marca"></label>
+                                <label>Selo à direita<select data-cfg="selo"><option value="dint">Selo DINT (modelo)</option><option value="unidade">Logo da unidade</option><option value="nenhum">Nenhum</option></select></label>
+                                <label class="larga">Fecho / assinatura (opcional, uma linha por linha)<textarea rows="3" data-cfg="assinatura"></textarea></label>
+                            </div>
+                        </details>
+                        <div class="ri-barra-ed">
+                            <button class="ri-btn ri-btn-ouro" id="ri-gerar">✨ Gerar texto a partir das fichas</button>
+                            <button class="ri-btn ri-btn-mini" data-cmd="bold"><b>N</b></button>
+                            <button class="ri-btn ri-btn-mini" data-cmd="italic"><i>I</i></button>
+                            <button class="ri-btn ri-btn-mini" data-cmd="underline"><u>S</u></button>
+                            <span class="ri-sub" style="margin:0 0 0 6px;">O texto é livre — edite à vontade antes de imprimir.</span>
+                        </div>
+                        <div class="ri-editor" id="ri-corpo" contenteditable="true"><p>Adicione os alvos e clique em “Gerar texto a partir das fichas”.</p></div>
+                    </section>
+
+                    <div class="ri-acoes">
+                        <button class="ri-btn" id="ri-salvar">💾 Salvar rascunho</button>
+                        <button class="ri-btn" id="ri-novo">🗑 Novo relatório</button>
+                        <button class="ri-btn ri-btn-pri" id="ri-previa-btn">👁 Prévia de impressão</button>
+                        <button class="ri-btn ri-btn-ouro" id="ri-imprimir">🖨 Imprimir RELINT</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </section>
+
+    <div class="ri-modal" id="ri-modal-previa"><div class="ri-modal-caixa">
+        <div class="ri-modal-topo"><b>👁 Prévia do RELINT (modelo oficial)</b>
+            <div style="display:flex;gap:6px;"><button class="ri-btn ri-btn-ouro" id="ri-previa-imprimir">🖨 Imprimir / salvar PDF</button><button class="ri-btn" data-fechar="ri-modal-previa">✕</button></div></div>
+        <iframe class="ri-previa" id="ri-previa" title="Prévia do relatório"></iframe>
+    </div></div>
+    <div class="ri-modal ri-zoom" id="ri-modal-zoom"><div class="ri-modal-caixa">
+        <div class="ri-modal-topo"><b id="ri-zoom-tit">Foto</b><button class="ri-btn" data-fechar="ri-modal-zoom">✕</button></div>
+        <img id="ri-zoom-img" alt="">
+    </div></div>
+
+    <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/relint.js"></script>
+</body>
+</html>
