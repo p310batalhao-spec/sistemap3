@@ -28,6 +28,7 @@
         alvos: [],        // [{ id, ficha, funcao, sel: { foto, imovel, registro:Set, endereco, fc:Set, info } }]
         grupo: null,      // { nome, tipo } quando o relatório é de uma ORCRIM
         ativo: 0, aba: 'dados',
+        ocultos: new Set(), // blocos desmarcados na prévia (data-bloco)
     };
 
     // ── utilitários ─────────────────────────────────────────────────
@@ -112,13 +113,14 @@
         const fotoImovel = end0 && end0.fotos && end0.fotos[0];
         const fc = new Set((f.fichaCriminal || []).map((r, i) => PAPEIS_AUTOR.includes(String(r.papel || '').toLowerCase()) ? i : -1).filter(i => i >= 0));
         const s = { foto: fp ? fp.id : null, imovel: fotoImovel ? fotoImovel.id : null, registro: new Set(), endereco: 0, fc,
-            info: (f.informacoes || [])[0] ? val(f.informacoes[0].texto).slice(0, 600) : val(f.dados.observacoes) };
-        if (salvo) Object.assign(s, salvo, { registro: new Set(salvo.registro || []), fc: new Set(salvo.fc || []) });
+            info: textoLimpo((f.informacoes || []).filter(informePadrao)[0]?.texto || f.dados.observacoes).slice(0, 700),
+            informes: new Set((f.informacoes || []).map((x, i) => informePadrao(x) ? i : -1).filter(i => i >= 0)) };
+        if (salvo) Object.assign(s, salvo, { registro: new Set(salvo.registro || []), fc: new Set(salvo.fc || []), informes: salvo.informes ? new Set(salvo.informes) : s.informes });
         return s;
     }
     async function adicionarAlvo(id, extras = {}) {
         if (E.alvos.some(a => String(a.id) === String(id))) return;
-        const marcador = { id, ficha: null, funcao: extras.funcao || '', carregando: true, sel: null };
+        const marcador = { id, ficha: null, funcao: extras.funcao || '', carregando: true, sel: null, consulta: extras.consulta || null };
         E.alvos.push(marcador); renderAlvos();
         try {
             marcador.ficha = (await api('/relint/ficha?id=' + encodeURIComponent(id))).ficha;
@@ -159,6 +161,7 @@
                 <div><b>${esc(f.dados.nome)}</b><small>${vulgos(f) ? '“' + esc(vulgos(f)) + '” · ' : ''}${(f.fichaCriminal || []).length} registro(s) · ${(f.mandados || []).length} mandado(s) · ${(f.enderecos || []).length} endereço(s)</small></div>
                 <input class="ri-in" data-funcao="${i}" placeholder="Função (ex.: líder, gerente, braço armado)" value="${esc(a.funcao)}">
                 <div style="display:flex;gap:4px;">
+                    <button class="ri-btn ri-btn-mini${a.consulta ? ' on' : ''}" data-consultar="${i}" title="Consulta Integrada de Pessoas (CAD, BNMP, TJAL/TJSP) — exige CPF">${a.consulta ? '✔ CAD/BNMP/TJ' : '🔎 CAD/BNMP/TJ'}</button>
                     <button class="ri-btn ri-btn-mini" data-ver="${i}">Ficha</button>
                     <button class="ri-btn ri-btn-mini" data-sobe="${i}" ${i ? '' : 'disabled'}>▲</button>
                     <button class="ri-btn ri-btn-mini" data-rem="${i}">✕</button></div></div>`;
@@ -167,12 +170,13 @@
         el.querySelectorAll('[data-rem]').forEach(b => b.onclick = () => { E.alvos.splice(+b.dataset.rem, 1); E.ativo = 0; if (!E.alvos.length) E.grupo = null; renderAlvos(); renderFicha(); });
         el.querySelectorAll('[data-sobe]').forEach(b => b.onclick = () => { const i = +b.dataset.sobe; [E.alvos[i - 1], E.alvos[i]] = [E.alvos[i], E.alvos[i - 1]]; E.ativo = i - 1; renderAlvos(); renderFicha(); });
         el.querySelectorAll('[data-funcao]').forEach(inp => inp.oninput = () => { E.alvos[+inp.dataset.funcao].funcao = inp.value; });
+        el.querySelectorAll('[data-consultar]').forEach(b => b.onclick = () => { b.disabled = true; consultarIntegrada(E.alvos[+b.dataset.consultar], b).finally(() => { b.disabled = false; }); });
     }
 
     // ── FICHA ALVO ──────────────────────────────────────────────────
     const ABAS = [['dados', 'Dados'], ['veiculos', 'Veículos'], ['fotos', 'Fotos'], ['vinculos', 'Vínculos'], ['mandados', 'Mandados'],
-        ['enderecos', 'Endereços'], ['informacoes', 'Informações'], ['denuncias', 'Denúncias'], ['fichaCriminal', 'Ficha criminal']];
-    const contagem = (f, k) => k === 'dados' ? '' : String(((k === 'vinculos' ? (f.vinculos || []).concat(f.grupos || []) : f[k]) || []).length);
+        ['enderecos', 'Endereços'], ['informacoes', 'Informações'], ['denuncias', 'Denúncias'], ['fichaCriminal', 'Ficha criminal'], ['consulta', 'Consulta integrada']];
+    const contagem = (f, k, a) => k === 'dados' ? '' : k === 'consulta' ? (a && a.consulta ? '✔' : '') : String(((k === 'vinculos' ? (f.vinculos || []).concat(f.grupos || []) : f[k]) || []).length);
     const kv = pares => '<div class="ri-kv">' + pares.filter(([, v]) => val(v)).map(([k, v]) => `<div><b>${esc(k)}:</b>${esc(v)}</div>`).join('') + '</div>';
     function renderFicha() {
         const el = $('ri-ficha');
@@ -186,8 +190,8 @@
                 <div><h3>${esc(f.dados.nome)}</h3>${vulgos(f) ? `<div class="ri-vulgo">“${esc(vulgos(f))}”</div>` : ''}
                 <div class="ri-sub" style="margin:4px 0 0;">${f.dados.cpf ? 'CPF ' + esc(cpfFmt(f.dados.cpf)) + ' · ' : ''}${f.dados.nascimento ? 'Nasc. ' + esc(dataBR(f.dados.nascimento)) + ' · ' : ''}${f.dados.mae ? 'Mãe: ' + esc(f.dados.mae) : ''}</div>
                 <div class="ri-tags">${tags}</div></div></div>
-            <div class="ri-abas">${ABAS.map(([k, n]) => `<button class="ri-aba${E.aba === k ? ' ativa' : ''}" data-aba="${k}">${n}${contagem(f, k) !== '' ? `<em>${contagem(f, k)}</em>` : ''}</button>`).join('')}</div>
-            <div id="ri-aba-corpo">${conteudoAba(f, s, E.aba)}</div>`;
+            <div class="ri-abas">${ABAS.map(([k, n]) => `<button class="ri-aba${E.aba === k ? ' ativa' : ''}" data-aba="${k}">${n}${contagem(f, k, a) !== '' ? `<em>${contagem(f, k, a)}</em>` : ''}</button>`).join('')}</div>
+            <div id="ri-aba-corpo">${E.aba === 'consulta' ? abaConsulta(a) : conteudoAba(f, s, E.aba)}</div>`;
         el.querySelectorAll('[data-aba]').forEach(b => b.onclick = () => { E.aba = b.dataset.aba; renderFicha(); });
         ligarAba(el, a);
     }
@@ -217,15 +221,28 @@
             ${kv([['Ponto de referência', [e.pontoReferencia, ...(e.referencias || [])].filter(Boolean).join(' · ')], ['Complementos', (e.complementos || []).join(' · ')], ['Descrição', e.descricao], ['Fonte', e.fonte], ['Coordenadas', e.latitude && e.longitude ? `${e.latitude}, ${e.longitude}` : '']])}
             ${e.link ? `<div class="ri-meta" style="margin-top:4px;">📍 <a href="${esc(e.link)}" target="_blank" rel="noopener" style="color:#9cc0ff;">abrir localização</a> (vai para o QR Code do Anexo A)</div>` : ''}
             ${e.fotos.length ? `<div class="ri-fotos" style="margin-top:8px;">${e.fotos.map(fotoCard(s)).join('')}</div>` : ''}</div>`).join('') + '</div>' : vazio('Nenhum endereço cadastrado.');
-        if (aba === 'informacoes') return (f.informacoes || []).length ? '<div class="ri-lista">' + f.informacoes.map((x, i) => `<div class="ri-item"><h4>ℹ ${esc(x.assunto || x.origem)} <span class="ri-meta">${esc(x.origem)} · ${esc(dataBR(x.dataHora))}${x.papel ? ' · ' + esc(x.papel) : ''}</span></h4>
-            <div style="white-space:pre-wrap;">${esc(x.texto)}</div><div style="margin-top:6px;"><button class="ri-btn ri-btn-mini" data-usar-info="${i}">↳ usar no campo “Informações” do Anexo A</button></div></div>`).join('') + '</div>' : vazio('Nenhuma informação complementar.');
+        if (aba === 'informacoes') return (f.informacoes || []).length ? '<p class="ri-sub" style="margin:0 0 10px;">Marcados = entram no texto do relatório como informes. Por padrão ficam de fora os relatos em que o alvo é vítima/testemunha ou que são declarações de terceiros.</p><div class="ri-lista">' + f.informacoes.map((x, i) => `<div class="ri-item"><h4>ℹ ${esc(x.assunto || x.origem)} <span class="ri-meta">${esc(x.origem)} · ${esc(dataBR(x.dataHora))}${x.papel ? ' · ' + esc(x.papel) : ''}</span>
+                <label><input type="checkbox" data-informe="${i}" ${s.informes && s.informes.has(i) ? 'checked' : ''}> incluir no texto</label></h4>
+            <div style="white-space:pre-wrap;">${esc(textoLimpo(x.texto))}</div><div style="margin-top:6px;"><button class="ri-btn ri-btn-mini" data-usar-info="${i}">↳ usar no campo “Informações” do Anexo A</button></div></div>`).join('') + '</div>' : vazio('Nenhuma informação complementar.');
         if (aba === 'denuncias') return (f.denuncias || []).length ? '<div class="ri-lista">' + f.denuncias.map(d => `<div class="ri-item"><h4>📣 ${esc(d.tipo || 'Denúncia')} ${d.numero ? 'nº ' + esc(d.numero) : ''} <span class="ri-meta">${esc(dataBR(d.dataDenuncia))} ${esc(d.horaDenuncia || '')} · ${esc(d.cidade || '')} · ${esc(d.statusOperacional || '')}</span></h4>
-            ${d.resumoBreve ? `<div><b>${esc(d.resumoBreve)}</b></div>` : ''}<div style="white-space:pre-wrap;">${esc(d.narrativa)}</div>
+            ${d.resumoBreve ? `<div><b>${esc(textoLimpo(d.resumoBreve))}</b></div>` : ''}<div style="white-space:pre-wrap;">${esc(textoLimpo(d.narrativa))}</div>
             ${d.arquivoUrl ? `<div class="ri-meta" style="margin-top:4px;">📎 <a href="${esc(d.arquivoUrl)}" target="_blank" rel="noopener" style="color:#9cc0ff;">${esc(d.arquivoNome || 'anexo')}</a></div>` : ''}</div>`).join('') + '</div>' : vazio('Nenhuma denúncia vinculada.');
         if (aba === 'fichaCriminal') return (f.fichaCriminal || []).length ? `<p class="ri-sub" style="margin:0 0 10px;">Marcados = entram no histórico criminal do texto e na “Ficha criminal” do Anexo A (padrão: registros como suspeito/autor).</p><div class="ri-lista">` + f.fichaCriminal.map((r, i) => `<div class="ri-item"><h4>${esc(up(r.crimes) || 'Registro')}
                 <label><input type="checkbox" data-fc="${i}" ${s.fc.has(i) ? 'checked' : ''}> incluir</label></h4>
             <div class="ri-meta">${esc(r.tipo || 'BO')} nº ${esc(r.numero || '—')} · ${esc(dataBR(r.dataFato))} · papel: <b>${esc(r.papel || '—')}</b></div></div>`).join('') + '</div>' : vazio('Nenhum registro criminal.');
         return '';
+    }
+    function abaConsulta(a) {
+        const c = a.consulta, cpf = String(a.ficha.dados.cpf || '').replace(/\D/g, '');
+        const botao = `<button class="ri-btn ri-btn-pri" data-consulta-aba ${cpf.length === 11 ? '' : 'disabled'}>${c ? '↻ Consultar novamente' : '🔎 Executar Consulta Integrada'} (CAD/SISP, BNMP, TJAL/TJSP)</button>`;
+        if (!c) return `<p class="ri-sub" style="margin:0 0 10px;">${cpf.length === 11 ? 'A mesma consulta da página “Consulta Integrada de Pessoas”, pelo CPF do alvo. Os resultados entram no histórico de ocorrências, nos mandados e nos processos ativos do relatório.' : '⚠️ Ficha sem CPF — a Consulta Integrada exige CPF.'}</p>${botao}`;
+        const oc = ocorrenciasAutor(a), pa = processosAtivos(a);
+        return `<p class="ri-sub" style="margin:0 0 10px;">Consultado em ${esc(new Date(c.consultadoEm).toLocaleString('pt-BR'))} · ${c.ocorrencias.length} ocorrência(s), ${oc.length} como autor/suspeito · ${c.processos.length} processo(s), ${pa.length} ativo(s).</p>
+            <div class="ri-lista">
+                <div class="ri-item"><h4>⚖ BNMP — mandados de prisão <span class="ri-tag${c.bnmp.possui ? ' v' : ''}">${c.bnmp.possui ? 'MANDADO EM ABERTO' : 'nada consta'}</span></h4>${c.bnmp.detalhe ? kv(Object.entries(c.bnmp.detalhe)) : ''}</div>
+                <div class="ri-item"><h4>🚨 Ocorrências como autor/suspeito (${oc.length})</h4>${oc.length ? oc.map(o => `<div class="ri-meta">${esc(o.data.slice(0, 10))} · <b>${esc(o.natureza)}</b>${o.numero ? ' · nº ' + esc(o.numero) : ''} · ${esc(o.envolvimento || o.fonte)}${o.situacao ? ' · ' + esc(o.situacao) : ''}</div>`).join('') : '<div class="ri-meta">Nenhuma.</div>'}</div>
+                <div class="ri-item"><h4>🏛 Processos (${c.processos.length}) — ativos: ${pa.length}</h4>${c.processos.length ? c.processos.map(p => `<div class="ri-meta">${p.ativo ? '🟢' : '⚪'} <b>${esc(p.tribunal)} ${esc(p.numero)}</b> · ${esc([p.classe, p.assunto].filter(Boolean).join(' — ') || '—')}${p.ultimo ? ' · último andamento: ' + esc(p.ultimo.slice(0, 120)) : ''}</div>`).join('') : '<div class="ri-meta">Nenhum.</div>'}</div>
+            </div><div style="margin-top:10px;">${botao}</div>`;
     }
     const fotoCard = s => x => `<div class="ri-foto"><img src="${esc(x.url)}" alt="" data-zoom="${esc(x.url)}" data-leg="${esc(x.legenda || '')}">
         <div><span class="ri-leg">${esc(x.legenda || (x.tipo === 'residencia' ? 'Imóvel' : x.tipo === 'veiculo' ? 'Veículo' : 'Pessoa'))}</span>
@@ -239,54 +256,231 @@
         el.querySelectorAll('[data-sel-imovel]').forEach(b => b.onclick = () => { s.imovel = s.imovel === b.dataset.selImovel ? null : b.dataset.selImovel; recarregar(); });
         el.querySelectorAll('[data-sel-reg]').forEach(b => b.onclick = () => { const id = b.dataset.selReg; s.registro.has(id) ? s.registro.delete(id) : s.registro.add(id); recarregar(); });
         el.querySelectorAll('[data-end]').forEach(r => r.onchange = () => { s.endereco = +r.dataset.end; });
+        el.querySelectorAll('[data-informe]').forEach(c => c.onchange = () => { const i = +c.dataset.informe; c.checked ? s.informes.add(i) : s.informes.delete(i); });
         el.querySelectorAll('[data-fc]').forEach(c => c.onchange = () => { const i = +c.dataset.fc; c.checked ? s.fc.add(i) : s.fc.delete(i); renderAlvos(); });
-        el.querySelectorAll('[data-usar-info]').forEach(b => b.onclick = () => { s.info = val(a.ficha.informacoes[+b.dataset.usarInfo].texto); b.textContent = '✔ usado no Anexo A'; });
+        el.querySelectorAll('[data-usar-info]').forEach(b => b.onclick = () => { s.info = textoLimpo(a.ficha.informacoes[+b.dataset.usarInfo].texto); b.textContent = '✔ usado no Anexo A'; });
+        const bc = el.querySelector('[data-consulta-aba]'); if (bc) bc.onclick = () => { bc.disabled = true; consultarIntegrada(a, bc); };
         const ta = el.querySelector('[data-info]'); if (ta) ta.oninput = () => { s.info = ta.value; };
         el.querySelectorAll('[data-zoom]').forEach(img => img.onclick = () => { $('ri-zoom-img').src = img.dataset.zoom; $('ri-zoom-tit').textContent = img.dataset.leg || 'Foto'; $('ri-modal-zoom').classList.add('aberto'); });
     }
 
-    // ── geração do texto (modelo) ───────────────────────────────────
-    const registrosSel = a => (a.ficha.fichaCriminal || []).filter((r, i) => a.sel.fc.has(i));
-    function historicoTexto(a) {
-        const regs = registrosSel(a);
-        if (!regs.length) return 'Não foram localizados registros criminais em seu desfavor nas bases consultadas.';
-        const porCrime = new Map();
-        regs.forEach(r => { const c = val(r.crimes).toLowerCase() || 'registro policial'; (porCrime.get(c) || porCrime.set(c, []).get(c)).push(`${r.tipo || 'B.O'} nº ${r.numero || 'XXXXXXXX'}`); });
-        const itens = [...porCrime.entries()].map(([c, bos]) => `${c} (${bos.join(' e ')})`);
-        return `Em relação ao seu histórico criminal, verificam-se registros por ${listaE(itens)}, circunstâncias que demonstram reiteração criminosa e vínculo com atividades ilícitas.`;
-    }
-    const enderecoSel = a => (a.ficha.enderecos || [])[a.sel.endereco] || (a.ficha.enderecos || [])[0] || null;
-    function paragrafosAlvo(a, i, orcrim) {
-        const f = a.ficha, nome = `<b>${esc(up(f.dados.nome))}</b>`, vg = vulgo(f), v = vg ? `, vulgo <b>“${esc(up(vg))}”</b>` : '';
-        const ref = vg ? `<b>“${esc(up(vg))}”</b>` : nome;
-        const funcao = val(a.funcao);
-        const ps = [];
-        if (orcrim) {
-            const abre = i === 0 ? 'No curso dos levantamentos realizados, apurou-se que' : i === E.alvos.length - 1 && E.alvos.length > 2 ? 'Por fim, foi identificado o indivíduo' : 'Os levantamentos realizados indicam que';
-            ps.push(i === E.alvos.length - 1 && E.alvos.length > 2
-                ? `${abre} ${nome}${v}, que atuaria ${funcao ? 'como <b>' + esc(funcao.toLowerCase()) + '</b> da organização criminosa' : 'no contexto da organização criminosa'}.`
-                : `${abre} ${nome}${v}, ${funcao ? 'seria <b>' + esc(funcao.toLowerCase()) + '</b> da organização criminosa' : 'integraria a organização criminosa'}${E.grupo && val($('ri-grupo-nome').value) ? ' denominada <b>' + esc(up($('ri-grupo-nome').value)) + '</b>' : ''}.`);
-        } else {
-            ps.push(`${i === 0 ? 'No curso dos levantamentos realizados, foi identificado' : 'Foi identificado, ainda,'} o indivíduo ${nome}${v}${funcao ? ', apontado como <b>' + esc(funcao.toLowerCase()) + '</b>' : ''}.`);
+    // ── texto limpo (ExchelonX guarda "Informações" em HTML e CAIXA ALTA) ──
+    // DOMParser não executa script nem carrega imagem do conteúdo (seguro).
+    const PARSER = new DOMParser();
+    function textoLimpo(v) {
+        let s = String(v == null ? '' : v);
+        for (let i = 0; i < 2 && /<\/?[a-z][\s\S]*?>|&[a-z#0-9]+;/i.test(s); i++) {
+            s = PARSER.parseFromString(s.replace(/<\s*(br|\/div|\/p|\/li)\s*\/?>/gi, '\n'), 'text/html').body.textContent || '';
         }
-        const end = enderecoSel(a);
-        if (end) ps.push(`Por meio de levantamentos de inteligência, constatou-se que ${ref} reside no imóvel situado na <span style="color:#c00000">${esc(end.texto)}</span>${end.pontoReferencia || (end.referencias || []).length ? ', ' + esc([end.pontoReferencia, ...(end.referencias || [])].filter(Boolean).join(', ').toLowerCase()) : ''}.`);
-        (a.ficha.informacoes || []).slice(0, 1).forEach(x => { if (val(x.texto)) ps.push(`Segundo informações de inteligência${x.assunto ? ' (' + esc(x.assunto.toLowerCase()) + ')' : ''}, ${esc(val(x.texto).replace(/^\w/, c => c.toLowerCase()))}`); });
-        ps.push(historicoTexto(a));
-        const abertos = (f.mandados || []).filter(m => !/cumprid|baixad|revogad/i.test(m.status || ''));
-        if (abertos.length) ps.push(`Consta(m) em desfavor de ${ref} ${abertos.map(m => `mandado de ${esc(val(m.tipo).toLowerCase() || 'prisão')}${m.numero ? ' nº ' + esc(m.numero) : ''}${m.processo ? ' (processo nº ' + esc(m.processo) + (m.vara ? ', ' + esc(m.vara) : '') + ')' : ''}${m.status ? ', situação: ' + esc(m.status.toLowerCase()) : ''}`).join('; ')}.`);
-        if ((f.veiculos || []).length) ps.push(`${ref} utilizaria ${f.veiculos.map(x => `o veículo ${esc(up(x.modelo))}${x.cor ? ', cor ' + esc(x.cor.toLowerCase()) : ''}${x.placa ? ', placa ' + esc(up(x.placa)) : ''}`).join('; ')}.`);
-        const vinc = (f.vinculos || []).filter(x => val(x.nome)).slice(0, 4);
-        if (vinc.length) ps.push(`Possui vínculo${vinc.length > 1 ? 's' : ''} ${listaE(vinc.map(x => `${esc((x.tipo || 'vínculo').toLowerCase())} com ${esc(up(x.nome))}${x.observacao ? ' (' + esc(x.observacao) + ')' : ''}`))}.`);
-        if ((f.denuncias || []).length) ps.push(`Há ${f.denuncias.length} denúncia(s) registrada(s) envolvendo o alvo${f.denuncias.some(d => d.numero) ? ' (nº ' + f.denuncias.filter(d => d.numero).map(d => esc(d.numero)).join(', ') + ')' : ''}${f.denuncias[0].resumoBreve ? ', destacando-se: ' + esc(f.denuncias[0].resumoBreve.toLowerCase()) : ''}.`);
+        return s.replace(/\u00a0/g, ' ').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{2,}/g, '\n').trim();
+    }
+    const SIGLAS = ['AL', 'CPF', 'RG', 'BO', 'B.O', 'PM', 'PC', 'PMAL', 'CV', 'PCC', 'ORCRIM', 'BNMP', 'TJAL', 'CAD', 'SISP', 'GOE', 'BPM', 'P2', 'DNISP', 'CNH', 'IML'];
+    function termosProprios() {
+        const t = new Set(SIGLAS);
+        E.alvos.filter(a => a.ficha).forEach(a => {
+            const f = a.ficha;
+            [f.dados.nome, ...(f.apelidos || [])].forEach(n => { if (val(n)) t.add(val(n)); });
+            (f.enderecos || []).forEach(e => [e.cidade, e.bairro].forEach(x => { if (val(x)) t.add(val(x)); }));
+            (f.vinculos || []).forEach(v => { if (val(v.nome)) t.add(val(v.nome)); });
+        });
+        return [...t].sort((a, b) => b.length - a.length);
+    }
+    const semAcento = s => String(s).normalize('NFC').normalize('NFD').replace(/[̀-ͯ]/g, '');
+    // Termos próprios (nomes, vulgos, cidades, siglas) voltam para MAIÚSCULAS —
+    // comparação sem acento, posição a posição (mesmo comprimento).
+    function maiusculizarTermos(t) {
+        const sombra = semAcento(t).toUpperCase();
+        if (sombra.length !== t.length) return t;
+        const arr = t.split('');
+        for (const termo of termosProprios()) {
+            const alvo = semAcento(termo).toUpperCase();
+            if (alvo.length < 2) continue;
+            for (let pos = sombra.indexOf(alvo); pos >= 0; pos = sombra.indexOf(alvo, pos + alvo.length)) {
+                const antes = pos === 0 || !/[A-Z0-9]/.test(sombra[pos - 1]);
+                const depois = pos + alvo.length >= sombra.length || !/[A-Z0-9]/.test(sombra[pos + alvo.length]);
+                if (antes && depois) for (let k = pos; k < pos + alvo.length; k++) arr[k] = arr[k].toUpperCase();
+            }
+        }
+        return arr.join('');
+    }
+    // CAIXA ALTA → frase, preservando nomes/vulgos/cidades/siglas e trechos entre aspas.
+    function normalizarCaixa(s) {
+        s = String(s || '').normalize('NFC');
+        const letras = s.replace(/[^A-Za-zÀ-ÿ]/g, '');
+        if (!letras || (letras.replace(/[^A-ZÀ-Þ]/g, '').length / letras.length) < 0.6) return s;
+        let t = s.toLowerCase().replace(/(^|[.!?]\s+|\n)([a-zà-ÿ])/g, (m, a, b) => a + b.toUpperCase());
+        t = maiusculizarTermos(t);
+        return t.replace(/["“]([^"”]{1,60})["”]/g, (m, x) => `“${x.trim().toUpperCase()}”`);
+    }
+    // Informes (não confirmados) → futuro do pretérito, como recomenda a DNISP.
+    const VERBOS_FP = { possui: 'possuiria', possuí: 'possuiria', armazena: 'armazenaria', utiliza: 'utilizaria', usa: 'usaria', reside: 'residiria', mora: 'moraria',
+        atua: 'atuaria', comercializa: 'comercializaria', guarda: 'guardaria', vende: 'venderia', trafica: 'traficaria', esconde: 'esconderia', frequenta: 'frequentaria',
+        mantém: 'manteria', tem: 'teria', estoca: 'estocaria', distribui: 'distribuiria', anda: 'andaria', porta: 'portaria', integra: 'integraria', lidera: 'lideraria', chefia: 'chefiaria' };
+    const NAO_CONJUGAR = /(?:^|\s)(para|como|de|sem|pode|possa|podem|deve|vai|irá|ao|por|a|que\s+não\s+teria\s+como)\s*$/i;
+    const PRIMEIRA_PESSOA = { 'acreditávamos': 'acreditava-se', 'tínhamos': 'tinha-se', 'sabemos': 'sabe-se', 'verificamos': 'verificou-se', 'constatamos': 'constatou-se',
+        'identificamos': 'identificou-se', 'observamos': 'observou-se', 'percebemos': 'percebeu-se', 'recebemos': 'recebeu-se', 'fomos': 'foi-se' };
+    const futuroPreterito = t => t
+        .replace(/(^|[^A-Za-zÀ-ÿ])(acreditávamos|tínhamos|sabemos|verificamos|constatamos|identificamos|observamos|percebemos|recebemos)(?=[^A-Za-zÀ-ÿ]|$)/gi, (m, a, v) => a + PRIMEIRA_PESSOA[v.toLowerCase()])
+        .replace(/(^|[^A-Za-zÀ-ÿ])(possui|possuí|armazena|utiliza|usa|reside|mora|atua|comercializa|guarda|vende|trafica|esconde|frequenta|mantém|tem|estoca|distribui|anda|porta|integra|lidera|chefia)(?=[^A-Za-zÀ-ÿ]|$)/g,
+            (m, a, v, pos, tudo) => NAO_CONJUGAR.test(tudo.slice(Math.max(0, pos - 40), pos + a.length)) ? m : a + VERBOS_FP[v]);
+    function cortarEmFrase(t, max) {
+        if (t.length <= max) return t;
+        const corte = t.slice(0, max), fim = Math.max(corte.lastIndexOf('. '), corte.lastIndexOf('! '), corte.lastIndexOf('? '));
+        return (fim > max * 0.5 ? corte.slice(0, fim + 1) : corte.replace(/\s+\S*$/, '') + '…');
+    }
+    // Informe bruto → parágrafo analítico (sem acrescentar fatos).
+    function redigirInforme(texto, ref) {
+        let t = normalizarCaixa(textoLimpo(texto))
+            // fórmulas protocolares de denúncia/BO e restos de importação de planilha
+            .replace(/sem mais a (detalhar|declarar)[^.]*\.?/gi, '').replace(/era o que tinha a declarar\.?/gi, '').replace(/deu por encerrad[ao][^.]*\.?/gi, '')
+            .replace(/ficha criminal \(texto original[^)]*\)\s*:?\s*\.?[^.]*\.?/gi, '').trim();
+        if (!t) return '';
+        // Origem genérica do informe (sem identificar a fonte — DNISP)
+        if (/^denunciante\b/i.test(t)) t = 'Segundo denúncia recebida, o ' + t.charAt(0).toLowerCase() + t.slice(1);
+        t = futuroPreterito(cortarEmFrase(t, 1400));
+        t = t.replace(/(\d{2}\/\d{2}\/\d{4})\s*[-–]\s*atualiza[cç][aã]o\s*[-–:]?\s*/gi, '\nEm atualização de $1, ')
+            .replace(/\s*,\s*,/g, ',').replace(/\s+([,.;:!?)])/g, '$1').replace(/\(\s+/g, '(').replace(/([,;:])(?=[“"A-Za-zÀ-ÿ])/g, '$1 ');
+        return t.split('\n').map(x => x.trim()).filter(Boolean).map((x, i) => {
+            if (i === 0 && !/^(segundo|conforme|de acordo|em atualiza)/i.test(x)) x = `Segundo informes de inteligência, ${x.charAt(0).toLowerCase()}${x.slice(1)}`;
+            return /[.!?]$/.test(x) ? x : x + '.';
+        });
+    }
+
+    // ── Consulta Integrada de Pessoas (CAD / BNMP / TJAL-TJSP) por alvo ──
+    const ENV_AUTOR = /AUTOR|SUSPEIT|INFRATOR|ACUSAD|CONDUZID|PRES[OA]|INDICIAD|INVESTIGAD|DETID|FLAGRAN/i;
+    const PROC_INATIVO = /ARQUIVAD|BAIXA DEFINITIVA|EXTIN[CÇ]|TRANSITAD|TR[AÂ]NSITO EM JULGADO|CANCELAD/i;
+    function resumirConsulta(r) {
+        const oc = [];
+        (r.ocorrenciasDespacho || []).forEach(o => oc.push({ fonte: 'CAD', numero: val(o.id_ocor_fk || o._id_ocor), data: val(o.dt_ocor), natureza: val(o.ds_ocor_sgrup), envolvimento: val(o.ds_oco_despc_tipo_envl), situacao: val(o.ds_ocor_despc_envl_pess_sitc) }));
+        (r.ocorrenciasPpe || []).forEach(o => oc.push({ fonte: 'PPE', numero: '', data: val(o.dt_ocorrencia), natureza: val(o.no_natureza_ocorrencia), envolvimento: val(o.tipo_envolvimento), situacao: '' }));
+        (r.ocorrenciasPcAntigo || []).forEach(o => oc.push({ fonte: 'PC', numero: val(o.attr_numero_bo), data: val(o.data_hora_registro), natureza: 'registro policial', envolvimento: '', situacao: '' }));
+        const procs = (r.processos || []).map(p => { const mov = p.ultimoMovimento || {}; const txt = val(mov.textoCompleto || mov.nome);
+            return { tribunal: val(p.tribunal) || 'TJAL', numero: val(p.numeroProcesso), classe: val(p.classe), assunto: val(p.assunto), ultimo: txt, dataUltimo: mov.dataHora || '', ativo: !PROC_INATIVO.test(txt) }; });
+        const m = r.mandados || {};
+        return { consultadoEm: new Date().toISOString(), ocorrencias: oc, processos: procs,
+            bnmp: { possui: !!m.possuiMandado, detalhe: m.detalhe ? Object.fromEntries(Object.entries(m.detalhe).filter(([, v]) => val(v)).map(([k, v]) => [k, textoLimpo(v)])) : null } };
+    }
+    async function consultarIntegrada(a, botao) {
+        const cpf = String(a.ficha.dados.cpf || '').replace(/\D/g, '');
+        if (cpf.length !== 11) { alert('A Consulta Integrada exige CPF — esta ficha não tem CPF cadastrado.'); return; }
+        if (!window.P3AtualizadorLocal || !P3AtualizadorLocal.consultarPessoaStream) { alert('Atualizador local indisponível.'); return; }
+        const txt = botao ? botao.textContent : '';
+        try {
+            a.consultando = true;
+            const r = await P3AtualizadorLocal.consultarPessoaStream(cpf, ev => { if (botao && ev.fonte) botao.textContent = `⏳ ${ev.fonte}…`; });
+            a.consulta = resumirConsulta(r || {});
+        } catch (e) { alert(`Consulta Integrada de ${a.ficha.dados.nome}: ${e.message}`); }
+        a.consultando = false;
+        if (botao) botao.textContent = txt;
+        renderAlvos(); renderFicha();
+    }
+    async function consultarTodos(botao) {
+        const lista = E.alvos.filter(a => a.ficha && String(a.ficha.dados.cpf || '').replace(/\D/g, '').length === 11);
+        if (!lista.length) { alert('Nenhum alvo com CPF para consultar.'); return; }
+        botao.disabled = true;
+        for (let i = 0; i < lista.length; i++) { botao.textContent = `⏳ ${i + 1}/${lista.length} — ${lista[i].ficha.dados.nome.split(' ')[0]}…`; await consultarIntegrada(lista[i]); }
+        botao.disabled = false; botao.textContent = '🔎 Consulta Integrada de todos';
+    }
+    const ocorrenciasAutor = a => ((a.consulta || {}).ocorrencias || []).filter(o => !o.envolvimento || ENV_AUTOR.test(o.envolvimento));
+    const processosAtivos = a => ((a.consulta || {}).processos || []).filter(p => p.ativo);
+
+    // ── geração do texto — redação de analista (DNISP) ──────────────
+    // · impessoal, 3ª pessoa; futuro do pretérito para o que vem de informes
+    //   não confirmados (seria / atuaria / utilizaria); presente/pretérito
+    //   para o que consta de registros oficiais (CAD, BNMP, Tribunais);
+    // · fontes nunca identificadas (fontes humanas, levantamentos de campo);
+    // · conclusão analítica dirigida ao decisor.
+    // Cada parágrafo leva data-bloco/data-rotulo para a prévia (caixas de seleção).
+    const registrosSel = a => (a.ficha.fichaCriminal || []).filter((r, i) => a.sel.fc.has(i));
+    const enderecoSel = a => (a.ficha.enderecos || [])[a.sel.endereco] || (a.ficha.enderecos || [])[0] || null;
+    function antecedentes(a) {
+        // ExchelonX (ficha criminal selecionada) + CAD (Consulta Integrada, como autor/suspeito), sem repetir nº.
+        const itens = [], vistos = new Set();
+        registrosSel(a).forEach(r => { const n = val(r.numero); if (n) vistos.add(n.replace(/\D/g, '')); itens.push({ crime: val(r.crimes).toLowerCase() || 'registro policial', ref: `${r.tipo || 'BO'} nº ${n || 'não informado'}`, data: dataBR(r.dataFato) }); });
+        ocorrenciasAutor(a).forEach(o => { const n = val(o.numero).replace(/\D/g, ''); if (n && vistos.has(n)) return; if (n) vistos.add(n); itens.push({ crime: normalizarCaixa(o.natureza).toLowerCase() || 'ocorrência policial', ref: o.numero ? `ocorrência nº ${o.numero}` : (val(o.data) ? `registro de ${val(o.data).slice(0, 10)}` : `registro no CAD`), data: val(o.data).slice(0, 10) }); });
+        return itens;
+    }
+    function historicoTexto(a, ref) {
+        const itens = antecedentes(a);
+        if (!itens.length) return `Nas bases consultadas, não foram localizados registros criminais em que ${ref} figure como autor ou suspeito.`;
+        const porCrime = new Map();
+        itens.forEach(x => (porCrime.get(x.crime) || porCrime.set(x.crime, []).get(x.crime)).push(x.ref));
+        const partes = [...porCrime.entries()].map(([c, refs]) => `${c} (${refs.join('; ')})`);
+        return `Quanto aos antecedentes, constam registros em desfavor de ${ref} por ${listaE(partes)}${itens.length >= 3 ? ', circunstância que evidencia reiteração delitiva' : ''}.`;
+    }
+    function situacaoJudicialTexto(a, ref) {
+        const f = a.ficha, c = a.consulta;
+        const ps = [];
+        const abertosEx = (f.mandados || []).filter(m => !/cumprid|baixad|revogad/i.test(m.status || ''));
+        if (c && c.bnmp.possui) {
+            const d = c.bnmp.detalhe || {};
+            const resumo = ['Tipo', 'Espécie', 'Número', 'Nº do Mandado', 'Processo', 'Órgão', 'Situação'].map(k => Object.keys(d).find(x => semAcento(x).toLowerCase().includes(semAcento(k).toLowerCase()))).filter(Boolean).slice(0, 4).map(k => `${k.toLowerCase()}: ${d[k]}`).join('; ');
+            ps.push(`Em consulta ao Banco Nacional de Medidas Penais e Prisões (BNMP), verifica-se a existência de mandado de prisão em aberto em desfavor de ${ref}${resumo ? ' (' + esc(resumo) + ')' : ''}.`);
+        } else if (c) ps.push(`Em consulta ao BNMP, não foi localizado mandado de prisão em aberto em desfavor de ${ref}.`);
+        if (abertosEx.length) ps.push(`Nos registros da Agência, consta(m) ${abertosEx.map(m => `mandado de ${esc(val(m.tipo).toLowerCase() || 'prisão')}${m.numero ? ' nº ' + esc(m.numero) : ''}${m.processo ? ', expedido nos autos do processo nº ' + esc(m.processo) : ''}${m.vara ? ' (' + esc(m.vara) + ')' : ''}${m.status ? ', situação: ' + esc(m.status.toLowerCase()) : ''}`).join('; ')}.`);
+        const pa = c ? processosAtivos(a) : [];
+        if (pa.length) ps.push(`No âmbito judicial, ${ref} figura em ${pa.length} processo(s) em tramitação${pa.length > 3 ? ', destacando-se' : ':'} ${pa.slice(0, 3).map(p => `nº ${esc(p.numero)} (${esc(p.tribunal)}${p.classe || p.assunto ? ' – ' + esc([p.classe, p.assunto].filter(Boolean).join(', ').toLowerCase()) : ''})`).join('; ')}.`);
         return ps;
     }
+    const fem = f => /^F/i.test(String(f.dados.sexo || ''));
+    const sexoConhecido = f => /^[FM]/i.test(String(f.dados.sexo || ''));
+    const gen = (f, m, fe) => fem(f) ? fe : m;
+    // Endereço vindo do banco às vezes repete o tipo ("RUA RUA NOVA").
+    const enderecoTexto = e => String(e.texto || '').replace(/^([A-ZÀ-Ú]+)\s+\1\b/, '$1');
+    const unicos = arr => [...new Set(arr.map(x => x.trim()).filter(Boolean).map(x => x.toLowerCase()))];
+    // Informes do alvo: só os vínculos como ALVO/SUSPEITO/AUTOR (ou de relatório de busca);
+    // relatos em que a pessoa é vítima/testemunha não descrevem a atuação do alvo.
+    const RELATO_VITIMA = /a declarante|o declarante|declarante\/v[ií]tima|v[ií]tima relata|ciente das penalidades|era o que tinha a declarar/i;
+    const informePadrao = x => !/VITIMA|VÍTIMA|TESTEMUNHA|DECLARANTE/i.test(x.papel || '') && !RELATO_VITIMA.test(textoLimpo(x.texto));
+    const informesDoAlvo = a => (a.ficha.informacoes || []).filter((x, i) => a.sel.informes ? a.sel.informes.has(i) : informePadrao(x));
+    const P = (bloco, rotulo, html, ia) => `<p data-bloco="${bloco}" data-rotulo="${esc(rotulo)}"${ia ? ' data-ia="1"' : ''}>${html}</p>`;
+    function paragrafosAlvo(a, i, orcrim, total) {
+        const f = a.ficha, NOME = up(f.dados.nome), vg = vulgo(f);
+        const nome = `<b>${esc(NOME)}</b>`, v = vg ? `, vulgo <b>“${esc(up(vg))}”</b>` : '';
+        const ref = vg ? `<b>“${esc(up(vg))}”</b>` : nome;
+        const funcao = val(a.funcao).toLowerCase();
+        const k = `alvo${i}`, rot = n => `${String(i + 1).padStart(2, '0')} ${vg ? up(vg) : NOME.split(' ')[0]} — ${n}`;
+        const ps = [];
+        const nomeGrupo = E.grupo && val($('ri-grupo-nome').value) ? up($('ri-grupo-nome').value) : '';
+        if (orcrim) {
+            const abre = i === 0 ? 'No curso dos levantamentos realizados, apurou-se que' : (i === total - 1 && total > 2) ? 'Por fim, foi identificado' : 'Os levantamentos realizados indicam, ainda, que';
+            ps.push(P(k + '-id', rot('identificação e função'), `${abre} ${nome}${v} ${funcao ? `seria responsável pela função de <b>${esc(funcao)}</b>` : 'integraria'} ${funcao ? 'no âmbito da organização criminosa' : 'a organização criminosa'}${nomeGrupo ? ' denominada <b>' + esc(nomeGrupo) + '</b>' : ''}, atuando de forma ${funcao ? 'articulada com os demais integrantes' : 'ainda não totalmente delimitada pelos levantamentos'}.`));
+        } else {
+            const qualif = [f.dados.nascimento ? `data de nascimento ${esc(dataBR(f.dados.nascimento))}` : '', f.dados.mae ? `filiação: ${esc(up(f.dados.mae))}${f.dados.pai ? ' e ' + esc(up(f.dados.pai)) : ''}` : ''].filter(Boolean).join(', ');
+            ps.push(P(k + '-id', rot('identificação'), sexoConhecido(f)
+                ? `${i === 0 ? `No curso dos levantamentos realizados, foi ${gen(f, 'identificado', 'identificada')}` : `Foi ${gen(f, 'identificado', 'identificada')}, ainda,`} ${nome}${v}${funcao ? `, que atuaria como <b>${esc(funcao)}</b>` : ''}${qualif ? ` (${qualif})` : ''}.`
+                : `${i === 0 ? 'No curso dos levantamentos realizados, procedeu-se à identificação de' : 'Procedeu-se, ainda, à identificação de'} ${nome}${v}${qualif ? ` (${qualif})` : ''}${funcao ? `, apontado(a) como <b>${esc(funcao)}</b>` : ''}.`));
+        }
+        const end = enderecoSel(a);
+        if (end) {
+            const carac = unicos([end.pontoReferencia, ...(end.referencias || []), end.descricao].map(x => normalizarCaixa(textoLimpo(x)))).join('; ');
+            ps.push(P(k + '-end', rot('endereço / imóvel'), `Por meio de levantamentos de inteligência, constatou-se que ${ref} residiria no imóvel situado na <span style="color:#c00000">${esc(enderecoTexto(end))}</span>${carac ? ` (${esc(carac)})` : ''}, local de interesse para eventuais medidas de natureza operacional.`));
+        }
+        // Mesmo informe importado por mais de uma fonte → entra uma vez só.
+        const vistosInf = [];
+        const assinatura = t => semAcento(textoLimpo(t)).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 160);
+        informesDoAlvo(a).filter(x => { const k = assinatura(x.texto); if (!k || vistosInf.some(v => v.startsWith(k.slice(0, 100)) || k.startsWith(v.slice(0, 100)))) return false; vistosInf.push(k); return true; }).slice(0, 3).forEach((x, j) => {
+            const linhas = redigirInforme(x.texto, ref);
+            if (linhas.length) ps.push(P(`${k}-info${j}`, rot('informes de inteligência' + (j ? ' (2)' : '')), esc(linhas.join(' ')), true));
+        });
+        ps.push(P(k + '-hist', rot('antecedentes'), historicoTexto(a, ref)));
+        situacaoJudicialTexto(a, ref).forEach((t, j) => ps.push(P(`${k}-jud${j}`, rot('situação judicial'), t)));
+        if ((f.veiculos || []).length) ps.push(P(k + '-veic', rot('veículos'), `Há registro de que ${ref} utilizaria ${f.veiculos.map(x => `o veículo ${esc(up(x.modelo))}${x.cor ? ', cor ' + esc(x.cor.toLowerCase()) : ''}${x.placa ? ', placa ' + esc(up(x.placa)) : ''}`).join('; ')}.`));
+        const vinc = (f.vinculos || []).filter(x => val(x.nome)).slice(0, 4);
+        if (vinc.length) ps.push(P(k + '-vinc', rot('vínculos'), `No tocante aos vínculos, ${ref} manteria relação ${listaE(vinc.map(x => `${esc((x.tipo || 'de vínculo').toLowerCase())} com ${esc(up(x.nome))}${x.observacao ? ' (' + esc(normalizarCaixa(textoLimpo(x.observacao)).toLowerCase()) + ')' : ''}`))}.`, true));
+        if ((f.denuncias || []).length) {
+            const d0 = f.denuncias[0];
+            ps.push(P(k + '-den', rot('denúncias'), `Constam ${f.denuncias.length} denúncia(s) envolvendo ${ref}${f.denuncias.some(d => d.numero) ? ' (nº ' + f.denuncias.filter(d => d.numero).map(d => esc(d.numero)).join(', ') + ')' : ''}${val(d0.resumoBreve) ? `, que apontariam ${esc(normalizarCaixa(textoLimpo(d0.resumoBreve)).toLowerCase().replace(/\.$/, ''))}` : ''}, convergentes com os demais informes.`, true));
+        }
+        return ps;
+    }
+    const NAO_CRIME = /cumprimento de mandado|alvar[aá]|apoio|visita|sem ilicitude|perda|extravio|acidente|averigua|registro policial|ocorr[eê]ncia policial|desaparecimento|entrega|recupera/i;
     function crimesPredominantes() {
         const c = new Map();
-        E.alvos.forEach(a => registrosSel(a).forEach(r => { const k = val(r.crimes).toLowerCase(); if (k) c.set(k, (c.get(k) || 0) + 1); }));
+        E.alvos.filter(a => a.ficha).forEach(a => antecedentes(a).filter(x => !NAO_CRIME.test(x.crime)).forEach(x => c.set(x.crime, (c.get(x.crime) || 0) + 1)));
         return [...c.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(x => x[0]);
     }
-    const cidadesAlvos = () => [...new Set(E.alvos.map(a => val((enderecoSel(a) || {}).cidade)).filter(Boolean))];
+    const cidadesAlvos = () => [...new Set(E.alvos.filter(a => a.ficha).map(a => val((enderecoSel(a) || {}).cidade)).filter(Boolean))];
     function gerarTexto() {
         const prontos = E.alvos.filter(a => a.ficha);
         if (!prontos.length) { alert('Adicione ao menos um alvo.'); return; }
@@ -294,22 +488,67 @@
         const crimes = crimesPredominantes(), cidades = cidadesAlvos();
         const local = cidades.length ? listaE(cidades.map(c => esc(c.toUpperCase()))) + '/AL' : 'CIDADE/AL';
         const nomeG = val($('ri-grupo-nome').value);
+        const comConsulta = prontos.some(a => a.consulta);
+        const fontes = ['levantamentos de campo', 'informes de fontes humanas', 'consultas aos registros da Agência'].concat(comConsulta ? ['às bases do CAD/SISP, do BNMP e dos Tribunais'] : []);
         const ps = [];
         if (orcrim) {
-            ps.push(`Informações acerca de uma organização criminosa (ORCRIM)${nomeG ? ' denominada <b>' + esc(up(nomeG)) + '</b>' : ''} apontam indivíduos suspeitos de crimes de ${crimes.length ? esc(listaE(crimes)) : 'tráfico de drogas e posse/porte irregular de arma de fogo'} com atuação em ${local}.`);
-            ps.push('A ORCRIM utilizaria de imóveis residenciais como pontos de apoio logístico para o armazenamento de substâncias entorpecentes, armas de fogo e outros materiais ilícitos, os quais seriam empregados para a manutenção, proteção e expansão das atividades criminosas, circunstância que evidencia risco concreto à ordem pública e à segurança da coletividade local.');
-            ps.push('Após ações de inteligência e contatos com fontes humanas em colaboração, apurou-se que a organização criminosa apresentaria estrutura definida, com divisão de funções entre seus integrantes, garantindo, em tese, a continuidade das atividades ilícitas de forma coordenada e dificultando a atuação dos órgãos de segurança pública.');
+            ps.push(P('intro', 'Introdução', `Informações acerca de uma organização criminosa (ORCRIM)${nomeG ? ' denominada <b>' + esc(up(nomeG)) + '</b>' : ''} apontam indivíduos suspeitos de crimes de ${crimes.length ? esc(listaE(crimes)) : 'tráfico de drogas e posse/porte irregular de arma de fogo'} com atuação em ${local}.`));
+            ps.push(P('intro2', 'Contexto da ORCRIM', 'A ORCRIM utilizaria imóveis residenciais como pontos de apoio logístico para o armazenamento de substâncias entorpecentes, armas de fogo e outros materiais ilícitos, empregados na manutenção, proteção e expansão das atividades criminosas, circunstância que evidencia risco concreto à ordem pública e à segurança da coletividade local.'));
+            ps.push(P('intro3', 'Estrutura da ORCRIM', `Após ações de inteligência — ${listaE(fontes)} —, apurou-se que a organização criminosa apresentaria estrutura definida, com divisão de funções entre seus integrantes, o que garantiria, em tese, a continuidade das atividades ilícitas de forma coordenada e dificultaria a atuação dos órgãos de segurança pública.`));
         } else {
-            ps.push(`Informações de inteligência apontam ${prontos.length > 1 ? 'indivíduos suspeitos' : 'indivíduo suspeito'} de crimes de ${crimes.length ? esc(listaE(crimes)) : 'natureza diversa'} com atuação em ${local}.`);
+            ps.push(P('intro', 'Introdução', `O presente relatório reúne conhecimentos produzidos a partir de ${listaE(fontes)} acerca de ${prontos.length > 1 ? 'indivíduos suspeitos' : 'indivíduo suspeito'} de envolvimento com ${crimes.length ? esc(listaE(crimes)) : 'práticas delituosas'} com atuação em ${local}.`));
         }
-        prontos.forEach((a, i) => paragrafosAlvo(a, i, orcrim).forEach(p => ps.push(p)));
-        ps.push(orcrim
-            ? 'Diante dos elementos colhidos por meio das ações de inteligência, verifica-se a existência de indícios consistentes da atuação de organização criminosa estruturada, com divisão de funções entre seus integrantes e utilização de imóveis residenciais como pontos de apoio logístico para armazenamento de drogas, armas de fogo e demais instrumentos utilizados na prática criminosa, evidenciando risco concreto à ordem pública e elevada probabilidade de continuidade delitiva.'
-            : `Diante dos elementos colhidos por meio das ações de inteligência, verificam-se indícios consistentes da atuação criminosa ${prontos.length > 1 ? 'dos indivíduos' : 'do indivíduo'} acima qualificado${prontos.length > 1 ? 's' : ''}, evidenciando risco concreto à ordem pública e elevada probabilidade de continuidade delitiva.`);
-        ps.push('Sendo assim, faz-se necessário o encaminhamento deste relatório para fins de subsídio à tomada de decisão.');
-        $('ri-corpo').innerHTML = ps.map(p => `<p>${p}</p>`).join('');
+        prontos.forEach((a, i) => paragrafosAlvo(a, i, orcrim, prontos.length).forEach(p => ps.push(p)));
+        const temMandado = prontos.some(a => (a.consulta && a.consulta.bnmp.possui) || (a.ficha.mandados || []).some(m => !/cumprid|baixad|revogad/i.test(m.status || '')));
+        ps.push(P('concl', 'Conclusão', orcrim
+            ? 'Diante dos elementos colhidos por meio das ações de inteligência, verifica-se a existência de indícios consistentes da atuação de organização criminosa estruturada, com divisão de funções entre seus integrantes e utilização de imóveis residenciais como pontos de apoio logístico para o armazenamento de drogas, armas de fogo e demais instrumentos empregados na prática criminosa, o que evidencia risco concreto à ordem pública e elevada probabilidade de continuidade delitiva.'
+            : `Diante dos elementos colhidos, verificam-se indícios consistentes da atuação criminosa ${prontos.length > 1 ? 'dos indivíduos acima qualificados' : 'do indivíduo acima qualificado'}, com risco concreto à ordem pública e probabilidade de continuidade delitiva${temMandado ? ', agravada pela existência de mandado judicial pendente de cumprimento' : ''}.`));
+        ps.push(P('fecho', 'Encaminhamento', 'Sendo assim, faz-se necessário o encaminhamento deste relatório para fins de subsídio à tomada de decisão.'));
+        $('ri-corpo').innerHTML = ps.join('');
         const assunto = document.querySelector('[data-cab="assunto"]');
         if (!val(assunto.value)) assunto.value = orcrim ? `ORGANIZAÇÃO CRIMINOSA ATUANTE EM ${cidades.length ? cidades.join(', ').toUpperCase() : 'CIDADE'}/AL.` : `${prontos.length > 1 ? 'INDIVÍDUOS SUSPEITOS' : 'INDIVÍDUO SUSPEITO'} DE ATUAÇÃO CRIMINOSA EM ${cidades.length ? cidades.join(', ').toUpperCase() : 'CIDADE'}/AL.`;
+    }
+
+    // ── XERIFE: refino da redação (IA local), sem acrescentar fatos ──
+    function garantirXerife() {
+        if (window.Xerife) return Promise.resolve(window.Xerife);
+        return new Promise(ok => {
+            if (!document.querySelector('script[data-relint-xerife]')) {
+                const s = document.createElement('script'); s.src = '../js/xerife.js'; s.dataset.relintXerife = '1'; document.body.appendChild(s);
+            }
+            let n = 0; const t = setInterval(() => { if (window.Xerife || ++n > 50) { clearInterval(t); ok(window.Xerife || null); } }, 200);
+        });
+    }
+    const PROMPT_XERIFE = 'Você é analista de inteligência da Polícia Militar de Alagoas e redige Relatórios de Inteligência (RELINT) conforme a Doutrina Nacional de Inteligência de Segurança Pública (DNISP). ' +
+        'Reescreva o parágrafo recebido em português formal, impessoal, em 3ª pessoa, claro e conciso, sem adjetivação desnecessária. ' +
+        'Use o futuro do pretérito (seria, atuaria, utilizaria, manteria) para informações oriundas de informes não confirmados. Não identifique fontes. ' +
+        'É PROIBIDO acrescentar qualquer fato, nome, número, data, local ou conclusão que não esteja no parágrafo original. Mantenha nomes, vulgos e siglas em MAIÚSCULAS. ' +
+        'Responda somente com o parágrafo reescrito, sem comentários.';
+    const numerosDe = s => (String(s).match(/\d+/g) || []);
+    const maiusculasDe = s => (String(s).match(/\b[A-ZÀ-Þ]{3,}\b/g) || []).map(semAcento);
+    async function refinarComXerife(botao) {
+        const ps = [...$('ri-corpo').querySelectorAll('p[data-ia="1"]')];
+        if (!ps.length) { alert('Gere o texto primeiro — o XERIFE refina os parágrafos de informes, vínculos e denúncias.'); return; }
+        const X = await garantirXerife();
+        const estado = X && X.obterEstadoIA ? X.obterEstadoIA() : 'indisponivel';
+        if (!X || !X.gerarComIA || estado !== 'pronto') {
+            alert('A IA local do XERIFE não está pronta (' + ({ baixando: 'ainda carregando o modelo — tente em alguns minutos', indisponivel: 'computador sem suporte a IA local (WebGPU)', erro: 'erro ao carregar' }[estado] || estado) + '). O texto atual já segue a redação padrão.');
+            return;
+        }
+        const txt = botao.textContent; botao.disabled = true;
+        let ok = 0, rej = 0;
+        for (let i = 0; i < ps.length; i++) {
+            botao.textContent = `🤠 XERIFE ${i + 1}/${ps.length}…`;
+            const original = ps[i].textContent;
+            const novo = await X.gerarComIA([{ role: 'system', content: PROMPT_XERIFE }, { role: 'user', content: original }], { temperature: 0.2, max_tokens: 500 });
+            const n = val(novo);
+            // Trava: nenhum número ou termo em maiúsculas que não exista no original.
+            const nums = new Set(numerosDe(original)), mais = new Set(maiusculasDe(original));
+            const inventou = numerosDe(n).some(x => !nums.has(x)) || maiusculasDe(n).some(x => !mais.has(x));
+            if (n && !inventou && n.length > original.length * 0.5) { ps[i].textContent = n.replace(/^["“]|["”]$/g, ''); ok++; } else rej++;
+        }
+        botao.disabled = false; botao.textContent = txt;
+        alert(`XERIFE: ${ok} parágrafo(s) refinado(s)${rej ? `, ${rej} mantido(s) na redação padrão (a IA acrescentaria dados que não constam das fichas)` : ''}.`);
     }
 
     // ── IMPRESSÃO — modelo oficial ──────────────────────────────────
@@ -320,6 +559,8 @@
         const c = div.querySelector('canvas');
         return c ? c.toDataURL('image/png') : ((div.querySelector('img') || {}).src || '');
     }
+    // B(): marca um bloco removível na prévia (caixa de seleção).
+    const B = (chave, rotulo) => `data-bloco="${chave}" data-rotulo="${esc(rotulo)}"`;
     function montarDocumento() {
         const c = cfg(), cab = lerCab(), base = new URL('../', location.href).href;
         const prontos = E.alvos.filter(a => a.ficha);
@@ -330,42 +571,54 @@
         const fotoDe = (a, id) => (a.ficha.fotos || []).find(x => x.id === id);
         const anexo = prontos.map((a, i) => {
             const f = a.ficha, d = f.dados, fp = fotoDe(a, a.sel.foto), end = enderecoSel(a), im = fotoDe(a, a.sel.imovel);
-            const regs = registrosSel(a);
+            const n = String(i + 1).padStart(2, '0'), quem = `${n} ${vulgo(f) ? up(vulgo(f)) : up(d.nome).split(' ')[0]}`;
+            const regs = registrosSel(a), cad = ocorrenciasAutor(a), pa = processosAtivos(a), cons = a.consulta;
+            const mandEx = (f.mandados || []).filter(m => !/cumprid|baixad|revogad/i.test(m.status || ''));
             const linkEnd = end ? (end.link || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(end.texto)}`) : '';
-            const refEnd = end ? [end.pontoReferencia, ...(end.referencias || []), end.descricao].filter(Boolean).join('. ').toUpperCase() : '';
-            return `<table class="qual">
-                <tr><td class="qual-foto"><img src="${esc(fp ? fp.url : base + 'img/relint/sem-foto.jpg')}" alt=""><div class="qual-n">Nº ${String(i + 1).padStart(2, '0')}</div></td>
+            const refEnd = end ? unicos([end.pontoReferencia, ...(end.referencias || []), end.descricao].map(x => textoLimpo(x))).join('. ').toUpperCase() : '';
+            const info = textoLimpo(a.sel.info);
+            return `<table class="qual" ${B('anx' + i, `Anexo A — ${quem}`)}>
+                <tr><td class="qual-foto"><img src="${esc(fp ? fp.url : base + 'img/relint/sem-foto.jpg')}" alt=""><div class="qual-n">Nº ${n}</div></td>
                     <td class="qual-dados">
                         <div>Nome: ${esc(up(d.nome))}</div>${vulgos(f) ? `<div>Vulgo: “${esc(up(vulgos(f)))}”</div>` : ''}
                         ${d.mae ? `<div>Mãe: ${esc(up(d.mae))}</div>` : ''}${d.pai ? `<div>Pai: ${esc(up(d.pai))}</div>` : ''}
                         ${d.cpf ? `<div>CPF: ${esc(cpfFmt(d.cpf))}</div>` : ''}${d.rg ? `<div>RG: ${esc([d.rg, d.rgOrgao].filter(Boolean).join(' '))}</div>` : ''}
                         ${d.nascimento ? `<div>D. N.: ${esc(dataBR(d.nascimento))}</div>` : ''}${val(a.funcao) ? `<div>Função: ${esc(up(a.funcao))}</div>` : ''}</td></tr>
-                <tr><th>Informações:</th><td>${esc(val(a.sel.info) || 'X-X-X-X')}</td></tr>
-                <tr><th>Ficha criminal:</th><td>${regs.length ? regs.map(r => `${esc(r.tipo || 'B.O')} Nº ${esc(r.numero || '—')} – ${esc(up(r.crimes))};`).join('<br>') : 'NADA CONSTA NAS BASES CONSULTADAS.'}</td></tr>
-                <tr><th>Endereço:</th><td>${end ? esc(end.texto) + (refEnd ? '.<br>' + esc(refEnd) + '.' : '') : 'X-X-X-X'}</td></tr>
-                <tr><td class="qual-qr">${linkEnd ? `<div class="qr-tit">QRCODE:</div><img src="${qrDataUrl(linkEnd)}" alt="">` : ''}</td>
+                <tr ${B(`anx${i}-info`, `${quem} — Informações`)}><th>Informações:</th><td>${esc(info ? normalizarCaixa(info) : 'X-X-X-X')}</td></tr>
+                <tr ${B(`anx${i}-fc`, `${quem} — Ficha criminal`)}><th>Ficha criminal:</th><td>${regs.length ? regs.map(r => `${esc(r.tipo || 'B.O')} Nº ${esc(r.numero || '—')} – ${esc(up(r.crimes))};`).join('<br>') : 'NADA CONSTA NAS BASES DA AGÊNCIA.'}</td></tr>
+                ${cons ? `<tr ${B(`anx${i}-cad`, `${quem} — Ocorrências (CAD)`)}><th>Ocorrências (CAD/SISP):</th><td>${cad.length ? cad.slice(0, 25).map(o => `${o.numero ? 'Nº ' + esc(o.numero) + ' – ' : ''}${esc(up(o.natureza))}${o.data ? ' (' + esc(o.data.slice(0, 10)) + ')' : ''}${o.envolvimento ? ' – ' + esc(up(o.envolvimento)) : ''};`).join('<br>') : 'NADA CONSTA COMO AUTOR/SUSPEITO.'}</td></tr>` : ''}
+                ${cons || mandEx.length ? `<tr ${B(`anx${i}-mand`, `${quem} — Mandados`)}><th>Mandados:</th><td>${[cons ? (cons.bnmp.possui ? 'BNMP: MANDADO DE PRISÃO EM ABERTO' + (cons.bnmp.detalhe ? ' – ' + esc(Object.entries(cons.bnmp.detalhe).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join('; ').toUpperCase()) : '') : 'BNMP: NADA CONSTA') : '', ...mandEx.map(m => `${esc(up(m.tipo) || 'MANDADO')}${m.numero ? ' Nº ' + esc(m.numero) : ''}${m.processo ? ' – PROC. ' + esc(m.processo) : ''}${m.status ? ' – ' + esc(up(m.status)) : ''}`)].filter(Boolean).join(';<br>')}.</td></tr>` : ''}
+                ${cons ? `<tr ${B(`anx${i}-proc`, `${quem} — Processos ativos`)}><th>Processos ativos:</th><td>${pa.length ? pa.slice(0, 15).map(p => `${esc(p.tribunal)} Nº ${esc(p.numero)}${p.classe || p.assunto ? ' – ' + esc(up([p.classe, p.assunto].filter(Boolean).join(' / '))) : ''};`).join('<br>') : 'NADA CONSTA.'}</td></tr>` : ''}
+                <tr ${B(`anx${i}-end`, `${quem} — Endereço`)}><th>Endereço:</th><td>${end ? esc(enderecoTexto(end)) + (refEnd ? '.<br>' + esc(refEnd) + '.' : '') : 'X-X-X-X'}</td></tr>
+                <tr ${B(`anx${i}-qr`, `${quem} — QR Code e foto do imóvel`)}><td class="qual-qr">${linkEnd ? `<div class="qr-tit">QRCODE:</div><img src="${qrDataUrl(linkEnd)}" alt="">` : ''}</td>
                     <td class="qual-imovel">${im ? `<img src="${esc(im.url)}" alt="">` : '<div class="sem-img">Sem foto do imóvel</div>'}</td></tr>
             </table>`;
         }).join('<div class="quebra"></div>');
         const registro = prontos.flatMap(a => [...a.sel.registro].map(id => ({ a, x: fotoDe(a, id) })).filter(r => r.x));
-        const regHtml = registro.length ? `<div class="quebra"></div><div class="tit-centro">REGISTRO FOTOGRÁFICO</div>` + registro.map(({ a, x }) =>
-            `<table class="reg"><tr><td><img src="${esc(x.url)}" alt=""><div class="reg-leg">${esc(val(x.legenda) || `${vulgo(a.ficha) ? '“' + up(vulgo(a.ficha)) + '”' : up(a.ficha.dados.nome)} — registro fotográfico ${x.tipo === 'residencia' ? 'do imóvel' : x.tipo === 'veiculo' ? 'do veículo' : 'do indivíduo'}.`)}</div></td></tr></table>`).join('') : '';
-        const hist = prontos.filter(a => registrosSel(a).length).map(a => `<div class="quebra"></div><div class="tit-centro">HISTÓRICO CRIMINAL — ${esc(up(a.ficha.dados.nome))}${vulgo(a.ficha) ? ' (“' + esc(up(vulgo(a.ficha))) + '”)' : ''}</div>` +
-            registrosSel(a).map(r => `<div class="hist-tit">${esc(up(r.crimes) || 'REGISTRO POLICIAL')}</div><table class="hist"><tr><td><b>Tipo do procedimento:</b> ${esc(r.tipo || 'BO')}</td><td><b>Número:</b> ${esc(r.numero || '—')}</td></tr><tr><td><b>Data do fato:</b> ${esc(dataBR(r.dataFato) || '—')}</td><td><b>Envolvimento:</b> ${esc(up(r.papel) || '—')}</td></tr></table>`).join('')).join('');
+        const regHtml = registro.length ? `<div ${B('reg', 'Registro fotográfico')}><div class="quebra"></div><div class="tit-centro">REGISTRO FOTOGRÁFICO</div>` + registro.map(({ a, x }, j) =>
+            `<table class="reg" ${B('reg' + j, `Foto ${j + 1} — ${up(vulgo(a.ficha) || a.ficha.dados.nome.split(' ')[0])}`)}><tr><td><img src="${esc(x.url)}" alt=""><div class="reg-leg">${esc(normalizarCaixa(textoLimpo(x.legenda)) || `${vulgo(a.ficha) ? '“' + up(vulgo(a.ficha)) + '”' : up(a.ficha.dados.nome)} — registro fotográfico ${x.tipo === 'residencia' ? 'do imóvel' : x.tipo === 'veiculo' ? 'do veículo' : 'do indivíduo'}.`)}</div></td></tr></table>`).join('') + '</div>' : '';
+        const hist = prontos.map((a, i) => {
+            const regs = registrosSel(a);
+            if (!regs.length) return '';
+            return `<div ${B('hist' + i, `Histórico criminal — ${up(vulgo(a.ficha) || a.ficha.dados.nome.split(' ')[0])}`)}><div class="quebra"></div><div class="tit-centro">HISTÓRICO CRIMINAL — ${esc(up(a.ficha.dados.nome))}${vulgo(a.ficha) ? ' (“' + esc(up(vulgo(a.ficha))) + '”)' : ''}</div>` +
+                regs.map(r => `<div class="hist-tit">${esc(up(r.crimes) || 'REGISTRO POLICIAL')}</div><table class="hist"><tr><td><b>Tipo do procedimento:</b> ${esc(r.tipo || 'BO')}</td><td><b>Número:</b> ${esc(r.numero || '—')}</td></tr><tr><td><b>Data do fato:</b> ${esc(dataBR(r.dataFato) || '—')}</td><td><b>Envolvimento:</b> ${esc(up(r.papel) || '—')}</td></tr></table>`).join('') + '</div>';
+        }).join('');
         const campos = [['DATA', cab.data], ['ASSUNTO', cab.assunto], ['ORIGEM', cab.origem], ['DIFUSÃO', cab.difusao], ['DIFUSÃO ANTERIOR', cab.difusaoAnterior], ['REFERÊNCIA', cab.referencia], ['OPERAÇÃO', cab.operacao], ['ANEXO', cab.anexo]]
-            .filter(([, v]) => val(v)).map(([k, v]) => `<div class="campo"><b>${k}:</b> ${esc(v)}</div>`).join('');
-        const assinatura = val(c.assinatura) ? `<div class="assinatura">${c.assinatura.split('\n').map(l => esc(l)).join('<br>')}</div>` : '';
+            .filter(([, v]) => val(v)).map(([k, v]) => `<div class="campo" ${B('cab-' + k, 'Campo ' + k)}><b>${k}:</b> ${esc(v)}</div>`).join('');
+        const assinatura = val(c.assinatura) ? `<div class="assinatura" ${B('ass', 'Assinatura / fecho')}>${c.assinatura.split('\n').map(l => esc(l)).join('<br>')}</div>` : '';
         return `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><base href="${base}page/"><title>RELINT ${esc(cab.numero)}</title><style>
             @page { size: A4; margin: 8mm 16mm 8mm 16mm; @top-right-corner { content: counter(page) "/" counter(pages); font: bold 10pt "Times New Roman", serif; vertical-align: bottom; text-align: left; padding: 0 0 0 2mm; } }
             * { box-sizing: border-box; }
             body { margin: 0; font: 12pt/1.5 Arial, Helvetica, sans-serif; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .oculto { display: none !important; }
+            [contenteditable="true"]:focus { outline: none; }
             .pg { width: 100%; border-collapse: collapse; } .pg > thead td, .pg > tfoot td { padding: 0; } .pg > tbody > tr > td { padding: 0 6mm; }
             .topo { position: relative; padding-bottom: 4mm; } .topo.com-selo { min-height: 44mm; }
             .aviso { border: 1px solid #e00; color: #e00; font-size: 8.5pt; line-height: 1.25; text-align: center; padding: 2px 6px; }
             .restrito { width: 47mm; margin: 2mm auto 0; border: 1.2px solid #e00; color: #e00; font: bold 10.5pt Arial; text-align: center; padding: 1px 0; }
             .selo { position: absolute; right: 0; top: 19mm; width: 22mm; height: 22mm; object-fit: contain; }
             .rodape { padding-top: 3mm; } .rodape .aviso { text-align: justify; }
-            .marca { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-55deg); font: bold 92pt Arial; color: rgba(0,0,0,.055); white-space: nowrap; z-index: -1; letter-spacing: .08em; }
+            .marca { position: fixed; top: 45%; left: 50%; transform: translate(-50%, -50%) rotate(-55deg); font: bold 92pt Arial; color: rgba(0,0,0,.055); white-space: nowrap; z-index: -1; letter-spacing: .08em; pointer-events: none; }
             .inst { display: grid; grid-template-columns: 26mm 1fr 26mm; align-items: center; margin: 2mm 0 6mm; } .com-selo-doc .inst { margin-top: -25mm; }
             .inst img { width: 22mm; height: 22mm; object-fit: contain; }
             .inst div { text-align: center; font: bold 10.5pt/1.35 Arial; }
@@ -390,33 +643,56 @@
             table.reg img { max-width: 100%; max-height: 135mm; object-fit: contain; display: block; margin: 0 auto 3px; } .reg-leg { font-size: 10.5pt; line-height: 1.3; padding: 0 10mm 3px; }
             .hist-tit { text-align: center; font-weight: bold; font-size: 10.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
             table.hist { width: 100%; border-collapse: collapse; font-size: 9.5pt; break-inside: avoid; } table.hist td { border: 1px solid #777; padding: 4px 6px; width: 50%; }
+            @media screen { body { background: #6b7280; } .pg { background: #fff; max-width: 210mm; margin: 12px auto; box-shadow: 0 4px 18px rgba(0,0,0,.35); } }
         </style></head><body>
             <div class="marca">${esc(c.marca)}</div>
             <table class="pg${selo ? ' com-selo-doc' : ''}">
                 <thead><tr><td><div class="topo${selo ? ' com-selo' : ''}"><div class="aviso">${aviso}</div><div class="restrito">ACESSO RESTRITO</div>${selo ? `<img class="selo" src="${esc(selo)}" alt="">` : ''}</div></td></tr></thead>
                 <tfoot><tr><td><div class="rodape"><div class="aviso">${sigilo}</div><div class="restrito">ACESSO RESTRITO</div></div></td></tr></tfoot>
                 <tbody><tr><td>
-                    <div class="inst"><img src="${base}img/relint/brasao-pmal.png" alt=""><div>${linhasCab.map(esc).join('<br>')}</div><span></span></div>
-                    <h1>RELATÓRIO DE INTELIGÊNCIA ${esc(cab.numero)}</h1>
+                    <div class="inst" ${B('inst', 'Cabeçalho institucional')}><img src="${base}img/relint/brasao-pmal.png" alt=""><div>${linhasCab.map(esc).join('<br>')}</div><span></span></div>
+                    <h1 ${B('titulo', 'Título / número')}>RELATÓRIO DE INTELIGÊNCIA ${esc(cab.numero)}</h1>
                     <div class="campos">${campos}</div>
                     <div class="corpo">${$('ri-corpo').innerHTML}</div>
                     ${assinatura}
                     <div class="separa">X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X-X</div>
-                    ${prontos.length ? `<div class="quebra"></div><div class="tit-centro">ANEXO A – QUALIFICAÇÃO DOS ENVOLVIDOS</div>${anexo}` : ''}
+                    ${prontos.length ? `<div ${B('anexo', 'Anexo A (inteiro)')}><div class="quebra"></div><div class="tit-centro">ANEXO A – QUALIFICAÇÃO DOS ENVOLVIDOS</div>${anexo}</div>` : ''}
                     ${regHtml}${hist}
                 </td></tr></tbody>
             </table>
         </body></html>`;
     }
-    // Impressão por iframe na própria página (funciona também no .exe —
-    // sem pop-up e sem passar o conteúdo sigiloso por nenhum servidor).
+
+    // ── PRÉVIA: documento editável + caixas de seleção por bloco ────
+    // As ocultações ficam em E.ocultos (e no rascunho) — valem também para
+    // "Imprimir RELINT" direto. Edições feitas na prévia valem para a
+    // impressão feita a partir da prévia.
+    function aplicarOcultos(doc) {
+        doc.querySelectorAll('[data-bloco]').forEach(el => el.classList.toggle('oculto', E.ocultos.has(el.dataset.bloco)));
+    }
+    function montarPainelBlocos(doc) {
+        const vistos = new Map();
+        doc.querySelectorAll('[data-bloco]').forEach(el => { if (!vistos.has(el.dataset.bloco)) vistos.set(el.dataset.bloco, el.dataset.rotulo || el.dataset.bloco); });
+        const grupos = { cab: [], corpo: [], anexo: [], outros: [] };
+        vistos.forEach((rot, k) => (/^(cab-|inst|titulo|ass)/.test(k) ? grupos.cab : /^(intro|alvo|concl|fecho)/.test(k) ? grupos.corpo : /^anx|^anexo/.test(k) ? grupos.anexo : grupos.outros).push([k, rot]));
+        const sec = (t, l) => l.length ? `<div class="ri-blocos-sec">${t}</div>` + l.map(([k, r]) => `<label><input type="checkbox" data-bl="${esc(k)}" ${E.ocultos.has(k) ? '' : 'checked'}> ${esc(r)}</label>`).join('') : '';
+        $('ri-blocos').innerHTML = sec('Cabeçalho', grupos.cab) + sec('Texto do relatório', grupos.corpo) + sec('Anexo A', grupos.anexo) + sec('Fotos e histórico', grupos.outros);
+        $('ri-blocos').querySelectorAll('[data-bl]').forEach(cb => cb.onchange = () => { cb.checked ? E.ocultos.delete(cb.dataset.bl) : E.ocultos.add(cb.dataset.bl); aplicarOcultos(doc); });
+    }
+    function prepararDoc(fr) {
+        const doc = fr.contentDocument;
+        aplicarOcultos(doc);
+        doc.querySelector('.pg > tbody > tr > td').setAttribute('contenteditable', 'true');
+        return doc;
+    }
     function aguardarImagens(doc) {
         return Promise.all([...doc.images].map(img => img.complete ? null : new Promise(ok => { img.onload = img.onerror = ok; setTimeout(ok, 8000); })));
     }
     async function previa() {
         if (!E.alvos.some(a => a.ficha)) { alert('Adicione ao menos um alvo.'); return; }
         const fr = $('ri-previa');
-        fr.srcdoc = montarDocumento();
+        await new Promise(ok => { fr.onload = ok; fr.srcdoc = montarDocumento(); });
+        montarPainelBlocos(prepararDoc(fr));
         $('ri-modal-previa').classList.add('aberto');
     }
     async function imprimir(usarPrevia) {
@@ -427,6 +703,7 @@
             Object.assign(fr.style, { position: 'fixed', right: '0', bottom: '0', width: '1px', height: '1px', border: '0', opacity: '0' });
             if (!fr.parentNode) document.body.appendChild(fr);
             await new Promise(ok => { fr.onload = ok; fr.srcdoc = montarDocumento(); });
+            aplicarOcultos(fr.contentDocument);
         }
         await aguardarImagens(fr.contentDocument);
         fr.contentWindow.focus(); fr.contentWindow.print();
@@ -435,7 +712,8 @@
     // ── rascunho (só neste navegador) ───────────────────────────────
     function salvarRascunho() {
         lsSet(LS_RASCUNHO, { cab: lerCab(), corpo: $('ri-corpo').innerHTML, grupo: E.grupo ? { nome: $('ri-grupo-nome').value, tipo: E.grupo.tipo } : null,
-            alvos: E.alvos.filter(a => a.ficha).map(a => ({ id: a.id, funcao: a.funcao, sel: Object.assign({}, a.sel, { registro: [...a.sel.registro], fc: [...a.sel.fc] }) })), salvoEm: new Date().toISOString() });
+            alvos: E.alvos.filter(a => a.ficha).map(a => ({ id: a.id, funcao: a.funcao, consulta: a.consulta || null, sel: Object.assign({}, a.sel, { registro: [...a.sel.registro], fc: [...a.sel.fc], informes: [...(a.sel.informes || [])] }) })),
+            ocultos: [...E.ocultos], salvoEm: new Date().toISOString() });
         const b = $('ri-salvar'); b.textContent = '✅ Rascunho salvo'; setTimeout(() => { b.textContent = '💾 Salvar rascunho'; }, 2000);
     }
     async function restaurar() {
@@ -444,12 +722,13 @@
         if (!r) return;
         if (r.corpo) $('ri-corpo').innerHTML = r.corpo;
         if (r.grupo) { E.grupo = { nome: r.grupo.nome, tipo: r.grupo.tipo }; $('ri-grupo-nome').value = r.grupo.nome || ''; }
-        for (const a of r.alvos || []) await adicionarAlvo(a.id, { funcao: a.funcao, sel: a.sel });
+        E.ocultos = new Set(r.ocultos || []);
+        for (const a of r.alvos || []) await adicionarAlvo(a.id, { funcao: a.funcao, sel: a.sel, consulta: a.consulta });
     }
     function novo() {
         if (!confirm('Começar um novo relatório? O rascunho atual será apagado.')) return;
         try { localStorage.removeItem(LS_RASCUNHO); } catch (e) { /* opcional */ }
-        E.alvos = []; E.grupo = null; E.ativo = 0;
+        E.alvos = []; E.grupo = null; E.ativo = 0; E.ocultos = new Set();
         escreverCab(cabPadrao()); $('ri-corpo').innerHTML = '<p>Adicione os alvos e clique em “Gerar texto a partir das fichas”.</p>';
         renderAlvos(); renderFicha();
     }
@@ -470,6 +749,9 @@
         $('ri-q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
         $('ri-grupo-limpar').onclick = () => { E.grupo = null; renderAlvos(); };
         $('ri-gerar').onclick = gerarTexto;
+        $('ri-xerife').onclick = () => refinarComXerife($('ri-xerife'));
+        $('ri-consultar-todos').onclick = () => consultarTodos($('ri-consultar-todos'));
+        $('ri-blocos-todos').onclick = () => { E.ocultos.clear(); const d = $('ri-previa').contentDocument; aplicarOcultos(d); montarPainelBlocos(d); };
         document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { $('ri-corpo').focus(); document.execCommand(b.dataset.cmd); });
         $('ri-salvar').onclick = salvarRascunho;
         $('ri-novo').onclick = novo;
