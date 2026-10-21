@@ -11,9 +11,9 @@
     <!--
         PAINEL DO COMANDO (acesso livre, sem login) — acompanhamento dos
         indicadores da unidade: 2025 × 2026, mês atual e total do ano.
-        Fontes (Firebase da unidade): /geral (total), /tco, /cvli (→ MVI pela
-        regra do sistema), /cvp, /arma, /droga, /violencia_domestica, /sossego.
-        Regras de MVI/CVP: js/core/previsaoMensalCad.js (as mesmas dos demais painéis).
+        Fontes (Firebase da unidade): /geral (total e MVI), /tco, /cvp, /arma,
+        /droga, /violencia_domestica, /sossego — com as MESMAS regras dos cards
+        do index (js/index.js), para os números baterem.
         Atualiza sozinho a cada 10 minutos.
     -->
     <style>
@@ -98,7 +98,7 @@
             <div class="relogio"><b id="pc-hora">--:--</b><small id="pc-data"></small></div>
             <button class="h-btn" id="pc-tema" title="Alternar tema claro/escuro">◐</button>
             <button class="h-btn" id="pc-tela" title="Tela cheia">⛶</button>
-            <a class="h-btn" href="/index.html">Home</a>
+            <a class="h-btn" href="../index.html">Home</a>
         </div>
     </header>
     <main>
@@ -117,7 +117,6 @@
     </main>
     <footer>Seção de Planejamento, Instrução e Estatística — P3/10º BPM · atualização automática a cada 10 minutos</footer>
 
-    <script src="../js/core/previsaoMensalCad.js"></script>
     <script>
     (function () {
         'use strict';
@@ -127,9 +126,16 @@
         const $ = id => document.getElementById(id);
         const fmt = (n, d = 0) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
         const NORM = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
-        const PM = window.PrevisaoMensalCAD || {};
-        const isMVI = PM.isMVI || (o => { const t = NORM(`${o.TIPIFICACAO_GERAL || ''} ${o.TIPIFICACAO || ''}`); return /HOMICIDIO|FEMINICIDIO|LATROCINIO/.test(t) && !/ACHADO|SUICIDIO|VIOLACAO/.test(t) && (!/TENTATIVA/.test(t) || NORM(o.OBITO) === 'S'); });
-        const isCVP = PM.isCVP || (o => /ROUBO|EXTORSAO/.test(NORM(`${o.TIPIFICACAO_GERAL || ''} ${o.TIPIFICACAO || ''}`)));
+        // MESMAS regras dos cards do index (js/index.js) — mudar nos dois.
+        // MVI: /geral, homicídio/feminicídio/latrocínio (inclui culposo/doloso ao
+        // volante); TENTATIVA só com OBITO = "S". O split('|') corta "| CÓDIGO PENAL".
+        const isMVI = o => {
+            const t = NORM(String(o.TIPIFICACAO_GERAL || o.TIPIFICACAO || '').split('|')[0]);
+            if (!/HOMICIDIO|FEMINICIDIO|LATROCINIO/.test(t)) return false;
+            return /TENTATIVA/.test(t) ? NORM(o.OBITO) === 'S' : true;
+        };
+        // Perturbação: /sossego com "PERTURBAÇÃO" na tipificação (como no index)
+        const isPerturbacao = o => /PERTURBACAO/.test(NORM(o.TIPIFICACAO));
         function parseData(s) {
             s = String(s || '').trim();
             let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/); if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
@@ -167,7 +173,7 @@
         // Temas: { lista de registros com .d (Date), valor por registro, sentido }
         // sentido: 1 = aumento é melhora · -1 = aumento é piora · 0 = neutro
         async function carregar() {
-            const [geral, tco, cvli, cvp, arma, droga, vd, sossego] = await Promise.all(['geral', 'tco', 'cvli', 'cvp', 'arma', 'droga', 'violencia_domestica', 'sossego'].map(no));
+            const [geral, tco, cvp, arma, droga, vd, sossego] = await Promise.all(['geral', 'tco', 'cvp', 'arma', 'droga', 'violencia_domestica', 'sossego'].map(no));
             const comData = arr => arr.map(o => ({ o, d: parseData(o.DATA) })).filter(x => x.d);
             // drogas: 1 ocorrência por boletim (o nó tem 1 registro por item apreendido) + peso total
             const porBol = {};
@@ -178,12 +184,12 @@
                 temas: [
                     { id: 'total', nome: 'Total de Ocorrências', ic: '🚨', nota: 'todas as ocorrências do CAD', reg: comData(geral), sentido: 0, total: true },
                     { id: 'tco', nome: 'TCO', ic: '📝', nota: 'termos circunstanciados lavrados', reg: comData(tco), sentido: 1 },
-                    { id: 'mvi', nome: 'MVI', ic: '☠', nota: 'mortes violentas intencionais', reg: comData(cvli.filter(isMVI)), sentido: -1 },
-                    { id: 'cvp', nome: 'CVP', ic: '💰', nota: 'crimes violentos contra o patrimônio', reg: comData(cvp.filter(isCVP)), sentido: -1 },
+                    { id: 'mvi', nome: 'MVI', ic: '☠', nota: 'mortes violentas intencionais', reg: comData(geral.filter(isMVI)), sentido: -1 },
+                    { id: 'cvp', nome: 'CVP', ic: '💰', nota: 'crimes violentos contra o patrimônio', reg: comData(cvp), sentido: -1 },
                     { id: 'arma', nome: 'Armas', ic: '🔫', nota: 'armas apreendidas', reg: comData(arma), sentido: 1 },
                     { id: 'droga', nome: 'Drogas', ic: '💊', nota: 'ocorrências com apreensão de drogas', reg: Object.values(porBol).map(x => ({ d: x.d, g: x.g })), sentido: 1, peso: true },
                     { id: 'vd', nome: 'Violência Doméstica', ic: '🏠', nota: 'ocorrências de violência doméstica', reg: comData(vd), sentido: -1 },
-                    { id: 'sossego', nome: 'Perturbação do Sossego', ic: '🔊', nota: 'ocorrências de perturbação', reg: comData(sossego), sentido: -1 },
+                    { id: 'sossego', nome: 'Perturbação do Sossego', ic: '🔊', nota: 'ocorrências de perturbação', reg: comData(sossego.filter(isPerturbacao)), sentido: -1 },
                 ],
             };
         }
