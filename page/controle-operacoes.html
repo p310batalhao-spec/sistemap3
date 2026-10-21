@@ -124,6 +124,12 @@
         .co-tab th { text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--p3-border); color: var(--p3-text); background-color: var(--p3-surface); background-image: linear-gradient(rgba(47,95,221,.08), rgba(47,95,221,.08)); position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--p3-border); }
         .co-tab td { padding: 5px 8px; border-bottom: 1px solid var(--p3-border); color: var(--p3-text); vertical-align: top; }
         .co-scroll { max-height: 420px; overflow: auto; }
+        .co-suf { border: 1px solid rgba(185,28,28,.35); background: rgba(185,28,28,.05); border-radius: 8px; padding: .6rem .7rem; margin: .5rem 0; }
+        .co-suf-topo { font-size: .8rem; color: var(--p3-text); margin-bottom: .45rem; }
+        .co-suf-grade { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: .7rem; align-items: start; }
+        .co-suf-mapa img { width: 100%; border-radius: 6px; border: 1px solid var(--p3-border); display: block; }
+        .co-suf-crono { margin-top: .5rem; font-size: .78rem; color: var(--p3-text); } .co-suf-crono summary { cursor: pointer; font-weight: 700; margin-bottom: .3rem; }
+        @media (max-width: 900px) { .co-suf-grade { grid-template-columns: 1fr; } }
         .co-aviso { font-size: .78rem; background: rgba(181,134,10,.1); border: 1px solid rgba(181,134,10,.35); color: var(--p3-text); border-radius: 8px; padding: .55rem .8rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
         .co-previa { width: 100%; height: 900px; border: 1px solid var(--p3-border); border-radius: 8px; background: #fff; }
         .co-status { font-size: .74rem; color: var(--p3-text-muted); }
