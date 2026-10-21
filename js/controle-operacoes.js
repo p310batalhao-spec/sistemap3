@@ -527,6 +527,37 @@
         }));
     }
 
+    // Operação Sufocamento (page/opo-sufocamento.html): mapa, áreas, emprego e cronograma
+    const SUF_MAPA = {};
+    function sufocamentoHTML(it) {
+        const o = it.raw || {}, areas = o.areas || [], crono = o.cronograma || [], g = o.guarnicoes || {};
+        if (!areas.length) return '';
+        setTimeout(carregarMapasSuf, 0);
+        return `<div class="co-suf">
+            <div class="co-suf-topo">🔥 <b>Operação Sufocamento</b> · ${areas.length} área(s) · ${o.duracaoAreaMin || 30} min por área · ${crono.length} período(s) por dia
+                ${o.totalOcorrencias ? ` · base: ${fmtN(o.totalOcorrencias)} ocorrência(s) dos últimos ${o.periodoDias || '—'} dias` : ''}</div>
+            <div class="co-suf-grade">
+                <div class="co-suf-mapa" data-suf-mapa="${esc(it.id)}"><div class="co-det-meta">⏳ Carregando mapa…</div></div>
+                <div>
+                    <div class="co-det-meta"><b>Entorno (RPs):</b> ${esc((g.entorno || []).join(', ') || '—')}<br><b>Saturação (especializadas):</b> ${esc((g.saturacao || []).join(', ') || '—')}</div>
+                    <div class="co-scroll" style="max-height:260px;margin-top:.4rem;"><table class="co-tab"><thead><tr><th>Nº</th><th>Área</th><th>Focos</th><th>Nível</th><th>Entorno</th><th>Saturação</th></tr></thead><tbody>
+                    ${areas.map(a => `<tr><td><b>${a.n}</b></td><td><a href="https://www.google.com/maps?q=${a.lat},${a.lng}" target="_blank" rel="noopener">${esc(a.bairro || '—')}</a><br><small>${esc(a.cidade || '')} · raio ${a.raioM} m</small></td>
+                        <td><small>${[['MVI', 'MVI'], ['ARMA', 'Arma'], ['DROGA', 'Droga'], ['CVP', 'CVP'], ['CCP', 'CCP']].filter(([k]) => (a.cont || {})[k]).map(([k, n]) => `${n}: ${a.cont[k]}`).join(' · ')}</small></td><td>${esc(a.nivel || '')}</td>
+                        <td><small>${(a.entorno || []).map(p => `${esc(p.guarnicao)} (${esc(p.ponto)})`).join('<br>')}</small></td><td><small>${(a.saturacao || []).map(esc).join('<br>')}</small></td></tr>`).join('')}</tbody></table></div>
+                </div>
+            </div>
+            ${crono.length ? `<details class="co-suf-crono"><summary>⏱ Cronograma diário (${esc(crono[0].ini)} – ${esc(crono[crono.length - 1].fim)})</summary>
+                <table class="co-tab"><thead><tr><th>#</th><th>Horário</th><th>Área</th><th>Ciclo</th><th>Deslocamento</th></tr></thead><tbody>
+                ${crono.map(c => { const a = areas.find(x => x.n === c.area) || {}; return `<tr><td>${c.ordem}</td><td><b>${esc(c.ini)} – ${esc(c.fim)}</b></td><td>${c.area} — ${esc(a.bairro || '')}</td><td>${c.ciclo}º</td><td>${c.distanciaKm ? `${String(c.distanciaKm).replace('.', ',')} km (~${c.deslocamentoMin} min)` : 'início'}</td></tr>`; }).join('')}</tbody></table></details>` : ''}
+        </div>`;
+    }
+    async function carregarMapasSuf() {
+        for (const el of document.querySelectorAll('[data-suf-mapa]')) {
+            const id = el.dataset.sufMapa;
+            if (!(id in SUF_MAPA)) SUF_MAPA[id] = await fetch(`${DB}/opo_documentos/${encodeURIComponent(id)}/mapa.json`).then(r => r.ok ? r.json() : null).catch(() => null);
+            el.innerHTML = SUF_MAPA[id] ? `<img src="${SUF_MAPA[id]}" alt="Mapa das áreas de sufocamento">` : '<div class="co-det-meta">Mapa não salvo com esta OPO — abra “📄 Ver OPO”.</div>';
+        }
+    }
     function detalheItem(it) {
         const modo = temHorario(it) ? modoDe(it) : 'horario';
         const r = RES[chaveRes(it, modo)];
@@ -563,7 +594,7 @@
                 <button class="co-btn co-btn-pri" data-salvar-exec="${esc(it.chave)}">Salvar execução</button></div>` : '';
         return `<div class="co-det" style="--c:${cor}">
             <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}</h4>
-            <div class="co-det-meta">${meta}</div>${filtro}<div class="co-det-res">${kp}</div>
+            <div class="co-det-meta">${meta}</div>${it.modalidade === 'sufocamento' ? sufocamentoHTML(it) : ''}${filtro}<div class="co-det-res">${kp}</div>
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
                 ${it.tipo === 'opo' && it.modelo === 'evento' ? `<button class="co-btn co-btn-pri" data-editar-opo="${esc(it.chave)}">✏️ Editar OPO</button>` : ''}
@@ -779,7 +810,7 @@
         document.getElementById('co-doc-refazer').textContent = it.modelo === 'evento' ? '✏️ Editar OPO' : '🔁 Gerar novamente';
         document.getElementById('co-doc-refazer').onclick = () => {
             m.classList.remove('aberto');
-            if (it.modalidade === 'sufocamento') location.href = 'opo-sufocamento.html?data=' + encodeURIComponent((it.raw.execucao || {}).dataIni || '') + '&cidade=' + encodeURIComponent(it.raw.cidade || '');
+            if (it.modalidade === 'sufocamento') location.href = 'opo-sufocamento.html?dataIni=' + encodeURIComponent((it.raw.execucao || {}).dataIni || '') + '&dataFim=' + encodeURIComponent((it.raw.execucao || {}).dataFim || '') + '&cidade=' + encodeURIComponent(it.raw.cidade || '');
             else if (it.modelo === 'evento') abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(it.eventoId)) || null, it);
             else abrirNovaOPO(prefillOpo(it));
         };
