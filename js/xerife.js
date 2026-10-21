@@ -2591,6 +2591,141 @@
         } catch (e) { return ''; } // rastreamento indisponível — cartão-programa segue funcionando normal, sem esse trecho
     }
 
+    // ════════════════════════════════════════════════════════════════
+    // FONTES NOVAS (P3 e P2) — Controle de Operações, Desempenho por
+    // guarnição/grupo, escala de serviço e Ficha Alvo do ExchelonX.
+    // Tudo por REGRA (números calculados), nunca pela IA.
+    // ════════════════════════════════════════════════════════════════
+    const fmtX = (n, d = 0) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
+    const pesoX = g => g >= 1000 ? fmtX(g / 1000, 3) + ' kg' : fmtX(g, g % 1 ? 1 : 0) + ' g';
+    const dataBRX = d => d.toLocaleDateString('pt-BR');
+    function carregarScriptUmaVez(caminho, global) {
+        if (window[global]) return Promise.resolve(window[global]);
+        return new Promise(ok => {
+            if (!document.querySelector(`script[data-xerife-mod="${global}"]`)) {
+                const sc = document.createElement('script'); sc.src = prefixoPagina() + caminho; sc.dataset.xerifeMod = global; document.body.appendChild(sc);
+            }
+            let n = 0; const t = setInterval(() => { if (window[global] || ++n > 60) { clearInterval(t); ok(window[global] || null); } }, 150);
+        });
+    }
+    // Data explícita na pergunta ("dia 15/04", "15/04/2026", "amanhã")
+    function extrairDataX(q) {
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        if (q.includes('amanha')) { const d = new Date(hoje); d.setDate(d.getDate() + 1); return d; }
+        if (q.includes('ontem')) { const d = new Date(hoje); d.setDate(d.getDate() - 1); return d; }
+        const m = q.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+        if (m) return new Date(m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : hoje.getFullYear(), +m[2] - 1, +m[1]);
+        return hoje;
+    }
+
+    // 1) Grupo de serviço (escala, turno 24h 08h→08h)
+    function ehGrupoServico(q) { return /\bgrupo\b/.test(q) && /(servico|escala|plantao|de dia|hoje|amanha|ontem|\d{1,2}\/\d{1,2})/.test(q) && !/desempenho|produtiv|ranking/.test(q); }
+    async function responderGrupoServico(q) {
+        const D = await carregarScriptUmaVez('js/desempenho-guarnicoes.js', 'DesempenhoGuarnicoes');
+        if (!D) return '⚠️ Não consegui carregar a escala de serviço agora.';
+        const d = extrairDataX(q), g = await D.grupoDe(d), gs = await D.guarnicoes();
+        return `📅 No turno que começa em <strong>${dataBRX(d)}</strong> (08h → 08h do dia seguinte), está de serviço o <strong>Grupo ${g}</strong>.` +
+            (gs.length ? `<br><small>Guarnições do turno de 24h: ${gs.map(x => escHtml(x.sigla)).join(', ')}.</small>` : '') +
+            `<br><small>Ciclo A → B → C → D da escala de referência, aplicado também aos meses anteriores.</small>`;
+    }
+
+    // 2) Desempenho por guarnição / grupo (mesmo cálculo do painel do Controle de Operações)
+    function ehDesempenho(q) { return /(desempenho|produtividade|ranking).*(guarnic|grupo|rp\b|pelopes|tatico)|(guarnic|grupo|rp\b|pelopes|tatico).*(desempenho|produtividade|ranking|mais produtiv|mais ocorrencia)/.test(q); }
+    async function responderDesempenho(q) {
+        const D = await carregarScriptUmaVez('js/desempenho-guarnicoes.js', 'DesempenhoGuarnicoes');
+        if (!D) return '⚠️ Não consegui carregar os dados de desempenho agora.';
+        const per = detectarPeriodo(q);
+        const de = new Date(per.ini.getFullYear(), per.ini.getMonth(), per.ini.getDate()), ate = new Date(Math.min(per.fim, new Date()));
+        const R = await D.resumo(de, new Date(ate.getFullYear(), ate.getMonth(), ate.getDate()));
+        const g = q.match(/\bgrupo\s+([abcd])\b/), rp = q.match(/\b(rp\s*0?\d{1,2}|pelopes|tatico\s*(?:rural|urbano)?\s*0?\d?)\b/);
+        let h = `📈 <strong>Desempenho ${escHtml(per.label)}</strong> (${dataBRX(R.de)} a ${dataBRX(R.ate)}) — ${fmtX(R.total)} ocorrência(s) em ${fmtX(R.turnos.A + R.turnos.B + R.turnos.C + R.turnos.D)} turno(s) de 24h.<br>`;
+        if (g) {
+            const x = R.grupos.find(y => y.grupo === g[1].toUpperCase());
+            h += `<br><strong>Grupo ${x.grupo}</strong> — ${x.turnos} turno(s): ${fmtX(x.total)} ocorrências (${fmtX(x.porTurno, 1)} por turno), ${fmtX(x.iniciativa)} por iniciativa própria, ${fmtX(x.armas)} arma(s), ${pesoX(x.drogasG)} de drogas, ${fmtX(x.tco)} TCO, ${fmtX(x.mandados)} mandado(s), ${fmtX(x.presos)} prisão(ões).`;
+        } else if (rp) {
+            const alvo = NORM(rp[1]).replace(/\s+/g, ' ');
+            const x = R.guarnicoes.find(y => NORM(y.guarnicao).replace(/\s+0?/g, ' ').includes(alvo.replace(/\s+0?/g, ' ')));
+            h += x ? `<br><strong>${escHtml(x.guarnicao)}</strong>: ${fmtX(x.total)} ocorrências (${fmtX(x.porTurno, 1)} por turno), ${fmtX(x.iniciativa)} por iniciativa própria, ${fmtX(x.armas)} arma(s), ${pesoX(x.drogasG)} de drogas, ${fmtX(x.tco)} TCO, ${fmtX(x.mandados)} mandado(s), ${fmtX(x.presos)} prisão(ões).` : '<br>Não encontrei essa guarnição no período.';
+        } else {
+            h += '<br><strong>Por grupo</strong> (média por turno):<br>' + R.grupos.map(x => `• Grupo ${x.grupo}: ${fmtX(x.total)} (${fmtX(x.porTurno, 1)}/turno) · iniciativa ${fmtX(x.iniciativa)} · drogas ${pesoX(x.drogasG)} · TCO ${fmtX(x.tco)}`).join('<br>');
+            h += '<br><br><strong>Guarnições com mais ocorrências</strong>:<br>' + R.guarnicoes.filter(x => !x.estimada).slice(0, 8).map((x, i) => `${i + 1}º ${escHtml(x.guarnicao)} — ${fmtX(x.total)} (iniciativa ${fmtX(x.iniciativa)}, TCO ${fmtX(x.tco)}, drogas ${pesoX(x.drogasG)})`).join('<br>');
+        }
+        h += `<br><br><small>Atribuição: CAD/solicitante/relato do despachante; ${fmtX(R.atribuicaoEstimadaPct, 0)}% estimadas pela área. Painel completo em <a href="${prefixoPagina()}page/controle-operacoes.html">Controle de Operações → Desempenho</a>.</small>`;
+        return h;
+    }
+
+    // 3) Operações (OPO) do Controle de Operações + resultados
+    function ehOperacoes(q) { return (/\bopo\b|\bopos\b|operac(ao|oes)|sufocamento/.test(q)) && !ehCartaoPrograma(q) && !/montar|gerar|criar|cadastrar/.test(q); }
+    async function responderOperacoes(q) {
+        await garantirConfig().catch(() => {});
+        if (!DATABASE_URL) return '⚠️ Sem conexão com a base da unidade.';
+        const [cp, res] = await Promise.all([
+            fetch(`${DATABASE_URL}/cartoes_programa.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+            fetch(`${DATABASE_URL}/operacoes_resultados.json`).then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+        const pd = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+        let opos = Object.entries(cp || {}).filter(([, o]) => o && o.tipo === 'opo').map(([id, o]) => {
+            const ex = o.execucao || {}; const ini = pd(ex.dataIni) || pd(o.criadoEm), fim = pd(ex.dataFim) || ini;
+            return { id, o, ini, fim, r: (res || {})['opo_' + id] };
+        });
+        if (/sufocamento/.test(q)) opos = opos.filter(x => x.o.modalidade === 'sufocamento');
+        const termo = (q.match(/(?:operac(?:ao|oes)|opo)\s+(?:de\s+|da\s+|do\s+)?([a-z0-9 ]{3,40})/) || [])[1];
+        const andamento = /andamento|ativa|hoje|vigente|em curso/.test(q);
+        let lista = opos;
+        if (andamento) lista = opos.filter(x => x.ini && x.ini <= hoje && (x.fim || x.ini) >= hoje);
+        else if (termo && !/^(em|de|da|do|deste|desse|este|mes|ano)\b/.test(termo)) {
+            const t = NORM(termo).trim(); const achou = opos.filter(x => NORM(`${x.o.nome || ''} ${x.o.cidade || ''} ${(x.o.cidades || []).join(' ')}`).includes(t));
+            if (achou.length) lista = achou;
+        } else {
+            const per = detectarPeriodo(q);
+            lista = opos.filter(x => x.ini && x.ini <= per.fim && (x.fim || x.ini) >= per.ini);
+        }
+        lista.sort((a, b) => (b.ini || 0) - (a.ini || 0));
+        if (!lista.length) return `🎯 Não encontrei operações ${andamento ? 'em andamento' : 'nesse recorte'}. ${opos.length} OPO(s) salvas no total.`;
+        return `🎯 <strong>${lista.length} operação(ões)</strong>${andamento ? ' em andamento' : ''}:<br>` + lista.slice(0, 10).map(x => {
+            const k = x.r && x.r.kpi, m = x.r && x.r.mesAnterior && x.r.mesAnterior.kpi;
+            const varia = (a, b) => (a == null || b == null) ? '' : !b ? (a ? ' ▲' : '') : ` (${a >= b ? '▲' : '▼'} ${fmtX(Math.abs((a - b) / b * 100))}% vs mês anterior)`;
+            return `• <strong>${escHtml(x.o.nome || 'OPO ' + (x.o.cidade || ''))}</strong>${x.o.modalidade === 'sufocamento' ? ' [SUFOCAMENTO]' : ''} — ${x.ini ? dataBRX(x.ini) : '?'}${x.fim && x.fim - x.ini ? ' a ' + dataBRX(x.fim) : ''} · ${escHtml((x.o.cidades || [x.o.cidade]).filter(Boolean).join(', '))}` +
+                (k ? `<br>&nbsp;&nbsp;Resultados: ${fmtX(k.ocorrencias)} ocorrências${varia(k.ocorrencias, m && m.ocorrencias)}, ${fmtX(k.prisoes)} prisões, ${pesoX(k.drogasG)} de drogas, ${fmtX(k.armas)} arma(s), ${fmtX(k.materiais)} material(is).` : '<br>&nbsp;&nbsp;<small>Resultados ainda não computados no Controle de Operações.</small>');
+        }).join('<br>') + `<br><br><small>Detalhes, relatório e comparação com o mês anterior em <a href="${prefixoPagina()}page/controle-operacoes.html">Controle de Operações</a>.</small>`;
+    }
+
+    // 4) Ficha Alvo / ORCRIM do ExchelonX (P2 / ADMIN, via atualizador local)
+    function ehFichaAlvo(q) { return /ficha\s*(do\s*)?alvo|exchelon|orcrim|faccao|relint/.test(q); }
+    async function responderFichaAlvo(textoOriginal, q) {
+        const sess = window.P3 && P3.getSession ? P3.getSession() : null;
+        if (!sess || (sess.nivel !== 'p2' && sess.nivel !== 'admin')) return '🔒 Dados do ExchelonX (Ficha Alvo / ORCRIM) são restritos à P2 e ao ADMIN.';
+        const base = (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
+        const termo = (textoOriginal.match(/(?:ficha\s*(?:do\s*)?alvo|alvo|orcrim|fac[cç][aã]o|relint)\s*(?:de|do|da|:)?\s*(.+)$/i) || [])[1];
+        try {
+            if (!termo || termo.trim().length < 2) {
+                const g = await fetch(`${base}/relint/grupos`).then(r => r.json());
+                return `🕸 ORCRIM/facções cadastradas no ExchelonX: ${(g.grupos || []).map(x => `<strong>${escHtml(x.nome)}</strong> (${x.integrantes})`).join(', ') || 'nenhuma'}.<br><small>Pergunte "ficha alvo de NOME" para o resumo de uma pessoa.</small>`;
+            }
+            const b = await fetch(`${base}/relint/buscar?q=${encodeURIComponent(termo.trim())}`).then(r => r.json());
+            if (b.autorizado === false) return '🔒 O atualizador local recusou o acesso — faça login no Sistema P3 (exe) com nível P2 ou ADMIN.';
+            if ((b.grupos || []).length && /orcrim|fac[cç]/i.test(textoOriginal)) {
+                const gr = b.grupos[0];
+                return `🕸 <strong>${escHtml(gr.nome)}</strong> (${escHtml(gr.tipo)}) — ${gr.integrantes} integrante(s) cadastrados. Monte o relatório em <a href="${prefixoPagina()}page/relint.html">RELINT</a>.`;
+            }
+            const p = (b.pessoas || [])[0];
+            if (!p) return `Não encontrei “${escHtml(termo)}” no ExchelonX.`;
+            const f = (await fetch(`${base}/relint/ficha?id=${encodeURIComponent(p.id)}`).then(r => r.json())).ficha;
+            const end = (f.enderecos || [])[0], abertos = (f.mandados || []).filter(m => !/cumprid|baixad|revogad/i.test(m.status || ''));
+            const crimes = [...new Set((f.fichaCriminal || []).filter(r => /suspeito|autor/i.test(r.papel || '')).map(r => String(r.crimes || '').toLowerCase()).filter(Boolean))];
+            return `🗂 <strong>${escHtml(f.dados.nome)}</strong>${(f.apelidos || []).length ? ` — vulgo “${escHtml(f.apelidos.join(' / '))}”` : ''}${b.pessoas.length > 1 ? ` <small>(+${b.pessoas.length - 1} resultado(s) parecido(s))</small>` : ''}<br>` +
+                `${end ? `📍 ${escHtml(end.texto)}<br>` : ''}` +
+                `${(f.grupos || []).length ? `🕸 ${f.grupos.map(g => escHtml(g.nome + (g.funcao ? ' · ' + g.funcao : ''))).join('; ')}<br>` : ''}` +
+                `⚖ Mandados em aberto (Agência): ${abertos.length}${abertos.length ? ' — ' + abertos.map(m => escHtml(`${m.tipo || ''} ${m.numero || ''}`)).join('; ') : ''}<br>` +
+                `🚨 Registros como suspeito/autor: ${crimes.length ? escHtml(crimes.slice(0, 8).join(', ')) : 'nenhum'}<br>` +
+                `📣 Denúncias: ${(f.denuncias || []).length} · ℹ Informações: ${(f.informacoes || []).length} · 🔗 Vínculos: ${(f.vinculos || []).length} · 🚗 Veículos: ${(f.veiculos || []).length} · 📷 Fotos: ${(f.fotos || []).length}<br>` +
+                `<small>Ficha completa, Consulta Integrada (CAD/BNMP/TJ) e RELINT em <a href="${prefixoPagina()}page/relint.html">Relatório de Inteligência</a>.</small>`;
+        } catch (e) {
+            return '⚠️ Não consegui acessar o ExchelonX — o atualizador local (Sistema P3 exe) precisa estar aberto, com login P2/ADMIN.';
+        }
+    }
+
     async function responderCartaoPrograma(q, qMin) {
         const chaveRP = detectarRPNaPergunta(q);
         if (!chaveRP) {
@@ -2759,6 +2894,7 @@
         // cadastro exata — nunca deixar a IA "resumir" isso, sempre regra.
         const ehIdentificador = !!extrairIdentificador(qMin) || !!extrairNomeProvavel(textoOriginal, qMin);
         const ehIntentoDeterministico = ehSaudacao(qMin) || ehAjuda(qMin) || ehForaDeEscopo(qMin) || ehPrevisao(qMin) || ehCadastroEvento(qMin) || ehEventos(qMin) || !!contextoPendenteValido() ||
+            ehFichaAlvo(qMin) || ehGrupoServico(qMin) || ehDesempenho(qMin) || ehOperacoes(qMin) ||
             ehCriticidade(qMin) || ehCartaoPrograma(qMin) || ehAtendenteCopom(qMin) || ehComarcaArquivamentos(qMin) || ehRankingMilitaresTCO(qMin) ||
             ehAceitabilidadePorLocal(qMin) || ehVisitasSugeridas(qMin) ||
             ehLocalizacaoDroga(qMin) || ehMateriais(qMin) ||
@@ -2848,6 +2984,11 @@
         // (sem número-de-ocorrência), então precisa de rota própria antes
         // do fallback genérico de categoria.
         if (ehEventos(qMin)) return await responderEventos(textoOriginal, q, qMin);
+        // Fontes novas (Controle de Operações / Desempenho / Escala / ExchelonX)
+        if (ehFichaAlvo(qMin)) return await responderFichaAlvo(textoOriginal, qMin);
+        if (ehGrupoServico(qMin)) return await responderGrupoServico(qMin);
+        if (ehDesempenho(qMin)) return await responderDesempenho(qMin);
+        if (ehOperacoes(qMin)) return await responderOperacoes(qMin);
 
         // Consulta direta por identificador (CPF/boletim/processo/nome) —
         // checado cedo, antes de qualquer detecção de categoria/estatística,
@@ -3272,7 +3413,11 @@
         • "tipificação mais comum de drogas este mês"<br>
         • "MVI do 1º semestre de 2026 comparado com o mesmo período de 2025 mês a mês"<br>
         • "resumo de hoje" / "resumo de 2026 mês a mês de MVI e CVP"<br>
-        • "quero cadastrar um novo evento" (te explico como anexar o ofício)<br><br>
+        • "quero cadastrar um novo evento" (te explico como anexar o ofício)<br>
+        • "qual grupo está de serviço hoje?" / "grupo de serviço dia 15/04" (escala, turno 08h→08h)<br>
+        • "desempenho das guarnições em abril" / "produtividade do grupo B este mês" / "desempenho da RP 03"<br>
+        • "quais operações estão em andamento?" / "resultado da operação Impacto" / "operações de sufocamento"<br>
+        • "ficha alvo de FULANO" / "ORCRIM cadastradas" (ExchelonX — só P2/ADMIN)<br><br>
         Períodos que entendo: hoje, ontem, esta semana, este mês, mês passado, este ano, ano passado, um ano específico (ex.: 2025), um mês (ex.: "em março"), mês+ano juntos, intervalo de meses ("de janeiro a julho") e 1º/2º semestre. Se eu não entender o período, uso o ano atual.`;
     }
 
