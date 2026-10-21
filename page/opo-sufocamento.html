@@ -53,11 +53,14 @@
         .su-area-lbl { background: #b91c1c; color: #fff; border-radius: 50%; width: 26px; height: 26px; display: grid; place-items: center; font: 800 12px Arial; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.5); }
         .su-pos { background: #1d4ed8; color: #fff; border-radius: 4px; padding: 1px 4px; font: 700 9px Arial; white-space: nowrap; border: 1px solid #fff; }
         .su-sat { background: #111; color: #ffd54f; border-radius: 4px; padding: 1px 4px; font: 700 9px Arial; white-space: nowrap; border: 1px solid #ffd54f; }
-        #su-doc { display: none; }
+        .su-doc-fundo { background: #8a8f98; padding: 18px; border-radius: 8px; overflow: auto; }
         @media (max-width: 1050px) { .su-grade { grid-template-columns: 1fr; } }
         @media print {
-            header, .navegacao, footer, .su-topo, .su-grade > aside, .su-acoes, #su-painel, .su-noprint { display: none !important; }
-            #su-doc { display: block !important; } main { padding: 0 !important; }
+            header, .navegacao, footer, .su-topo, .su-grade, .su-noprint, #su-doc-card > h3, .xerife-bolha, #xerife-bolha { display: none !important; }
+            #su-doc-card { display: block !important; border: 0 !important; padding: 0 !important; margin: 0 !important; background: #fff !important; }
+            .su-doc-fundo { background: #fff !important; padding: 0 !important; overflow: visible !important; }
+            body, main, .pagecomplete { background: #fff !important; padding: 0 !important; margin: 0 !important; display: block !important; }
+            @page { size: A4; margin: 12mm; }
         }
     </style>
 </head>
@@ -85,8 +88,9 @@
                     <div class="su-card"><h3>2. Execução</h3>
                         <div class="su-form">
                             <label class="larga">Nome da operação<input id="su-nome" placeholder="Ex.: OPERAÇÃO SUFOCAMENTO — PALMEIRA"></label>
-                            <label>Data<input type="date" id="su-data"></label>
-                            <label>Áreas (máx.)<select id="su-nareas"><option>3</option><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select></label>
+                            <label>De<input type="date" id="su-data-ini"></label>
+                            <label>Até<input type="date" id="su-data-fim"></label>
+                            <label class="larga">Áreas (máx.)<select id="su-nareas"><option>3</option><option>4</option><option selected>6</option><option>8</option><option>10</option><option>12</option></select></label>
                             <label>Início<input type="time" id="su-hini" value="19:00"></label>
                             <label>Término<input type="time" id="su-hfim" value="23:00"></label>
                             <label>Tempo por área<select id="su-dur"><option value="30" selected>30 min</option><option value="20">20 min</option><option value="40">40 min</option><option value="45">45 min</option></select></label>
@@ -107,7 +111,8 @@
                     <div class="su-card"><h3>Cronograma de execução</h3><div id="su-crono"><div class="su-vazio">—</div></div></div>
                 </div>
             </div>
-            <div id="su-doc"></div>
+            <div class="su-card" id="su-doc-card" style="display:none;"><h3>📄 OPO gerada — visualização do documento <small style="font-weight:400;color:var(--p3-text-muted);">(o mesmo conteúdo vai para o PDF, o Word e o Controle de Operações)</small></h3>
+                <div class="su-doc-fundo"><div id="su-doc"></div></div></div>
         </main>
     </section>
     <footer><div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div></footer>
