@@ -45,7 +45,7 @@
         .h-dir { text-align: right; display: flex; align-items: center; gap: 14px; }
         .relogio b { display: block; font-size: 1.6rem; font-weight: 800; font-variant-numeric: tabular-nums; }
         .relogio small { font-size: .78rem; opacity: .85; }
-        .h-btn { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 8px; padding: 7px 11px; font: 600 .8rem Inter, Arial; cursor: pointer; }
+        .h-btn { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25); color: #fff; border-radius: 8px; padding: 7px 11px; font: 600 .8rem Inter, Arial; cursor: pointer; text-decoration: none;}
         .h-btn:hover { background: rgba(255,255,255,.22); }
         main { flex: 1; padding: 22px 28px; width: 100%; max-width: 1600px; margin: 0 auto; }
         .barra { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -98,6 +98,7 @@
             <div class="relogio"><b id="pc-hora">--:--</b><small id="pc-data"></small></div>
             <button class="h-btn" id="pc-tema" title="Alternar tema claro/escuro">◐</button>
             <button class="h-btn" id="pc-tela" title="Tela cheia">⛶</button>
+            <a class="h-btn" href="/index.html">Home</a>
         </div>
     </header>
     <main>
