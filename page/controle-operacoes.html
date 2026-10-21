@@ -121,7 +121,7 @@
         .co-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
         .co-graf { position: relative; height: 270px; }
         .co-tab { width: 100%; border-collapse: collapse; font-size: .75rem; }
-        .co-tab th { text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--p3-border); color: var(--p3-text); background: rgba(47,95,221,.06); position: sticky; top: 0; }
+        .co-tab th { text-align: left; padding: 6px 8px; border-bottom: 2px solid var(--p3-border); color: var(--p3-text); background-color: var(--p3-surface); background-image: linear-gradient(rgba(47,95,221,.08), rgba(47,95,221,.08)); position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--p3-border); }
         .co-tab td { padding: 5px 8px; border-bottom: 1px solid var(--p3-border); color: var(--p3-text); vertical-align: top; }
         .co-scroll { max-height: 420px; overflow: auto; }
         .co-aviso { font-size: .78rem; background: rgba(181,134,10,.1); border: 1px solid rgba(181,134,10,.35); color: var(--p3-text); border-radius: 8px; padding: .55rem .8rem; display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
@@ -166,6 +166,45 @@
         .co-comp summary { color: var(--p3-blue-700); }
         @media (max-width: 860px) { .co-ocor-grade { grid-template-columns: 1fr; height: auto; } .co-ocor-lista { max-height: 260px; } }
         .co-filtro-largo { flex: 1 1 340px; }
+        /* Desempenho por guarnição / grupo */
+        .dg-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 28px; }
+        .dg-chips-rot { font-size: .74rem; color: var(--p3-text-muted); }
+        .dg-chip { border: 1.5px solid var(--p3-blue-500); background: rgba(31,95,191,.10); color: var(--p3-text); border-radius: 16px; padding: 3px 10px; font: 600 .74rem var(--p3-font); cursor: pointer; }
+        .dg-chip-limpa { border-color: var(--p3-border); background: transparent; }
+        .dg-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .7rem; }
+        .dg-kpi { display: flex; gap: .6rem; align-items: center; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md); padding: .7rem .85rem; }
+        .dg-kpi > span { font-size: 1.4rem; } .dg-kpi small { display: block; font-size: .64rem; text-transform: uppercase; letter-spacing: .05em; color: var(--p3-text-muted); }
+        .dg-kpi b { display: block; font-size: 1.3rem; color: var(--p3-text); } .dg-kpi em { font-style: normal; font-size: .68rem; color: var(--p3-text-muted); }
+        .dg-clic { cursor: pointer; } .dg-kpi.dg-clic:hover { border-color: var(--p3-blue-500); }
+        .dg-sel { outline: 2px solid var(--p3-blue-500); outline-offset: -2px; background: rgba(31,95,191,.10) !important; }
+        .dg-graficos { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1rem; }
+        .dg-largo { grid-column: 1 / -1; }
+        .dg-graf { position: relative; height: 250px; } .dg-alto { height: 330px; }
+        .dg-h { margin: 0 0 .6rem; font-size: .9rem; color: var(--p3-text); } .dg-h small { font-weight: 400; font-size: .7rem; color: var(--p3-text-muted); }
+        .dg-tab { width: 100%; border-collapse: collapse; font-size: .76rem; }
+        .dg-tab th, .dg-tab td { padding: 5px 8px; border-bottom: 1px solid var(--p3-border); color: var(--p3-text); text-align: left; vertical-align: top; }
+        /* fundo opaco: com fundo translúcido as linhas apareciam por cima do cabeçalho ao rolar */
+        .dg-tab thead th { background-color: var(--p3-surface); background-image: linear-gradient(rgba(47,95,221,.10), rgba(47,95,221,.10)); position: sticky; top: 0; z-index: 3; box-shadow: 0 1px 0 var(--p3-border); white-space: nowrap; }
+        .dg-tab td small { display: block; }
+        .dg-var { display: block; font-style: normal; font-size: .66rem; font-weight: 700; margin-top: 2px; }
+        .dg-var.bom { color: var(--p3-success, #2e7d32); } .dg-var.ruim { color: var(--p3-danger, #c62828); } .dg-var.neutro { color: var(--p3-text-muted); }
+        .dg-tab tbody tr.dg-clic:hover td { background: rgba(31,95,191,.07); }
+        .dg-matriz td.dg-cel { text-align: center; font-weight: 700; min-width: 90px; } .dg-matriz td small { display: block; font-weight: 400; font-size: .64rem; color: var(--p3-text-muted); }
+        .dg-matriz thead th small { font-weight: 400; color: var(--p3-text-muted); }
+        .dg-gbadge { display: inline-block; min-width: 20px; text-align: center; color: #fff; border-radius: 5px; font-weight: 700; font-size: .7rem; padding: 1px 5px; }
+        .dg-tag { display: inline-block; font-size: .64rem; background: rgba(31,95,191,.12); border-radius: 10px; padding: 1px 6px; margin: 1px 2px 1px 0; }
+        .dg-top { font-weight: 800; color: var(--p3-success) !important; }
+        .dg-esc-gs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: .7rem; }
+        .dg-esc-gs span { border: 1px solid var(--p3-border); border-radius: 16px; padding: 3px 10px; font-size: .74rem; color: var(--p3-text); }
+        .dg-cal { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 4px; }
+        .dg-cal-d { border: 1px solid var(--p3-border); border-radius: 6px; text-align: center; padding: 2px; cursor: pointer; }
+        .dg-cal-d small { display: block; font-size: .6rem; color: var(--p3-text-muted); } .dg-cal-d b { display: block; color: #fff; border-radius: 4px; font-size: .74rem; }
+        .dg-escala-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: .7rem; }
+        .dg-esc { border: 1px solid var(--p3-border); border-radius: 9px; padding: .6rem .7rem; font-size: .76rem; color: var(--p3-text); }
+        .dg-esc-tit { font-weight: 800; margin-bottom: .35rem; }
+        .dg-esc-g { display: grid; grid-template-columns: 22px 1fr; column-gap: 6px; row-gap: 1px; margin-bottom: .35rem; }
+        .dg-esc-g > span { grid-row: span 6; color: #fff; font-weight: 800; border-radius: 5px; display: grid; place-items: center; height: 22px; }
+        .dg-esc-g small { color: var(--p3-text-muted); } .dg-obs { font-style: italic; color: var(--p3-text-muted); }
         .co-comp-grade { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, 1fr); gap: 1rem; align-items: center; margin-bottom: .8rem; }
         .co-comp-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .8rem; align-items: start; }
         @media (max-width: 860px) { .co-comp-grade { grid-template-columns: 1fr; } }
@@ -208,6 +247,7 @@
                     <button class="ativo" data-view="geral"><span class="co-ic">🏠</span>Visão Geral</button>
                     <button data-view="estatisticas"><span class="co-ic">📊</span>Estatísticas</button>
                     <button data-view="relatorio"><span class="co-ic">🖨</span>Relatório</button>
+                    <button data-view="desempenho"><span class="co-ic">📈</span>Desempenho</button>
                     <div class="co-menu-rodape">OPOs: salvas na OPO Inteligente.<br>Eventos: cadastro de Eventos (médio e grande porte).<br>Resultados: CAD da unidade.</div>
                 </aside>
 
@@ -221,6 +261,7 @@
                                 <div class="co-busca-res" id="co-busca-res"></div>
                             </div>
                             <button class="co-btn co-btn-pri" id="co-btn-nova">➕ Nova OPO Inteligente</button>
+                            <a class="co-btn" href="opo-sufocamento.html" style="background:#b91c1c;border-color:#b91c1c;color:#fff;text-decoration:none;">🔥 Operação Sufocamento</a>
                         </div>
                         <div class="co-kpis" id="co-kpis-mes"></div>
                         <div id="co-aviso-mes"></div>
@@ -282,6 +323,9 @@
                     </section>
 
                     <!-- ── RELATÓRIO ── -->
+                    <!-- Desempenho por guarnição e por grupo (js/desempenho-guarnicoes.js) -->
+                    <section class="co-view" id="view-desempenho"></section>
+
                     <section class="co-view" id="view-relatorio">
                         <div class="co-card">
                             <div class="co-card-topo">
@@ -372,5 +416,6 @@
     <!-- Cálculo dos resultados (o mesmo da aba "Controle de OPO" do Dashboard Cruzado) -->
     <script src="../js/dashboard-controle-opo.js"></script>
     <script src="../js/controle-operacoes.js"></script>
+    <script src="../js/desempenho-guarnicoes.js"></script>
 </body>
 </html>
