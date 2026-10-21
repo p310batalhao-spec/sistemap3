@@ -71,7 +71,7 @@
                 nome: o.nome || ('OPO ' + (o.cidade || '')), dias, ini, fim: p.fonte === 'estimado' ? parseData(p.fim) : fimPlan,
                 hIni: p.hIni, hFim: p.hFim, cidades: ControleOPO.cidadesDaOpo(o),
                 fonte: p.fonte, semExecucao: p.fonte === 'estimado', tiposCombate: o.tiposCombate || [],
-                eventoId: o.eventoId || null, eventoNome: o.eventoNome || null, temDocumento: !!o.temDocumento, modelo: o.modelo || null,
+                eventoId: o.eventoId || null, eventoNome: o.eventoNome || null, temDocumento: !!o.temDocumento, modelo: o.modelo || null, modalidade: o.modalidade || null,
                 detalhe: [o.criadoPor && 'Criada por ' + o.criadoPor, o.vigenciaTexto && 'Vigência: ' + o.vigenciaTexto].filter(Boolean).join(' · '),
             };
         });
@@ -238,6 +238,7 @@
         const d = it.ini;
         const tag = (it.tipo === 'opo' ? `<span class="co-tag" style="background:${COR.opo}">OPO</span>` : `<span class="co-tag" style="background:${COR[it.porte]}">${it.porte === 'GRANDE' ? 'GRANDE' : 'MÉDIO'}</span>`)
             + (it.tipo === 'opo' && it.eventoId ? '<span class="co-tag" style="background:#6d4c41">EVENTO</span>' : '')
+            + (it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')
             + (it.tipo === 'evento' && opoDoEvento(it).length ? '<span class="co-tag" style="background:#1f5fbf">COM OPO</span>' : '');
         const horario = it.hIni ? `${it.hIni}${it.hFim ? '–' + it.hFim : ''}` : 'dia inteiro';
         const periodo = it.tipo === 'opo' && !it.semExecucao && it.dias.length > 1 ? `${br(parseData(it.dias[0]))} a ${br(parseData(it.dias[it.dias.length - 1]))} · ` : '';
@@ -354,6 +355,8 @@
     // depois, com o atualizador local, o detalhe completo direto do CAD
     // (mesma rota da Busca Integrada: /pessoa/ocorrencia-detalhe?tipo=despacho).
     const CAD_CACHE = {};
+    // Também usado pelo painel de desempenho (js/desempenho-guarnicoes.js).
+    window.CO_abrirOcorrencias = (...args) => abrirOcorrencias(...args);
     function abrirOcorrencias(titulo, lista, boletimInicial) {
         const m = document.getElementById('co-ocor');
         document.getElementById('co-ocor-tit').textContent = `🚨 ${titulo} (${lista.length})`;
@@ -510,7 +513,7 @@
         const res = buscarOPOs(q);
         if (nrm(q).trim().length < 2) { out.classList.remove('aberto'); out.innerHTML = ''; return; }
         out.innerHTML = res.length ? res.slice(0, 30).map(it => `<div class="co-busca-item" data-ir="${esc(it.dias[0])}" data-chave="${esc(it.chave)}">
-                <b>${esc(it.nome)}</b>${it.eventoId ? ' <span class="co-tag" style="background:#6d4c41">EVENTO</span>' : ''}
+                <b>${esc(it.nome)}</b>${it.eventoId ? ' <span class="co-tag" style="background:#6d4c41">EVENTO</span>' : ''}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}
                 <small>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''} · ${esc(it.cidades.join(', ') || 'área completa')}${it.hIni ? ` · ${it.hIni}–${it.hFim}` : ''}</small></div>`).join('')
             + (res.length > 30 ? `<div class="co-det-meta" style="padding:.4rem .7rem;">+${res.length - 30} resultado(s) — refine a busca.</div>` : '')
             : '<div class="co-det-meta" style="padding:.6rem .8rem;">Nenhuma OPO encontrada.</div>';
@@ -559,7 +562,7 @@
                 das <input type="time" data-e="hIni" value="${esc(it.hIni)}"> às <input type="time" data-e="hFim" value="${esc(it.hFim)}">
                 <button class="co-btn co-btn-pri" data-salvar-exec="${esc(it.chave)}">Salvar execução</button></div>` : '';
         return `<div class="co-det" style="--c:${cor}">
-            <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}</h4>
+            <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}</h4>
             <div class="co-det-meta">${meta}</div>${filtro}<div class="co-det-res">${kp}</div>
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
@@ -776,7 +779,8 @@
         document.getElementById('co-doc-refazer').textContent = it.modelo === 'evento' ? '✏️ Editar OPO' : '🔁 Gerar novamente';
         document.getElementById('co-doc-refazer').onclick = () => {
             m.classList.remove('aberto');
-            if (it.modelo === 'evento') abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(it.eventoId)) || null, it);
+            if (it.modalidade === 'sufocamento') location.href = 'opo-sufocamento.html?data=' + encodeURIComponent((it.raw.execucao || {}).dataIni || '') + '&cidade=' + encodeURIComponent(it.raw.cidade || '');
+            else if (it.modelo === 'evento') abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(it.eventoId)) || null, it);
             else abrirNovaOPO(prefillOpo(it));
         };
         if (!DOC_ATUAL || !DOC_ATUAL.html) {
@@ -1135,6 +1139,7 @@
         document.querySelectorAll('.co-view').forEach(v => v.classList.toggle('ativa', v.id === 'view-' + view));
         if (view === 'estatisticas') renderEstatisticas();
         if (view === 'relatorio') renderRelatorio();
+        if (view === 'desempenho' && window.DesempenhoGuarnicoes) window.DesempenhoGuarnicoes.abrir();
     }
 
     async function iniciar() {
