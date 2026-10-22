@@ -11,8 +11,8 @@
     <!--
         PAINEL DO COMANDO (acesso livre, sem login) — acompanhamento dos
         indicadores da unidade: 2025 × 2026, mês atual e total do ano.
-        Fontes (Firebase da unidade): /geral (total e MVI), /tco, /cvp, /arma,
-        /droga, /violencia_domestica, /sossego — com as MESMAS regras dos cards
+        Fontes (Firebase da unidade): /geral (total, MVI e CVLI), /tco, /cvp,
+        /arma, /droga, /mandados, /violencia_domestica, /sossego; trânsito = AITs do Apps Script (page/ait.html) — com as MESMAS regras dos cards
         do index (js/index.js), para os números baterem.
         Atualiza sozinho a cada 10 minutos.
     -->
@@ -77,6 +77,26 @@
         .var.bom { color: var(--bom); background: var(--bom-bg); } .var.ruim { color: var(--ruim); background: var(--ruim-bg); } .var.neutro { color: var(--neutro); background: var(--neutro-bg); }
         tr.total td { background: var(--surface-2); }
         tr.total .v { font-size: 2.3rem; }
+        tr.linha { cursor: pointer; }
+        tr.linha.aberta td { background: var(--surface-2); }
+        td.tema em.seta { font-style: normal; color: var(--muted); font-size: .9rem; margin-left: 8px; }
+        tr.det > td { padding: 0 0 6px; background: var(--surface-2); text-align: left; }
+        tr.det:hover td { background: var(--surface-2); }
+        .det-box { margin: 0 14px 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .det-abas { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+        .det-abas button { border: 1px solid var(--border); background: var(--surface-2); color: var(--muted); font: 600 .76rem Inter, Arial; padding: 5px 11px; border-radius: 999px; cursor: pointer; }
+        .det-abas button.on { background: var(--navy-2); border-color: var(--navy-2); color: #fff; }
+        .det-abas span { margin-left: auto; font-size: .72rem; color: var(--muted); }
+        table.det-tab { min-width: 0; }
+        .det-tab thead th { font-size: .66rem; padding: 8px 10px; }
+        .det-tab thead tr:first-child th { font-size: .66rem; padding: 8px 10px; border-bottom: 1px solid var(--border); letter-spacing: .07em; }
+        .det-tab td { padding: 8px 10px; font-size: .86rem; }
+        .det-tab tbody tr:hover td { background: var(--surface-2); }
+        .det-tab td.tema { font-weight: 600; font-size: .8rem; max-width: 420px; }
+        .det-tab td b { font-size: 1.05rem; } .det-tab .c25 b { color: var(--c25); }
+        .det-tab .var { margin-top: 3px; font-size: .68rem; padding: 1px 7px; }
+        .barra-pct { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; min-width: 70px; } .barra-pct i { display: block; height: 100%; background: var(--c26); }
+        .det-tab td small { font-size: .7rem; color: var(--muted); }
         .rodape-card { padding: 12px 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: .76rem; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
         .carregando { padding: 60px; text-align: center; color: var(--muted); font-size: 1rem; }
         .skel { display: inline-block; width: 70px; height: 28px; border-radius: 6px; background: linear-gradient(90deg, var(--surface-2), var(--border), var(--surface-2)); background-size: 200% 100%; animation: sk 1.2s infinite; }
@@ -112,7 +132,7 @@
         <div class="card">
             <div class="card-topo"><h2>Indicadores da unidade — 2025 × 2026</h2><span id="pc-sub"></span></div>
             <div class="tab-wrap" id="pc-tabela"><div class="carregando">⏳ Carregando dados da base da unidade…</div></div>
-            <div class="rodape-card"><span id="pc-legenda">Variação de 2026 em relação a 2025: <b style="color:var(--bom)">verde</b> = melhora · <b style="color:var(--ruim)">vermelho</b> = piora (para crimes, aumento é piora; para TCO, armas e drogas apreendidas, aumento é melhora).</span><span id="pc-atual"></span></div>
+            <div class="rodape-card"><span id="pc-legenda">Variação de 2026 em relação a 2025: <b style="color:var(--bom)">verde</b> = melhora · <b style="color:var(--ruim)">vermelho</b> = piora (para crimes, aumento é piora; para TCO, armas, drogas, mandados cumpridos e AITs de trânsito, aumento é melhora). Clique em um tema para ver as tipificações.</span><span id="pc-atual"></span></div>
         </div>
     </main>
     <footer>Seção de Planejamento, Instrução e Estatística — P3/10º BPM · atualização automática a cada 10 minutos</footer>
@@ -170,26 +190,54 @@
             const d = await r.json();
             return d ? Object.values(d).filter(Boolean) : [];
         }
-        // Temas: { lista de registros com .d (Date), valor por registro, sentido }
+        // Temas: lista de registros { d: Date, dims: { tip:[], cid:[], tipo?:[] }, g?, gPor? }
         // sentido: 1 = aumento é melhora · -1 = aumento é piora · 0 = neutro
+        const limpa = s => String(s || '').split('|')[0].replace(/\s+/g, ' ').trim().toUpperCase() || 'NÃO INFORMADA';
+        const tipDe = o => limpa(o.TIPIFICACAO_GERAL || o.TIPIFICACAO || o.NATUREZA_GERAL || o.NATUREZA_DESPACHO);
+        const cidDe = o => limpa(o.CIDADE);
+        const reg = (o, extra) => { const d = parseData(o.DATA); return d ? Object.assign({ d, dims: { tip: [tipDe(o)], cid: [cidDe(o)] } }, extra || {}) : null; };
+        const regs = (arr, f) => arr.map(o => reg(o, f ? f(o) : null)).filter(Boolean);
+        // CVLI (mesma regra do Dashboard Cruzado): homicídio, feminicídio e latrocínio, inclusive tentativas
+        const isCVLI = o => { const t = NORM(String(o.TIPIFICACAO_GERAL || o.TIPIFICACAO || '').split('|')[0]); return /HOMICIDIO|FEMINI|LATROCINIO/.test(t) && !/ACHADO|SUICIDIO/.test(t); };
+        // Trânsito: AITs (autos de infração) — MESMA fonte do card "Infrações de Trânsito"
+        // do index (Apps Script da unidade, page/ait.html). Período = "DATA DO AIT";
+        // detalhamento pela "DESCRIÇÃO" e pela "CIDADE".
+        const URL_AIT = 'https://script.google.com/macros/s/AKfycbyNpjC9Ul4XRllFSciCj6hA62u74K8VIdXo1ecND-VCg1RiJCETqCWnrKKNN3bQtChOTg/exec';
+        async function carregarAIT() {
+            try {
+                const r = await fetch(URL_AIT + '?action=read');
+                const d = await r.json();
+                return Array.isArray(d) ? d : [];
+            } catch (e) { console.warn('[painel-comando] AIT', e); return null; }
+        }
         async function carregar() {
-            const [geral, tco, cvp, arma, droga, vd, sossego] = await Promise.all(['geral', 'tco', 'cvp', 'arma', 'droga', 'violencia_domestica', 'sossego'].map(no));
-            const comData = arr => arr.map(o => ({ o, d: parseData(o.DATA) })).filter(x => x.d);
-            // drogas: 1 ocorrência por boletim (o nó tem 1 registro por item apreendido) + peso total
+            const [[geral, tco, cvp, arma, droga, vd, sossego, mandados], ait] = await Promise.all([
+                Promise.all(['geral', 'tco', 'cvp', 'arma', 'droga', 'violencia_domestica', 'sossego', 'mandados'].map(no)), carregarAIT()]);
+            const regAIT = (ait || []).map(o => { const d = parseData(o['DATA DO AIT']); return d ? { d, dims: { tip: [limpa(o.DESCRICAO || o['DESCRIÇÃO'])], cid: [limpa(o.CIDADE)] } } : null; }).filter(Boolean);
+            // drogas: 1 ocorrência por boletim (o nó tem 1 registro por item apreendido) + peso total e por tipo
             const porBol = {};
-            comData(droga).forEach(x => { const k = String(x.o.BOLETIM || '').replace(/\D/g, '') || Math.random(); const p = porBol[k] || (porBol[k] = { d: x.d, g: 0 }); p.g += gramas(x.o); });
-            const ultima = comData(geral).reduce((m, x) => x.d > m ? x.d : m, new Date(0));
+            droga.forEach((o, i) => {
+                const r = reg(o); if (!r) return;
+                const k = String(o.BOLETIM || '').replace(/\D/g, '') || 'x' + i, tipo = limpa(o.TIPO_DROGA), g = gramas(o);
+                const p = porBol[k] || (porBol[k] = Object.assign(r, { g: 0, gPor: {} }));
+                p.g += g; p.gPor[tipo] = (p.gPor[tipo] || 0) + g;
+                p.dims.tipo = Object.keys(p.gPor);
+            });
+            const ultima = geral.reduce((m, o) => { const d = parseData(o.DATA); return d && d > m ? d : m; }, new Date(0));
             DADOS = {
                 ultima,
                 temas: [
-                    { id: 'total', nome: 'Total de Ocorrências', ic: '🚨', nota: 'todas as ocorrências do CAD', reg: comData(geral), sentido: 0, total: true },
-                    { id: 'tco', nome: 'TCO', ic: '📝', nota: 'termos circunstanciados lavrados', reg: comData(tco), sentido: 1 },
-                    { id: 'mvi', nome: 'MVI', ic: '☠', nota: 'mortes violentas intencionais', reg: comData(geral.filter(isMVI)), sentido: -1 },
-                    { id: 'cvp', nome: 'CVP', ic: '💰', nota: 'crimes violentos contra o patrimônio', reg: comData(cvp), sentido: -1 },
-                    { id: 'arma', nome: 'Armas', ic: '🔫', nota: 'armas apreendidas', reg: comData(arma), sentido: 1 },
-                    { id: 'droga', nome: 'Drogas', ic: '💊', nota: 'ocorrências com apreensão de drogas', reg: Object.values(porBol).map(x => ({ d: x.d, g: x.g })), sentido: 1, peso: true },
-                    { id: 'vd', nome: 'Violência Doméstica', ic: '🏠', nota: 'ocorrências de violência doméstica', reg: comData(vd), sentido: -1 },
-                    { id: 'sossego', nome: 'Perturbação do Sossego', ic: '🔊', nota: 'ocorrências de perturbação', reg: comData(sossego.filter(isPerturbacao)), sentido: -1 },
+                    { id: 'total', nome: 'Total de Ocorrências', ic: '🚨', nota: 'todas as ocorrências do CAD', reg: regs(geral), sentido: 0, total: true },
+                    { id: 'tco', nome: 'TCO', ic: '📝', nota: 'termos circunstanciados lavrados', reg: regs(tco), sentido: 1 },
+                    { id: 'mvi', nome: 'MVI', ic: '☠', nota: 'mortes violentas intencionais', reg: regs(geral.filter(isMVI)), sentido: -1 },
+                    { id: 'cvli', nome: 'CVLI', ic: '⚰', nota: 'crimes violentos letais intencionais (inclui tentativas)', reg: regs(geral.filter(isCVLI)), sentido: -1 },
+                    { id: 'cvp', nome: 'CVP', ic: '💰', nota: 'crimes violentos contra o patrimônio', reg: regs(cvp), sentido: -1 },
+                    { id: 'arma', nome: 'Armas', ic: '🔫', nota: 'armas apreendidas', reg: regs(arma, o => ({ dims: { tip: [tipDe(o)], cid: [cidDe(o)], tipo: [limpa(o.TIPO_ARMA)] } })), sentido: 1, abaTipo: 'Tipo de arma' },
+                    { id: 'droga', nome: 'Drogas', ic: '💊', nota: 'ocorrências com apreensão de drogas', reg: Object.values(porBol), sentido: 1, peso: true, abaTipo: 'Tipo de droga' },
+                    { id: 'mandados', nome: 'Cumprimento de Mandados', ic: '⚖', nota: 'mandados judiciais cumpridos', reg: regs(mandados), sentido: 1 },
+                    { id: 'vd', nome: 'Violência Doméstica', ic: '🏠', nota: 'ocorrências de violência doméstica', reg: regs(vd), sentido: -1 },
+                    { id: 'sossego', nome: 'Perturbação do Sossego', ic: '🔊', nota: 'ocorrências de perturbação', reg: regs(sossego.filter(isPerturbacao)), sentido: -1 },
+                    { id: 'transito', nome: 'Trânsito', ic: '🚗', nota: ait ? 'autos de infração de trânsito (AIT) lavrados' : '⚠️ AITs indisponíveis no momento (Apps Script)', reg: regAIT, sentido: 1, rotTip: 'Por descrição' },
                 ],
             };
         }
@@ -208,6 +256,24 @@
             const l = t.reg.filter(x => x.d >= ini && x.d <= fim);
             return { n: l.length, g: t.peso ? l.reduce((s, x) => s + x.g, 0) : 0 };
         }
+        // Detalhamento de um tema por dimensão (tipificação, cidade, tipo) nas 4 janelas
+        function detalhar(t, dim, J) {
+            const m = new Map();
+            const jan = [['m25', J.a25.mes], ['y25', J.a25.ano], ['m26', J.a26.mes], ['y26', J.a26.ano]];
+            t.reg.forEach(x => {
+                const chaves = (x.dims && x.dims[dim]) || ['NÃO INFORMADA'];
+                jan.forEach(([k, [ini, fim]]) => {
+                    if (x.d < ini || x.d > fim) return;
+                    chaves.forEach(c => {
+                        const e = m.get(c) || { nome: c, m25: { n: 0, g: 0 }, y25: { n: 0, g: 0 }, m26: { n: 0, g: 0 }, y26: { n: 0, g: 0 } };
+                        e[k].n++;
+                        if (t.peso) e[k].g += dim === 'tipo' && x.gPor ? (x.gPor[c] || 0) : x.g;
+                        m.set(c, e);
+                    });
+                });
+            });
+            return [...m.values()].sort((a, b) => b.y26.n - a.y26.n || b.y25.n - a.y25.n);
+        }
         function variacao(a, b, sentido) {
             if (!a && !b) return '<span class="var neutro">= sem registros</span>';
             if (!a) return `<span class="var ${sentido > 0 ? 'bom' : sentido < 0 ? 'ruim' : 'neutro'}">▲ novo</span>`;
@@ -215,22 +281,46 @@
             const cls = !sentido || b === a ? 'neutro' : (b > a) === (sentido > 0) ? 'bom' : 'ruim';
             return `<span class="var ${cls}" title="2025: ${fmt(a)} · 2026: ${fmt(b)}">${b > a ? '▲' : b < a ? '▼' : '='} ${fmt(Math.abs(p), 1)}%</span>`;
         }
+        const ABERTOS = new Set(), ABA = {};
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        function detalheHTML(t, J) {
+            const abas = [['tip', t.rotTip || 'Por tipificação'], ['cid', 'Por cidade']].concat(t.abaTipo ? [['tipo', t.abaTipo]] : []);
+            const dim = ABA[t.id] || 'tip';
+            const linhas = detalhar(t, dim, J);
+            const tot26 = linhas.reduce((s, e) => s + e.y26.n, 0) || 1;
+            const mostra = linhas.slice(0, 30);
+            const sub = x => t.peso ? `<span class="sub">${peso(x.g)}</span>` : '';
+            const rotulo = (abas.find(a => a[0] === dim) || abas[0])[1].replace('Por ', '');
+            return `<div class="det-box">
+                <div class="det-abas">${abas.map(([k, n]) => `<button data-aba="${k}" data-tema="${t.id}" class="${k === dim ? 'on' : ''}">${n}</button>`).join('')}
+                    <span>${fmt(linhas.length)} item(ns)${linhas.length > 30 ? ' · mostrando os 30 principais' : ''}</span></div>
+                ${linhas.length ? `<table class="det-tab"><thead><tr><th class="tema">${rotulo}</th><th class="sep">2025 · mês</th><th>2025 · ano</th><th class="sep">2026 · mês</th><th>2026 · ano</th><th>% de 2026</th></tr></thead><tbody>
+                ${mostra.map(e => `<tr><td class="tema">${esc(e.nome)}</td>
+                    <td class="c25 sep"><b>${fmt(e.m25.n)}</b>${sub(e.m25)}</td><td class="c25"><b>${fmt(e.y25.n)}</b>${sub(e.y25)}</td>
+                    <td class="c26 sep"><b>${fmt(e.m26.n)}</b>${sub(e.m26)}<div>${variacao(e.m25.n, e.m26.n, t.sentido)}</div></td>
+                    <td class="c26"><b>${fmt(e.y26.n)}</b>${sub(e.y26)}<div>${variacao(e.y25.n, e.y26.n, t.sentido)}</div></td>
+                    <td><div class="barra-pct"><i style="width:${(e.y26.n / tot26 * 100).toFixed(1)}%"></i></div><small>${fmt(e.y26.n / tot26 * 100, 1)}%</small></td></tr>`).join('')}</tbody></table>`
+                : '<div class="carregando" style="padding:20px">Sem registros nos períodos.</div>'}</div>`;
+        }
         function render() {
             const J = janelas(), nomeMes = MESES[J.mes];
             const br = d => d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
             const cel = (t, x, cls, comp) => `<td class="${cls}"><span class="v ${cls.includes('c25') ? 'v25' : 'v26'}">${fmt(x.n)}</span>${t.peso ? `<span class="sub">${peso(x.g)}</span>` : ''}${comp || ''}</td>`;
             const linhas = DADOS.temas.map(t => {
                 const m25 = somar(t, J.a25.mes), y25 = somar(t, J.a25.ano), m26 = somar(t, J.a26.mes), y26 = somar(t, J.a26.ano);
-                // a variação do mês só é justa se 2025 estiver no mesmo período
-                return `<tr class="${t.total ? 'total' : ''}"><td class="tema"><i>${t.ic}</i>${t.nome}<small>${t.nota}</small></td>
+                const aberto = ABERTOS.has(t.id);
+                return `<tr class="linha${t.total ? ' total' : ''}${aberto ? ' aberta' : ''}" data-tema="${t.id}" title="Clique para ver as tipificações"><td class="tema"><i>${t.ic}</i>${t.nome}<em class="seta">${aberto ? '▾' : '▸'}</em><small>${t.nota}</small></td>
                     ${cel(t, m25, 'c25 sep')}${cel(t, y25, 'c25')}
-                    ${cel(t, m26, 'c26 sep', '<div>' + variacao(m25.n, m26.n, t.sentido) + '</div>')}${cel(t, y26, 'c26', '<div>' + variacao(y25.n, y26.n, t.sentido) + '</div>')}</tr>`;
+                    ${cel(t, m26, 'c26 sep', '<div>' + variacao(m25.n, m26.n, t.sentido) + '</div>')}${cel(t, y26, 'c26', '<div>' + variacao(y25.n, y26.n, t.sentido) + '</div>')}</tr>
+                    ${aberto ? `<tr class="det" data-det="${t.id}"><td colspan="5">${detalheHTML(t, J)}</td></tr>` : ''}`;
             }).join('');
             const rot25 = MODO === 'periodo' ? [`${nomeMes} <small>(01 a ${String(J.dia).padStart(2, '0')})</small>`, `Total do ano <small>(01/01 a ${br(J.a25.ano[1])})</small>`] : [nomeMes + ' <small>(completo)</small>', 'Total do ano <small>(completo)</small>'];
-            $('pc-tabela').innerHTML = `<table>
-                <thead><tr><th class="tema" rowspan="2">Tema</th><th class="ano25 sep" colspan="2">2025</th><th class="ano26 sep" colspan="2">2026</th></tr>
+            $('pc-tabela').innerHTML = `<table class="principal">
+                <thead><tr><th class="tema" rowspan="2">Tema <small style="text-transform:none;letter-spacing:0;font-weight:500;">— clique para detalhar</small></th><th class="ano25 sep" colspan="2">2025</th><th class="ano26 sep" colspan="2">2026</th></tr>
                     <tr><th class="sep">${rot25[0]}</th><th>${rot25[1]}</th><th class="sep">${nomeMes} <small>(mês atual)</small></th><th>Total do ano</th></tr></thead>
                 <tbody>${linhas}</tbody></table>`;
+            $('pc-tabela').querySelectorAll('tr.linha').forEach(tr => tr.onclick = () => { const id = tr.dataset.tema; if (ABERTOS.has(id)) ABERTOS.delete(id); else ABERTOS.add(id); render(); });
+            $('pc-tabela').querySelectorAll('[data-aba]').forEach(b => b.onclick = ev => { ev.stopPropagation(); ABA[b.dataset.tema] = b.dataset.aba; render(); });
             $('pc-sub').textContent = `Mês atual: ${nomeMes} · 2026 até hoje`;
             $('pc-info').innerHTML = MODO === 'periodo'
                 ? `2025 no <b>mesmo período</b> de 2026 (até ${String(J.dia).padStart(2, '0')}/${String(J.mes + 1).padStart(2, '0')}) — comparação justa entre os anos.`
