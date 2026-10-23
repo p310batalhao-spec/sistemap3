@@ -12,7 +12,13 @@
     <link rel="stylesheet" href="../css/style.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>if (/[?&]embed=1\b/.test(location.search)) document.documentElement.classList.add('ri-embed');</script>
     <style>
+        /* Aberto dentro do Mapa de Inteligência (popup interno): sem cabeçalho/menu do sistema */
+        .ri-embed body > header, .ri-embed .navegacao, .ri-embed footer, .ri-embed #xerife-botao { display: none !important; }
+        .ri-embed .pagecomplete, .ri-embed main { padding: 0 !important; margin: 0 !important; display: block !important; }
+        .ri-embed .ri-shell { margin: 0; min-height: 100vh; }
+        .ri-embed .ri-hero { padding: 16px 22px 12px; } .ri-embed .ri-wrap { padding: 14px 22px 0; }
         /* RELATÓRIO DE INTELIGÊNCIA — módulo P2 (mesma identidade escura de page/p2.html).
            A tela mostra a Ficha Alvo do ExchelonX; a IMPRESSÃO segue o modelo oficial
            (js/relint.js → montarDocumento). */
