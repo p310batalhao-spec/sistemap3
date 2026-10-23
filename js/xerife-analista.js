@@ -173,6 +173,7 @@
             if (R.vinc.length) t += `Foram mapeados ${R.vinc.length} vínculo(s)${R.vCrim.length ? `, dos quais ${R.vCrim.length} de natureza criminal (${listaE(R.vCrim.slice(0, 4).map(v => esc(val(v.nome).toUpperCase())))})` : ''}${R.vFam.length ? ` e ${R.vFam.length} familiar(es)` : ''}, o que ${R.vCrim.length || g.length ? 'reforça a inserção do alvo em rede de apoio à atividade criminosa' : 'deve ser considerado na delimitação da rede de relacionamentos'}.`;
             ps.push(P('rede', 'análise — rede de relacionamentos', t.trim()));
         }
+        paragrafosTecnicas(a, ref, k, rot).forEach(x => ps.push(x));
         ps.push(P('risco', 'análise — avaliação de risco', R.fatores.length
             ? `Considerando ${listaE(R.fatores.sort((x, y) => y.pts - x.pts).map(x => esc(x.txt)))}, o grau de risco atribuído a ${ref} é <b>${R.nivel}</b>.`
             : `Com base nos elementos disponíveis, o grau de risco atribuído a ${ref} é <b>${R.nivel}</b>, ressalvadas as lacunas de informação.`));
@@ -195,16 +196,180 @@
         const oficiais = analises.some(x => x.R.F.registros.length || x.R.F.processos.length);
         const informes = analises.some(x => (x.R.F.f.informacoes || []).length || (x.R.F.f.denuncias || []).length);
         const avaliacao = `Os dados oriundos de registros oficiais (${['CAD/SISP', 'BNMP', 'Tribunais', 'ExchelonX'].join(', ')}) foram tratados como <b>informação confirmada</b>${informes ? '; os dados provenientes de informes e denúncias, ainda não confirmados por outras fontes, foram tratados como <b>informes</b> e redigidos no futuro do pretérito' : ''}${oficiais ? '' : ' (não houve registros oficiais vinculados aos alvos)'}. A idoneidade das fontes humanas deve ser avaliada pelo analista responsável, nos termos da DNISP.`;
-        return { conclusao, propostas, lacunas, avaliacao, maior };
+        const alvos = analises.map(x => x.alvo).filter(Boolean);
+        const conjunto = alvos.length === analises.length ? paragrafosConjunto(alvos, analises.map(x => x.ref)) : [];
+        return { conclusao, propostas, lacunas, avaliacao: alvos.length === analises.length ? avaliacaoEstados(alvos) : avaliacao, maior, conjunto };
     }
+    // ═══ Técnicas estruturadas de análise (DAI/ABIN 2023, Heuer & Pherson) ═══
+    // ── Enquadramento legal: natureza registrada → dispositivo legal ──
+    const LEGAL = [
+        [/FEMINICID/, 'feminicídio (art. 121-A do Código Penal, incluído pela Lei nº 14.994/2024)'],
+        [/LATROCIN/, 'latrocínio (art. 157, § 3º, II, do Código Penal)'],
+        [/HOMICID/, 'homicídio (art. 121 do Código Penal)'],
+        [/EXTORSAO MEDIANTE SEQUESTRO/, 'extorsão mediante sequestro (art. 159 do Código Penal)'],
+        [/EXTORS/, 'extorsão (art. 158 do Código Penal)'],
+        [/ROUBO/, 'roubo (art. 157 do Código Penal)'],
+        [/FURTO/, 'furto (art. 155 do Código Penal)'],
+        [/RECEPTA/, 'receptação (art. 180 do Código Penal)'],
+        [/ESTELIONAT/, 'estelionato (art. 171 do Código Penal)'],
+        [/APROPRIACAO INDEBITA/, 'apropriação indébita (art. 168 do Código Penal)'],
+        [/\bDANO\b/, 'dano (art. 163 do Código Penal)'],
+        [/ASSOCIACAO PARA O TRAFICO/, 'associação para o tráfico (art. 35 da Lei nº 11.343/2006)'],
+        [/TRAFICO|ENTORPECENTE.*VENDA|COMERCIO DE DROGA/, 'tráfico de drogas (art. 33 da Lei nº 11.343/2006)'],
+        [/USUARIO|CONSUMO|PORTE DE (DROGA|ENTORPECENTE)|USO DE ENTORPECENTE/, 'porte de drogas para consumo pessoal (art. 28 da Lei nº 11.343/2006)'],
+        [/USO RESTRITO/, 'posse ou porte ilegal de arma de fogo de uso restrito (art. 16 da Lei nº 10.826/2003)'],
+        [/DISPARO/, 'disparo de arma de fogo (art. 15 da Lei nº 10.826/2003)'],
+        [/POSSE (IRREGULAR|ILEGAL) DE ARMA/, 'posse irregular de arma de fogo de uso permitido (art. 12 da Lei nº 10.826/2003)'],
+        [/ARMA DE FOGO|PORTE ILEGAL|DESARMAMENTO|MUNIC/, 'porte ilegal de arma de fogo de uso permitido (art. 14 da Lei nº 10.826/2003)'],
+        [/ARMA BRANCA/, 'porte de arma branca (art. 19 da Lei das Contravenções Penais)'],
+        [/ORGANIZACAO CRIMINOSA/, 'organização criminosa (art. 2º da Lei nº 12.850/2013)'],
+        [/ASSOCIACAO CRIMINOSA|QUADRILHA/, 'associação criminosa (art. 288 do Código Penal)'],
+        [/DESCUMPRIMENTO DE MEDIDA PROTETIVA/, 'descumprimento de medida protetiva de urgência (art. 24-A da Lei nº 11.340/2006)'],
+        [/MARIA DA PENHA|DOMESTIC/, 'violência doméstica e familiar contra a mulher (Lei nº 11.340/2006)'],
+        [/LESAO CORPORAL|LESAO/, 'lesão corporal (art. 129 do Código Penal)'],
+        [/AMEACA/, 'ameaça (art. 147 do Código Penal)'],
+        [/PERSEGUICAO/, 'perseguição (art. 147-A do Código Penal)'],
+        [/ESTUPRO/, 'estupro (art. 213 do Código Penal)'],
+        [/TORTURA/, 'tortura (Lei nº 9.455/1997)'],
+        [/VIAS DE FATO/, 'vias de fato (art. 21 da Lei das Contravenções Penais)'],
+        [/PERTURBACAO/, 'perturbação do trabalho ou do sossego alheios (art. 42 da Lei das Contravenções Penais)'],
+        [/ADULTERACAO DE SINAL/, 'adulteração de sinal identificador de veículo automotor (art. 311 do Código Penal)'],
+        [/EMBRIAGUEZ/, 'condução de veículo sob influência de álcool (art. 306 do Código de Trânsito Brasileiro)'],
+        [/ENTREGAR VEICULO/, 'entrega de veículo a pessoa não habilitada (art. 310 do Código de Trânsito Brasileiro)'],
+        [/DIRIGIR VEICULO|SEM (A DEVIDA )?PERMISSAO|SEM CNH|HABILITACAO/, 'direção sem habilitação gerando perigo de dano (art. 309 do Código de Trânsito Brasileiro)'],
+        [/DESACATO/, 'desacato (art. 331 do Código Penal)'],
+        [/RESISTENCIA/, 'resistência (art. 329 do Código Penal)'],
+        [/DESOBEDIENCIA/, 'desobediência (art. 330 do Código Penal)'],
+    ];
+    function enquadramento(F) {
+        const m = new Map();
+        F.comoAutor.forEach(r => { const t = N(r.natureza); const hit = LEGAL.find(([rx]) => rx.test(t)); if (hit) m.set(hit[1], (m.get(hit[1]) || 0) + 1); });
+        return [...m.entries()].sort((a, b) => b[1] - a[1]);
+    }
+    // ── Linha do tempo (cronologia) ──
+    function linhaTempo(F) {
+        const ev = [];
+        F.registros.filter(r => r.data).forEach(r => ev.push({ d: r.data, t: `${val(r.natureza).toLowerCase() || 'registro'}${r.papel === 'vitima' ? ' (como vítima)' : ''}${r.numero ? ' — nº ' + r.numero : ''}` }));
+        F.processos.forEach(p => { const d = data(p.dataUltimo); if (d) ev.push({ d, t: `movimentação processual (${val(p.classe).toLowerCase() || 'processo'} nº ${val(p.numero)})` }); });
+        return ev.sort((a, b) => a.d - b.d);
+    }
+    // ── Vocabulário de probabilidade (Kent, 1964; faixas da ICD 203 adaptadas) ──
+    function termoProbabilidade(p) {
+        return p >= 0.95 ? 'quase certa' : p >= 0.8 ? 'muito provável' : p >= 0.55 ? 'provável' : p >= 0.45 ? 'tão provável quanto improvável' : p >= 0.2 ? 'improvável' : 'muito improvável';
+    }
+    // ── Análise de Hipóteses Concorrentes (ACH — Heuer, 1999) por alvo ──
+    function hipoteses(R) {
+        const F = R.F, e = [];
+        const ev = (txt, h1, h2, h3) => e.push({ txt, h: [h1, h2, h3] }); // +2 muito consistente … -2 muito inconsistente
+        if (R.grupos.length) ev('vinculação formal a facção/ORCRIM', 2, -2, -1);
+        if (R.vCrim.length) ev(`${R.vCrim.length} vínculo(s) criminal(is)`, 2, -1, -1);
+        if (porCat(R, 'trafico') && porCat(R, 'armas')) ev('tráfico associado a armas de fogo', 2, 0, -2);
+        else if (porCat(R, 'trafico')) ev('envolvimento com tráfico', 1, 1, -1);
+        if (porCat(R, 'patrimonio') || porCat(R, 'patrimonio_v')) ev('crimes patrimoniais', 0, 1, 0);
+        if (F.comoAutor.length >= 3) ev('reiteração delitiva', 1, 1, -2);
+        else if (F.comoAutor.length <= 1) ev('registro isolado ou inexistente', -1, -1, 2);
+        if (R.ultimos12) ev('atividade nos últimos 12 meses', 1, 1, -1); else if (F.comoAutor.length) ev('ausência de registros recentes', -1, 0, 1);
+        if (F.bnmp || F.mandadosAbertos.length) ev('mandado judicial em aberto', 1, 1, -2);
+        if (F.comoVitima.some(r => /HOMICID|TENTATIVA|DISPARO/.test(N(r.natureza)))) ev('vitimização por violência letal (indicador de conflito)', 1, 0, -1);
+        if (!e.length) return null;
+        const H = ['integração a estrutura criminosa organizada (facção/ORCRIM ou rede de apoio)', 'atuação criminosa autônoma, com reiteração individual', 'envolvimento eventual, sem indicação de atuação criminosa contínua'];
+        // Heuer: o que pesa é a INCONSISTÊNCIA — a hipótese com menos evidências contrárias é a mais provável
+        const inc = [0, 1, 2].map(i => e.reduce((s, x) => s + Math.min(0, x.h[i]), 0));
+        const cons = [0, 1, 2].map(i => e.reduce((s, x) => s + Math.max(0, x.h[i]), 0));
+        const nota = [0, 1, 2].map(i => cons[i] + 2 * inc[i]);
+        const ordem = [0, 1, 2].sort((a, b) => nota[b] - nota[a]);
+        // probabilidade relativa (softmax das notas); com poucas evidências a confiança é puxada para o meio
+        const ex = nota.map(n => Math.exp(n / 2.5)), soma = ex.reduce((s, x) => s + x, 0);
+        let p = ex[ordem[0]] / soma;
+        if (e.length < 3) p = 0.5 + (p - 0.5) * 0.6;
+        return { H, e, ordem, nota, termo: termoProbabilidade(Math.min(0.94, p)), melhor: H[ordem[0]], descartada: H[ordem[2]], contra: e.filter(x => x.h[ordem[2]] < 0).map(x => x.txt) };
+    }
+    const porCat = (R, id) => R.perfil.some(p => p.cat.id === id);
+    // ── Indicadores de alerta (para acompanhamento) ──
+    function indicadores(R) {
+        const out = [];
+        if (porCat(R, 'trafico')) out.push('aumento de registros de tráfico e de denúncias no entorno do endereço do alvo');
+        if (porCat(R, 'armas') || porCat(R, 'letal')) out.push('ocorrências com disparo de arma de fogo ou ameaça armada na área de atuação');
+        if (R.F.comoVitima.length) out.push('novos episódios de violência contra o alvo ou seus vínculos (risco de retaliação)');
+        if (R.grupos.length || R.vCrim.length) out.push('prisão, soltura ou morte de vinculados, que pode alterar a estrutura do grupo');
+        if (R.F.bnmp || R.F.mandadosAbertos.length) out.push('indícios de mudança de endereço ou de evasão da área (alvo com mandado pendente)');
+        if (R.classes && R.classes['execução penal']) out.push('descumprimento de condições da execução penal (horários, monitoramento)');
+        if (R.classes && R.classes['medida protetiva']) out.push('aproximação da vítima ou descumprimento de medida protetiva de urgência');
+        return out;
+    }
+    // ── Análise de rede do CONJUNTO de alvos (coautoria, vínculos e endereços em comum) ──
+    function redeConjunto(alvos) {
+        if (alvos.length < 2) return null;
+        const nome = a => N(val(((a.ficha || {}).dados || {}).nome)).trim();
+        const arestas = [];
+        const add = (i, j, motivo) => arestas.push({ i, j, motivo });
+        const bos = alvos.map(a => new Set(fatos(a).registros.map(r => val(r.numero).replace(/\D/g, '')).filter(x => x.length >= 4)));
+        const vincs = alvos.map(a => new Set(((a.ficha || {}).vinculos || []).map(v => N(val(v.nome)).trim()).filter(Boolean)));
+        const ends = alvos.map(a => new Set(((a.ficha || {}).enderecos || []).map(e => N(val(e.texto)).replace(/\W+/g, ' ').trim()).filter(Boolean)));
+        const facs = alvos.map(a => new Set(((a.ficha || {}).grupos || []).map(g => N(val(g.nome)).trim()).filter(Boolean)));
+        for (let i = 0; i < alvos.length; i++) for (let j = i + 1; j < alvos.length; j++) {
+            const co = [...bos[i]].filter(x => bos[j].has(x));
+            if (co.length) add(i, j, `coautoria em ${co.length} registro(s) (nº ${co.slice(0, 3).join(', ')})`);
+            if (vincs[i].has(nome(alvos[j])) || vincs[j].has(nome(alvos[i]))) add(i, j, 'vínculo direto cadastrado');
+            const vc = [...vincs[i]].filter(x => vincs[j].has(x));
+            if (vc.length) add(i, j, `${vc.length} vinculado(s) em comum`);
+            if ([...ends[i]].some(x => ends[j].has(x))) add(i, j, 'mesmo endereço');
+            const fc = [...facs[i]].filter(x => facs[j].has(x));
+            if (fc.length) add(i, j, `mesma organização (${fc.join(', ')})`);
+        }
+        // um par = uma ligação, com todos os motivos juntos
+        const porPar = new Map();
+        arestas.forEach(a => { const k = a.i + '-' + a.j; if (!porPar.has(k)) porPar.set(k, { i: a.i, j: a.j, motivos: [] }); porPar.get(k).motivos.push(a.motivo); });
+        const pares = [...porPar.values()].map(x => Object.assign(x, { motivo: x.motivos.join('; ') }));
+        const grau = alvos.map((_, k) => pares.filter(a => a.i === k || a.j === k).length);
+        const max = Math.max(...grau);
+        return { arestas: pares, grau, articuladores: max > 0 ? grau.map((g, k) => g === max ? k : -1).filter(k => k >= 0) : [], densidade: pares.length / (alvos.length * (alvos.length - 1) / 2) };
+    }
+    // Parágrafos adicionais por alvo
+    function paragrafosTecnicas(a, ref, k, rot) {
+        const R = analisarAlvo(a), ps = [];
+        const P = (bloco, rotulo, html) => ({ bloco: `${k}-xa-${bloco}`, rotulo: rot(rotulo), html });
+        const leg = enquadramento(R.F);
+        if (leg.length) ps.push(P('legal', 'análise — enquadramento legal', `As condutas registradas em desfavor de ${ref} amoldam-se, em tese, a ${listaE(leg.slice(0, 6).map(([d, n]) => `${esc(d)}${n > 1 ? ` — ${n} registros` : ''}`))}, sem prejuízo da tipificação definitiva pela autoridade competente.`));
+        const lt = linhaTempo(R.F);
+        if (lt.length >= 3) ps.push(P('cronologia', 'análise — linha do tempo', `Em ordem cronológica: ${lt.slice(-10).map(x => `${br(x.d)} — ${esc(x.t)}`).join('; ')}.`));
+        const h = hipoteses(R);
+        if (h) ps.push(P('ach', 'análise — hipóteses concorrentes', `Aplicada a técnica de Análise de Hipóteses Concorrentes, confrontaram-se três hipóteses: (1) ${h.H[0]}; (2) ${h.H[1]}; (3) ${h.H[2]}. Considerando as evidências — ${esc(h.e.map(x => x.txt).join('; '))} —, a hipótese mais consistente é a de <b>${esc(h.melhor)}</b>, avaliada como <b>${h.termo}</b>${h.contra.length ? `; a hipótese de ${esc(h.descartada)} mostra-se inconsistente com ${esc(listaE(h.contra.slice(0, 3)))}` : ''}.`));
+        const ind = indicadores(R);
+        if (ind.length) ps.push(P('indic', 'análise — indicadores de acompanhamento', `Recomenda-se acompanhar os seguintes indicadores relativos a ${ref}: ${ind.map(esc).join('; ')}.`));
+        return ps;
+    }
+    // Parágrafos do conjunto: rede entre alvos + avaliação por estados da mente + sigilo
+    function paragrafosConjunto(alvos, refs) {
+        const ps = [];
+        const rd = redeConjunto(alvos);
+        if (rd) {
+            if (rd.arestas.length) ps.push({ bloco: 'xa-rede-conj', rotulo: 'Análise de rede do conjunto', html: `A análise de rede entre os ${alvos.length} alvos identificou ${rd.arestas.length} ligação(ões): ${rd.arestas.slice(0, 8).map(x => `${refs[x.i]} ↔ ${refs[x.j]} (${esc(x.motivo)})`).join('; ')}. A densidade da rede é de ${Math.round(rd.densidade * 100)}%${rd.articuladores.length && rd.articuladores.length < alvos.length ? `, destacando-se ${listaE(rd.articuladores.map(k => refs[k]))} como ${rd.articuladores.length > 1 ? 'articuladores' : 'articulador(a)'} do grupo, por concentrar o maior número de conexões` : ''}.` });
+            else ps.push({ bloco: 'xa-rede-conj', rotulo: 'Análise de rede do conjunto', html: `Não foram identificadas, nas bases consultadas, ligações diretas entre os ${alvos.length} alvos (coautoria, vínculos, endereços ou organização em comum), o que recomenda aprofundar os levantamentos antes de afirmar atuação conjunta.` });
+        }
+        return ps;
+    }
+    // Avaliação do conhecimento — estados da mente (DAI/ABIN 2023: certeza, probabilidade, possibilidade)
+    function avaliacaoEstados(alvos) {
+        const ofic = alvos.reduce((s, a) => s + fatos(a).registros.length + fatos(a).processos.length, 0);
+        const inf = alvos.reduce((s, a) => s + ((a.ficha || {}).informacoes || []).length, 0), den = alvos.reduce((s, a) => s + ((a.ficha || {}).denuncias || []).length, 0);
+        const partes = [];
+        if (ofic) partes.push(`os ${ofic} registro(s) oficiais (CAD, ExchelonX, Tribunais, BNMP) expressam estado de <b>certeza</b> quanto à sua existência`);
+        if (inf && den) partes.push(`os informes convergentes com as ${den} denúncia(s) expressam estado de <b>probabilidade</b>`);
+        else if (inf || den) partes.push(`os ${inf + den} informe(s)/denúncia(s) ainda não corroborados por fonte independente expressam estado de <b>possibilidade</b>`);
+        return `Quanto à avaliação do conhecimento, ${partes.length ? listaE(partes) : 'os dados disponíveis são insuficientes para elevar o grau de certeza'}. Ressalta-se que denúncia anônima, isoladamente, não autoriza a instauração de persecução penal, mas legitima averiguação preliminar com prudência e discrição (STF, RE 1.193.343 AgR). Sugere-se a classificação <b>RESERVADO</b> (Lei nº 12.527/2011), com difusão restrita a quem tenha necessidade de conhecer, ressalvada a decisão da autoridade classificadora. Por se tratar de documento de inteligência, não se destina a instruir procedimentos; o que for necessário à persecução deve ser extraído para documento próprio (informação policial ou Relatório Técnico).`;
+    }
+
     // Resumo curto em HTML (chat do XERIFE / mapa)
     function resumoHTML(a, nome) {
         const R = analisarAlvo(a);
         return `<b>🧠 Análise do XERIFE — ${esc(nome)}</b><br>Risco: <b>${R.nivel}</b> (${R.pontos}/100)${R.fatores.length ? '<br>• ' + R.fatores.map(x => esc(x.txt)).join('<br>• ') : ''}
             ${R.perfil.length ? `<br><br><b>Perfil:</b> ${R.perfil.slice(0, 4).map(x => `${esc(x.cat.nome)} (${x.n})`).join(', ')}` : ''}
             ${R.ultimo ? `<br><b>Último registro:</b> ${br(R.ultimo)}${R.intervaloMedio ? ` · intervalo médio ${R.intervaloMedio} dias` : ''}` : ''}
+            ${(() => { const h = hipoteses(R); return h ? `<br><br><b>Hipótese mais consistente (ACH):</b> ${esc(h.melhor)} — <i>${h.termo}</i>` : ''; })()}
+            ${(() => { const l = enquadramento(R.F); return l.length ? `<br><b>Enquadramento legal (em tese):</b> ${l.slice(0, 4).map(([d]) => esc(d)).join('; ')}` : ''; })()}
             ${R.propostas.length ? `<br><br><b>Propostas:</b><br>• ${R.propostas.map(esc).join('<br>• ')}` : ''}`;
     }
 
-    global.XerifeAnalista = { analisarAlvo, paragrafosAnalise, sintese, resumoHTML, categoriaDe, CATEGORIAS };
+    global.XerifeAnalista = { analisarAlvo, paragrafosAnalise, sintese, resumoHTML, categoriaDe, CATEGORIAS, enquadramento: a => enquadramento(fatos(a)), hipoteses: a => hipoteses(analisarAlvo(a)), redeConjunto, linhaTempo: a => linhaTempo(fatos(a)), termoProbabilidade };
 })(window);
