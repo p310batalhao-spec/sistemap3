@@ -611,6 +611,105 @@
         if (!val(assunto.value)) assunto.value = orcrim ? `ORGANIZAÇÃO CRIMINOSA ATUANTE EM ${cidades.length ? cidades.join(', ').toUpperCase() : 'CIDADE'}/AL.` : `${prontos.length > 1 ? 'INDIVÍDUOS SUSPEITOS' : 'INDIVÍDUO SUSPEITO'} DE ATUAÇÃO CRIMINOSA EM ${cidades.length ? cidades.join(', ').toUpperCase() : 'CIDADE'}/AL.`;
     }
 
+    // ── XERIFE ANALISTA: analisa ficha alvo + CAD + processos + BNMP e redige
+    // o relatório completo (js/xerife-analista.js — determinístico, só com os dados).
+    async function gerarComXerife(botao) {
+        const prontos = E.alvos.filter(a => a.ficha);
+        if (!prontos.length) { alert('Adicione ao menos um alvo.'); return; }
+        if (!window.XerifeAnalista) { alert('Módulo de análise do XERIFE não carregado.'); return; }
+        const txt = botao.textContent; botao.disabled = true;
+        try {
+            // 1) Consulta Integrada (CAD/BNMP/Tribunais) dos alvos com CPF que ainda não foram consultados
+            const faltam = prontos.filter(a => !a.consulta && String(a.ficha.dados.cpf || '').replace(/\D/g, '').length === 11);
+            const local = window.P3AtualizadorLocal && await P3AtualizadorLocal.disponivel().catch(() => false);
+            if (faltam.length && local && confirm(`O XERIFE vai consultar CAD, BNMP e Tribunais de ${faltam.length} alvo(s) ainda não consultado(s) para analisar tudo. Continuar?\n(Cancelar = analisar só com os dados já carregados)`)) {
+                for (let i = 0; i < faltam.length; i++) { botao.textContent = `🧠 Consultando ${i + 1}/${faltam.length} — ${faltam[i].ficha.dados.nome.split(' ')[0]}…`; await consultarIntegrada(faltam[i]); }
+            }
+            botao.textContent = '🧠 Analisando…';
+            // 2) Texto-base (identificação, endereço, informes, antecedentes, situação judicial, vínculos)
+            gerarTexto();
+            const corpo = $('ri-corpo');
+            // 3) Análise por alvo, logo após os parágrafos do alvo
+            const analises = [];
+            prontos.forEach((a, i) => {
+                const f = a.ficha, NOME = up(f.dados.nome), vg = vulgo(f);
+                const ref = vg ? `<b>“${esc(up(vg))}”</b>` : `<b>${esc(NOME)}</b>`;
+                const rot = n => `${String(i + 1).padStart(2, '0')} ${vg ? up(vg) : NOME.split(' ')[0]} — ${n}`;
+                const r = XerifeAnalista.paragrafosAnalise(a, ref, `alvo${i}`, rot);
+                analises.push({ R: r.R, ref });
+                const ult = [...corpo.querySelectorAll(`p[data-bloco^="alvo${i}-"]`)].pop();
+                const html = r.paragrafos.map(x => P(x.bloco, x.rotulo, x.html)).join('');
+                if (ult) ult.insertAdjacentHTML('afterend', html); else corpo.insertAdjacentHTML('beforeend', html);
+            });
+            // 4) Conclusão analítica, propostas e avaliação do conhecimento
+            const orcrim = !!E.grupo || prontos.length > 1 && prontos.some(a => (a.ficha.grupos || []).length);
+            const S = XerifeAnalista.sintese(analises, { orcrim });
+            const concl = corpo.querySelector('p[data-bloco="concl"]');
+            if (concl) concl.innerHTML = S.conclusao;
+            const fecho = corpo.querySelector('p[data-bloco="fecho"]');
+            const extra = (S.propostas.length ? P('propostas', 'Propostas de ação', `Propõe-se: ${S.propostas.map((p, j) => `${String.fromCharCode(97 + j)}) ${esc(p)}`).join('; ')}.`) : '')
+                + (S.lacunas.length ? P('lacunas', 'Lacunas de inteligência', `Permanecem as seguintes lacunas a serem supridas em novos levantamentos: ${S.lacunas.map(esc).join(' | ')}.`) : '')
+                + P('avaliacao', 'Avaliação do conhecimento', S.avaliacao);
+            if (fecho) fecho.insertAdjacentHTML('beforebegin', extra); else corpo.insertAdjacentHTML('beforeend', extra);
+            // 5) Refino opcional da redação pela IA local
+            const X = await garantirXerife();
+            if (X && X.obterEstadoIA && X.obterEstadoIA() === 'pronto' && confirm('Análise concluída. Refinar também a redação dos informes com a IA local do XERIFE (sem acrescentar dados)?')) await refinarComXerife($('ri-xerife'));
+            else alert(`🧠 XERIFE: relatório redigido com a análise de ${prontos.length} alvo(s) — risco global ${S.maior}. Revise o texto antes de imprimir.`);
+        } catch (e) { console.error('[relint xerife]', e); alert('Não foi possível concluir a análise: ' + e.message); }
+        botao.disabled = false; botao.textContent = txt;
+    }
+
+    // ── CLAUDE (API da Anthropic, via atualizador local): análise completa e
+    // redação do RELINT a partir de TODOS os dados reunidos + análise do XERIFE.
+    // A chave da API fica só no computador (tools/atualizador-local/relint_claude.py).
+    async function postApi(caminho, corpo) {
+        const r = await fetch(API + caminho, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+        let j = null; try { j = await r.json(); } catch (e) { /* corpo vazio */ }
+        if (j && j.autorizado === false) throw new Error('acesso restrito à P2/ADMIN (login no Sistema P3 exe)');
+        if (!j) throw new Error('HTTP ' + r.status);
+        return j;
+    }
+    async function configurarChaveClaude() {
+        let st = null; try { st = await api('/claude/status'); } catch (e) { alert('Atualizador local indisponível — abra o Sistema P3 (exe).'); return; }
+        const k = prompt(`Chave da API do Claude (Anthropic)${st && st.configurado ? ` — atual: ${st.final} (${st.origem})` : ' — não configurada'}.\nCole a nova chave (sk-ant-…) ou deixe em branco para remover. Ela fica salva apenas neste computador.`, '');
+        if (k === null) return;
+        try { const r = await postApi('/claude/configurar', { apiKey: k.trim() }); alert(r.configurado ? `✅ Chave salva (${r.final}). Modelo: ${r.modelo}.` : 'Chave removida.'); }
+        catch (e) { alert('Não foi possível salvar: ' + e.message); }
+    }
+    const semFotos = f => { const c = Object.assign({}, f); delete c.fotos; return c; };
+    async function gerarComClaude(botao) {
+        const prontos = E.alvos.filter(a => a.ficha);
+        if (!prontos.length) { alert('Adicione ao menos um alvo.'); return; }
+        let st = null;
+        try { st = await api('/claude/status'); } catch (e) { alert('Atualizador local indisponível — abra o Sistema P3 (exe) com login P2/ADMIN.'); return; }
+        if (!st || !st.configurado) { if (confirm('A chave da API do Claude ainda não foi configurada neste computador. Configurar agora?')) await configurarChaveClaude(); return; }
+        const faltam = prontos.filter(a => !a.consulta && String(a.ficha.dados.cpf || '').replace(/\D/g, '').length === 11);
+        if (faltam.length && confirm(`Consultar antes CAD, BNMP e Tribunais de ${faltam.length} alvo(s) ainda não consultado(s)? (recomendado — o Claude analisa tudo o que estiver reunido)`)) {
+            for (let i = 0; i < faltam.length; i++) { botao.textContent = `⏳ Consultando ${i + 1}/${faltam.length}…`; await consultarIntegrada(faltam[i]); }
+        }
+        const instrucoes = prompt('Orientações adicionais ao Claude (opcional) — ex.: "foco no tráfico no bairro X", "destacar a liderança":', '') || '';
+        const txt = botao.textContent; botao.disabled = true; botao.textContent = '🤖 Claude analisando… (pode levar 1–3 min)';
+        try {
+            const alvos = prontos.map(a => {
+                let x = null;
+                if (window.XerifeAnalista) { const R = XerifeAnalista.analisarAlvo(a); x = { risco: R.nivel, pontos: R.pontos, fatores: R.fatores.map(f => f.txt), perfil: R.perfil.map(p => `${p.cat.nome} (${p.n})`), escalada: R.escalada, primeiroRegistro: R.primeiro, ultimoRegistro: R.ultimo, ultimos12meses: R.ultimos12, propostas: R.propostas, lacunas: R.lacunas }; }
+                return { ficha: semFotos(a.ficha), consulta: a.consulta || null, funcao: a.funcao || null, analiseXerife: x };
+            });
+            const r = await postApi('/relint/claude', { alvos, grupo: E.grupo ? { nome: val($('ri-grupo-nome').value) || E.grupo.nome, tipo: E.grupo.tipo } : null, cabecalho: lerCab(), instrucoes });
+            if (!r.ok) throw new Error(r.erro || 'falha na análise');
+            const corpo = $('ri-corpo');
+            corpo.innerHTML = (r.paragrafos || []).map(p => {
+                const html = esc(p.texto).replace(/\n+/g, '<br>');
+                return p.alerta ? `<p data-bloco="${esc(p.bloco)}" data-rotulo="${esc(p.rotulo)}" title="${esc(p.alerta)}" style="background:#fff3cd;">${html}</p>` : P(p.bloco, p.rotulo, html);
+            }).join('');
+            const assunto = document.querySelector('[data-cab="assunto"]');
+            if (assunto && !val(assunto.value) && r.assunto) assunto.value = r.assunto;
+            const alertas = (r.paragrafos || []).filter(p => p.alerta).length;
+            alert(`🤖 Relatório redigido pelo Claude (${r.modelo}) — risco global ${r.risco_global}.${alertas ? `\n⚠️ ${alertas} parágrafo(s) destacado(s) em amarelo para conferência (número não encontrado nos dados).` : ''}${r.observacoes_ao_analista ? '\n\nObservações ao analista: ' + r.observacoes_ao_analista : ''}\n\nRevise o texto antes de imprimir.`);
+        } catch (e) { alert('Claude: ' + e.message); }
+        botao.disabled = false; botao.textContent = txt;
+    }
+
     // ── XERIFE: refino da redação (IA local), sem acrescentar fatos ──
     function garantirXerife() {
         if (window.Xerife) return Promise.resolve(window.Xerife);
@@ -903,6 +1002,9 @@
         $('ri-grupo-limpar').onclick = () => { E.grupo = null; renderAlvos(); };
         $('ri-gerar').onclick = gerarTexto;
         $('ri-xerife').onclick = () => refinarComXerife($('ri-xerife'));
+        $('ri-xerife-analise').onclick = () => gerarComXerife($('ri-xerife-analise'));
+        $('ri-claude').onclick = () => gerarComClaude($('ri-claude'));
+        $('ri-claude-chave').onclick = configurarChaveClaude;
         $('ri-consultar-todos').onclick = () => consultarTodos($('ri-consultar-todos'));
         $('ri-blocos-todos').onclick = () => { E.ocultos.clear(); const d = $('ri-previa').contentDocument; aplicarOcultos(d); montarPainelBlocos(d); };
         document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { $('ri-corpo').focus(); document.execCommand(b.dataset.cmd); });
