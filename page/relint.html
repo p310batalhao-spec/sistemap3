@@ -118,6 +118,14 @@
         tr.ri-oc-det { display: none; } tr.ri-oc-det.aberto { display: table-row; } tr.ri-oc-det td { background: rgba(255,255,255,.03); padding: 10px; }
         .ri-inc { margin-left: auto; font-weight: 600 !important; }
         .ri-n2 { font-style: normal; font-size: .66rem; background: rgba(255,255,255,.1); border-radius: 999px; padding: 1px 7px; }
+        .ri-prog { display: none; margin: 0 0 12px; background: rgba(5,12,24,.65); border: 1px solid rgba(255,180,77,.35); border-radius: 12px; padding: 12px 14px; }
+        .ri-prog.ativo { display: block; }
+        .ri-prog-topo { display: flex; justify-content: space-between; gap: 10px; font-size: .82rem; color: #ffd59a; margin-bottom: 8px; } .ri-prog-topo b { color: #fff; }
+        .ri-prog-trilha { height: 10px; background: rgba(255,255,255,.08); border-radius: 999px; overflow: hidden; }
+        .ri-prog-trilha i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #ffb44d, #36c47a); border-radius: 999px; transition: width .35s ease; }
+        .ri-prog-etapas { margin: 8px 0 0; padding-left: 18px; font-size: .74rem; color: #8ea0bb; columns: 2; }
+        .ri-prog-etapas li.ok { color: #bff3d6; } .ri-prog-etapas li.atual { color: #fff; font-weight: 700; }
+        .ri-pronto { margin: 0 0 12px; padding: 10px 14px; border-radius: 12px; border: 1px solid rgba(54,196,122,.5); background: rgba(54,196,122,.12); color: #bff3d6; font-size: .84rem; }
         details.ri-cfg summary { cursor: pointer; font-size: .78rem; color: #9cc0ff; font-weight: 700; margin-top: 12px; }
         @media (max-width: 900px) {
             .ri-hero, .ri-wrap { padding-left: 16px; padding-right: 16px; }
@@ -196,16 +204,15 @@
                             </div>
                         </details>
                         <div class="ri-barra-ed">
-                            <button class="ri-btn ri-btn-ouro" id="ri-gerar">✨ Gerar texto a partir das fichas</button>
-                            <button class="ri-btn ri-btn-ouro" id="ri-xerife-analise" title="O XERIFE analisa a ficha alvo, o CAD, os processos e o BNMP e redige o relatório completo (perfil, dinâmica, rede, risco, conclusão, propostas)">🧠 XERIFE: análise completa</button>
-                            <button class="ri-btn ri-btn-ouro" id="ri-claude" title="A API do Claude (Anthropic) analisa ficha alvo, CAD, processos, BNMP e a análise do XERIFE e redige o relatório completo">🤖 Claude: análise e redação</button>
-                            <button class="ri-btn" id="ri-claude-chave" title="Configurar a chave da API do Claude (fica salva só neste computador)">🔑</button>
-                            <button class="ri-btn" id="ri-xerife" title="IA local do XERIFE: refina a redação dos informes no padrão DNISP, sem acrescentar dados">🤠 Refinar redação com o XERIFE</button>
+                            <button class="ri-btn ri-btn-ouro" id="ri-gerar" title="O XERIFE analisa ficha alvo, CAD, processos e BNMP e redige o RELINT completo: identificação, antecedentes, perfil, cronologia, enquadramento legal, hipóteses concorrentes (ACH), rede, risco, indicadores, conclusão, propostas e avaliação do conhecimento">🧠 Gerar texto (análise do XERIFE)</button>
+                            <select class="ri-in" id="ri-xerife-modelo" style="width:auto;max-width:300px;padding:7px 10px;" title="Modelo de IA local do XERIFE (roda no navegador, sem internet depois de baixado)"></select>
+                            <span class="ri-sub" id="ri-xerife-estado" style="margin:0;"></span>
                             <button class="ri-btn ri-btn-mini" data-cmd="bold"><b>N</b></button>
                             <button class="ri-btn ri-btn-mini" data-cmd="italic"><i>I</i></button>
                             <button class="ri-btn ri-btn-mini" data-cmd="underline"><u>S</u></button>
                             <span class="ri-sub" style="margin:0 0 0 6px;">O texto é livre — edite à vontade antes de imprimir.</span>
                         </div>
+                        <div class="ri-prog" id="ri-prog"><div class="ri-prog-topo"><span id="ri-prog-txt">Preparando…</span><b id="ri-prog-pct">0%</b></div><div class="ri-prog-trilha"><i id="ri-prog-barra"></i></div><ol class="ri-prog-etapas" id="ri-prog-etapas"></ol></div>
                         <div class="ri-editor" id="ri-corpo" contenteditable="true"><p>Adicione os alvos e clique em “Gerar texto a partir das fichas”.</p></div>
                     </section>
 
