@@ -240,7 +240,7 @@
             <div class="al-fonte">${fonteTxt(end)}${end.coordOriginal && end.precisao !== 'exata' ? `<br>coordenada cadastrada ignorada (inválida): ${e(end.coordOriginal)}` : ''}</div>
             <div class="al-links"><a href="https://www.google.com/maps?q=${end.lat},${end.lng}" target="_blank" rel="noopener">Google Maps</a>
                 ${outros.length ? outros.map((o, i) => o.lat != null ? `<a href="#" onclick="MapaAlvos.irPara('${o.residenciaId}');return false;">Outro endereço ${i + 1}</a>` : `<span title="${e(o.texto)}">Outro endereço ${i + 1} (sem localização)</span>`).join('') : ''}</div>
-            <div class="al-acoes"><button class="al-mini" onclick="MapaAlvos.ocorrenciasAlvo('${p.id}')">🔎 Ocorrências no CAD</button>${p.vinculos.length ? `<button class="al-mini" onclick="MapaAlvos.focarRede('${p.id}')">🕸 Mostrar rede no mapa</button>` : ''}</div>
+            <div class="al-acoes"><button class="al-mini" onclick="MapaAlvos.abrirRelint('${p.id}')" title="Abre o Relatório de Inteligência com a ficha e a busca do CAD já preenchidas">📝 Gerar RELINT</button><button class="al-mini" onclick="MapaAlvos.ocorrenciasAlvo('${p.id}')">🔎 Ocorrências no CAD</button>${p.vinculos.length ? `<button class="al-mini" onclick="MapaAlvos.focarRede('${p.id}')">🕸 Mostrar rede no mapa</button>` : ''}</div>
             <div class="al-sec">🕸 Vínculos (${p.vinculos.length})</div>
             <div class="al-vincs">${vinc || '<div class="al-meta">Nenhum vínculo cadastrado.</div>'}</div>
         </div>`;
@@ -318,6 +318,7 @@
                 <button class="al-mini" onclick="MapaAlvos.focarRede('${p.id}', 1)">🕸 Vínculos${r ? ` (${r.total})` : ''}</button>
                 ${r ? `<button class="al-mini${r.grau > 1 ? ' on' : ''}" onclick="MapaAlvos.focarRede('${p.id}', ${r.grau > 1 ? 1 : 2})" title="Inclui os vínculos dos vinculados">${r.grau > 1 ? '◀ Só 1º grau' : '➕ 2º grau'}</button>` : ''}
                 <button class="al-mini" onclick="MapaAlvos.ocorrenciasAlvo('${p.id}')">🔎 Ocorrências no CAD${o && o.fim ? ` (${o.noMapa} no mapa)` : ''}</button>
+                <button class="al-mini" onclick="MapaAlvos.abrirRelint('${p.id}')">📝 Gerar RELINT</button>
                 <button class="al-mini al-sair" onclick="MapaAlvos.sairFoco()">✕ Sair do foco</button></div>
             ${r ? `<div class="al-foco-leg">${Object.values(TIPO_VINC).map(t => `<span><i style="border-top:3px ${t.traco ? 'dashed' : 'solid'} ${t.cor}"></i>${t.rot}</span>`).join('')}<span>espessura = confiança</span><span>${r.nos} pessoa(s) na rede</span></div>` : ''}
             ${r && r.semOrigem ? `<div class="al-foco-l2">⚠️ O próprio alvo não tem endereço localizado no mapa — a rede aparece a partir dos vinculados.</div>` : ''}
@@ -534,6 +535,11 @@
         _mapaL.setView([x.lat, x.lng], 17);
         if (x._mk) x._mk.openPopup();
     }
+    // RELINT do alvo em janela própria: ficha + Consulta Integrada (CAD) já preparadas, aguardando "Gerar texto"
+    A.abrirRelint = id => {
+        const w = window.open('relint.html?alvo=' + encodeURIComponent(id), 'relint_' + String(id).slice(0, 8), 'width=1380,height=920,resizable=yes,scrollbars=yes');
+        if (!w) alert('O navegador bloqueou a janela do RELINT — permita pop-ups para esta página.'); else w.focus();
+    };
     A.focarRede = focarRede;
     A.ocorrenciasAlvo = ocorrenciasAlvo;
     A.sairFoco = sairFoco;
