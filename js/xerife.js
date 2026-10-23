@@ -2975,6 +2975,17 @@
 
         if (ehSaudacao(qMin)) return '🤠 E aí! Sou o Xerife, pergunte sobre os números da sua unidade — MVI, CVLI, CVP, TCO, armas, drogas, perturbação, violência doméstica ou visitas orientativas. Ex.: <em>"quantos TCOs este mês?"</em> ou <em>"resumo de hoje"</em>.';
         if (ehAjuda(qMin)) return montarAjuda();
+        // Skills e base de conhecimento (js/xerife-conhecimento.js — inspirado no OpenJarvis):
+        // comandos do Mapa de Inteligência, análise de alvos e perguntas conceituais.
+        const XC = await carregarScriptUmaVez('js/xerife-conhecimento.js', 'XerifeConhecimento');
+        if (XC) {
+            const sk = await XC.executarSkill(textoOriginal);
+            if (sk) return sk;
+            if (XC.ehPerguntaConceitual(textoOriginal)) {
+                const r = await XC.responder(textoOriginal, { pronto: llmEstado === 'pronto', gerar: gerarComIA });
+                if (r) return r;
+            }
+        }
         if (ehForaDeEscopo(qMin)) return respostaForaDeEscopo();
         // Checado antes de tudo — é um pedido de AÇÃO (cadastro), não uma
         // pergunta de dado, então não deve cair no fallback de categoria.
@@ -3077,6 +3088,10 @@
         if (categoriasMultiplas.length >= 2) return await responderContagemMultiCategoria(q, qMin, categoriasMultiplas);
 
         const chaveCat = detectarCategoria(q);
+        if (!chaveCat && window.XerifeConhecimento) {
+            const r = await XerifeConhecimento.responder(textoOriginal, { pronto: llmEstado === 'pronto', gerar: gerarComIA });
+            if (r) return r;
+        }
         if (!chaveCat) return '🤔 Não identifiquei qual dado específico você quer — só respondo com base nos dados reais da sua unidade, então preciso saber exatamente o que buscar. Pode me dizer qual categoria: <strong>MVI/CVLI, CVP, TCO, Armas, Drogas, Perturbação do Sossego, Violência Doméstica</strong> ou <strong>Visitas Orientativas</strong>? Digite "ajuda" pra ver exemplos.';
 
         const cat = CATEGORIAS[chaveCat];
@@ -3394,6 +3409,7 @@
     function montarAjuda() {
         return `🤠 Eu sou o <strong>Xerife</strong>, respondo só com base nos dados reais da sua unidade (Firebase/GAS) — não invento nada e não crio metas.<br><br>
         Categorias que entendo: <strong>MVI, CVLI, CVP, TCO, Armas, Drogas, Perturbação do Sossego, Violência Doméstica, Visitas Orientativas, Materiais em guarda</strong>.<br><br>
+        <strong>🧠 Inteligência (novo):</strong> "analise o alvo NOME", "mostre a rede de NOME" / "rede de NOME até o 2º grau", "ocorrências de NOME no mapa", "onde mora NOME", "alvos no bairro X", "sair do foco", "o que é informe na DNISP?", "como gerar o RELINT?".<br><br>
         Exemplos de pergunta:<br>
         • "quantos TCOs este mês?"<br>
         • "quantas ocorrências de CVLI em Palmeira dos Índios este ano?" ou "...no bairro Centro?"<br>
