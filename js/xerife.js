@@ -220,7 +220,14 @@
     // pronto (já calculado em JS determinístico) no contexto que a gente
     // manda pra ela — ver responderComIA()/montarDossie*() mais abaixo.
     // ════════════════════════════════════════════════════════════════
-    const MODELO_LLM = 'Llama-3.2-1B-Instruct-q4f16_1-MLC';
+    // Modelo escolhido pelo usuário (RELINT → "Modelo da IA local"); padrão = o mais leve.
+    // Qwen 2.5 escreve bem melhor em português; o 7B exige GPU com ~5 GB livres.
+    const MODELOS_IA = [
+        { id: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', nome: 'Básico — Llama 3.2 1B (~0,9 GB, rápido)' },
+        { id: 'Qwen2.5-3B-Instruct-q4f16_1-MLC', nome: 'Avançado — Qwen 2.5 3B (~2,5 GB, português melhor)' },
+        { id: 'Qwen2.5-7B-Instruct-q4f16_1-MLC', nome: 'Máximo — Qwen 2.5 7B (~5 GB, requer GPU forte)' },
+    ];
+    let MODELO_LLM = (() => { try { const m = localStorage.getItem('xerife_modelo_ia'); return MODELOS_IA.some(x => x.id === m) ? m : MODELOS_IA[0].id; } catch (e) { return MODELOS_IA[0].id; } })();
     let llmEngine = null;
     let llmEstado = 'verificando'; // verificando | baixando | pronto | indisponivel | erro
     let llmProgresso = 0;
@@ -4082,8 +4089,20 @@
     // dashboard JARVIS (js/components/jarvis-dashboard.js) reaproveitarem o
     // MESMO motor de perguntas/respostas/IA local/regras de negócio, em vez
     // de duplicar essa lógica numa UI separada.
+    async function definirModeloIA(id) {
+        if (!MODELOS_IA.some(x => x.id === id) || id === MODELO_LLM) return llmEstado;
+        try { localStorage.setItem('xerife_modelo_ia', id); } catch (e) { /* opcional */ }
+        MODELO_LLM = id;
+        try { if (llmEngine && llmEngine.unload) await llmEngine.unload(); } catch (e) { /* segue */ }
+        llmEngine = null; llmProgresso = 0;
+        iniciarWebLLM();
+        return llmEstado;
+    }
     window.Xerife = {
         alternar,
+        MODELOS_IA,
+        obterModeloIA: () => MODELO_LLM,
+        definirModeloIA,
         enviarPergunta,
         carregarHistorico,
         adicionarMensagem,
