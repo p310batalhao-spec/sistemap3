@@ -613,49 +613,75 @@
 
     // ── XERIFE ANALISTA: analisa ficha alvo + CAD + processos + BNMP e redige
     // o relatório completo (js/xerife-analista.js — determinístico, só com os dados).
+    // ── Barra de progresso da geração ──
+    const PROG = { etapas: [] };
+    function progInicio(etapas) {
+        PROG.etapas = etapas; $('ri-prog').classList.add('ativo');
+        const pr = $('ri-pronto'); if (pr) pr.remove();
+        $('ri-prog-etapas').innerHTML = etapas.map(e => `<li>${esc(e)}</li>`).join('');
+        prog(0, etapas[0]);
+    }
+    function prog(pct, txt, etapaIdx) {
+        $('ri-prog-barra').style.width = Math.max(0, Math.min(100, pct)) + '%';
+        $('ri-prog-pct').textContent = Math.round(pct) + '%';
+        if (txt) $('ri-prog-txt').textContent = txt;
+        if (etapaIdx != null) [...$('ri-prog-etapas').children].forEach((li, i) => { li.className = i < etapaIdx ? 'ok' : i === etapaIdx ? 'atual' : ''; });
+    }
+    const pausa = ms => new Promise(r => setTimeout(r, ms)); // deixa a barra desenhar entre etapas
     async function gerarComXerife(botao) {
         const prontos = E.alvos.filter(a => a.ficha);
         if (!prontos.length) { alert('Adicione ao menos um alvo.'); return; }
         if (!window.XerifeAnalista) { alert('Módulo de análise do XERIFE não carregado.'); return; }
         const txt = botao.textContent; botao.disabled = true;
+        const faltam = prontos.filter(a => !a.consulta && String(a.ficha.dados.cpf || '').replace(/\D/g, '').length === 11);
+        const etapas = ['Consulta CAD / BNMP / Tribunais', 'Identificação, antecedentes e situação judicial', 'Análise de cada alvo', 'Rede, hipóteses e conclusão', 'Propostas e avaliação do conhecimento', 'Redação final'];
+        progInicio(etapas);
         try {
-            // 1) Consulta Integrada (CAD/BNMP/Tribunais) dos alvos com CPF que ainda não foram consultados
-            const faltam = prontos.filter(a => !a.consulta && String(a.ficha.dados.cpf || '').replace(/\D/g, '').length === 11);
-            const local = window.P3AtualizadorLocal && await P3AtualizadorLocal.disponivel().catch(() => false);
-            if (faltam.length && local && confirm(`O XERIFE vai consultar CAD, BNMP e Tribunais de ${faltam.length} alvo(s) ainda não consultado(s) para analisar tudo. Continuar?\n(Cancelar = analisar só com os dados já carregados)`)) {
-                for (let i = 0; i < faltam.length; i++) { botao.textContent = `🧠 Consultando ${i + 1}/${faltam.length} — ${faltam[i].ficha.dados.nome.split(' ')[0]}…`; await consultarIntegrada(faltam[i]); }
-            }
-            botao.textContent = '🧠 Analisando…';
+            // 1) Consulta Integrada (CAD/BNMP/Tribunais) dos alvos com CPF ainda não consultados — automática
+            const local = faltam.length && window.P3AtualizadorLocal && await P3AtualizadorLocal.disponivel().catch(() => false);
+            if (local) {
+                for (let i = 0; i < faltam.length; i++) { prog(2 + 28 * i / faltam.length, `Consultando CAD, BNMP e Tribunais — ${faltam[i].ficha.dados.nome} (${i + 1}/${faltam.length})…`, 0); await consultarIntegrada(faltam[i]); }
+            } else prog(5, faltam.length ? 'Atualizador local fechado — analisando com os dados já carregados' : 'Dados das consultas já carregados', 0);
+            await pausa(150);
             // 2) Texto-base (identificação, endereço, informes, antecedentes, situação judicial, vínculos)
+            prog(32, 'Redigindo identificação, endereços, informes, antecedentes e situação judicial…', 1); await pausa(150);
             gerarTexto();
             const corpo = $('ri-corpo');
             // 3) Análise por alvo, logo após os parágrafos do alvo
             const analises = [];
-            prontos.forEach((a, i) => {
+            for (let i = 0; i < prontos.length; i++) {
+                const a = prontos[i];
+                prog(40 + 30 * i / prontos.length, `Analisando ${a.ficha.dados.nome}: perfil, cronologia, enquadramento legal, hipóteses (ACH), rede e risco…`, 2); await pausa(120);
                 const f = a.ficha, NOME = up(f.dados.nome), vg = vulgo(f);
                 const ref = vg ? `<b>“${esc(up(vg))}”</b>` : `<b>${esc(NOME)}</b>`;
                 const rot = n => `${String(i + 1).padStart(2, '0')} ${vg ? up(vg) : NOME.split(' ')[0]} — ${n}`;
                 const r = XerifeAnalista.paragrafosAnalise(a, ref, `alvo${i}`, rot);
-                analises.push({ R: r.R, ref });
+                analises.push({ R: r.R, ref, alvo: a });
                 const ult = [...corpo.querySelectorAll(`p[data-bloco^="alvo${i}-"]`)].pop();
                 const html = r.paragrafos.map(x => P(x.bloco, x.rotulo, x.html)).join('');
                 if (ult) ult.insertAdjacentHTML('afterend', html); else corpo.insertAdjacentHTML('beforeend', html);
-            });
+            }
             // 4) Conclusão analítica, propostas e avaliação do conhecimento
+            prog(72, 'Análise de rede do conjunto, hipóteses e conclusão…', 3); await pausa(150);
             const orcrim = !!E.grupo || prontos.length > 1 && prontos.some(a => (a.ficha.grupos || []).length);
             const S = XerifeAnalista.sintese(analises, { orcrim });
             const concl = corpo.querySelector('p[data-bloco="concl"]');
             if (concl) concl.innerHTML = S.conclusao;
             const fecho = corpo.querySelector('p[data-bloco="fecho"]');
+            if (concl && S.conjunto && S.conjunto.length) concl.insertAdjacentHTML('beforebegin', S.conjunto.map(x => P(x.bloco, x.rotulo, x.html)).join(''));
+            prog(80, 'Propostas de ação, lacunas e avaliação do conhecimento…', 4); await pausa(120);
             const extra = (S.propostas.length ? P('propostas', 'Propostas de ação', `Propõe-se: ${S.propostas.map((p, j) => `${String.fromCharCode(97 + j)}) ${esc(p)}`).join('; ')}.`) : '')
-                + (S.lacunas.length ? P('lacunas', 'Lacunas de inteligência', `Permanecem as seguintes lacunas a serem supridas em novos levantamentos: ${S.lacunas.map(esc).join(' | ')}.`) : '')
+                + (S.lacunas.length ? P('lacunas', 'Lacunas de inteligência', `Permanecem as seguintes lacunas a serem supridas em novos levantamentos: ${S.lacunas.join(' | ')}.`) : '')
                 + P('avaliacao', 'Avaliação do conhecimento', S.avaliacao);
             if (fecho) fecho.insertAdjacentHTML('beforebegin', extra); else corpo.insertAdjacentHTML('beforeend', extra);
-            // 5) Refino opcional da redação pela IA local
-            const X = await garantirXerife();
-            if (X && X.obterEstadoIA && X.obterEstadoIA() === 'pronto' && confirm('Análise concluída. Refinar também a redação dos informes com a IA local do XERIFE (sem acrescentar dados)?')) await refinarComXerife($('ri-xerife'));
-            else alert(`🧠 XERIFE: relatório redigido com a análise de ${prontos.length} alvo(s) — risco global ${S.maior}. Revise o texto antes de imprimir.`);
-        } catch (e) { console.error('[relint xerife]', e); alert('Não foi possível concluir a análise: ' + e.message); }
+            // 5) Redação final: se a IA local já estiver carregada, ela melhora a redação dos informes (sem acrescentar dados)
+            const X = window.Xerife;
+            if (X && X.obterEstadoIA && X.obterEstadoIA() === 'pronto') await refinarComXerife(null, (i, n) => prog(84 + 15 * i / n, `Redação final pela IA local — parágrafo ${i + 1} de ${n}…`, 5));
+            else { prog(96, 'Redação final…', 5); await pausa(150); }
+            prog(100, `✅ Concluído — RELINT de ${prontos.length} alvo(s), risco global ${S.maior}. Revise o texto antes de imprimir.`, etapas.length);
+            setTimeout(() => $('ri-prog').classList.remove('ativo'), 6000);
+            corpo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } catch (e) { console.error('[relint xerife]', e); prog(100, '⚠️ Não foi possível concluir a análise: ' + e.message); }
         botao.disabled = false; botao.textContent = txt;
     }
 
@@ -710,6 +736,32 @@
         botao.disabled = false; botao.textContent = txt;
     }
 
+    // ── Modelo da IA local do XERIFE (WebLLM) — escolha salva neste navegador ──
+    // Lista igual à de js/xerife.js (MODELOS_IA) — aqui só grava a escolha, sem carregar a IA
+    // (o XERIFE baixa/carrega o modelo apenas quando a IA é usada).
+    const MODELOS_IA = [
+        ['Llama-3.2-1B-Instruct-q4f16_1-MLC', 'Básico — Llama 3.2 1B (~0,9 GB, rápido)'],
+        ['Qwen2.5-3B-Instruct-q4f16_1-MLC', 'Avançado — Qwen 2.5 3B (~2,5 GB, português melhor)'],
+        ['Qwen2.5-7B-Instruct-q4f16_1-MLC', 'Máximo — Qwen 2.5 7B (~5 GB, requer GPU forte)'],
+    ];
+    function ligarSeletorModelo() {
+        const sel = $('ri-xerife-modelo'), est = $('ri-xerife-estado');
+        sel.innerHTML = MODELOS_IA.map(([id, n]) => `<option value="${esc(id)}">🤠 IA local: ${esc(n)}</option>`).join('');
+        let atual = MODELOS_IA[0][0]; try { atual = localStorage.getItem('xerife_modelo_ia') || atual; } catch (e) { /* padrão */ }
+        sel.value = atual;
+        sel.onchange = async () => {
+            if (!confirm(`Usar o modelo:
+${sel.options[sel.selectedIndex].text}
+
+Ele é baixado uma única vez e fica guardado no navegador. Modelos maiores escrevem melhor, mas precisam de placa de vídeo com mais memória.`)) { sel.value = atual; return; }
+            atual = sel.value;
+            try { localStorage.setItem('xerife_modelo_ia', atual); } catch (e) { /* opcional */ }
+            if (window.Xerife && Xerife.definirModeloIA) await Xerife.definirModeloIA(atual);
+        };
+        const rot = { verificando: '⏳ verificando…', baixando: '⬇ baixando', pronto: '✅ IA pronta', indisponivel: '⚠️ sem WebGPU', erro: '⚠️ erro na IA' };
+        setInterval(() => { if (!window.Xerife || !Xerife.obterEstadoIA) { est.textContent = ''; return; } const e = Xerife.obterEstadoIA(); est.textContent = (rot[e] || e) + (e === 'baixando' ? ` ${Xerife.obterProgressoIA()}%` : ''); }, 2000);
+    }
+
     // ── XERIFE: refino da redação (IA local), sem acrescentar fatos ──
     function garantirXerife() {
         if (window.Xerife) return Promise.resolve(window.Xerife);
@@ -727,19 +779,14 @@
         'Responda somente com o parágrafo reescrito, sem comentários.';
     const numerosDe = s => (String(s).match(/\d+/g) || []);
     const maiusculasDe = s => (String(s).match(/\b[A-ZÀ-Þ]{3,}\b/g) || []).map(semAcento);
-    async function refinarComXerife(botao) {
+    async function refinarComXerife(botao, aoAvancar) {
         const ps = [...$('ri-corpo').querySelectorAll('p[data-ia="1"]')];
-        if (!ps.length) { alert('Gere o texto primeiro — o XERIFE refina os parágrafos de informes, vínculos e denúncias.'); return; }
-        const X = await garantirXerife();
-        const estado = X && X.obterEstadoIA ? X.obterEstadoIA() : 'indisponivel';
-        if (!X || !X.gerarComIA || estado !== 'pronto') {
-            alert('A IA local do XERIFE não está pronta (' + ({ baixando: 'ainda carregando o modelo — tente em alguns minutos', indisponivel: 'computador sem suporte a IA local (WebGPU)', erro: 'erro ao carregar' }[estado] || estado) + '). O texto atual já segue a redação padrão.');
-            return;
-        }
-        const txt = botao.textContent; botao.disabled = true;
+        if (!ps.length) return;
+        const X = window.Xerife;
+        if (!X || !X.gerarComIA || !X.obterEstadoIA || X.obterEstadoIA() !== 'pronto') return;
         let ok = 0, rej = 0;
         for (let i = 0; i < ps.length; i++) {
-            botao.textContent = `🤠 XERIFE ${i + 1}/${ps.length}…`;
+            if (aoAvancar) aoAvancar(i, ps.length);
             const original = ps[i].textContent;
             const novo = await X.gerarComIA([{ role: 'system', content: PROMPT_XERIFE }, { role: 'user', content: original }], { temperature: 0.2, max_tokens: 500 });
             const n = val(novo);
@@ -748,8 +795,7 @@
             const inventou = numerosDe(n).some(x => !nums.has(x)) || maiusculasDe(n).some(x => !mais.has(x));
             if (n && !inventou && n.length > original.length * 0.5) { ps[i].textContent = n.replace(/^["“]|["”]$/g, ''); ok++; } else rej++;
         }
-        botao.disabled = false; botao.textContent = txt;
-        alert(`XERIFE: ${ok} parágrafo(s) refinado(s)${rej ? `, ${rej} mantido(s) na redação padrão (a IA acrescentaria dados que não constam das fichas)` : ''}.`);
+        return { ok, rej };
     }
 
     // ── IMPRESSÃO — modelo oficial ──────────────────────────────────
@@ -1000,11 +1046,11 @@
         $('ri-buscar').onclick = buscar;
         $('ri-q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
         $('ri-grupo-limpar').onclick = () => { E.grupo = null; renderAlvos(); };
-        $('ri-gerar').onclick = gerarTexto;
-        $('ri-xerife').onclick = () => refinarComXerife($('ri-xerife'));
-        $('ri-xerife-analise').onclick = () => gerarComXerife($('ri-xerife-analise'));
-        $('ri-claude').onclick = () => gerarComClaude($('ri-claude'));
-        $('ri-claude-chave').onclick = configurarChaveClaude;
+        $('ri-gerar').onclick = () => gerarComXerife($('ri-gerar'));
+        // Claude (API) fica desativado na tela até haver chave — o XERIFE faz a análise completa.
+        if ($('ri-claude')) $('ri-claude').onclick = () => gerarComClaude($('ri-claude'));
+        if ($('ri-claude-chave')) $('ri-claude-chave').onclick = configurarChaveClaude;
+        if ($('ri-xerife-modelo')) ligarSeletorModelo();
         $('ri-consultar-todos').onclick = () => consultarTodos($('ri-consultar-todos'));
         $('ri-blocos-todos').onclick = () => { E.ocultos.clear(); const d = $('ri-previa').contentDocument; aplicarOcultos(d); montarPainelBlocos(d); };
         document.querySelectorAll('[data-cmd]').forEach(b => b.onclick = () => { $('ri-corpo').focus(); document.execCommand(b.dataset.cmd); });
@@ -1016,6 +1062,24 @@
         document.querySelectorAll('[data-fechar]').forEach(b => b.onclick = () => $(b.dataset.fechar).classList.remove('aberto'));
         document.querySelectorAll('.ri-modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) m.classList.remove('aberto'); }));
         await carregarGrupos();
-        restaurar();
+        const idUrl = new URLSearchParams(location.search).get('alvo');
+        if (idUrl) await prepararDoMapa(idUrl); else restaurar();
     });
+    async function prepararDoMapa(id) {
+        escreverCab(cabPadrao());
+        $('ri-corpo').innerHTML = '<p>Ficha e consultas sendo preparadas…</p>';
+        progInicio(['Ficha Alvo (ExchelonX)', 'Consulta CAD / BNMP / Tribunais', 'Pronto para gerar']);
+        prog(10, 'Carregando a Ficha Alvo do ExchelonX…', 0);
+        await adicionarAlvo(id);
+        const a = E.alvos.find(x => String(x.id) === String(id));
+        if (!a || !a.ficha) { prog(100, '⚠️ Não foi possível carregar a ficha deste alvo (abra o Sistema P3 exe com login P2/ADMIN).'); return; }
+        const cpf = String(a.ficha.dados.cpf || '').replace(/\D/g, '');
+        const local = cpf.length === 11 && window.P3AtualizadorLocal && await P3AtualizadorLocal.disponivel().catch(() => false);
+        if (local) { prog(40, `Consultando CAD, BNMP e Tribunais de ${a.ficha.dados.nome}…`, 1); await consultarIntegrada(a); }
+        prog(100, '', 2);
+        $('ri-prog').classList.remove('ativo');
+        $('ri-corpo').innerHTML = '<p>Clique em “🧠 Gerar texto (análise do XERIFE)” para redigir o relatório.</p>';
+        $('ri-prog').insertAdjacentHTML('beforebegin', `<div class="ri-pronto" id="ri-pronto">✅ <b>${esc(a.ficha.dados.nome)}</b> — ficha${a.consulta ? ' e Consulta Integrada (CAD/BNMP/Tribunais)' : ''} carregadas${local ? '' : cpf.length === 11 ? ' (Consulta Integrada não realizada: atualizador local indisponível)' : ' (sem CPF — Consulta Integrada não se aplica)'}. Clique em <b>🧠 Gerar texto</b>.</div>`);
+        $('ri-gerar').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
 })();
