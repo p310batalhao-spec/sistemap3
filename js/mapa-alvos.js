@@ -320,7 +320,7 @@
                 <button class="al-mini" onclick="MapaAlvos.ocorrenciasAlvo('${p.id}')">🔎 Ocorrências no CAD${o && o.fim ? ` (${o.noMapa} no mapa)` : ''}</button>
                 <button class="al-mini" onclick="MapaAlvos.abrirRelint('${p.id}')">📝 Gerar RELINT</button>
                 <button class="al-mini al-sair" onclick="MapaAlvos.sairFoco()">✕ Sair do foco</button></div>
-            ${r ? `<div class="al-foco-leg">${Object.values(TIPO_VINC).map(t => `<span><i style="border-top:3px ${t.traco ? 'dashed' : 'solid'} ${t.cor}"></i>${t.rot}</span>`).join('')}<span>espessura = confiança</span><span>${r.nos} pessoa(s) na rede</span></div>` : ''}
+            ${r ? `<div class="al-foco-leg">${Object.values(TIPO_VINC).map(t => `<span><i style="border-top:4px solid ${t.cor};border-radius:2px"></i>${t.rot}</span>`).join('')}<span>espessura = confiança</span><span>${r.nos} pessoa(s) na rede</span></div>` : ''}
             ${r && r.semOrigem ? `<div class="al-foco-l2">⚠️ O próprio alvo não tem endereço localizado no mapa — a rede aparece a partir dos vinculados.</div>` : ''}
             ${r && r.semEndereco.length ? `<div class="al-foco-l2">Sem endereço cadastrado (posicionados em órbita, borda tracejada): ${r.semEndereco.map(e).join(' · ')}</div>` : ''}
             ${o ? `<div class="al-foco-l2">${o.msg}</div>` : ''}
@@ -333,11 +333,11 @@
         html: `<div class="al-pin" style="--c:${cor}"><span style="width:${grande ? 44 : 34}px;height:${grande ? 44 : 34}px;${grande ? 'border-color:#ffd600;border-width:4px;' : ''}${tracejado ? 'border-style:dashed;opacity:.85;' : ''}">${p._fotoUrl ? `<img src="${p._fotoUrl}" onerror="this.parentNode.textContent='${e(iniciais(p.nome))}'">` : e(iniciais(p.nome))}</span><em>${e(p.nome.split(' ').slice(0, 2).join(' '))}${rot ? `<br><small>${e(rot)}</small>` : ''}</em></div>` });
     // Estilo do vínculo por tipo (cor/traço) e confiança (espessura)
     const TIPO_VINC = {
-        criminal: { cor: '#ff3d00', traco: null, rot: 'criminal' },
-        familiar: { cor: '#ffd600', traco: '8 6', rot: 'familiar' },
-        afetivo: { cor: '#f06292', traco: '2 6', rot: 'afetivo' },
-        social: { cor: '#4fc3f7', traco: '10 4 2 4', rot: 'social' },
-        outro: { cor: '#b0bec5', traco: '4 4', rot: 'outro' },
+        criminal: { cor: '#ff3d00', rot: 'criminal' },
+        familiar: { cor: '#ffd600', rot: 'familiar' },
+        afetivo: { cor: '#f06292', rot: 'afetivo' },
+        social: { cor: '#4fc3f7', rot: 'social' },
+        outro: { cor: '#b0bec5', rot: 'outro' },
     };
     const estiloVinc = v => TIPO_VINC[N(v.tipo).toLowerCase()] || (/CRIM|COMPARS|FAC|ORCRIM|SUBORDIN|LIDER|GERENTE/.test(N(v.tipo + ' ' + v.sub)) ? TIPO_VINC.criminal
         : /FAMIL|IRMA|PAI|MAE|FILH|PRIM|TIO|SOBRIN|AVO|NET|CUNHAD|SOGR/.test(N(v.tipo + ' ' + v.sub)) ? TIPO_VINC.familiar
@@ -394,21 +394,27 @@
             pos.set(id, { ll: [base[0] + r * Math.cos(ang), base[1] + r * Math.sin(ang) / Math.cos(base[0] * Math.PI / 180)], end: null, real: false });
             semEndereco.push(n.p.nome);
         });
-        // Arestas: todos os vínculos entre nós da rede (inclusive entre os vinculados)
-        const vistos = new Set(), pts = [];
-        let curvaIdx = 0;
+        // Arestas: todos os vínculos entre nós da rede (inclusive entre os vinculados).
+        // Linha RETA e contínua de pessoa a pessoa (contorno + cor do tipo + fluxo animado);
+        // só quando o mesmo par tem mais de um vínculo usa uma curva leve para não sobrepor.
+        const vistos = new Set(), pts = [], porPar = {};
+        let nRot = 0;
         [...nos.keys()].forEach(id => (A.pessoas[id].vinculos || []).forEach(v => {
             if (!nos.has(v.id) || !pos.has(id) || !pos.has(v.id)) return;
-            const chave = [id, v.id].sort().join('|') + '|' + v.tipo + '|' + v.sub;
+            const par = [id, v.id].sort().join('|'), chave = par + '|' + v.tipo + '|' + v.sub;
             if (vistos.has(chave)) return; vistos.add(chave);
+            const k = porPar[par] = (porPar[par] || 0) + 1;
             const st = estiloVinc(v), rel = SUBTIPO[v.sub] || (v.sub || v.tipo || '').replace(/_/g, ' ');
             const direto = id === pessoaId || v.id === pessoaId;
-            const curva = (curvaIdx++ % 2 ? -1 : 1) * (0.18 + (curvaIdx % 3) * 0.06);
-            const a = arco(pos.get(id).ll, pos.get(v.id).ll, curva);
-            const p1 = A.pessoas[id], p2 = A.pessoas[v.id];
-            L.polyline(a.pts, { color: '#000', weight: pesoConf(v.conf) + 3, opacity: direto ? .35 : .2, interactive: false }).addTo(F.rede);
-            L.polyline(a.pts, { color: st.cor, weight: pesoConf(v.conf), opacity: direto ? .95 : .6, dashArray: st.traco })
+            const la = pos.get(id).ll, lb = pos.get(v.id).ll;
+            const tRot = 0.5 + ((nRot++ % 5) - 2) * 0.09; // rótulos escalonados ao longo da linha, sem empilhar
+            const a = k === 1 ? { pts: [la, lb], meio: [la[0] + (lb[0] - la[0]) * tRot, la[1] + (lb[1] - la[1]) * tRot] } : arco(la, lb, (k % 2 ? -1 : 1) * 0.12 * Math.ceil((k - 1) / 2));
+            const p1 = A.pessoas[id], p2 = A.pessoas[v.id], w = pesoConf(v.conf) + (direto ? 1 : 0);
+            const op = { lineCap: 'round', lineJoin: 'round' };
+            L.polyline(a.pts, Object.assign({ color: '#0a1628', weight: w + 5, opacity: direto ? .55 : .35, interactive: false }, op)).addTo(F.rede);
+            L.polyline(a.pts, Object.assign({ color: st.cor, weight: w, opacity: direto ? 1 : .7 }, op))
                 .bindTooltip(`<b>${e(p1.nome)}</b> ↔ <b>${e(p2.nome)}</b><br>${e(st.rot)} · ${e(rel)}${v.conf ? ' · confiança ' + e(v.conf) : ''}${v.obs ? '<br>' + e(v.obs) : ''}`, { sticky: true }).addTo(F.rede);
+            if (direto) L.polyline(a.pts, Object.assign({ color: '#ffffff', weight: Math.max(1.5, w / 2.5), opacity: .85, dashArray: '2 14', className: 'al-fluxo', interactive: false }, op)).addTo(F.rede);
             if (direto || grau > 1) L.marker(a.meio, { interactive: false, icon: L.divIcon({ className: '', iconSize: null, iconAnchor: [0, 8],
                 html: `<div class="al-rel" style="--c:${st.cor}">${e(rel)}</div>` }) }).addTo(F.rede);
         }));
@@ -418,7 +424,7 @@
             const ps = pos.get(id); if (!ps) return;
             if (n.nivel === 1 && ps.real) noMapa++;
             const vRaiz = (p.vinculos || []).find(v => v.id === id);
-            const rot = n.nivel === 0 ? 'ALVO' : (ps.real ? '' : 'sem endereço · ') + (vRaiz ? (SUBTIPO[vRaiz.sub] || vRaiz.sub || vRaiz.tipo) : '2º grau');
+            const rot = n.nivel === 0 ? 'ALVO' : (ps.real ? '' : 'sem endereço · ') + (vRaiz ? String(SUBTIPO[vRaiz.sub] || vRaiz.sub || vRaiz.tipo).replace(/_/g, ' ') : '2º grau');
             const cor = n.nivel === 0 ? '#d50000' : vRaiz ? estiloVinc(vRaiz).cor : '#78909c';
             const mk = L.marker(ps.ll, { icon: iconePessoa(n.p, cor, rot, n.nivel === 0, !ps.real), zIndexOffset: 2000 - n.nivel * 300 }).addTo(F.rede);
             if (ps.end) mk.bindPopup(() => popupAlvo(ps.end), { maxWidth: 380, minWidth: 300 }).on('popupopen', () => carregarFotoPopup(ps.end));
@@ -429,7 +435,9 @@
         F.info.rede = { total: p.vinculos.length, noMapa, semEndereco: semEndereco.filter(x => x !== p.nome), semOrigem: !origem, grau, nos: nos.size };
         renderBarraFoco();
         // margem extra à direita/abaixo: a legenda do mapa fica nesse canto
-        if (pts.length) _mapaL.fitBounds(pts, { paddingTopLeft: [70, 130], paddingBottomRight: [260, 90], maxZoom: 16 });
+        // aproxima o quanto for preciso (zoom até 18) para as pessoas ficarem em foco, mesmo próximas
+        if (pts.length === 1) _mapaL.setView(pts[0], 18);
+        else if (pts.length) _mapaL.flyToBounds(pts, { paddingTopLeft: [80, 150], paddingBottomRight: [270, 100], maxZoom: 18, duration: 0.8 });
     }
 
     // ── Ocorrências da pessoa: base da unidade (/autor) + CAD (Consulta Integrada) ──
@@ -536,10 +544,23 @@
         if (x._mk) x._mk.openPopup();
     }
     // RELINT do alvo em janela própria: ficha + Consulta Integrada (CAD) já preparadas, aguardando "Gerar texto"
+    // Popup INTERNO (iframe na própria página): no Sistema P3 (exe) o window.open é barrado e,
+    // fora dele, uma janela nova perderia a sessão. Mesma origem → mesmo login.
     A.abrirRelint = id => {
-        const w = window.open('relint.html?alvo=' + encodeURIComponent(id), 'relint_' + String(id).slice(0, 8), 'width=1380,height=920,resizable=yes,scrollbars=yes');
-        if (!w) alert('O navegador bloqueou a janela do RELINT — permita pop-ups para esta página.'); else w.focus();
+        let m = $('al-relint');
+        if (!m) {
+            m = document.createElement('div'); m.id = 'al-relint';
+            m.innerHTML = `<div class="al-relint-caixa"><div class="al-relint-topo"><b>📝 Relatório de Inteligência</b><span id="al-relint-nome"></span>
+                <button class="al-btn sec" onclick="MapaAlvos.fecharRelint()">✕ Fechar</button></div><iframe id="al-relint-frame" title="RELINT"></iframe></div>`;
+            document.body.appendChild(m);
+            document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && m.classList.contains('aberto')) A.fecharRelint(); });
+        }
+        const p = A.pessoas[id];
+        $('al-relint-nome').textContent = p ? ' — ' + p.nome : '';
+        $('al-relint-frame').src = 'relint.html?embed=1&alvo=' + encodeURIComponent(id);
+        m.classList.add('aberto');
     };
+    A.fecharRelint = () => { const m = $('al-relint'); if (!m) return; m.classList.remove('aberto'); setTimeout(() => { $('al-relint-frame').src = 'about:blank'; }, 200); };
     A.focarRede = focarRede;
     A.ocorrenciasAlvo = ocorrenciasAlvo;
     A.sairFoco = sairFoco;
