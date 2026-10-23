@@ -63,6 +63,16 @@
         .al-foco-det > div { max-height: 220px; overflow: auto; margin-top: 4px; }
         .al-foco-oc { padding: 4px 6px; border-top: 1px solid rgba(255,255,255,.08); } .al-foco-oc.tem { cursor: pointer; } .al-foco-oc.tem:hover { background: rgba(255,214,0,.1); }
         .al-foco-oc small { color: rgba(227,236,247,.55); }
+        /* fluxo animado nas ligações diretas do alvo */
+        @keyframes alFluxo { to { stroke-dashoffset: -32; } }
+        .al-fluxo { animation: alFluxo 1.1s linear infinite; }
+        /* RELINT em popup interno */
+        #al-relint { position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,.6); display: none; padding: 2vh 1.5vw; }
+        #al-relint.aberto { display: block; }
+        .al-relint-caixa { height: 100%; display: flex; flex-direction: column; background: #0a1220; border: 1px solid rgba(255,255,255,.15); border-radius: 12px; overflow: hidden; box-shadow: 0 16px 50px rgba(0,0,0,.6); }
+        .al-relint-topo { display: flex; align-items: center; gap: 8px; padding: 8px 12px; color: #e7ecf5; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.1); }
+        .al-relint-topo span { color: #ffd59a; font-weight: 700; } .al-relint-topo button { margin-left: auto; }
+        #al-relint-frame { flex: 1; width: 100%; border: 0; background: #0a1220; }
         .al-rel { transform: translate(-50%, 0); display: inline-block; background: rgba(10,22,40,.88); color: #fff; border: 1.5px solid var(--c); border-radius: 10px; padding: 1px 7px; font: 700 9.5px Arial; white-space: nowrap; box-shadow: 0 1px 5px rgba(0,0,0,.5); }
         .al-foco-leg { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; font-size: 10px; color: rgba(227,236,247,.7); }
         .al-foco-leg i { display: inline-block; width: 22px; vertical-align: middle; margin-right: 4px; }
