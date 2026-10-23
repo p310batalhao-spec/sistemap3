@@ -20,6 +20,13 @@
             const TIMEOUT_HEALTH_MS = 2000;
 
             async function disponivel() {
+                // 2 tentativas: um "não" isolado (servidor ocupado com uma consulta longa,
+                // portão relendo a sessão) não deve fazer a tela pedir para abrir o exe.
+                if (await disponivelUmaVez()) return true;
+                await new Promise(r => setTimeout(r, 1200));
+                return disponivelUmaVez();
+            }
+            async function disponivelUmaVez() {
                 try {
                     const controlador = new AbortController();
                     const timer = setTimeout(() => controlador.abort(), TIMEOUT_HEALTH_MS);
