@@ -197,6 +197,9 @@
                         </details>
                         <div class="ri-barra-ed">
                             <button class="ri-btn ri-btn-ouro" id="ri-gerar">✨ Gerar texto a partir das fichas</button>
+                            <button class="ri-btn ri-btn-ouro" id="ri-xerife-analise" title="O XERIFE analisa a ficha alvo, o CAD, os processos e o BNMP e redige o relatório completo (perfil, dinâmica, rede, risco, conclusão, propostas)">🧠 XERIFE: análise completa</button>
+                            <button class="ri-btn ri-btn-ouro" id="ri-claude" title="A API do Claude (Anthropic) analisa ficha alvo, CAD, processos, BNMP e a análise do XERIFE e redige o relatório completo">🤖 Claude: análise e redação</button>
+                            <button class="ri-btn" id="ri-claude-chave" title="Configurar a chave da API do Claude (fica salva só neste computador)">🔑</button>
                             <button class="ri-btn" id="ri-xerife" title="IA local do XERIFE: refina a redação dos informes no padrão DNISP, sem acrescentar dados">🤠 Refinar redação com o XERIFE</button>
                             <button class="ri-btn ri-btn-mini" data-cmd="bold"><b>N</b></button>
                             <button class="ri-btn ri-btn-mini" data-cmd="italic"><i>I</i></button>
@@ -231,6 +234,7 @@
     </div></div>
 
     <script src="../js/core/atualizador-local.js"></script>
+    <script src="../js/xerife-analista.js"></script>
     <script src="../js/relint.js"></script>
 </body>
 </html>
