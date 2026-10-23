@@ -554,7 +554,7 @@
         const end = enderecoSel(a);
         if (end) {
             const carac = unicos([end.pontoReferencia, ...(end.referencias || []), end.descricao].map(x => normalizarCaixa(textoLimpo(x)))).join('; ');
-            ps.push(P(k + '-end', rot('endereço / imóvel'), `Por meio de levantamentos de inteligência, constatou-se que ${ref} residiria no imóvel situado na <span style="color:#c00000">${esc(enderecoTexto(end))}</span>${carac ? ` (${esc(carac)})` : ''}, local de interesse para eventuais medidas de natureza operacional.`));
+            ps.push(P(k + '-end', rot('endereço / imóvel'), `Por meio de levantamentos de inteligência, constatou-se que ${ref} residiria no imóvel situado na ${esc(enderecoTexto(end))}${carac ? ` (${esc(carac)})` : ''}, local de interesse para eventuais medidas de natureza operacional.`));
         }
         // Mesmo informe importado por mais de uma fonte → entra uma vez só.
         const vistosInf = [];
