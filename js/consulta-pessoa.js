@@ -78,7 +78,7 @@
 
     function criarAbaConsulta(cpfLimpo) {
         const aba = {
-            id: PROX_ABA_CONSULTA_ID++, cpfLimpo, titulo: formatarCpf(cpfLimpo),
+            id: PROX_ABA_CONSULTA_ID++, tipo: 'cpf', cpfLimpo, titulo: formatarCpf(cpfLimpo),
             resultado: null, carregando: true, erro: null,
             progresso: { etapa: 'Iniciando...', concluidas: 0, total: 0 },
         };
@@ -86,10 +86,21 @@
         return aba;
     }
 
+    // Abas das OUTRAS buscas (24/10/2026, pedido explícito: "em qualquer
+    // consulta feita abra o sistema de abas como as várias consultas
+    // feitas pelo CPF") — tipo 'nome' | 'veiculo' | 'cnpj', conteúdo
+    // desenhado em #cip-aba-generica (ver renderizarAbaGenerica). `chave`
+    // evita abrir 2 abas pra mesma busca.
+    function criarAbaOutra(tipo, chave, titulo) {
+        const aba = { id: PROX_ABA_CONSULTA_ID++, tipo, chave, titulo, carregando: true, erro: null };
+        ABAS_CONSULTA.push(aba);
+        return aba;
+    }
+
     function ativarAbaConsulta(id) {
         ABA_CONSULTA_ATIVA_ID = id;
         const aba = abaConsultaAtiva();
-        document.getElementById('cip-input-cpf').value = aba ? formatarCpf(aba.cpfLimpo) : '';
+        if (aba && aba.tipo === 'cpf') document.getElementById('cip-input-cpf').value = formatarCpf(aba.cpfLimpo);
         renderAbasConsulta();
         renderizarConsultaAtiva();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -103,7 +114,7 @@
             const proxima = ABAS_CONSULTA[idx] || ABAS_CONSULTA[idx - 1] || null;
             ABA_CONSULTA_ATIVA_ID = proxima ? proxima.id : null;
             const inputCpf = document.getElementById('cip-input-cpf');
-            inputCpf.value = proxima ? formatarCpf(proxima.cpfLimpo) : '';
+            inputCpf.value = proxima && proxima.tipo === 'cpf' ? formatarCpf(proxima.cpfLimpo) : '';
         }
         renderAbasConsulta();
         renderizarConsultaAtiva();
@@ -118,7 +129,8 @@
             const ativa = a.id === ABA_CONSULTA_ATIVA_ID;
             const statusIcone = a.carregando ? '<span class="cip-aba-consulta-spinner" title="Carregando..."></span>'
                 : (a.erro ? '<span title="Falhou">⚠️</span>' : '');
-            return `<div class="cip-aba-consulta-btn${ativa ? ' ativa' : ''}" data-id="${a.id}" title="${esc(a.titulo)} — ${esc(formatarCpf(a.cpfLimpo))}">
+            const dica = a.tipo === 'cpf' ? `${a.titulo} — ${formatarCpf(a.cpfLimpo)}` : (a.criterios || a.titulo);
+            return `<div class="cip-aba-consulta-btn${ativa ? ' ativa' : ''}" data-id="${a.id}" title="${esc(dica)}">
                 ${statusIcone}<span class="cip-aba-consulta-titulo">${esc(a.titulo)}</span>
                 <button type="button" class="cip-aba-consulta-fechar" data-fechar-id="${a.id}" title="Fechar aba">✕</button>
             </div>`;
@@ -158,6 +170,7 @@
             aba.resultado = r;
             aba.carregando = false;
             aba.titulo = (r.pessoa && r.pessoa.nome) ? r.pessoa.nome.trim().split(/\s+/).slice(0, 2).join(' ') : formatarCpf(aba.cpfLimpo);
+            atualizarListaCidades();
         } catch (e) {
             aba.erro = e.message;
             aba.carregando = false;
@@ -180,6 +193,20 @@
         const progEtapa = document.getElementById('cip-progresso-etapa');
         const progTexto = document.getElementById('cip-progresso-texto');
         const btnImprimir = document.getElementById('cip-btn-imprimir');
+        const generica = document.getElementById('cip-aba-generica');
+
+        if (aba && aba.tipo !== 'cpf') {
+            document.getElementById('cip-shell').style.display = 'none';
+            progWrap.style.display = 'none';
+            msg.textContent = '';
+            btnImprimir.disabled = true;
+            btnImprimir.title = 'Disponível na consulta por CPF';
+            generica.style.display = 'block';
+            renderizarAbaGenerica();
+            return;
+        }
+        generica.style.display = 'none';
+        generica.innerHTML = '';
 
         if (!aba) {
             document.getElementById('cip-shell').style.display = 'none';
@@ -389,9 +416,8 @@
                 consultarPorCpf(limparCpf(pessoas[0].cpf));
                 return;
             }
-            msg.style.color = '#1e6b34';
-            msg.textContent = `${pessoas.length} pessoa(s) encontrada(s) pra "${nome}" — clique numa pra abrir a consulta completa por CPF.`;
-            exibirResultadosNome(pessoas);
+            msg.textContent = '';
+            abrirAbaBuscaNome({ nome, vulgo: '', mae: '', pai: '' }, pessoas);
         } catch (e) {
             msg.style.color = 'var(--p3-danger)';
             msg.textContent = 'Erro: ' + e.message;
@@ -401,14 +427,14 @@
 
     async function buscarPorNome() {
         const nome = document.getElementById('cip-input-nome').value.trim();
+        const vulgo = document.getElementById('cip-input-vulgo').value.trim();
         const mae = document.getElementById('cip-input-mae').value.trim();
         const pai = document.getElementById('cip-input-pai').value.trim();
         const msg = document.getElementById('cip-status-msg');
-        const lista = document.getElementById('cip-lista-nome');
 
-        if (!nome && !mae && !pai) {
+        if (!nome && !vulgo && !mae && !pai) {
             msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Informe ao menos o nome, o nome da mãe ou o nome do pai.';
+            msg.textContent = 'Informe ao menos o nome, o vulgo, o nome da mãe ou o nome do pai.';
             return;
         }
         if (!(await P3AtualizadorLocal.disponivel())) {
@@ -416,30 +442,231 @@
             return;
         }
         document.getElementById('cip-aviso-servidor').style.display = 'none';
-        lista.style.display = 'none';
-        msg.style.color = 'var(--p3-text-muted)';
-        msg.textContent = 'Buscando...';
+        msg.textContent = '';
+        abrirAbaBuscaNome({ nome, vulgo, mae, pai }, null);
+    }
 
+    // Aba de resultado da busca por nome/vulgo/mãe/pai (24/10/2026, pedido
+    // explícito: "se a consulta por nome retornar mais de um resultado quero
+    // que faça o sistema de expansão das informações ao clicar, mostrando a
+    // foto da pessoa (QUIMERA/ALCATRAZ) e demais informações das
+    // ocorrências"). `pessoas` já buscadas (clique em mãe/pai) ou null.
+    async function abrirAbaBuscaNome(c, pessoas) {
+        const chave = 'nome:' + normTxt([c.nome, c.vulgo, c.mae, c.pai].join('|'));
+        const existente = ABAS_CONSULTA.find(a => a.chave === chave);
+        if (existente && !existente.erro) { ativarAbaConsulta(existente.id); return; }
+        if (existente) fecharAbaConsulta(existente.id);
+        const principal = c.nome || c.vulgo || c.mae || c.pai;
+        const aba = criarAbaOutra('nome', chave, '🔎 ' + (c.vulgo && !c.nome ? '"' + c.vulgo + '"' : principal.split(/\s+/).slice(0, 2).join(' ')));
+        aba.criterios = [c.nome && `nome "${c.nome}"`, c.vulgo && `vulgo "${c.vulgo}"`, c.mae && `mãe "${c.mae}"`, c.pai && `pai "${c.pai}"`].filter(Boolean).join(', ');
+        Object.assign(aba, { pessoas: [], resumos: {}, abertos: new Set(), soFiltro: false });
+        ativarAbaConsulta(aba.id);
         try {
-            const r = await P3AtualizadorLocal.buscarPessoaPorNome(nome, mae, pai);
-            if (!r.ok) {
-                msg.style.color = 'var(--p3-danger)';
-                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
-                return;
+            if (!pessoas) {
+                const r = await P3AtualizadorLocal.buscarPessoaPorNome(c.nome, c.mae, c.pai, c.vulgo);
+                if (!r.ok) throw new Error(r.erro || 'falha desconhecida.');
+                pessoas = r.pessoas || [];
             }
-            const pessoas = r.pessoas || [];
-            if (pessoas.length === 0) {
-                msg.style.color = 'var(--p3-text-muted)';
-                msg.textContent = 'Nenhuma pessoa encontrada com esses critérios.';
-                return;
-            }
-            msg.style.color = '#1e6b34';
-            msg.textContent = `${pessoas.length} pessoa(s) encontrada(s) — clique numa pra abrir a consulta completa por CPF.`;
-            exibirResultadosNome(pessoas);
+            aba.pessoas = pessoas;
         } catch (e) {
-            msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Erro: ' + e.message;
+            aba.erro = e.message;
         }
+        aba.carregando = false;
+        // 1 resultado só: já expande (foto + ocorrências) sem precisar clicar.
+        if (!aba.erro && aba.pessoas.length === 1) {
+            aba.abertos.add(0);
+            carregarResumoNome(aba, 0);
+        }
+        renderAbasConsulta();
+        if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarConsultaAtiva();
+    }
+
+    function renderSeAbaAtiva(aba) {
+        if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarAbaGenerica();
+    }
+
+    // Resumo (fotos Alcatraz/Quimera + ocorrências) de 1 pessoa da lista —
+    // rota /pessoa/resumo do atualizador local, bem mais leve que a consulta
+    // completa por CPF.
+    async function carregarResumoNome(aba, i) {
+        const cpf = limparCpf((aba.pessoas[i] || {}).cpf);
+        if (!cpf || aba.resumos[i]) return aba.resumos[i];
+        const st = aba.resumos[i] = { carregando: true };
+        renderSeAbaAtiva(aba);
+        renderAbasConsulta();
+        try {
+            const resp = await P3AtualizadorLocal.resumoPessoa(cpf);
+            if (!resp.ok) throw new Error(resp.erro || 'falha desconhecida.');
+            st.r = resp.resumo;
+        } catch (e) {
+            st.erro = e.message;
+        }
+        st.carregando = false;
+        atualizarListaCidades();
+        renderSeAbaAtiva(aba);
+        return st;
+    }
+
+    async function carregarTodosNome(aba) {
+        if (aba.carregandoTodos) return;
+        aba.carregandoTodos = true;
+        renderSeAbaAtiva(aba);
+        for (let i = 0; i < aba.pessoas.length; i++) {
+            if (!ABAS_CONSULTA.includes(aba)) break; // aba fechada no meio
+            if (limparCpf(aba.pessoas[i].cpf) && !aba.resumos[i]) await carregarResumoNome(aba, i);
+        }
+        aba.carregandoTodos = false;
+        renderSeAbaAtiva(aba);
+    }
+
+    function corpoPessoaNome(aba, i, p) {
+        const cpf = limparCpf(p.cpf), st = aba.resumos[i], r = st && st.r;
+        const pe = (r && r.pessoa) || {};
+        const dados = '<div class="cip-kv">' + Object.entries({
+            'Nome': pe.nome || p.nome, 'Vulgo': pe.alcunha || p.alcunha, 'Mãe': pe.mae || p.mae, 'Pai': pe.pai || p.pai,
+            'Nascimento': pe.dataNascimento || p.dataNascimento, 'RG': pe.rg || p.rg, 'CPF': cpf ? formatarCpf(cpf) : '',
+        }).filter(([, v]) => v).map(([k, v]) => `<div><b>${esc(k)}:</b> ${esc(v)}</div>`).join('') + '</div>';
+        if (!cpf) return dados + '<div class="cip-nome-aviso">Sem CPF cadastrado no CAD — não é possível buscar foto e ocorrências desta pessoa.</div>';
+
+        let fotos, ocorr = '';
+        if (!st || st.carregando) {
+            fotos = '<div class="cip-nome-aviso"><span class="cip-aba-consulta-spinner"></span> Buscando foto (Alcatraz / Quimera) e ocorrências...</div>';
+        } else if (st.erro) {
+            fotos = `<div class="cip-nome-aviso erro">Erro: ${esc(st.erro)}<br><button type="button" class="cip-btn-sec" data-acao="tentar" data-idx="${i}" style="margin-top:6px;">↻ Tentar de novo</button></div>`;
+        } else {
+            const lista = r.fotos || [];
+            const galeria = lista.length
+                ? lista.map((src, k) => `<div class="cip-foto-thumb" style="width:120px;height:120px;" data-acao="foto" data-idx="${i}" data-foto="${k}"><img src="${src}" alt="Foto ${k + 1}"></div>`).join('')
+                : montarGaleriaFotosHtml([], 120);
+            const q = r.fotoQuimera;
+            const erroQ = (r.fontes || []).find(x => x.fonte === 'Foto (2ª fonte)' && !x.ok);
+            const nota = erroQ ? 'Quimera: ' + erroQ.erro
+                : (q && q.consultado && !q.temFoto ? 'Quimera: sem foto registrada' + (q.motivo ? ' (' + q.motivo + ')' : '') : '');
+            fotos = `<div class="cip-nome-fotos">${galeria}</div>${nota ? `<div class="cip-nome-nota">${esc(nota)}</div>` : ''}`;
+            const f = filtrarOcorrencias(r);
+            ocorr = `<div class="cip-card-titulo" style="margin-top:14px;">🚓 Ocorrências — ${f.todas.length}</div>` + resumoFiltroHtml(f, i, st.buscandoCidades) +
+                (f.ok.length ? tabelaOcorrenciasUnificadas(f.ok)
+                    : `<div class="cip-vazio" style="padding:14px 0;">${f.todas.length ? 'Nenhuma ocorrência atende ao filtro.' : 'Nenhuma ocorrência encontrada.'}</div>`);
+        }
+        const btn = `<button type="button" class="cip-btn-pri" data-acao="completa" data-idx="${i}">🔎 Abrir consulta completa (nova aba)</button>`;
+        return `<div class="cip-nome-grade"><div>${fotos}</div><div>${dados}<div style="margin-top:12px;">${btn}</div></div></div>${ocorr}`;
+    }
+
+    function renderAbaNome(aba) {
+        const ps = aba.pessoas || [];
+        if (!ps.length) return `<div class="cip-vazio">Nenhuma pessoa encontrada para ${esc(aba.criterios)}.</div>`;
+        const comCpf = ps.filter(p => limparCpf(p.cpf)).length;
+        const prontos = Object.values(aba.resumos).filter(x => x.r || x.erro).length;
+        const fa = filtrosAtivos();
+        let h = `<div class="cip-nome-topo"><div><b>${ps.length} pessoa(s)</b> para ${esc(aba.criterios)} — clique numa para ver foto e ocorrências.</div>
+            <div class="cip-nome-acoes">
+                ${fa ? `<label style="cursor:pointer;"><input type="checkbox" data-acao="so-filtro"${aba.soFiltro ? ' checked' : ''}> só quem tem ocorrência no filtro</label>` : ''}
+                ${ps.length > 1 ? `<button type="button" class="cip-btn-sec" data-acao="carregar-todos"${aba.carregandoTodos || prontos >= comCpf ? ' disabled' : ''}>${aba.carregandoTodos ? `⏳ Carregando ${prontos}/${comCpf}...` : `⬇️ Carregar foto e ocorrências de todos (${prontos}/${comCpf})`}</button>` : ''}
+            </div></div>`;
+        let ocultos = 0;
+        ps.forEach((p, i) => {
+            const st = aba.resumos[i], r = st && st.r, cpf = limparCpf(p.cpf), aberto = aba.abertos.has(i);
+            let chip = '', fora = false;
+            if (r) {
+                const f = filtrarOcorrencias(r);
+                fora = fa && !f.ok.length;
+                if (fora && aba.soFiltro) { ocultos++; return; }
+                chip = fa ? `<span class="cip-chip${f.ok.length ? ' ok' : ''}">${f.ok.length}/${f.todas.length} no filtro${f.semCidade.length ? ` · ${f.semCidade.length} sem cidade` : ''}</span>`
+                    : `<span class="cip-chip">${f.todas.length} ocorrência(s)</span>`;
+            } else if (st && st.carregando) {
+                chip = '<span class="cip-aba-consulta-spinner"></span>';
+            } else if (st && st.erro) {
+                chip = '<span class="cip-chip" title="' + esc(st.erro) + '">⚠️ erro</span>';
+            }
+            const foto = r && r.fotos && r.fotos[0];
+            const sub = [cpf ? 'CPF ' + formatarCpf(cpf) : 'sem CPF no CAD', p.alcunha ? 'Vulgo: ' + p.alcunha : '',
+                p.dataNascimento ? 'Nasc.: ' + p.dataNascimento : '', p.mae ? 'Mãe: ' + p.mae : ''].filter(Boolean).join(' · ');
+            h += `<div class="cip-nome-item${aberto ? ' aberto' : ''}${fora ? ' fora-filtro' : ''}">
+                <div class="cip-nome-cab" data-acao="alternar" data-idx="${i}">
+                    <div class="cip-nome-mini">${foto ? `<img src="${foto}" alt="">` : '👤'}</div>
+                    <div class="cip-nome-info"><b>${esc(p.nome || 'Sem nome')}</b><span>${esc(sub)}</span></div>
+                    ${chip}<span class="cip-nome-seta">▸</span>
+                </div>
+                ${aberto ? `<div class="cip-nome-corpo">${corpoPessoaNome(aba, i, p)}</div>` : ''}
+            </div>`;
+        });
+        if (ocultos) h += `<div class="cip-nome-aviso">${ocultos} pessoa(s) sem ocorrência no filtro foram ocultadas.</div>`;
+        return h;
+    }
+
+    function renderizarAbaGenerica() {
+        const aba = abaConsultaAtiva(), cont = document.getElementById('cip-aba-generica');
+        if (!aba || aba.tipo === 'cpf') return;
+        if (aba.carregando) {
+            cont.innerHTML = '<div class="cip-nome-aviso"><span class="cip-aba-consulta-spinner"></span> Buscando...</div>';
+        } else if (aba.erro) {
+            cont.innerHTML = `<div class="cip-nome-aviso erro">Erro: ${esc(aba.erro)}</div>`;
+        } else if (aba.tipo === 'nome') {
+            cont.innerHTML = renderAbaNome(aba);
+        } else {
+            cont.innerHTML = aba.html || '';
+        }
+    }
+
+    // Cliques dentro das abas de busca por nome (delegado — o conteúdo é
+    // redesenhado a cada mudança de estado).
+    async function aoClicarAbaGenerica(e) {
+        const aba = abaConsultaAtiva();
+        const alvo = e.target.closest('[data-acao]');
+        if (!aba || aba.tipo !== 'nome' || !alvo) return;
+        const i = Number(alvo.dataset.idx);
+        const st = aba.resumos[i];
+        switch (alvo.dataset.acao) {
+            case 'alternar':
+                if (aba.abertos.has(i)) aba.abertos.delete(i);
+                else { aba.abertos.add(i); carregarResumoNome(aba, i); }
+                renderizarAbaGenerica();
+                break;
+            case 'tentar':
+                delete aba.resumos[i];
+                carregarResumoNome(aba, i);
+                break;
+            case 'completa':
+                consultarPorCpf(limparCpf(aba.pessoas[i].cpf));
+                break;
+            case 'carregar-todos':
+                carregarTodosNome(aba);
+                break;
+            case 'so-filtro':
+                aba.soFiltro = alvo.checked;
+                renderizarAbaGenerica();
+                break;
+            case 'foto':
+                if (st && st.r) { LIGHTBOX_FOTOS = st.r.fotos || []; abrirLightbox(Number(alvo.dataset.foto)); }
+                break;
+            case 'cidades':
+                if (!st || !st.r || st.buscandoCidades) return;
+                await carregarCidadesFaltantes(st.r, filtrarOcorrencias(st.r).semCidade, (k, n) => {
+                    st.buscandoCidades = `${k + 1}/${n}`;
+                    renderSeAbaAtiva(aba);
+                });
+                st.buscandoCidades = null;
+                atualizarListaCidades();
+                renderSeAbaAtiva(aba);
+                break;
+        }
+    }
+
+    // Veículo e CNPJ também abrem aba (o resultado vira o HTML da aba).
+    async function executarBuscaEmAba(tipo, chave, titulo, fn) {
+        const existente = ABAS_CONSULTA.find(a => a.chave === chave);
+        if (existente && !existente.erro) { ativarAbaConsulta(existente.id); return; }
+        if (existente) fecharAbaConsulta(existente.id);
+        const aba = criarAbaOutra(tipo, chave, titulo);
+        ativarAbaConsulta(aba.id);
+        try {
+            aba.html = await fn();
+        } catch (e) {
+            aba.erro = e.message;
+        }
+        aba.carregando = false;
+        renderAbasConsulta();
+        if (ABA_CONSULTA_ATIVA_ID === aba.id) renderizarConsultaAtiva();
     }
 
     async function buscarVeiculoAcao() {
@@ -459,32 +686,16 @@
         }
         document.getElementById('cip-aviso-servidor').style.display = 'none';
         resultado.style.display = 'none';
-        msg.style.color = 'var(--p3-text-muted)';
-        msg.textContent = 'Buscando...';
-
-        try {
+        msg.textContent = '';
+        const rotulo = (placa || chassi).toUpperCase();
+        executarBuscaEmAba('veiculo', 'veiculo:' + rotulo, '🚗 ' + rotulo, async () => {
             const r = await P3AtualizadorLocal.buscarVeiculo(placa, chassi);
-            if (!r.ok) {
-                msg.style.color = 'var(--p3-danger)';
-                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
-                return;
-            }
-            if (!r.encontrado) {
-                msg.style.color = 'var(--p3-text-muted)';
-                msg.textContent = 'Nenhum veículo encontrado com esses critérios.';
-                return;
-            }
-            msg.style.color = '#1e6b34';
-            msg.textContent = 'Veículo encontrado.';
+            if (!r.ok) throw new Error(r.erro || 'falha desconhecida.');
+            if (!r.encontrado) return '<div class="cip-vazio">Nenhum veículo encontrado com esses critérios.</div>';
             const v = r.veiculo || {};
-            resultado.innerHTML = `<div class="cip-lista-resultado-item" style="cursor:default;">` +
-                Object.entries(v).map(([k, val]) => `<div><b>${esc(k)}:</b> ${esc(val)}</div>`).join('') +
-                `</div>`;
-            resultado.style.display = 'block';
-        } catch (e) {
-            msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Erro: ' + e.message;
-        }
+            return `<div class="cip-card"><div class="cip-card-titulo">🚗 Veículo — ${esc(rotulo)}</div><div class="cip-kv">` +
+                Object.entries(v).map(([k, val]) => `<div><b>${esc(k)}:</b> ${esc(val)}</div>`).join('') + '</div></div>';
+        });
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -589,30 +800,13 @@
         }
         document.getElementById('cip-aviso-servidor').style.display = 'none';
         resultado.style.display = 'none';
-        resultado.innerHTML = '';
-        msg.style.color = 'var(--p3-text-muted)';
-        msg.textContent = 'Buscando na BrasilAPI...';
-
-        try {
+        msg.textContent = '';
+        executarBuscaEmAba('cnpj', 'cnpj:' + cnpj.replace(/\D/g, ''), '🏢 ' + _cnpjFormatar(cnpj), async () => {
             const r = await P3AtualizadorLocal.consultarCnpj(cnpj);
-            if (!r.ok) {
-                msg.style.color = 'var(--p3-danger)';
-                msg.textContent = 'Erro: ' + (r.erro || 'falha desconhecida.');
-                return;
-            }
-            if (!r.encontrado) {
-                msg.style.color = 'var(--p3-text-muted)';
-                msg.textContent = 'Nenhum CNPJ encontrado com esse número.';
-                return;
-            }
-            msg.style.color = '#1e6b34';
-            msg.textContent = 'CNPJ encontrado.';
-            resultado.style.cssText = 'display:block;border:none;padding:0;background:none;';
-            resultado.innerHTML = montarResultadoCnpjHtml(r.dados || {});
-        } catch (e) {
-            msg.style.color = 'var(--p3-danger)';
-            msg.textContent = 'Erro: ' + e.message;
-        }
+            if (!r.ok) throw new Error(r.erro || 'falha desconhecida.');
+            if (!r.encontrado) return '<div class="cip-vazio">Nenhum CNPJ encontrado com esse número.</div>';
+            return montarResultadoCnpjHtml(r.dados || {});
+        });
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -632,8 +826,13 @@
     }
 
     let LIGHTBOX_INDICE = 0;
+    // Fotos de uma pessoa expandida na busca por nome; null = fotos da consulta ativa.
+    let LIGHTBOX_FOTOS = null;
+    function fotosLightbox() {
+        return LIGHTBOX_FOTOS || (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+    }
     function atualizarLightbox() {
-        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        const fotos = fotosLightbox();
         if (!fotos.length) return;
         document.getElementById('cip-lightbox-img').src = fotos[LIGHTBOX_INDICE];
         document.getElementById('cip-lightbox-contador').textContent = fotos.length > 1 ? `${LIGHTBOX_INDICE + 1} / ${fotos.length}` : '';
@@ -642,7 +841,7 @@
         document.getElementById('cip-lightbox-next').style.display = mostraNav;
     }
     function abrirLightbox(idx) {
-        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        const fotos = fotosLightbox();
         if (!fotos.length) return;
         LIGHTBOX_INDICE = ((idx % fotos.length) + fotos.length) % fotos.length;
         atualizarLightbox();
@@ -652,7 +851,7 @@
         document.getElementById('cip-lightbox').classList.remove('aberto');
     }
     function navegarLightbox(delta) {
-        const fotos = (ULTIMO_RESULTADO && ULTIMO_RESULTADO.fotos) || [];
+        const fotos = fotosLightbox();
         if (!fotos.length) return;
         LIGHTBOX_INDICE = ((LIGHTBOX_INDICE + delta) % fotos.length + fotos.length) % fotos.length;
         atualizarLightbox();
@@ -664,7 +863,7 @@
         else if (e.key === 'ArrowLeft') navegarLightbox(-1);
         else if (e.key === 'ArrowRight') navegarLightbox(1);
     });
-    window.P3ConsultaPessoaAbrirFoto = abrirLightbox;
+    window.P3ConsultaPessoaAbrirFoto = function (idx) { LIGHTBOX_FOTOS = null; abrirLightbox(idx); };
     window.P3ConsultaPessoaFecharLightbox = fecharLightbox;
     window.P3ConsultaPessoaNavegarLightbox = navegarLightbox;
 
@@ -1277,12 +1476,181 @@
     // fallback pras coordenadas "...pelo Quimera" quando as
     // principais vêm vazias, confirmado em captura real).
     // ────────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────
+    // FILTROS DAS OCORRÊNCIAS (24/10/2026, pedido explícito: "mais
+    // mecanismos de filtros... CIDADE, Tipo de Envolvimento (VÍTIMA,
+    // AUTOR, COMUNICANTE, TESTEMUNHA, OUTROS); VULGO; TIPIFICAÇÃO").
+    // VULGO é critério de busca de verdade no CAD (attr_apelido — ver
+    // buscarPorNome); os outros 3 o CAD não aceita na busca de pessoa,
+    // então filtram as ocorrências já trazidas, em TODAS as abas (CPF e
+    // nome). Cidade vem do detalhe da ocorrência (campo Município/Cidade)
+    // — a que ainda não tem detalhe é buscada sob demanda
+    // (carregarCidadesFaltantes) e guardada em r._extra.
+    // ────────────────────────────────────────────────────────────────
+    const FILTROS = { cidade: '', env: '', tip: '' };
+    const ROTULO_ENV = { vitima: 'Vítima', autor: 'Autor', comunicante: 'Comunicante', testemunha: 'Testemunha', outros: 'Outros' };
+    const ROTULO_FONTE = { despc: 'Ocorrência', ppe: 'Policial', pc: 'Registro anterior' };
+
+    function normTxt(s) {
+        return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/\s+/g, ' ').trim();
+    }
+    function filtrosAtivos() {
+        return !!(FILTROS.cidade || FILTROS.env || FILTROS.tip);
+    }
+    function classeEnvolvimento(txt) {
+        const t = normTxt(txt);
+        if (!t) return '';
+        if (/VITIMA|OFENDID/.test(t)) return 'vitima';
+        if (/AUTOR|SUSPEIT|INFRATOR|AGRESSOR|CONDUZID|ACUSAD|INDICIAD|INVESTIGAD|FLAGRANTEAD/.test(t)) return 'autor';
+        if (/COMUNICANTE|SOLICITANTE|NOTICIANTE|DENUNCIANTE|REQUERENTE/.test(t)) return 'comunicante';
+        if (/TESTEMUNHA/.test(t)) return 'testemunha';
+        return 'outros';
+    }
+    function tagEnvolvimento(txt) {
+        const c = classeEnvolvimento(txt);
+        return c ? `<span class="cip-env cip-env-${c}" title="${esc(ROTULO_ENV[c])}">${esc(txt)}</span>` : '—';
+    }
+    function cidadeDeCampos(c) {
+        if (!c) return '';
+        const k = Object.keys(c).find(k => /munic[ií]pio|cidade/i.test(k) && !/quimera/i.test(k) && String(c[k] || '').trim());
+        return k ? String(c[k]).trim() : '';
+    }
+    function tipificacaoDeCampos(c) {
+        if (!c) return '';
+        const k = Object.keys(c).find(k => /natureza|tipifica|delito|infra[cç][aã]o/i.test(k) && !/data|hora/i.test(k) && String(c[k] || '').trim());
+        return k ? String(c[k]).trim() : '';
+    }
+
+    // As 3 fontes numa forma só: {fonte, chave, o, numero, data, tip, env, situacao, cidade}
+    function ocorrenciasUnificadas(r) {
+        const det = {};
+        (r.detalhesOcorrencias || []).forEach(d => { det[d.idOcorrencia] = d; });
+        const ex = r._extra || {};
+        const out = [];
+        (r.ocorrenciasDespacho || []).forEach(o => {
+            const chave = 'd:' + (o._id_ocor || '');
+            out.push({ fonte: 'despc', chave, o, numero: o.id_ocor_fk || o._id_ocor || '', data: o.dt_ocor || '',
+                tip: o.ds_ocor_sgrup || '', env: o.ds_oco_despc_tipo_envl || '', situacao: o.ds_ocor_despc_envl_pess_sitc || '',
+                cidade: (det[o._id_ocor] && cidadeDeCampos(det[o._id_ocor].campos)) || (ex[chave] || {}).cidade || '' });
+        });
+        (r.ocorrenciasPpe || []).forEach(o => {
+            const chave = 'p:' + (o._id || '');
+            out.push({ fonte: 'ppe', chave, o, numero: '', data: o.dt_ocorrencia || '', tip: o.no_natureza_ocorrencia || '',
+                env: o.tipo_envolvimento || '', situacao: '', cidade: (ex[chave] || {}).cidade || '' });
+        });
+        (r.ocorrenciasPcAntigo || []).forEach(o => {
+            const chave = 'a:' + (o._env || o.attr_numero_bo || '');
+            out.push({ fonte: 'pc', chave, o, numero: o.attr_numero_bo || '', data: o.data_hora_registro || '',
+                tip: (ex[chave] || {}).tip || '', env: '', situacao: '', cidade: (ex[chave] || {}).cidade || '' });
+        });
+        return out;
+    }
+    function avaliarFiltro(u) {
+        if (FILTROS.tip && !normTxt(u.tip).includes(normTxt(FILTROS.tip))) return 'nao';
+        if (FILTROS.env && classeEnvolvimento(u.env) !== FILTROS.env) return 'nao';
+        if (FILTROS.cidade) {
+            if (!u.cidade) return 'sem-cidade';
+            if (!normTxt(u.cidade).includes(normTxt(FILTROS.cidade))) return 'nao';
+        }
+        return 'sim';
+    }
+    // {todas, ok, semCidade, despc, ppe, pcAntigo} — as 3 últimas no formato original (já filtradas)
+    function filtrarOcorrencias(r) {
+        const todas = ocorrenciasUnificadas(r);
+        const f = { todas, ok: [], semCidade: [] };
+        todas.forEach(u => {
+            const a = avaliarFiltro(u);
+            if (a === 'sim') f.ok.push(u);
+            else if (a === 'sem-cidade') f.semCidade.push(u);
+        });
+        f.despc = f.ok.filter(u => u.fonte === 'despc').map(u => u.o);
+        f.ppe = f.ok.filter(u => u.fonte === 'ppe').map(u => u.o);
+        f.pcAntigo = f.ok.filter(u => u.fonte === 'pc').map(u => u.o);
+        return f;
+    }
+    function descricaoFiltros() {
+        return [FILTROS.cidade && 'cidade: ' + FILTROS.cidade, FILTROS.env && 'envolvimento: ' + ROTULO_ENV[FILTROS.env],
+            FILTROS.tip && 'tipificação: ' + FILTROS.tip].filter(Boolean).join(' · ');
+    }
+    function resumoFiltroHtml(f, idx, progresso) {
+        if (!filtrosAtivos()) return '';
+        let h = `<div class="cip-filtro-resumo">🔎 <b>${f.ok.length}</b> de ${f.todas.length} ocorrência(s) no filtro <span>(${esc(descricaoFiltros())})</span>`;
+        if (f.semCidade.length) {
+            h += `<span>· ${f.semCidade.length} ainda sem cidade carregada</span>
+                <button type="button" class="cip-btn-sec cip-btn-cidades" data-acao="cidades"${idx != null ? ` data-idx="${idx}"` : ''}${progresso ? ' disabled' : ''}>${progresso ? '📍 Buscando ' + progresso + '...' : '📍 Buscar a cidade dessas ' + f.semCidade.length}</button>`;
+        }
+        return h + '</div>';
+    }
+    function _chaveData(s) {
+        const m = String(s || '').match(/(\d{2})\/(\d{2})\/(\d{4})/);
+        if (m) return m[3] + m[2] + m[1];
+        const n = String(s || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+        return n ? n[1] + n[2] + n[3] : '';
+    }
+    function tabelaOcorrenciasUnificadas(lista) {
+        const ord = lista.slice().sort((a, b) => _chaveData(b.data).localeCompare(_chaveData(a.data)));
+        let h = '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Data</th><th>Nº</th><th>Tipificação</th><th>Envolvimento</th><th>Situação</th><th>Cidade</th><th>Tipo</th></tr></thead><tbody>';
+        ord.forEach(u => {
+            h += `<tr style="cursor:default;"><td style="white-space:nowrap;">${esc(u.data || '—')}</td><td>${esc(u.numero || '—')}</td>
+                <td>${esc(u.tip || '—')}</td><td>${tagEnvolvimento(u.env)}</td><td>${esc(u.situacao || '—')}</td>
+                <td>${esc(u.cidade || '—')}</td><td><span class="cip-fonte-tag">${ROTULO_FONTE[u.fonte]}</span></td></tr>`;
+        });
+        return h + '</tbody></table></div>';
+    }
+
+    // Busca (1 por vez — o servidor serializa no CAD_LOCK) o detalhe das
+    // ocorrências sem cidade conhecida e guarda cidade/tipificação em r._extra.
+    async function carregarCidadesFaltantes(r, lista, aoProgresso) {
+        r._extra = r._extra || {};
+        for (let k = 0; k < lista.length; k++) {
+            const u = lista[k];
+            if (aoProgresso) aoProgresso(k, lista.length);
+            let campos = null;
+            try {
+                if (u.fonte === 'despc') {
+                    const resp = await P3AtualizadorLocal.ocorrenciaDetalhe({ tipo: 'despacho', idOcor: u.o._id_ocor });
+                    if (resp.ok && resp.detalhe) {
+                        campos = resp.detalhe.campos || {};
+                        (r.detalhesOcorrencias = r.detalhesOcorrencias || []).push({ idOcorrencia: u.o._id_ocor, campos });
+                    }
+                } else if (u.fonte === 'ppe') {
+                    const resp = await P3AtualizadorLocal.ocorrenciaDetalhe({ tipo: 'ppe', id: u.o._id || '', hash: u.o._hash || '' });
+                    if (resp.ok) campos = resp.detalhe || {};
+                } else {
+                    const resp = await P3AtualizadorLocal.ocorrenciaDetalhe({ tipo: 'pc_antigo', numeroBo: u.o._env || u.o.attr_numero_bo || '' });
+                    if (resp.ok) campos = Object.assign({}, ...(Array.isArray(resp.detalhe) ? resp.detalhe : [resp.detalhe]).filter(Boolean));
+                }
+            } catch (e) { /* segue pras próximas — uma falha isolada não para a busca */ }
+            if (campos) r._extra[u.chave] = { cidade: cidadeDeCampos(campos) || '(não informada)', tip: tipificacaoDeCampos(campos) };
+        }
+    }
+
+    // Sugestões do campo Cidade: todas as cidades já vistas nas abas abertas.
+    function atualizarListaCidades() {
+        const set = new Set();
+        const juntar = r => r && ocorrenciasUnificadas(r).forEach(u => { if (u.cidade && u.cidade[0] !== '(') set.add(u.cidade); });
+        ABAS_CONSULTA.forEach(a => {
+            if (a.tipo === 'cpf') juntar(a.resultado);
+            else if (a.tipo === 'nome') Object.values(a.resumos || {}).forEach(st => juntar(st.r));
+        });
+        const dl = document.getElementById('cip-f-cidades');
+        if (dl) dl.innerHTML = [...set].sort().map(c => `<option value="${esc(c)}"></option>`).join('');
+    }
+
+    function aplicarFiltros() {
+        document.getElementById('cip-filtros').classList.toggle('ativo', filtrosAtivos());
+        const aba = abaConsultaAtiva();
+        if (!aba || aba.carregando || aba.erro) return;
+        if (aba.tipo === 'nome') renderizarAbaGenerica();
+        else if (aba.tipo === 'cpf') rerenderizarOcorrenciasCpf();
+    }
+
     function _parseCoordBr(s) {
         const n = parseFloat(String(s || '').replace(',', '.').trim());
         return isFinite(n) && n !== 0 ? n : null;
     }
     function extrairCoordenadasOcorrencias(r) {
-        const despc = r.ocorrenciasDespacho || [];
+        const despc = filtrarOcorrencias(r).despc;
         const detalhesPorId = {};
         (r.detalhesOcorrencias || []).forEach(d => { detalhesPorId[d.idOcorrencia] = d; });
         const pontos = [];
@@ -1347,14 +1715,16 @@
     // mais recentes — ver LIMITE_DETALHE_AUTOMATICO no Python).
     // ────────────────────────────────────────────────────────────────
     function renderOcorrencias(r) {
-        const ppe = r.ocorrenciasPpe || [];
-        const pcAntigo = r.ocorrenciasPcAntigo || [];
-        const despc = r.ocorrenciasDespacho || [];
-        if (!ppe.length && !pcAntigo.length && !despc.length) {
+        const f = filtrarOcorrencias(r);
+        const ppe = f.ppe;
+        const pcAntigo = f.pcAntigo;
+        const despc = f.despc;
+        if (!f.todas.length) {
             return '<div class="cip-vazio">Nenhuma ocorrência encontrada.</div>';
         }
 
-        let h = '';
+        let h = resumoFiltroHtml(f, null, null);
+        if (!f.ok.length) return h + '<div class="cip-vazio">Nenhuma ocorrência atende ao filtro.</div>';
         const pontosMapa = extrairCoordenadasOcorrencias(r);
         if (pontosMapa.length) {
             h += `<div class="cip-card"><div class="cip-card-titulo">Mapa das ocorrências — ${pontosMapa.length} com localização</div>
@@ -1375,17 +1745,20 @@
     function tabelaOcorrenciasDespc(r, lista) {
         const detalhesPorId = {};
         (r.detalhesOcorrencias || []).forEach(d => { detalhesPorId[d.idOcorrencia] = d; });
-        let h = '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nº Ocorrência</th><th>Data</th><th>Natureza</th><th>Envolvimento</th><th>Situação</th></tr></thead><tbody>';
+        const extra = r._extra || {};
+        let h = '<div class="cip-tabela-wrap"><table class="cip-tabela"><thead><tr><th>Nº Ocorrência</th><th>Data</th><th>Natureza</th><th>Envolvimento</th><th>Situação</th><th>Cidade</th></tr></thead><tbody>';
         lista.forEach((o, i) => {
             const idOcor = o._id_ocor || '';
             const jaTemDetalhe = !!detalhesPorId[idOcor];
+            const cidade = (jaTemDetalhe && cidadeDeCampos(detalhesPorId[idOcor].campos)) || (extra['d:' + idOcor] || {}).cidade || '—';
             h += `<tr class="cip-linha-despc" data-idx="${i}" data-id-ocor="${esc(idOcor)}" data-ja-tem="${jaTemDetalhe ? '1' : '0'}">
                 <td>${esc(o.id_ocor_fk || idOcor || '—')}</td>
                 <td style="white-space:nowrap;">${esc(o.dt_ocor || '—')}</td>
                 <td>${esc(o.ds_ocor_sgrup || '—')}</td>
-                <td>${esc(o.ds_oco_despc_tipo_envl || '—')}</td>
+                <td>${tagEnvolvimento(o.ds_oco_despc_tipo_envl)}</td>
                 <td>${esc(o.ds_ocor_despc_envl_pess_sitc || '—')}</td>
-            </tr><tr class="cip-detalhe-linha" id="cip-det-despc-${i}"><td colspan="5"></td></tr>`;
+                <td>${esc(cidade)}</td>
+            </tr><tr class="cip-detalhe-linha" id="cip-det-despc-${i}"><td colspan="6"></td></tr>`;
         });
         h += '</tbody></table></div>';
         return h;
@@ -1397,7 +1770,7 @@
             h += `<tr class="cip-linha-ppe" data-idx="${i}" data-id="${esc(o._id || '')}" data-hash="${esc(o._hash || '')}">
                 <td style="white-space:nowrap;">${esc(o.dt_ocorrencia || '—')}</td>
                 <td>${esc(o.no_natureza_ocorrencia || '—')}</td>
-                <td>${esc(o.tipo_envolvimento || '—')}</td>
+                <td>${tagEnvolvimento(o.tipo_envolvimento)}</td>
                 <td>${esc(o.sexo || '—')}</td>
             </tr><tr class="cip-detalhe-linha" id="cip-det-ppe-${i}"><td colspan="4"></td></tr>`;
         });
@@ -1445,8 +1818,11 @@
         }
     }
 
-    function ligarEventosPainelAtivo(r) {
-        document.querySelectorAll('.cip-linha-ppe').forEach(tr => {
+    // Linhas clicáveis (detalhe) das tabelas de ocorrências + botão de buscar
+    // cidade — separado pra poder redesenhar SÓ a seção de ocorrências quando
+    // o filtro muda (rerenderizarOcorrenciasCpf), sem religar o resto 2x.
+    function ligarEventosOcorrencias(raiz, r) {
+        raiz.querySelectorAll('.cip-linha-ppe').forEach(tr => {
             tr.addEventListener('click', () => {
                 const i = tr.dataset.idx;
                 abrirDetalheLinha(tr, 'cip-det-ppe-' + i, async () => {
@@ -1456,7 +1832,7 @@
                 });
             });
         });
-        document.querySelectorAll('.cip-linha-pcantigo').forEach(tr => {
+        raiz.querySelectorAll('.cip-linha-pcantigo').forEach(tr => {
             tr.addEventListener('click', () => {
                 const i = tr.dataset.idx;
                 abrirDetalheLinha(tr, 'cip-det-pcantigo-' + i, async () => {
@@ -1471,7 +1847,7 @@
                 });
             });
         });
-        document.querySelectorAll('.cip-linha-despc').forEach(tr => {
+        raiz.querySelectorAll('.cip-linha-despc').forEach(tr => {
             tr.addEventListener('click', () => {
                 const i = tr.dataset.idx;
                 const idOcor = tr.dataset.idOcor;
@@ -1485,6 +1861,26 @@
                 });
             });
         });
+        const btnCidades = raiz.querySelector('.cip-btn-cidades');
+        if (btnCidades) btnCidades.addEventListener('click', async () => {
+            btnCidades.disabled = true;
+            await carregarCidadesFaltantes(r, filtrarOcorrencias(r).semCidade, (k, n) => { btnCidades.textContent = `📍 Buscando ${k + 1}/${n}...`; });
+            atualizarListaCidades();
+            if (ULTIMO_RESULTADO === r) rerenderizarOcorrenciasCpf();
+        });
+    }
+
+    function rerenderizarOcorrenciasCpf() {
+        const r = ULTIMO_RESULTADO, sec = document.getElementById('cip-sec-ocorrencias');
+        if (!r || !sec) return;
+        const def = DEFINICAO_ABAS.find(a => a.id === 'ocorrencias');
+        sec.innerHTML = `<h3 class="cip-sec-header">${def.label}</h3>` + renderOcorrencias(r);
+        ligarEventosOcorrencias(sec, r);
+        inicializarMapaOcorrencias(r);
+    }
+
+    function ligarEventosPainelAtivo(r) {
+        ligarEventosOcorrencias(document, r);
         document.querySelectorAll('.cip-linha-relint').forEach(tr => {
             tr.addEventListener('click', () => {
                 const i = Number(tr.dataset.idx);
@@ -2130,11 +2526,27 @@
         });
 
         document.getElementById('cip-btn-buscar-nome').addEventListener('click', buscarPorNome);
-        ['cip-input-nome', 'cip-input-mae', 'cip-input-pai'].forEach(function (id) {
+        ['cip-input-nome', 'cip-input-vulgo', 'cip-input-mae', 'cip-input-pai'].forEach(function (id) {
             document.getElementById(id).addEventListener('keydown', function (e) {
                 if (e.key === 'Enter') buscarPorNome();
             });
         });
+
+        let timerFiltro = null;
+        [['cip-f-cidade', 'cidade'], ['cip-f-env', 'env'], ['cip-f-tip', 'tip']].forEach(function ([id, k]) {
+            const el = document.getElementById(id);
+            el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () {
+                FILTROS[k] = el.value.trim();
+                clearTimeout(timerFiltro);
+                timerFiltro = setTimeout(aplicarFiltros, 250);
+            });
+        });
+        document.getElementById('cip-f-limpar').addEventListener('click', function () {
+            ['cip-f-cidade', 'cip-f-env', 'cip-f-tip'].forEach(id => { document.getElementById(id).value = ''; });
+            FILTROS.cidade = FILTROS.env = FILTROS.tip = '';
+            aplicarFiltros();
+        });
+        document.getElementById('cip-aba-generica').addEventListener('click', aoClicarAbaGenerica);
 
         document.getElementById('cip-btn-buscar-veiculo').addEventListener('click', buscarVeiculoAcao);
         ['cip-input-placa', 'cip-input-chassi'].forEach(function (id) {
