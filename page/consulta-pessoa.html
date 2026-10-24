@@ -64,6 +64,66 @@
     .cip-lista-resultado-item b { display: block; font-size: 14px; margin-bottom: 2px; }
     .cip-lista-resultado-item span { font-size: 12px; opacity: .85; }
 
+    /* Filtros das ocorrências + abas de busca por nome/veículo/CNPJ (24/10/2026) */
+    .cip-filtros {
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: -4px 0 16px; padding: 10px 12px;
+      border: 1px dashed var(--p3-border); border-radius: 10px; background: var(--p3-bg); font-size: 12.5px;
+    }
+    .cip-filtros.ativo { border-style: solid; border-color: var(--p3-blue-500); box-shadow: 0 0 0 1px var(--p3-blue-500) inset; }
+    .cip-filtros > span { font-weight: 700; color: var(--p3-text-muted); }
+    .cip-filtros input, .cip-filtros select {
+      flex: 1; min-width: 150px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--p3-border);
+      background: var(--p3-surface); color: var(--p3-text); font-size: 13px;
+    }
+    .cip-filtros button, .cip-btn-sec {
+      padding: 7px 12px; border-radius: 7px; border: 1px solid var(--p3-border); background: var(--p3-surface);
+      color: var(--p3-text); cursor: pointer; font-size: 12.5px; font-weight: 600;
+    }
+    .cip-btn-sec:disabled { opacity: .6; cursor: default; }
+    .cip-btn-pri { padding: 8px 14px; border-radius: 7px; border: none; background: var(--p3-blue-700); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 600; }
+    .cip-btn-pri:hover { background: var(--p3-blue-500); }
+    .cip-filtro-resumo {
+      font-size: 12.5px; padding: 8px 12px; margin-bottom: 10px; border-radius: 8px; background: var(--p3-bg);
+      border-left: 3px solid var(--p3-blue-500); display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .cip-filtro-resumo span { color: var(--p3-text-muted); }
+    .cip-env { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid; white-space: nowrap; }
+    .cip-env-vitima { color: #1565c0; border-color: rgba(21,101,192,.45); background: rgba(21,101,192,.1); }
+    .cip-env-autor { color: #c62828; border-color: rgba(198,40,40,.45); background: rgba(198,40,40,.1); }
+    .cip-env-comunicante { color: #2e7d32; border-color: rgba(46,125,50,.45); background: rgba(46,125,50,.1); }
+    .cip-env-testemunha { color: #b26a00; border-color: rgba(178,106,0,.45); background: rgba(178,106,0,.1); }
+    .cip-env-outros { color: var(--p3-text-muted); border-color: var(--p3-border); background: transparent; }
+    .cip-aba-generica {
+      display: none; background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 0 12px 12px 12px;
+      padding: 16px; margin-bottom: 18px;
+    }
+    .cip-nome-topo { display: flex; justify-content: space-between; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; }
+    .cip-nome-acoes { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
+    .cip-nome-item { border: 1px solid var(--p3-border); border-radius: 10px; margin-bottom: 8px; overflow: hidden; transition: opacity .15s; }
+    .cip-nome-item.aberto { border-color: var(--p3-blue-500); }
+    .cip-nome-item.fora-filtro { opacity: .5; }
+    .cip-nome-cab { display: flex; gap: 12px; align-items: center; padding: 10px 12px; cursor: pointer; }
+    .cip-nome-cab:hover { background: var(--p3-bg); }
+    .cip-nome-mini {
+      width: 48px; height: 48px; border-radius: 8px; background: var(--p3-bg); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; flex-shrink: 0; overflow: hidden; opacity: .9;
+    }
+    .cip-nome-mini img { width: 100%; height: 100%; object-fit: cover; }
+    .cip-nome-info { flex: 1; min-width: 0; }
+    .cip-nome-info b { display: block; font-size: 14px; color: var(--p3-text); }
+    .cip-nome-info span { font-size: 12px; color: var(--p3-text-muted); }
+    .cip-chip { font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--p3-bg); border: 1px solid var(--p3-border); white-space: nowrap; color: var(--p3-text-muted); }
+    .cip-chip.ok { background: rgba(30,107,52,.12); border-color: rgba(30,107,52,.45); color: #1e6b34; font-weight: 700; }
+    .cip-nome-seta { color: var(--p3-text-muted); transition: transform .15s; }
+    .cip-nome-item.aberto .cip-nome-seta { transform: rotate(90deg); }
+    .cip-nome-corpo { padding: 14px; border-top: 1px solid var(--p3-border); background: var(--p3-bg); }
+    .cip-nome-grade { display: grid; grid-template-columns: minmax(130px, auto) 1fr; gap: 16px; align-items: start; }
+    .cip-nome-fotos { display: flex; gap: 8px; flex-wrap: wrap; max-width: 380px; }
+    .cip-nome-nota { font-size: 11px; color: var(--p3-text-muted); margin-top: 6px; max-width: 380px; }
+    .cip-nome-aviso { font-size: 12.5px; color: var(--p3-text-muted); padding: 8px 0; }
+    .cip-nome-aviso.erro { color: var(--p3-danger); }
+    @media (max-width: 700px) { .cip-nome-grade { grid-template-columns: 1fr; } }
+
     /* Abas de consulta "estilo navegador" (29/08/2026, pedido explícito
        — cada CPF consultado vira uma aba própria, pra clicar num
        vínculo não fazer perder a consulta anterior). */
@@ -353,7 +413,7 @@
 
         <div class="cip-modo-busca" id="cip-modo-busca">
           <button type="button" class="cip-modo-btn cip-modo-ativo" data-modo="cpf">CPF</button>
-          <button type="button" class="cip-modo-btn" data-modo="nome">Nome / Mãe / Pai</button>
+          <button type="button" class="cip-modo-btn" data-modo="nome">Nome / Vulgo / Mãe / Pai</button>
           <button type="button" class="cip-modo-btn" data-modo="veiculo">🚗 Veículo</button>
           <button type="button" class="cip-modo-btn" data-modo="cnpj">🏢 CNPJ</button>
         </div>
@@ -366,6 +426,7 @@
 
         <div class="cip-busca" id="cip-busca-nome" style="display:none;">
           <input type="text" id="cip-input-nome" placeholder="Nome completo">
+          <input type="text" id="cip-input-vulgo" placeholder="Vulgo / apelido">
           <input type="text" id="cip-input-mae" placeholder="Nome da mãe">
           <input type="text" id="cip-input-pai" placeholder="Nome do pai">
           <button type="button" id="cip-btn-buscar-nome">Buscar</button>
@@ -385,6 +446,23 @@
         </div>
         <div class="cip-lista-resultado" id="cip-resultado-cnpj"></div>
 
+        <!-- Filtros das ocorrências (24/10/2026) — valem para todas as abas -->
+        <div class="cip-filtros" id="cip-filtros">
+          <span>Filtrar ocorrências:</span>
+          <input type="text" id="cip-f-cidade" list="cip-f-cidades" placeholder="Cidade">
+          <datalist id="cip-f-cidades"></datalist>
+          <select id="cip-f-env" title="Tipo de envolvimento">
+            <option value="">Todos os envolvimentos</option>
+            <option value="vitima">Vítima</option>
+            <option value="autor">Autor</option>
+            <option value="comunicante">Comunicante</option>
+            <option value="testemunha">Testemunha</option>
+            <option value="outros">Outros</option>
+          </select>
+          <input type="text" id="cip-f-tip" placeholder="Tipificação (ex.: ROUBO, TRÁFICO)">
+          <button type="button" id="cip-f-limpar" title="Limpar filtros">✕ Limpar</button>
+        </div>
+
         <div id="cip-status-msg"></div>
         <div id="cip-progresso-wrap" style="display:none;margin-bottom:14px;">
           <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--p3-text-muted);margin-bottom:4px;">
@@ -397,6 +475,8 @@
         </div>
 
         <div class="cip-abas-consulta" id="cip-abas-consulta"></div>
+        <!-- Conteúdo das abas que não são de CPF (busca por nome/vulgo, veículo, CNPJ) -->
+        <div class="cip-aba-generica" id="cip-aba-generica"></div>
 
         <div class="cip-shell" id="cip-shell">
           <aside class="cip-side">
