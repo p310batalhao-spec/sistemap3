@@ -161,9 +161,17 @@
             // {ok, pessoas:[{nome,mae,pai,cpf,dataNascimento,rg,alcunha}]}, pode
             // ter mais de 1 (homônimos). Ver P3ConsultaPessoaAbrirCpf pra
             // continuar a partir de 1 dos resultados.
-            async function buscarPessoaPorNome(nome, mae, pai) {
-                const qs = new URLSearchParams({ nome: nome || '', mae: mae || '', pai: pai || '' }).toString();
+            async function buscarPessoaPorNome(nome, mae, pai, apelido) {
+                const qs = new URLSearchParams({ nome: nome || '', mae: mae || '', pai: pai || '', apelido: apelido || '' }).toString();
                 const resp = await fetch(`${URL_BASE}/pessoa/buscar-por-nome?${qs}`);
+                return resp.json();
+            }
+
+            // Resumo de 1 pessoa (fotos + ocorrências) — expansão dos resultados
+            // da busca por nome/vulgo. Devolve {ok, resumo?, erro?}.
+            async function resumoPessoa(cpf) {
+                const resp = await fetch(`${URL_BASE}/pessoa/resumo?cpf=${encodeURIComponent(cpf || '')}`);
+                if (resp.status === 404) return { ok: false, erro: 'Recurso disponível após atualizar o executável do Sistema P3.' };
                 return resp.json();
             }
 
@@ -399,6 +407,7 @@
                 consultarPessoaStream: consultarPessoaStream,
                 ocorrenciaDetalhe: ocorrenciaDetalhe,
                 buscarPessoaPorNome: buscarPessoaPorNome,
+                resumoPessoa: resumoPessoa,
                 buscarVeiculo: buscarVeiculo,
                 equatorialConsultar: equatorialConsultar,
                 idsegStatus: idsegStatus,
