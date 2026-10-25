@@ -1021,7 +1021,7 @@
                 const script = document.createElement('script');
                 // ?v= — mesmo motivo do cache-busting em page/consulta-pessoa.html
                 // (WebView2 do exe guarda cache de JS). BUMPE quando xerife.js mudar.
-                script.src = prefixo + 'js/xerife.js?v=20261025-2';
+                script.src = prefixo + 'js/xerife.js?v=20261025-3';
                 script.onerror = () => { btn.title = 'Xerife indisponível no momento'; };
                 document.body.appendChild(script);
             }
