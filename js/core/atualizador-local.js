@@ -175,6 +175,70 @@
                 return resp.json();
             }
 
+            // Processos do TJAL (1º grau) por nome completo + CPF — {ok, processos:[{numeroProcesso,
+            // classe, assunto, participacao, situacao, vara, juiz, partes, movimentacoes, resumo,
+            // criminal, confirmacao:'cpf'|'nome', url}], avisos, erro?}.
+            async function processosTjal(nome, cpf) {
+                const qs = new URLSearchParams({ nome: nome || '', cpf: cpf || '' }).toString();
+                const resp = await fetch(`${URL_BASE}/pessoa/processos-tjal?${qs}`);
+                if (resp.status === 404) return { ok: false, erro: 'Recurso disponível após atualizar o executável do Sistema P3.' };
+                return resp.json();
+            }
+
+            // Limpa o cache local de fotos (Quimera/Alcatraz) — força rebuscar
+            // quando a foto foi atualizada na fonte. {ok, removidos}.
+            async function limparCacheFotos() {
+                const resp = await fetch(`${URL_BASE}/cad/limpar-cache-fotos`, { method: 'POST' });
+                return resp.json();
+            }
+
+            // ── Login automático dos tokens por e-mail (ver auth_tokens.py) ──
+            // {ok, configurado, endereco, imapHost, imapPorta, imapDetectado}
+            async function emailStatus() {
+                const resp = await fetch(`${URL_BASE}/email/status`);
+                if (resp.status === 404) return { ok: false, indisponivel: true };
+                return resp.json();
+            }
+            // dados: {endereco, senha, imapHost?, imapPorta?}. Testa o IMAP na hora.
+            async function emailConfigurar(dados) {
+                const resp = await fetch(`${URL_BASE}/email/configurar`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados || {}),
+                });
+                if (resp.status === 404) return { ok: false, erro: 'Atualize o executável do Sistema P3.' };
+                return resp.json();
+            }
+            // Só dispara os 2 envios de código por e-mail (sem ler) — atalho
+            // pra colar manual. {ok, cad:{ok,...}, quimera:{ok,...}}.
+            async function enviarCodigos() {
+                const resp = await fetch(`${URL_BASE}/auth/enviar-codigos`, { method: 'POST' });
+                if (resp.status === 404) return { ok: false, erro: 'Atualize o executável do Sistema P3.' };
+                return resp.json();
+            }
+            // {ok, emailConfigurado, cad:{valido,idadeHoras}, quimera:{valido,expiraEmMin}}
+            async function authStatus() {
+                const resp = await fetch(`${URL_BASE}/auth/status`);
+                if (resp.status === 404) return { ok: false, indisponivel: true };
+                return resp.json();
+            }
+            // Gera/renova os dois tokens (CAD + Quimera) lendo os códigos do
+            // e-mail. Streaming (pode levar ~1-2 min esperando os e-mails) —
+            // onProgresso({tipo:'progresso', etapa, mensagem, ...}). Devolve
+            // o resultado final {cad:{ok,...}, quimera:{ok,...}}.
+            async function gerarTokensAuto(onProgresso) {
+                const resp = await fetch(`${URL_BASE}/auth/gerar-tokens`, { method: 'POST' });
+                if (resp.status === 404) throw new Error('Atualize o executável do Sistema P3 para usar o login automático.');
+                if (!resp.ok) throw new Error(`Login automático respondeu HTTP ${resp.status}`);
+                let resultadoFinal = null, erroFatal = null;
+                await lerStreamNdjson(resp, function (obj) {
+                    if (obj.tipo === 'fim') resultadoFinal = obj.resultado;
+                    else if (obj.tipo === 'erro_fatal') erroFatal = obj.mensagem;
+                    else if (onProgresso) onProgresso(obj);
+                });
+                if (erroFatal) throw new Error(erroFatal);
+                return resultadoFinal;
+            }
+
             // Busca de veículo por PLACA ou CHASSI (RENAVAM não é aceito como
             // critério pelo CAD — ver comentário em app.py/cad_consulta.py) —
             // devolve {ok, encontrado, veiculo?, erro?}.
@@ -408,6 +472,13 @@
                 ocorrenciaDetalhe: ocorrenciaDetalhe,
                 buscarPessoaPorNome: buscarPessoaPorNome,
                 resumoPessoa: resumoPessoa,
+                processosTjal: processosTjal,
+                limparCacheFotos: limparCacheFotos,
+                emailStatus: emailStatus,
+                emailConfigurar: emailConfigurar,
+                authStatus: authStatus,
+                gerarTokensAuto: gerarTokensAuto,
+                enviarCodigos: enviarCodigos,
                 buscarVeiculo: buscarVeiculo,
                 equatorialConsultar: equatorialConsultar,
                 idsegStatus: idsegStatus,
