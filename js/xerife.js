@@ -231,11 +231,40 @@
     let llmEngine = null;
     let llmEstado = 'verificando'; // verificando | baixando | pronto | indisponivel | erro
     let llmProgresso = 0;
+    let fonteIA = null; // 'ollama' | 'webllm' — qual motor está respondendo
 
     function suportaWebGPU() { return typeof navigator !== 'undefined' && !!navigator.gpu; }
 
+    // ── Ollama (IA local NATIVA, 25/10/2026) — roda via servidor local
+    // (proxy em /xerife/ia/*, ver xerife_ollama.py). Tem PRIORIDADE sobre
+    // o WebLLM: o modelo já vem baixado na instalação, então o Xerife fica
+    // pronto na hora (sem download em runtime nem dependência de WebGPU).
+    // WebLLM continua como reserva pra quem rodar fora do app desktop.
+    function _urlLocal() { return (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057'; }
+    let ollamaInfo = { rodando: false, modelos: [] };
+    async function verificarOllama() {
+        try {
+            const r = await fetch(_urlLocal() + '/xerife/ia/status');
+            if (!r.ok) return false;
+            const j = await r.json();
+            ollamaInfo = j || {};
+            return !!(j && j.ok && j.rodando && j.modeloPadraoPronto);
+        } catch (e) { return false; }
+    }
+
     async function iniciarWebLLM() {
+        llmEstado = 'verificando'; atualizarBadgeIA();
+        // 1) Ollama primeiro — se estiver rodando com o modelo pronto, usa ele
+        //    e nem toca no WebLLM (nada pra baixar).
+        if (await verificarOllama()) {
+            fonteIA = 'ollama';
+            llmEstado = 'pronto'; llmProgresso = 100;
+            atualizarBadgeIA();
+            return;
+        }
+        // 2) Sem Ollama: cai pro WebLLM (precisa de WebGPU + download em runtime).
         if (!suportaWebGPU()) { llmEstado = 'indisponivel'; atualizarBadgeIA(); return; }
+        fonteIA = 'webllm';
         llmEstado = 'baixando';
         atualizarBadgeIA();
         try {
@@ -342,7 +371,7 @@
         const infoPorEstado = {
             verificando: { cor: '#9e9e9e', texto: 'Verificando IA local…' },
             baixando: { cor: '#f1c40f', texto: `🟡 Carregando IA local… ${llmProgresso}%` },
-            pronto: { cor: '#2ecc71', texto: '🟢 Xerife IA pronto' },
+            pronto: { cor: '#2ecc71', texto: fonteIA === 'ollama' ? '🟢 Xerife IA pronto (Ollama)' : '🟢 Xerife IA pronto' },
             indisponivel: { cor: '#e74c3c', texto: '🔴 WebGPU indisponível (modo regras)' },
             erro: { cor: '#e74c3c', texto: '🔴 IA local indisponível (modo regras)' },
         };
@@ -2845,16 +2874,63 @@
     // exposto em window.Xerife pra módulos externos (ex.: js/xerife-
     // documentos.js) poderem pedir extrações pontuais sem duplicar a
     // integração com o WebLLM nem acessar llmEngine diretamente.
+    // IA pronta pra responder? Vale tanto pro Ollama (fonteIA='ollama',
+    // sem llmEngine) quanto pro WebLLM (llmEngine carregado).
+    function iaPronta() { return llmEstado === 'pronto' && (fonteIA === 'ollama' || !!llmEngine); }
+
+    // Chat unificado: Ollama (nativo, via servidor local) tem prioridade;
+    // na falta dele, WebLLM. Devolve o texto completo ou null. Consome o
+    // streaming do Ollama por baixo, mas entrega o texto inteiro (o resto
+    // do Xerife já espera a resposta pronta pra formatar).
+    async function _completarChat(mensagens, opcoes) {
+        opcoes = opcoes || {};
+        if (fonteIA === 'ollama') {
+            try {
+                const resp = await fetch(_urlLocal() + '/xerife/ia/chat', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mensagens,
+                        opcoes: { temperature: opcoes.temperature != null ? opcoes.temperature : 0.3, num_predict: opcoes.max_tokens || 400 },
+                    }),
+                });
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const reader = resp.body.getReader(); const dec = new TextDecoder('utf-8');
+                let buf = '', texto = '', erro = null;
+                for (;;) {
+                    const { done, value } = await reader.read(); if (done) break;
+                    buf += dec.decode(value, { stream: true });
+                    let i;
+                    while ((i = buf.indexOf('\n')) !== -1) {
+                        const linha = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+                        if (!linha) continue;
+                        let obj; try { obj = JSON.parse(linha); } catch (e) { continue; }
+                        if (obj.erro) erro = obj.erro;
+                        if (obj.message && obj.message.content) texto += obj.message.content;
+                    }
+                }
+                if (texto) return texto;
+                if (erro) throw new Error(erro);
+                return null;
+            } catch (e) {
+                // Ollama falhou em runtime — tenta o WebLLM se houver.
+                if (!(llmEngine && llmEstado === 'pronto')) return null;
+            }
+        }
+        if (llmEngine && llmEstado === 'pronto') {
+            try {
+                const resp = await llmEngine.chat.completions.create({
+                    messages: mensagens,
+                    temperature: opcoes.temperature != null ? opcoes.temperature : 0.2,
+                    max_tokens: opcoes.max_tokens || 400,
+                });
+                return (resp && resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || null;
+            } catch (e) { return null; }
+        }
+        return null;
+    }
+
     async function gerarComIA(mensagens, opcoes) {
-        if (!llmEngine || llmEstado !== 'pronto') return null;
-        try {
-            const resp = await llmEngine.chat.completions.create({
-                messages: mensagens,
-                temperature: (opcoes && opcoes.temperature) || 0.2,
-                max_tokens: (opcoes && opcoes.max_tokens) || 400,
-            });
-            return (resp && resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content) || null;
-        } catch (e) { return null; }
+        return _completarChat(mensagens, opcoes);
     }
 
     async function responderComIA(textoOriginal, q, qMin, chavesCategorias) {
@@ -2869,16 +2945,11 @@
             mensagensHistorico.push({ role: 'assistant', content: htmlParaTexto(h.respostaHtml) });
         });
 
-        const resp = await llmEngine.chat.completions.create({
-            messages: [
-                { role: 'system', content: SYSTEM_PROMPT_XERIFE },
-                ...mensagensHistorico,
-                { role: 'user', content: mensagemUsuario },
-            ],
-            temperature: 0.3,
-            max_tokens: 400,
-        });
-        const textoResp = resp && resp.choices && resp.choices[0] && resp.choices[0].message && resp.choices[0].message.content;
+        const textoResp = await _completarChat([
+            { role: 'system', content: SYSTEM_PROMPT_XERIFE },
+            ...mensagensHistorico,
+            { role: 'user', content: mensagemUsuario },
+        ], { temperature: 0.3, max_tokens: 400 });
         return formatarRespostaIA(textoResp);
     }
 
@@ -2923,7 +2994,7 @@
         // porquê a IA tentar adivinhar no lugar disso.
         const podeUsarIA = categoriasPreliminar.length > 0;
 
-        if (podeUsarIA && !ehIntentoDeterministico && !ehTcoAutorOperador && llmEngine && llmEstado === 'pronto') {
+        if (podeUsarIA && !ehIntentoDeterministico && !ehTcoAutorOperador && iaPronta()) {
             try { return await responderComIA(textoOriginal, q, qMin, categoriasPreliminar); }
             catch (e) { console.error('Xerife IA: erro ao responder, caindo pro modo regras.', e); }
         }
