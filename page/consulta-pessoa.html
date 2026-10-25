@@ -123,6 +123,12 @@
     .cip-nome-aviso { font-size: 12.5px; color: var(--p3-text-muted); padding: 8px 0; }
     .cip-nome-aviso.erro { color: var(--p3-danger); }
     @media (max-width: 700px) { .cip-nome-grade { grid-template-columns: 1fr; } }
+    .cip-proc { border: 1px solid var(--p3-border); border-left: 4px solid var(--p3-border); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: var(--p3-surface); font-size: 12.5px; }
+    .cip-proc.criminal { border-left-color: #c62828; }
+    .cip-proc-topo { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+    .cip-proc-topo a { color: var(--p3-blue-700); text-decoration: none; }
+    .cip-proc-trata { color: var(--p3-text); margin: 3px 0; }
+    .cip-proc-meta { color: var(--p3-text-muted); font-size: 11.5px; margin-top: 2px; }
 
     /* Abas de consulta "estilo navegador" (29/08/2026, pedido explícito
        — cada CPF consultado vira uma aba própria, pra clicar num
