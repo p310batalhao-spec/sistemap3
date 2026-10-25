@@ -499,6 +499,11 @@ async function fazerLogin() {
         localStorage.setItem('userNivel',     usuario.nivel || 'operador');
         localStorage.setItem('userUnidade',   usuario.unidade || '10bpm');
         localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
+        // Login automático dos tokens CAD/Quimera (25/10/2026, pedido do
+        // usuário: "todas as vezes que o login no sistema for feito, gere um
+        // novo token") — marca a intenção; quem efetiva é o cad-login-modal
+        // na 1ª página que usa o CAD (só se o e-mail estiver configurado).
+        localStorage.setItem('p3_auto_tokens_login', '1');
 
         // Best-effort, sem await de propósito — não atrasa o login do P3.
         // Roda em paralelo à animação de sucesso (~3.4s), tempo de sobra
