@@ -633,7 +633,7 @@
         }
 
         if (!classificarOficioEvento(texto)) {
-            bolha.innerHTML = '🤔 Não consegui identificar isso como um ofício de evento — por enquanto só sei cadastrar <strong>Eventos</strong> automaticamente a partir de documento. Você pode preencher manualmente na página de Eventos.';
+            await interpretarDocumentoGenerico(texto, bolha);
             return;
         }
 
@@ -685,6 +685,38 @@
         const { html, prefixo } = montarFormularioConfirmacao(campos);
         bolha.innerHTML = html;
         ligarBotoesConfirmacao(bolha, prefixo, campos);
+    }
+
+    // Documento que NÃO bateu como ofício de evento: em vez de desistir, a IA
+    // local (Ollama) LÊ o documento, diz do que PARECE se tratar e, quando tem
+    // dúvida, PERGUNTA ao usuário do que se trata — "em caso de dúvida,
+    // pergunte" (pedido do usuário 25/10/2026). Sem IA no ar, mensagem clara.
+    async function interpretarDocumentoGenerico(texto, bolha) {
+        const iaPronta = window.Xerife && typeof window.Xerife.obterEstadoIA === 'function'
+            && window.Xerife.obterEstadoIA() === 'pronto';
+        if (!iaPronta) {
+            bolha.innerHTML = '🤔 Li o documento, mas não parece um ofício de evento (o único tipo que sei cadastrar sozinho) e a IA local não está disponível agora. Me diga em uma frase do que se trata que eu te oriento — ou preencha direto na página de <strong>Eventos</strong>.';
+            return;
+        }
+        bolha.innerHTML = '<span style="opacity:.6;">🧠 Lendo e interpretando o documento…</span>';
+        const trecho = String(texto || '').slice(0, 6000);
+        const prompt = 'Você é o Xerife, assistente da Polícia Militar de Alagoas. Leia o texto abaixo (veio do OCR de um documento, pode ter erros de leitura). '
+            + 'Em no máximo 3 frases, diga DO QUE o documento parece se tratar (tipo e assunto principal). '
+            + 'Se parecer um ofício solicitando apoio/policiamento para um EVENTO, diga isso claramente e avise que, se o usuário confirmar, você pode extrair os campos e cadastrar no sistema de Eventos. '
+            + 'Se ficar em DÚVIDA sobre o que é o documento, NÃO invente: termine PERGUNTANDO ao usuário do que se trata e o que ele gostaria de fazer. '
+            + 'Responda em português (pt-BR), de forma direta.';
+        try {
+            const resp = await window.Xerife.gerarComIA(
+                [{ role: 'system', content: prompt }, { role: 'user', content: trecho }],
+                { temperature: 0.2, max_tokens: 300 });
+            if (resp && resp.trim()) {
+                bolha.innerHTML = window.Xerife.escHtml(resp.trim()).replace(/\n/g, '<br>');
+            } else {
+                bolha.innerHTML = '🤔 Li o documento, mas fiquei na dúvida sobre o que é. Pode me dizer em uma frase do que se trata e o que você gostaria de fazer?';
+            }
+        } catch (e) {
+            bolha.innerHTML = '🤔 Li o documento, mas não consegui interpretar agora. Pode me dizer do que se trata?';
+        }
     }
 
     aguardarXerife().then(() => { window.Xerife.analisarDocumento = analisarDocumento; })
