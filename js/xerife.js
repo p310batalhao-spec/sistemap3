@@ -863,70 +863,132 @@
         return autores.filter(a => NORM(CAMPO(a, 'NOME')).includes(alvo));
     }
 
-    // ── Consulta CAD/Quimera DIRETO do chat (pedido do usuário 25/10/2026) ──
-    // Quando o servidor local (app desktop) está no ar, um CPF na pergunta puxa
-    // o MESMO resumo da Consulta Integrada (foto do CAD + foto do Quimera/IDSEG
-    // + ocorrências) e os processos do TJAL — sem sair do chat, em qualquer
-    // página. Em web puro (sem o app desktop) o fetch a 127.0.0.1 falha na hora
-    // e o chat segue só com o nó "autor" do Firebase. NUNCA quebra a resposta:
-    // qualquer erro/timeout/não-autorizado vira `null` e o chat ignora o bloco.
+    // ── Consulta CAD/Quimera COMPLETA DIRETO do chat (25/10/2026) ──
+    // Quando o servidor local (app desktop) está no ar, um CPF na pergunta roda
+    // a Consulta Integrada COMPLETA (/pessoa/consultar, streaming NDJSON ~17
+    // etapas: foto CAD + Quimera/IDSEG, CNH, endereços, vínculos, TODAS as
+    // ocorrências, mandados, veículos) + os processos do TJAL — sem sair do
+    // chat, em qualquer página. Em web puro (sem o app desktop) o fetch a
+    // 127.0.0.1 falha na hora e o chat segue só com o nó "autor" do Firebase.
+    // NUNCA quebra a resposta: erro/timeout/não-autorizado vira null (ou {erro}
+    // quando o servidor respondeu com erro, pra avisar que o login venceu).
     async function consultarCadQuimera(cpf) {
         const cpfLimpo = String(cpf || '').replace(/\D/g, '');
         if (cpfLimpo.length !== 11) return null;
         const comTimeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
         try {
-            // /pessoa/resumo é a versão leve da Consulta Integrada (foto +
-            // ocorrências, sem CNH/vínculos/web) — ainda assim bate no CAD, que
-            // é lento; daí o timeout folgado. status>=300 = servidor exige nível
-            // p2/admin (não autorizado) → cai fora sem alarde.
-            const r = await fetch(_urlLocal() + '/pessoa/resumo?cpf=' + cpfLimpo, { signal: comTimeout(90000) });
-            if (!r.ok) return null;
-            const j = await r.json();
-            if (!j || !j.ok || !j.resumo) return null;
-            const resumo = j.resumo;
+            const resp = await fetch(_urlLocal() + '/pessoa/consultar?cpf=' + encodeURIComponent(cpfLimpo), { signal: comTimeout(120000) });
+            if (!resp.ok || !resp.body) return null; // sem servidor / sem nível p2-admin
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            let buf = '', resultado = null, erro = null;
+            const processar = (ln) => {
+                if (!ln.trim()) return;
+                let obj; try { obj = JSON.parse(ln); } catch (e) { return; }
+                if (obj.tipo === 'fim') resultado = obj.resultado;
+                else if (obj.tipo === 'erro_fatal') erro = obj.mensagem;
+            };
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buf += decoder.decode(value, { stream: true });
+                const linhas = buf.split('\n');
+                buf = linhas.pop();
+                for (const ln of linhas) processar(ln);
+            }
+            if (buf) processar(buf);
+            if (erro && !resultado) return { erro };
+            if (!resultado) return null;
+            // Processos do TJAL (fonte à parte, não é do CAD) — best-effort.
             let processos = [];
             try {
-                const nome = (resumo.pessoa && resumo.pessoa.nome) || '';
+                const nome = (resultado.pessoa && resultado.pessoa.nome) || '';
                 const rp = await fetch(_urlLocal() + '/pessoa/processos-tjal?nome=' + encodeURIComponent(nome) + '&cpf=' + cpfLimpo, { signal: comTimeout(45000) });
                 if (rp.ok) { const jp = await rp.json(); if (jp && jp.ok) processos = jp.processos || []; }
             } catch (e) { /* segue sem os processos do TJAL */ }
-            return { resumo, processos };
+            return { resultado, processos };
         } catch (e) { return null; }
     }
 
-    // Monta o bloco HTML da consulta CAD/Quimera pro chat — foto (quando houver)
-    // + identificação + nº de ocorrências + processos do TJAL (até 5). Conciso
-    // de propósito: a ficha completa continua na página da Consulta Integrada.
+    // Lista TODAS as ocorrências do resultado completo (despacho + PPE + PC
+    // antigo), uma linha cada, com os campos reais de cada fonte (ver
+    // cad_consulta.py: _CAMPOS_DESPC/_CAMPOS_PPE/_CAMPOS_PC_ANTIGO).
+    function _linhasOcorrencias(r) {
+        const linhas = [];
+        (r.ocorrenciasDespacho || []).forEach(o => {
+            linhas.push(`• ${o.dt_ocor || '—'} — ${o.ds_ocor_sgrup || o.ds_oco_despc_tipo_envl || 'ocorrência'}${o.ds_ocor_despc_envl_pess_sitc ? ' (' + o.ds_ocor_despc_envl_pess_sitc + ')' : ''}`);
+        });
+        (r.ocorrenciasPpe || []).forEach(o => {
+            linhas.push(`• ${o.dt_ocorrencia || o.dt_hora_registro || '—'} — ${o.no_natureza_ocorrencia || 'ocorrência'}${o.tipo_envolvimento ? ' (' + o.tipo_envolvimento + ')' : ''}`);
+        });
+        (r.ocorrenciasPcAntigo || []).forEach(o => {
+            linhas.push(`• ${o.data_hora_registro || '—'} — BO ${o.attr_numero_bo || '—'}${o.cognome ? ' (vulgo ' + o.cognome + ')' : ''}`);
+        });
+        return linhas;
+    }
+
+    // Guarda o resultado COMPLETO pro handoff da página (abre já preenchida,
+    // sem re-consultar — ver consulta-pessoa.js abrirResultadoSalvo). Usa
+    // sessionStorage (mesma origem; a aba nova herda uma cópia). Se não rolar,
+    // o link cai no ?cpf= e reconsulta. Nunca quebra o chat.
+    function _guardarHandoffFicha(r) {
+        try { sessionStorage.setItem('p3_cip_resultado_salvo_handoff', JSON.stringify(r)); } catch (e) { /* cota/indisponível — fallback ?cpf= */ }
+    }
+
+    // Monta o bloco COMPLETO da consulta integrada pro chat — foto, dados de
+    // identificação, TODAS as ocorrências, processos (com link) e o link pra
+    // ficha completa JÁ PREENCHIDA (handoff + fallback ?cpf=). Campos extras
+    // (RG/sexo/CNH/endereço) só aparecem se existirem no resultado.
     function montarBlocoCadQuimera(dados) {
-        const r = dados.resumo || {};
+        const r = dados.resultado || {};
         const p = r.pessoa || {};
         const fotos = r.fotos || [];
-        let htmlFoto = '';
+        let html = '🪪 <strong>Consulta integrada (CAD + Quimera/IDSEG)</strong><br>';
         if (fotos.length) {
-            htmlFoto = `<div style="margin:6px 0;"><img src="${fotos[0]}" alt="Foto" style="width:120px;height:auto;border-radius:8px;border:1px solid var(--p3-border,#ccc);"></div>`;
+            html += `<div style="margin:6px 0;"><img src="${fotos[0]}" alt="Foto" style="width:140px;height:auto;border-radius:8px;border:1px solid var(--p3-border,#ccc);"></div>`;
+        } else if (r.fotoQuimera && r.fotoQuimera.consultado && !r.fotoQuimera.temFoto) {
+            html += 'Foto: não localizada na base (IDSEG/Quimera).<br>';
         }
-        const linhas = ['🪪 <strong>Consulta integrada (CAD + Quimera/IDSEG)</strong>'];
-        if (p.nome) linhas.push(`Nome: <strong>${p.nome}</strong>`);
-        if (p.cpf) linhas.push(`CPF: ${p.cpf}`);
-        if (p.dataNascimento) linhas.push(`Nascimento: ${p.dataNascimento}`);
-        if (p.mae) linhas.push(`Mãe: ${p.mae}`);
-        if (p.pai) linhas.push(`Pai: ${p.pai}`);
-        if (!fotos.length && r.fotoQuimera && r.fotoQuimera.consultado && !r.fotoQuimera.temFoto) {
-            linhas.push('Foto: não localizada na base (IDSEG/Quimera).');
+        const id = [];
+        if (p.nome) id.push(`Nome: <strong>${p.nome}</strong>`);
+        if (p.cpf) id.push(`CPF: ${p.cpf}`);
+        if (p.rg) id.push(`RG: ${p.rg}`);
+        if (p.dataNascimento) id.push(`Nascimento: ${p.dataNascimento}`);
+        if (p.sexo) id.push(`Sexo: ${p.sexo}`);
+        if (p.mae) id.push(`Mãe: ${p.mae}`);
+        if (p.pai) id.push(`Pai: ${p.pai}`);
+        if (p.naturalidade) id.push(`Naturalidade: ${p.naturalidade}`);
+        if (id.length) html += id.join('<br>') + '<br>';
+        if (r.cnh && (r.cnh.numero || r.cnh.categoria)) {
+            html += `CNH: ${r.cnh.numero || '—'}${r.cnh.categoria ? ' (cat. ' + r.cnh.categoria + ')' : ''}${r.cnh.validade ? ', validade ' + r.cnh.validade : ''}<br>`;
         }
-        const totOc = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
-        linhas.push(`Ocorrências localizadas no CAD: ${totOc}`);
+        const ends = r.enderecos || [];
+        if (ends.length) {
+            const e0 = ends[0];
+            const txt = (typeof e0 === 'string') ? e0 : [e0.logradouro, e0.bairro, e0.municipio, e0.cidade].filter(Boolean).join(', ');
+            if (txt) html += `Endereço: ${txt}${ends.length > 1 ? ` (+${ends.length - 1})` : ''}<br>`;
+        }
+        const ocs = _linhasOcorrencias(r);
+        html += `<br>📁 <strong>Ocorrências (${ocs.length})</strong><br>`;
+        html += ocs.length ? ocs.join('<br>') : 'Nenhuma ocorrência localizada no CAD.';
         const procs = dados.processos || [];
+        html += `<br><br>⚖️ <strong>Processos no TJAL (${procs.length})</strong><br>`;
         if (procs.length) {
-            linhas.push(`Processos no TJAL: ${procs.length}`);
-            procs.slice(0, 5).forEach(pr => {
+            html += procs.map(pr => {
                 const num = pr.numeroProcesso || pr.numero || '—';
-                linhas.push(`• ${num}${pr.url ? ` (<a href="${pr.url}" target="_blank" rel="noopener">abrir</a>)` : ''}`);
-            });
-            if (procs.length > 5) linhas.push(`…e mais ${procs.length - 5} processo(s).`);
+                const assunto = pr.doQueSeTrata || pr.assunto || pr.classe || '';
+                return `• ${pr.url ? `<a href="${pr.url}" target="_blank" rel="noopener">${num}</a>` : num}${assunto ? ' — ' + assunto : ''}`;
+            }).join('<br>');
+        } else {
+            html += 'Nenhum processo localizado.';
         }
-        linhas.push('<small>Ficha completa (CNH, vínculos, endereços, veículos, timeline) na <a href="' + prefixoPagina() + 'page/consulta-pessoa.html">Consulta Integrada</a>.</small>');
-        return htmlFoto + linhas.join('<br>');
+        const cpf = String(p.cpf || r.cpf || '').replace(/\D/g, '');
+        _guardarHandoffFicha(r);
+        // target="_blank" SEM noopener de propósito: só assim a aba nova herda a
+        // cópia do sessionStorage (handoff) — se não herdar, o &cpf= reconsulta.
+        html += `<br><br><a href="${prefixoPagina()}page/consulta-pessoa.html?abrirResultadoSalvo=1${cpf ? '&cpf=' + cpf : ''}" target="_blank"><strong>📋 Abrir ficha completa (já preenchida)</strong></a>`
+            + ' — CNH, vínculos, endereços, veículos, timeline e impressão.';
+        return html;
     }
 
     // Busca por NOME no backend (IDSEG/Quimera primeiro, CAD como reserva) —
@@ -1239,21 +1301,35 @@
             // null = servidor local fora do ar / sem nível p2-admin / sem dados.
             const cpfConsulta = identificador.tipo === 'cpf' ? identificador.valor : normDigitos(CAMPO(achados[0] || {}, 'CPF'));
             const dadosCad = cpfConsulta ? await consultarCadQuimera(cpfConsulta) : null;
-            const blocoCad = dadosCad ? montarBlocoCadQuimera(dadosCad) : '';
+            const blocoCad = (dadosCad && dadosCad.resultado) ? montarBlocoCadQuimera(dadosCad) : '';
+            const erroCad = (dadosCad && dadosCad.erro) ? dadosCad.erro : null;
             if (!achados.length) {
                 // Sem registro local, mas o CAD/Quimera pode ter a pessoa (CPF
                 // que nunca virou ocorrência nossa) — mostra o que veio de lá.
                 if (blocoCad) return blocoCad;
                 if (identificador.tipo === 'nome') {
-                    // Busca por NOME no CAD/IDSEG (não só no nó "autor" local).
+                    // Busca por NOME no CAD/IDSEG. Se achar UMA pessoa com CPF, já
+                    // puxa a ficha COMPLETA dela; se achar várias, lista pra escolher.
                     const resNome = await buscarPorNomeBackend(identificador.valor);
-                    if (resNome && resNome.pessoas) return montarBlocoBuscaNome(resNome);
+                    if (resNome && resNome.pessoas) {
+                        const unico = resNome.pessoas.length === 1 ? resNome.pessoas[0] : null;
+                        const cpfUnico = unico ? String(unico.cpf || unico.CPF || '').replace(/\D/g, '') : '';
+                        if (cpfUnico.length === 11) {
+                            const d2 = await consultarCadQuimera(cpfUnico);
+                            if (d2 && d2.resultado) return montarBlocoCadQuimera(d2);
+                        }
+                        return montarBlocoBuscaNome(resNome);
+                    }
                     if (resNome && resNome.erro) {
                         return `🔎 Consultei o CAD/Quimera por "<strong>${identificador.valor}</strong>", mas o acesso falhou: ${resNome.erro}`
                             + '<br><small>Verifique se o login do CAD/Quimera está válido (token do dia) na tela "🔑 Login CAD / Quimera".</small>';
                     }
                     return `Não encontrei ninguém chamado "${identificador.valor}" no nó de autores nem no CAD/Quimera.`
                         + '<br><small>Se o CAD/Quimera estiver sem login válido, eu não consigo consultar a base deles — renove o token do dia.</small>';
+                }
+                if (erroCad) {
+                    return `🔎 Consultei o CAD/Quimera pelo CPF, mas o acesso falhou: ${erroCad}`
+                        + '<br><small>Verifique se o login do CAD/Quimera está válido (token do dia) na tela "🔑 Login CAD / Quimera".</small>';
                 }
                 return 'Não encontrei nenhum registro no nó de autores pra esse CPF.';
             }
@@ -1289,7 +1365,9 @@
                 } catch (e) { /* idem */ }
             }
             const corpoResp = `🔎 ${achados.length} registro(s) encontrado(s) ${titulo}:<br><br>` + blocos.join('<br><br>');
-            return blocoCad ? (corpoResp + '<br><br>' + blocoCad) : corpoResp;
+            if (blocoCad) return corpoResp + '<br><br>' + blocoCad;
+            if (erroCad) return corpoResp + `<br><br><small>⚠️ Não consegui puxar a ficha do CAD/Quimera: ${erroCad}</small>`;
+            return corpoResp;
         }
         if (identificador.tipo === 'processo' || identificador.tipo === 'boletim') {
             return await montarRelatorioCompleto(identificador);
