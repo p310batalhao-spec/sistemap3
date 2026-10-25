@@ -863,6 +863,72 @@
         return autores.filter(a => NORM(CAMPO(a, 'NOME')).includes(alvo));
     }
 
+    // ── Consulta CAD/Quimera DIRETO do chat (pedido do usuário 25/10/2026) ──
+    // Quando o servidor local (app desktop) está no ar, um CPF na pergunta puxa
+    // o MESMO resumo da Consulta Integrada (foto do CAD + foto do Quimera/IDSEG
+    // + ocorrências) e os processos do TJAL — sem sair do chat, em qualquer
+    // página. Em web puro (sem o app desktop) o fetch a 127.0.0.1 falha na hora
+    // e o chat segue só com o nó "autor" do Firebase. NUNCA quebra a resposta:
+    // qualquer erro/timeout/não-autorizado vira `null` e o chat ignora o bloco.
+    async function consultarCadQuimera(cpf) {
+        const cpfLimpo = String(cpf || '').replace(/\D/g, '');
+        if (cpfLimpo.length !== 11) return null;
+        const comTimeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+        try {
+            // /pessoa/resumo é a versão leve da Consulta Integrada (foto +
+            // ocorrências, sem CNH/vínculos/web) — ainda assim bate no CAD, que
+            // é lento; daí o timeout folgado. status>=300 = servidor exige nível
+            // p2/admin (não autorizado) → cai fora sem alarde.
+            const r = await fetch(_urlLocal() + '/pessoa/resumo?cpf=' + cpfLimpo, { signal: comTimeout(90000) });
+            if (!r.ok) return null;
+            const j = await r.json();
+            if (!j || !j.ok || !j.resumo) return null;
+            const resumo = j.resumo;
+            let processos = [];
+            try {
+                const nome = (resumo.pessoa && resumo.pessoa.nome) || '';
+                const rp = await fetch(_urlLocal() + '/pessoa/processos-tjal?nome=' + encodeURIComponent(nome) + '&cpf=' + cpfLimpo, { signal: comTimeout(45000) });
+                if (rp.ok) { const jp = await rp.json(); if (jp && jp.ok) processos = jp.processos || []; }
+            } catch (e) { /* segue sem os processos do TJAL */ }
+            return { resumo, processos };
+        } catch (e) { return null; }
+    }
+
+    // Monta o bloco HTML da consulta CAD/Quimera pro chat — foto (quando houver)
+    // + identificação + nº de ocorrências + processos do TJAL (até 5). Conciso
+    // de propósito: a ficha completa continua na página da Consulta Integrada.
+    function montarBlocoCadQuimera(dados) {
+        const r = dados.resumo || {};
+        const p = r.pessoa || {};
+        const fotos = r.fotos || [];
+        let htmlFoto = '';
+        if (fotos.length) {
+            htmlFoto = `<div style="margin:6px 0;"><img src="${fotos[0]}" alt="Foto" style="width:120px;height:auto;border-radius:8px;border:1px solid var(--p3-border,#ccc);"></div>`;
+        }
+        const linhas = ['🪪 <strong>Consulta integrada (CAD + Quimera/IDSEG)</strong>'];
+        if (p.nome) linhas.push(`Nome: <strong>${p.nome}</strong>`);
+        if (p.cpf) linhas.push(`CPF: ${p.cpf}`);
+        if (p.dataNascimento) linhas.push(`Nascimento: ${p.dataNascimento}`);
+        if (p.mae) linhas.push(`Mãe: ${p.mae}`);
+        if (p.pai) linhas.push(`Pai: ${p.pai}`);
+        if (!fotos.length && r.fotoQuimera && r.fotoQuimera.consultado && !r.fotoQuimera.temFoto) {
+            linhas.push('Foto: não localizada na base (IDSEG/Quimera).');
+        }
+        const totOc = (r.ocorrenciasPpe || []).length + (r.ocorrenciasPcAntigo || []).length + (r.ocorrenciasDespacho || []).length;
+        linhas.push(`Ocorrências localizadas no CAD: ${totOc}`);
+        const procs = dados.processos || [];
+        if (procs.length) {
+            linhas.push(`Processos no TJAL: ${procs.length}`);
+            procs.slice(0, 5).forEach(pr => {
+                const num = pr.numeroProcesso || pr.numero || '—';
+                linhas.push(`• ${num}${pr.url ? ` (<a href="${pr.url}" target="_blank" rel="noopener">abrir</a>)` : ''}`);
+            });
+            if (procs.length > 5) linhas.push(`…e mais ${procs.length - 5} processo(s).`);
+        }
+        linhas.push('<small>Ficha completa (CNH, vínculos, endereços, veículos, timeline) na <a href="' + prefixoPagina() + 'page/consulta-pessoa.html">Consulta Integrada</a>.</small>');
+        return htmlFoto + linhas.join('<br>');
+    }
+
     // ── Cruzamento TCO × Sentença × Materiais × Guarnição a partir de um
     // BOLETIM já conhecido — núcleo compartilhado entre o relatório por
     // boletim/processo E a busca por CPF/nome (que antes só mostrava a
@@ -1102,7 +1168,16 @@
     async function responderConsultaIdentificador(identificador) {
         if (identificador.tipo === 'nome' || identificador.tipo === 'cpf') {
             const achados = identificador.tipo === 'nome' ? await buscarPorNome(identificador.valor) : await buscarPorCPF(identificador.valor);
+            // CAD/Quimera DIRETO do chat (25/10/2026): pro CPF informado, ou —
+            // na busca por nome — pelo CPF do 1º registro achado no nó "autor".
+            // null = servidor local fora do ar / sem nível p2-admin / sem dados.
+            const cpfConsulta = identificador.tipo === 'cpf' ? identificador.valor : normDigitos(CAMPO(achados[0] || {}, 'CPF'));
+            const dadosCad = cpfConsulta ? await consultarCadQuimera(cpfConsulta) : null;
+            const blocoCad = dadosCad ? montarBlocoCadQuimera(dadosCad) : '';
             if (!achados.length) {
+                // Sem registro local, mas o CAD/Quimera pode ter a pessoa (CPF
+                // que nunca virou ocorrência nossa) — mostra o que veio de lá.
+                if (blocoCad) return blocoCad;
                 return identificador.tipo === 'nome'
                     ? `Não encontrei ninguém chamado "${identificador.valor}" no nó de autores.`
                     : 'Não encontrei nenhum registro no nó de autores pra esse CPF.';
@@ -1138,7 +1213,8 @@
                     if (blocoCruzamento) blocos.push(blocoCruzamento);
                 } catch (e) { /* idem */ }
             }
-            return `🔎 ${achados.length} registro(s) encontrado(s) ${titulo}:<br><br>` + blocos.join('<br><br>');
+            const corpoResp = `🔎 ${achados.length} registro(s) encontrado(s) ${titulo}:<br><br>` + blocos.join('<br><br>');
+            return blocoCad ? (corpoResp + '<br><br>' + blocoCad) : corpoResp;
         }
         if (identificador.tipo === 'processo' || identificador.tipo === 'boletim') {
             return await montarRelatorioCompleto(identificador);
@@ -2886,6 +2962,7 @@
         opcoes = opcoes || {};
         if (fonteIA === 'ollama') {
             try {
+                // Resposta ÚNICA (sem streaming) — mais robusta no .exe.
                 const resp = await fetch(_urlLocal() + '/xerife/ia/chat', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2894,22 +2971,9 @@
                     }),
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const reader = resp.body.getReader(); const dec = new TextDecoder('utf-8');
-                let buf = '', texto = '', erro = null;
-                for (;;) {
-                    const { done, value } = await reader.read(); if (done) break;
-                    buf += dec.decode(value, { stream: true });
-                    let i;
-                    while ((i = buf.indexOf('\n')) !== -1) {
-                        const linha = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
-                        if (!linha) continue;
-                        let obj; try { obj = JSON.parse(linha); } catch (e) { continue; }
-                        if (obj.erro) erro = obj.erro;
-                        if (obj.message && obj.message.content) texto += obj.message.content;
-                    }
-                }
-                if (texto) return texto;
-                if (erro) throw new Error(erro);
+                const j = await resp.json();
+                if (j && j.ok && j.resposta) return j.resposta;
+                if (j && j.erro) throw new Error(j.erro);
                 return null;
             } catch (e) {
                 // Ollama falhou em runtime — tenta o WebLLM se houver.
@@ -3535,7 +3599,7 @@
             promessaModuloDocumentos = new Promise((resolve, reject) => {
                 const prefixo = /\/(page|relatorios|public|termos)\//.test(location.pathname) ? '../' : '';
                 const s = document.createElement('script');
-                s.src = prefixo + 'js/xerife-documentos.js';
+                s.src = prefixo + 'js/xerife-documentos.js?v=20261025-3';
                 s.onload = () => {
                     // xerife-documentos.js só anexa analisarDocumento em
                     // window.Xerife depois que seu próprio aguardarXerife()
