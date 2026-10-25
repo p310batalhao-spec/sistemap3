@@ -250,6 +250,7 @@
         const okCount = r.fontes.filter(f => f.ok).length;
         msg.textContent = `Consulta concluída em ${(r.tempoTotalMs / 1000).toFixed(1)}s — ${okCount}/${r.fontes.length} etapa(s) concluídas.`;
         renderizarTudo(r);
+        completarCidadesCpf(r);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -466,6 +467,8 @@
                 const r = await P3AtualizadorLocal.buscarPessoaPorNome(c.nome, c.mae, c.pai, c.vulgo);
                 if (!r.ok) throw new Error(r.erro || 'falha desconhecida.');
                 pessoas = r.pessoas || [];
+                aba.fonte = r.fonte;
+                aba.avisoIdseg = r.avisoIdseg;
             }
             aba.pessoas = pessoas;
         } catch (e) {
@@ -504,7 +507,66 @@
         st.carregando = false;
         atualizarListaCidades();
         renderSeAbaAtiva(aba);
+        if (st.r && aba.abertos.has(i)) carregarProcessosNome(aba, i);
+        if (st.r && FILTROS.cidade) completarCidadesNome(aba, i);
         return st;
+    }
+
+    // Processos do TJAL (1º grau) pelo nome completo + CPF da pessoa — só
+    // quando ela é aberta (não no "carregar todos", pra não martelar o TJAL).
+    async function carregarProcessosNome(aba, i) {
+        const st = aba.resumos[i], p = aba.pessoas[i];
+        if (!st || !st.r || st.proc) return;
+        st.proc = { carregando: true };
+        renderSeAbaAtiva(aba);
+        const nomeCompleto = (st.r.pessoa && st.r.pessoa.nome) || p.nome || '';
+        try {
+            const resp = await P3AtualizadorLocal.processosTjal(nomeCompleto, limparCpf(p.cpf));
+            if (!resp.ok) throw new Error(resp.erro || 'falha desconhecida.');
+            st.proc = { lista: resp.processos || [], avisos: resp.avisos || [] };
+        } catch (e) {
+            st.proc = { erro: e.message };
+        }
+        renderSeAbaAtiva(aba);
+    }
+
+    function processosTjalHtml(i, proc) {
+        let h = '<div class="cip-card-titulo" style="margin-top:16px;">⚖️ Processos — TJAL 1º grau</div>';
+        if (!proc || proc.carregando) return h + '<div class="cip-nome-aviso"><span class="cip-aba-consulta-spinner"></span> Consultando o TJAL pelo nome completo e CPF...</div>';
+        if (proc.erro) return h + `<div class="cip-nome-aviso erro">Erro: ${esc(proc.erro)} <button type="button" class="cip-btn-sec" data-acao="tentar-proc" data-idx="${i}">↻ Tentar de novo</button></div>`;
+        (proc.avisos || []).forEach(a => { h += `<div class="cip-nome-aviso">⚠️ ${esc(a)}</div>`; });
+        if (!proc.lista.length) return h + '<div class="cip-vazio" style="padding:12px 0;">Nenhum processo encontrado no 1º grau do TJAL.</div>';
+        proc.lista.forEach(p => {
+            const mov = (p.movimentacoes || [])[0];
+            const outras = (p.partes || []).filter(pt => pt.tipo !== p.participacao).map(pt => `${pt.tipo} ${pt.nome}`).slice(0, 3).join(' · ');
+            h += `<div class="cip-proc${p.criminal ? ' criminal' : ''}">
+                <div class="cip-proc-topo">
+                    <a href="${esc(p.url)}" target="_blank" rel="noopener"><b>${esc(p.numeroProcesso || '—')}</b></a>
+                    ${p.criminal ? '<span class="cip-env cip-env-autor">CRIMINAL</span>' : '<span class="cip-env cip-env-outros">CÍVEL / OUTROS</span>'}
+                    ${p.situacao ? `<span class="cip-chip">${esc(p.situacao)}</span>` : ''}
+                    ${p.confirmacao === 'cpf' ? '<span class="cip-chip ok">confirmado pelo CPF</span>' : '<span class="cip-chip" title="Achado pelo nome — o TJAL não mostrou CPF neste processo">⚠️ pelo nome — confirmar homônimo</span>'}
+                </div>
+                <div class="cip-proc-trata"><b>Do que se trata:</b> ${esc(p.resumo || '—')}</div>
+                <div class="cip-proc-meta">${esc([p.vara || p.foro, p.juiz && 'Juiz(a) ' + p.juiz, p.distribuicao && 'Distribuído em ' + p.distribuicao].filter(Boolean).join(' · '))}</div>
+                ${outras ? `<div class="cip-proc-meta">Outras partes: ${esc(outras)}</div>` : ''}
+                ${mov ? `<div class="cip-proc-meta">Última movimentação: ${esc(mov.data)} — ${esc(mov.descricao)}</div>` : ''}
+            </div>`;
+        });
+        return h;
+    }
+
+    // Filtro de cidade ativo: busca no CAD a cidade das ocorrências que ainda
+    // não têm (as do despacho já vêm do resumo; aqui sobram PPE/registros).
+    async function completarCidadesNome(aba, i) {
+        const st = aba.resumos[i];
+        if (!st || !st.r || st.buscandoCidades) return;
+        const lista = filtrarOcorrencias(st.r).semCidade;
+        if (!lista.length) return;
+        st.buscandoCidades = '0/' + lista.length;
+        await carregarCidadesFaltantes(st.r, lista, (k, n) => { st.buscandoCidades = `${k + 1}/${n}`; renderSeAbaAtiva(aba); });
+        st.buscandoCidades = null;
+        atualizarListaCidades();
+        renderSeAbaAtiva(aba);
     }
 
     async function carregarTodosNome(aba) {
@@ -549,16 +611,25 @@
                     : `<div class="cip-vazio" style="padding:14px 0;">${f.todas.length ? 'Nenhuma ocorrência atende ao filtro.' : 'Nenhuma ocorrência encontrada.'}</div>`);
         }
         const btn = `<button type="button" class="cip-btn-pri" data-acao="completa" data-idx="${i}">🔎 Abrir consulta completa (nova aba)</button>`;
-        return `<div class="cip-nome-grade"><div>${fotos}</div><div>${dados}<div style="margin-top:12px;">${btn}</div></div></div>${ocorr}`;
+        const proc = r ? processosTjalHtml(i, st.proc) : '';
+        return `<div class="cip-nome-grade"><div>${fotos}</div><div>${dados}<div style="margin-top:12px;">${btn}</div></div></div>${ocorr}${proc}`;
+    }
+
+    // Fonte da busca por nome: IDSEG (nome completo, já com foto/CPF) ou
+    // CAD (parcial/fallback). Ver app.py rota /pessoa/buscar-por-nome.
+    function fonteBuscaNomeHtml(aba) {
+        if (aba.fonte === 'idseg') return '<div class="cip-filtro-resumo" style="border-left-color:#2e7d32;">🛰️ <b>Fonte: Quimera / IDSEG</b> <span>— pessoas por nome completo, com CPF e foto; a consulta integrada roda a partir de cada CPF.</span></div>';
+        if (aba.fonte === 'cad') return `<div class="cip-filtro-resumo">🗂️ <b>Fonte: CAD</b>${aba.avisoIdseg ? ` <span>— ${esc(aba.avisoIdseg)}</span>` : ''}</div>`;
+        return '';
     }
 
     function renderAbaNome(aba) {
         const ps = aba.pessoas || [];
-        if (!ps.length) return `<div class="cip-vazio">Nenhuma pessoa encontrada para ${esc(aba.criterios)}.</div>`;
+        if (!ps.length) return fonteBuscaNomeHtml(aba) + `<div class="cip-vazio">Nenhuma pessoa encontrada para ${esc(aba.criterios)}.</div>`;
         const comCpf = ps.filter(p => limparCpf(p.cpf)).length;
         const prontos = Object.values(aba.resumos).filter(x => x.r || x.erro).length;
         const fa = filtrosAtivos();
-        let h = `<div class="cip-nome-topo"><div><b>${ps.length} pessoa(s)</b> para ${esc(aba.criterios)} — clique numa para ver foto e ocorrências.</div>
+        let h = fonteBuscaNomeHtml(aba) + `<div class="cip-nome-topo"><div><b>${ps.length} pessoa(s)</b> para ${esc(aba.criterios)} — clique numa para ver foto e ocorrências.</div>
             <div class="cip-nome-acoes">
                 ${fa ? `<label style="cursor:pointer;"><input type="checkbox" data-acao="so-filtro"${aba.soFiltro ? ' checked' : ''}> só quem tem ocorrência no filtro</label>` : ''}
                 ${ps.length > 1 ? `<button type="button" class="cip-btn-sec" data-acao="carregar-todos"${aba.carregandoTodos || prontos >= comCpf ? ' disabled' : ''}>${aba.carregandoTodos ? `⏳ Carregando ${prontos}/${comCpf}...` : `⬇️ Carregar foto e ocorrências de todos (${prontos}/${comCpf})`}</button>` : ''}
@@ -619,8 +690,14 @@
         switch (alvo.dataset.acao) {
             case 'alternar':
                 if (aba.abertos.has(i)) aba.abertos.delete(i);
-                else { aba.abertos.add(i); carregarResumoNome(aba, i); }
+                else {
+                    aba.abertos.add(i);
+                    if (st && st.r) carregarProcessosNome(aba, i); else carregarResumoNome(aba, i);
+                }
                 renderizarAbaGenerica();
+                break;
+            case 'tentar-proc':
+                if (st) { st.proc = null; carregarProcessosNome(aba, i); }
                 break;
             case 'tentar':
                 delete aba.resumos[i];
@@ -1501,7 +1578,7 @@
         const t = normTxt(txt);
         if (!t) return '';
         if (/VITIMA|OFENDID/.test(t)) return 'vitima';
-        if (/AUTOR|SUSPEIT|INFRATOR|AGRESSOR|CONDUZID|ACUSAD|INDICIAD|INVESTIGAD|FLAGRANTEAD/.test(t)) return 'autor';
+        if (/AUTOR|SUSPEIT|INFRATOR|AGRESSOR|CONDUZID|ACUSAD|INDICIAD|INVESTIGAD|FLAGRANTEAD|\bPRES[OA]\b|CAPTURAD|FORAGID|DETID/.test(t)) return 'autor';
         if (/COMUNICANTE|SOLICITANTE|NOTICIANTE|DENUNCIANTE|REQUERENTE/.test(t)) return 'comunicante';
         if (/TESTEMUNHA/.test(t)) return 'testemunha';
         return 'outros';
@@ -1641,8 +1718,28 @@
         document.getElementById('cip-filtros').classList.toggle('ativo', filtrosAtivos());
         const aba = abaConsultaAtiva();
         if (!aba || aba.carregando || aba.erro) return;
-        if (aba.tipo === 'nome') renderizarAbaGenerica();
-        else if (aba.tipo === 'cpf') rerenderizarOcorrenciasCpf();
+        if (aba.tipo === 'nome') {
+            renderizarAbaGenerica();
+            if (FILTROS.cidade) Object.keys(aba.resumos).forEach(i => completarCidadesNome(aba, Number(i)));
+        } else if (aba.tipo === 'cpf') {
+            rerenderizarOcorrenciasCpf();
+            completarCidadesCpf(aba.resultado);
+        }
+    }
+
+    // Mesmo que completarCidadesNome, pra aba de CPF ativa.
+    async function completarCidadesCpf(r) {
+        if (!FILTROS.cidade || !r || r._buscandoCidades) return;
+        const lista = filtrarOcorrencias(r).semCidade;
+        if (!lista.length) return;
+        r._buscandoCidades = true;
+        await carregarCidadesFaltantes(r, lista, (k, n) => {
+            const b = document.querySelector('#cip-sec-ocorrencias .cip-btn-cidades');
+            if (b && ULTIMO_RESULTADO === r) { b.disabled = true; b.textContent = `📍 Buscando cidade ${k + 1}/${n} no CAD...`; }
+        });
+        r._buscandoCidades = false;
+        atualizarListaCidades();
+        if (ULTIMO_RESULTADO === r) rerenderizarOcorrenciasCpf();
     }
 
     function _parseCoordBr(s) {
