@@ -929,6 +929,72 @@
         return htmlFoto + linhas.join('<br>');
     }
 
+    // Busca por NOME no backend (IDSEG/Quimera primeiro, CAD como reserva) —
+    // pra quando "consulte o indivíduo FULANO" não acha nada no nó "autor"
+    // local. Precisa do servidor local no ar + CAD/Quimera válidos; senão
+    // devolve null (ou {erro} quando o servidor respondeu com erro, pra avisar
+    // que o login do CAD venceu). Nome parcial pode voltar vazio no IDSEG e
+    // cair no CAD (o backend já cuida disso).
+    async function buscarPorNomeBackend(nome) {
+        const n = String(nome || '').trim();
+        if (n.split(/\s+/).length < 2) return null; // IDSEG exige nome completo
+        const comTimeout = (ms) => (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(ms) : undefined;
+        try {
+            const r = await fetch(_urlLocal() + '/pessoa/buscar-por-nome?nome=' + encodeURIComponent(n), { signal: comTimeout(60000) });
+            if (!r.ok) return null; // sem servidor local / sem nível p2-admin
+            const j = await r.json();
+            if (j && j.ok && Array.isArray(j.pessoas) && j.pessoas.length) return { pessoas: j.pessoas, fonte: j.fonte };
+            if (j && !j.ok && j.erro) return { erro: j.erro };
+            return null;
+        } catch (e) { return null; }
+    }
+
+    function montarBlocoBuscaNome(res) {
+        const linhas = [`🪪 <strong>Pessoas encontradas (${res.fonte === 'idseg' ? 'Quimera/IDSEG' : 'CAD'})</strong>`];
+        res.pessoas.slice(0, 8).forEach(p => {
+            const nome = p.nome || p.NOME || '—';
+            const cpf = p.cpf || p.CPF || '';
+            linhas.push(`• ${nome}${cpf ? ' — CPF ' + cpf : ''}`);
+        });
+        if (res.pessoas.length > 8) linhas.push(`…e mais ${res.pessoas.length - 8}.`);
+        linhas.push('<small>Para foto/ocorrências/processos, me pergunte pelo CPF ou abra a <a href="' + prefixoPagina() + 'page/consulta-pessoa.html">Consulta Integrada</a>.</small>');
+        return linhas.join('<br>');
+    }
+
+    // ── Ocorrência mais recente CADASTRADA na base da unidade (nó "geral") ──
+    // Pedido do usuário (25/10/2026): "a ocorrência mais recente" = a última
+    // cadastrada, não uma contagem. Ordena pela DATA (desc) e devolve a 1ª.
+    function ehOcorrenciaRecente(qMin) {
+        return /\bocorr[eê]nci/.test(qMin) && /(mais recente|mais nova|[uú]ltima|recent[ií]ssima)/.test(qMin);
+    }
+    async function responderOcorrenciaRecente() {
+        let lista;
+        try { lista = await fetchNode('geral'); } catch (e) { return 'Não consegui acessar as ocorrências da base agora.'; }
+        if (!Array.isArray(lista) || !lista.length) return 'Não há ocorrências cadastradas na base da unidade.';
+        const comData = lista.map(o => ({ o, dt: parseData(CAMPO(o, 'DATA', 'data')) })).filter(x => x.dt);
+        if (!comData.length) return 'As ocorrências cadastradas não têm data válida pra eu dizer qual é a mais recente.';
+        comData.sort((a, b) => b.dt - a.dt);
+        const o = comData[0].o;
+        const hora = CAMPO(o, 'HORA');
+        return '🕐 <strong>Ocorrência mais recente cadastrada</strong><br>'
+            + `Boletim: ${CAMPO(o, 'BOLETIM') || '—'}<br>`
+            + `Data: ${CAMPO(o, 'DATA', 'data') || '—'}${hora ? ' às ' + hora : ''}<br>`
+            + `Tipificação: ${CAMPO(o, 'TIPIFICACAO_GERAL', 'TIPIFICACAO', 'Tipicidade Geral') || '—'}<br>`
+            + `Local: ${CAMPO(o, 'CIDADE') || '—'}${CAMPO(o, 'BAIRRO') ? '/' + CAMPO(o, 'BAIRRO') : ''}<br>`
+            + `Situação/solução: ${CAMPO(o, 'SOLUÇÃO', 'SOLUCAO', 'SITUACAO') || '—'}`;
+    }
+
+    // "consulte o indivíduo FULANO DE TAL" / "consultar a pessoa X" — extrai o
+    // NOME que vem depois do verbo (aceita MAIÚSCULAS, ao contrário da
+    // heurística de nome próprio capitalizado). Exige 2+ palavras só de letras.
+    function extrairNomeConsulta(textoOriginal) {
+        const m = String(textoOriginal || '').match(/\bconsult\w*\s+(?:o\s+indiv[ií]duo\s+|a\s+pessoa\s+|o\s+suspeito\s+|sobre\s+|o\s+|a\s+)?(.+)/i);
+        if (!m) return null;
+        const nome = m[1].replace(/[?.!,;:"']/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!/^[A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)+$/.test(nome)) return null;
+        return nome;
+    }
+
     // ── Cruzamento TCO × Sentença × Materiais × Guarnição a partir de um
     // BOLETIM já conhecido — núcleo compartilhado entre o relatório por
     // boletim/processo E a busca por CPF/nome (que antes só mostrava a
@@ -1178,9 +1244,18 @@
                 // Sem registro local, mas o CAD/Quimera pode ter a pessoa (CPF
                 // que nunca virou ocorrência nossa) — mostra o que veio de lá.
                 if (blocoCad) return blocoCad;
-                return identificador.tipo === 'nome'
-                    ? `Não encontrei ninguém chamado "${identificador.valor}" no nó de autores.`
-                    : 'Não encontrei nenhum registro no nó de autores pra esse CPF.';
+                if (identificador.tipo === 'nome') {
+                    // Busca por NOME no CAD/IDSEG (não só no nó "autor" local).
+                    const resNome = await buscarPorNomeBackend(identificador.valor);
+                    if (resNome && resNome.pessoas) return montarBlocoBuscaNome(resNome);
+                    if (resNome && resNome.erro) {
+                        return `🔎 Consultei o CAD/Quimera por "<strong>${identificador.valor}</strong>", mas o acesso falhou: ${resNome.erro}`
+                            + '<br><small>Verifique se o login do CAD/Quimera está válido (token do dia) na tela "🔑 Login CAD / Quimera".</small>';
+                    }
+                    return `Não encontrei ninguém chamado "${identificador.valor}" no nó de autores nem no CAD/Quimera.`
+                        + '<br><small>Se o CAD/Quimera estiver sem login válido, eu não consigo consultar a base deles — renove o token do dia.</small>';
+                }
+                return 'Não encontrei nenhum registro no nó de autores pra esse CPF.';
             }
             // Além da linha do nó "autor", cruza pelo BOLETIM dessa pessoa com
             // a ocorrência original (com detalhe de droga quando for o caso —
@@ -3143,11 +3218,18 @@
         if (ehDesempenho(qMin)) return await responderDesempenho(qMin);
         if (ehOperacoes(qMin)) return await responderOperacoes(qMin);
 
+        // "Ocorrência mais recente/última" = a última CADASTRADA (não é
+        // contagem) — checado antes das categorias pra não virar estatística.
+        if (ehOcorrenciaRecente(qMin)) return await responderOcorrenciaRecente();
+
         // Consulta direta por identificador (CPF/boletim/processo/nome) —
         // checado cedo, antes de qualquer detecção de categoria/estatística,
         // já que isso é busca de cadastro, não contagem.
         const identificador = extrairIdentificador(qMin);
         if (identificador) return await responderConsultaIdentificador(identificador);
+        // "consulte o indivíduo FULANO" — nome após o verbo (aceita maiúsculas).
+        const nomeConsulta = extrairNomeConsulta(textoOriginal);
+        if (nomeConsulta) return await responderConsultaIdentificador({ tipo: 'nome', valor: nomeConsulta });
         const nomeProvavel = extrairNomeProvavel(textoOriginal, qMin);
         if (nomeProvavel) return await responderConsultaIdentificador({ tipo: 'nome', valor: nomeProvavel });
 
