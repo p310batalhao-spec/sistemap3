@@ -84,32 +84,16 @@
                     <button type="button" id="clm-btn-fechar-x" title="Fechar">✕</button>
                 </div>
                 <div class="clm-body">
-                    <div class="clm-secao-titulo">⚡ Login automático (por e-mail)</div>
+                    <div class="clm-secao-titulo">⚡ Gerar os tokens (CAD + Quimera)</div>
                     <div class="clm-instrucao">
-                        Os tokens do <strong>CAD</strong> e do <strong>Quimera</strong> chegam por e-mail. Configure sua
-                        caixa 1 vez e o P3 gera e renova os dois tokens sozinho — sem entrar nos dois sistemas.<br>
-                        <span style="color:#b46400">Gmail/Outlook com verificação em 2 etapas: use uma
-                        <strong>senha de aplicativo</strong>, não a senha normal.</span>
+                        Clique no botão abaixo: o P3 faz login nos dois sistemas e <strong>dispara os dois códigos</strong>
+                        pro seu e-mail cadastrado. Depois é só <strong>abrir o e-mail, copiar os dois</strong> e colar nos
+                        campos abaixo (Token do CAD e Código do Quimera) → ✅ Salvar.
                     </div>
-                    <label>E-mail que recebe os códigos:</label>
-                    <input type="email" id="clm-email" placeholder="seunome@hotmail.com" autocomplete="off">
-                    <label>Senha do e-mail (ou senha de aplicativo):</label>
-                    <input type="password" id="clm-email-senha" placeholder="Deixe em branco pra não mexer" autocomplete="off">
-                    <div style="margin:-4px 0 12px;"><a href="#" id="clm-imap-toggle" style="font-size:11.5px;color:var(--p3-blue-700,#2f5fdd);">⚙️ Servidor IMAP (avançado)</a></div>
-                    <div id="clm-imap-box" style="display:none;">
-                        <label>Host IMAP (em branco = detectar pelo domínio):</label>
-                        <input type="text" id="clm-imap-host" placeholder="outlook.office365.com" autocomplete="off">
-                        <label>Porta:</label>
-                        <input type="text" id="clm-imap-porta" placeholder="993" inputmode="numeric">
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-                        <button type="button" id="clm-btn-email" style="flex:1;min-width:140px;background:var(--p3-bg,#fafaf8);color:var(--p3-text,#1c1c1a);border:1px solid var(--p3-border,#ddd);border-radius:5px;padding:9px 12px;cursor:pointer;font-size:.82rem;font-weight:700;">💾 Salvar e-mail</button>
-                        <button type="button" id="clm-btn-auto" style="flex:2;min-width:180px;background:#1e6b34;color:#fff;border:none;border-radius:5px;padding:9px 12px;cursor:pointer;font-size:.82rem;font-weight:700;">🔑 Gerar/renovar os 2 tokens agora</button>
-                    </div>
-                    <div style="margin-bottom:6px;"><a href="#" id="clm-btn-enviar" style="font-size:11.5px;color:var(--p3-blue-700,#2f5fdd);">📨 Só enviar os códigos pro meu e-mail (colo manualmente abaixo)</a></div>
+                    <button type="button" id="clm-btn-enviar" style="width:100%;background:#1e6b34;color:#fff;border:none;border-radius:6px;padding:11px 12px;cursor:pointer;font-size:.88rem;font-weight:700;margin-bottom:6px;">📨 Gerar e enviar os 2 códigos pro meu e-mail</button>
                     <div id="clm-auto-msg" style="font-size:.78rem;min-height:1.1em;color:var(--p3-text-muted,#7a7a72);margin-bottom:6px;"></div>
 
-                    <div class="clm-secao-titulo">Login no CAD (manual)</div>
+                    <div class="clm-secao-titulo">Login no CAD (cole o token recebido)</div>
                     <div class="clm-instrucao">
                         <strong>Por que login e senha, além do token?</strong><br>
                         A consulta é liberada pela SUA conta pessoal (CPF+senha), não só pelo token — o token
@@ -154,8 +138,6 @@
         document.getElementById('clm-btn-fechar-x').addEventListener('click', fechar);
         document.getElementById('clm-btn-fechar').addEventListener('click', fechar);
         document.getElementById('clm-btn-salvar').addEventListener('click', salvar);
-        document.getElementById('clm-btn-email').addEventListener('click', salvarEmail);
-        document.getElementById('clm-btn-auto').addEventListener('click', gerarTokensAuto);
         document.getElementById('clm-btn-enviar').addEventListener('click', async function (e) {
             e.preventDefault();
             const msg = document.getElementById('clm-auto-msg');
@@ -170,61 +152,7 @@
                 msg.textContent = `CAD: ${c.ok ? '✅ enviado' : '❌ ' + (c.erro || '')} · Quimera: ${q.ok ? '✅ enviado' : '❌ ' + (q.erro || '')} — veja o e-mail e cole os códigos abaixo.`;
             } catch (e2) { msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Erro: ' + e2.message; }
         });
-        document.getElementById('clm-imap-toggle').addEventListener('click', function (e) {
-            e.preventDefault();
-            const box = document.getElementById('clm-imap-box');
-            box.style.display = box.style.display === 'none' ? 'block' : 'none';
-        });
         div.addEventListener('click', function (e) { if (e.target === div) fechar(); });
-    }
-
-    // Salva (e testa o IMAP) os dados do e-mail usado pro login automático.
-    async function salvarEmail() {
-        const msg = document.getElementById('clm-auto-msg');
-        if (typeof P3AtualizadorLocal === 'undefined' || !(await P3AtualizadorLocal.disponivel())) {
-            msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Servidor local não está rodando.'; return;
-        }
-        const dados = {
-            endereco: document.getElementById('clm-email').value.trim(),
-            senha: document.getElementById('clm-email-senha').value,
-            imapHost: document.getElementById('clm-imap-host').value.trim(),
-            imapPorta: document.getElementById('clm-imap-porta').value.trim(),
-        };
-        if (!dados.endereco) { msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Informe o e-mail.'; return; }
-        msg.style.color = 'var(--p3-text-muted,#7a7a72)'; msg.textContent = 'Salvando e testando o acesso ao e-mail...';
-        try {
-            const r = await P3AtualizadorLocal.emailConfigurar(dados);
-            if (r.ok) { msg.style.color = '#1e6b34'; msg.textContent = '✅ E-mail configurado e acesso IMAP testado.'; document.getElementById('clm-email-senha').value = ''; }
-            else { msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = '❌ ' + (r.erro || 'falhou'); }
-        } catch (e) { msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Erro: ' + e.message; }
-    }
-
-    // Dispara o login automático: gera/renova os 2 tokens lendo os códigos
-    // do e-mail. Pode levar ~1-2 min (espera os e-mails chegarem).
-    async function gerarTokensAuto() {
-        const msg = document.getElementById('clm-auto-msg');
-        const btn = document.getElementById('clm-btn-auto');
-        if (typeof P3AtualizadorLocal === 'undefined' || !(await P3AtualizadorLocal.disponivel())) {
-            msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Servidor local não está rodando.'; return;
-        }
-        btn.disabled = true;
-        msg.style.color = 'var(--p3-text-muted,#7a7a72)'; msg.textContent = '⏳ Pedindo os códigos e aguardando os e-mails (pode levar 1-2 min)...';
-        try {
-            const resultado = await P3AtualizadorLocal.gerarTokensAuto(function (ev) {
-                if (ev.tipo === 'progresso') msg.textContent = '⏳ ' + ev.etapa + ': ' + (ev.mensagem || '');
-            });
-            const cad = (resultado && resultado.cad) || {}, qmr = (resultado && resultado.quimera) || {};
-            const partes = [`CAD: ${cad.ok ? '✅' : '❌ ' + (cad.erro || '')}`, `Quimera: ${qmr.ok ? '✅' : '❌ ' + (qmr.erro || '')}`];
-            const tudo = cad.ok && qmr.ok;
-            msg.style.color = tudo ? '#1e6b34' : (cad.ok || qmr.ok ? '#b46400' : 'var(--p3-danger,#c0392b)');
-            msg.textContent = partes.join(' · ');
-            if (cad.ok) { localStorage.setItem(TOKEN_GEO_KEY, 'AUTO'); localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString()); }
-            if (cad.ok || qmr.ok) setTimeout(function () { fechar(); location.reload(); }, 2200);
-        } catch (e) {
-            msg.style.color = 'var(--p3-danger,#c0392b)'; msg.textContent = 'Erro: ' + e.message;
-        } finally {
-            btn.disabled = false;
-        }
     }
 
     async function abrir() {
@@ -246,18 +174,16 @@
                 if (statusCad.login) document.getElementById('clm-login').value = statusCad.login;
                 msgEl.textContent = 'CAD: ' + (statusCad.configurado ? '✅ configurado' : '⛔ não configurado')
                     + ' · 2ª fonte de foto: ' + (statusIdseg.configurado ? '✅ configurada' : '➖ não configurada');
-                // E-mail + validade dos tokens (login automático)
+                // Validade atual dos tokens (só informativo)
                 try {
-                    const [stEmail, stAuth] = await Promise.all([P3AtualizadorLocal.emailStatus(), P3AtualizadorLocal.authStatus()]);
-                    if (stEmail && stEmail.endereco) document.getElementById('clm-email').value = stEmail.endereco;
-                    if (stEmail && stEmail.imapHost) document.getElementById('clm-imap-host').value = stEmail.imapHost;
+                    const stAuth = await P3AtualizadorLocal.authStatus();
                     const autoMsg = document.getElementById('clm-auto-msg');
-                    if (stEmail && stEmail.indisponivel) { autoMsg.textContent = 'ℹ️ Atualize o executável do Sistema P3 para usar o login automático.'; }
+                    if (stAuth && stAuth.indisponivel) { autoMsg.textContent = 'ℹ️ Atualize o executável do Sistema P3 para gerar os tokens aqui.'; }
                     else if (stAuth && stAuth.ok) {
                         const c = stAuth.cad || {}, q = stAuth.quimera || {};
-                        autoMsg.textContent = `E-mail: ${stEmail && stEmail.configurado ? '✅' : '➖'} · CAD: ${c.valido ? '✅ válido' : '⛔ vencido'} · Quimera: ${q.valido ? `✅ ~${q.expiraEmMin}min` : '⛔ vencido'}`;
+                        autoMsg.textContent = `Status: CAD ${c.valido ? '✅ válido' : '⛔ vencido'} · Quimera ${q.valido ? `✅ (~${q.expiraEmMin}min)` : '⛔ vencido'}`;
                     }
-                } catch (e) { /* login automático indisponível — segue com o manual */ }
+                } catch (e) { /* rota indisponível — segue com o manual */ }
             } else {
                 msgEl.textContent = 'Servidor local não está respondendo — o login ainda pode ser salvo no Apps Script.';
             }
@@ -398,13 +324,12 @@
         return `✅ CAD ativo — ${horas}h de uso`;
     }
 
-    // Renova/gera os tokens pelo e-mail quando (a) acabou de logar no P3
-    // (flag p3_auto_tokens_login) ou (b) algum token está vencido — só se
-    // o e-mail estiver configurado. Sem e-mail e vencido = avisa pra clicar.
-    // Devolve um texto de badge pra sobrescrever o do cliente, ou null.
-    let _autoRodando = false;
-    async function autoRenovarSeNecessario(setTexto) {
-        if (_autoRodando || typeof P3AtualizadorLocal === 'undefined') return;
+    // Confirma a validade REAL dos tokens com o servidor e, se algum
+    // estiver vencido, avisa no badge pra abrir o modal e gerar de novo
+    // (clicar → "📨 Gerar e enviar os 2 códigos"). Best-effort, nunca
+    // quebra a página.
+    async function avisarSeVencido(setTexto) {
+        if (typeof P3AtualizadorLocal === 'undefined') return;
         let disp = false;
         try { disp = await P3AtualizadorLocal.disponivel(); } catch (e) { return; }
         if (!disp) return;
@@ -412,25 +337,7 @@
         try { st = await P3AtualizadorLocal.authStatus(); } catch (e) { return; }
         if (!st || !st.ok || st.indisponivel) return;
         const vencido = !(st.cad && st.cad.valido) || !(st.quimera && st.quimera.valido);
-        const flagLogin = localStorage.getItem('p3_auto_tokens_login') === '1';
-        if (st.emailConfigurado && (flagLogin || vencido)) {
-            _autoRodando = true;
-            localStorage.removeItem('p3_auto_tokens_login');
-            try {
-                await P3AtualizadorLocal.gerarTokensAuto(function (ev) {
-                    if (ev.tipo === 'progresso') setTexto('⏳ ' + ev.etapa + '...');
-                });
-                localStorage.setItem(TOKEN_GEO_KEY, 'AUTO');
-                localStorage.setItem(TOKEN_GEO_TS_KEY, Date.now().toString());
-                setTexto('✅ Tokens renovados');
-            } catch (e) {
-                setTexto('⚠️ Falha ao renovar — clique');
-            } finally {
-                _autoRodando = false;
-            }
-        } else if (vencido && !st.emailConfigurado) {
-            setTexto('⛔ Token vencido — clique para renovar');
-        }
+        if (vencido) setTexto('⛔ Token vencido — clique para gerar');
     }
 
     function montarBadge(container) {
@@ -443,9 +350,7 @@
         function atualizar() { garantirEstilos(); badge.textContent = textoBadge(); }
         atualizar();
         setInterval(atualizar, 60000);
-        // Confirma com o servidor (validade real) e renova pelo e-mail se
-        // preciso — best-effort, nunca quebra a página.
-        autoRenovarSeNecessario(function (t) { badge.textContent = t; });
+        avisarSeVencido(function (t) { badge.textContent = t; });
     }
 
     global.CadLoginModal = { abrir: abrir, fechar: fechar, montarBadge: montarBadge };
