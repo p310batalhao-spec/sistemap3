@@ -4199,4 +4199,3 @@
         registrarInteracaoTelemetria,
     };
 })();
-
