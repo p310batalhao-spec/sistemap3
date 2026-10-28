@@ -3170,6 +3170,54 @@
         return formatarRespostaIA(textoResp);
     }
 
+    // ── MODO CONVERSA (página ia_xerife, 28/10/2026) ────────────────────
+    // Pedido do usuário: na ia_xerife, liberar o PAPO LIVRE com o Ollama (ele
+    // responde qualquer assunto com o conhecimento do próprio modelo) e, quando
+    // a pergunta for sobre a UNIDADE/DADOS dele, PERGUNTAR a fonte: seus bancos
+    // (CAD/Sistema P3) ou resposta geral da IA. Só vale na ia_xerife; nas
+    // outras páginas o Xerife segue ancorado nos dados (comportamento de sempre).
+    const MODO_CONVERSA = typeof location !== 'undefined' && /ia_xerife/.test(location.pathname || '');
+
+    const SYSTEM_PROMPT_CONVERSA =
+        'Você é o Xerife, assistente da Polícia Militar de Alagoas, agora em MODO CONVERSA. ' +
+        'Responda em português do Brasil, de forma útil, clara, objetiva e honesta. ' +
+        'Você é um modelo de IA LOCAL (Ollama) rodando no computador do usuário: NÃO tem acesso à internet ao vivo nem aos bancos de dados da unidade nesta resposta — responda com seu próprio conhecimento. ' +
+        'Se for um dado que só existe nos sistemas da unidade (CAD/Sistema P3), diga isso com franqueza e sugira que o usuário peça pra buscar nos dados dele. ' +
+        'Nunca invente números, nomes ou fatos específicos; quando não tiver certeza, diga que não tem certeza.';
+
+    // Papo livre: usa o Ollama SEM a trava de "só os dados do JSON".
+    async function responderConversaLivre(texto) {
+        if (!iaPronta()) return 'A IA local (Ollama) não está pronta agora — espere aparecer "🟢 Xerife IA pronto" e tente de novo.';
+        const historico = [];
+        carregarHistorico().slice(-6).forEach(h => {
+            historico.push({ role: 'user', content: h.pergunta });
+            historico.push({ role: 'assistant', content: htmlParaTexto(h.respostaHtml) });
+        });
+        const resp = await _completarChat([
+            { role: 'system', content: SYSTEM_PROMPT_CONVERSA },
+            ...historico,
+            { role: 'user', content: texto },
+        ], { temperature: 0.6, max_tokens: 600 });
+        return formatarRespostaIA(resp) || 'Não consegui gerar uma resposta agora.';
+    }
+
+    // A pergunta é sobre a UNIDADE/DADOS do usuário? (aí, em modo conversa,
+    // pergunta a fonte em vez de responder direto).
+    function ehPerguntaSobreDados(qMin, textoOriginal, categorias) {
+        if (categorias && categorias.length > 0) return true;
+        if (extrairIdentificador(qMin) || extrairNomeConsulta(textoOriginal) || extrairNomeProvavel(textoOriginal, qMin)) return true;
+        if (ehOcorrenciaRecente(qMin) || ehEventos(qMin) || ehFichaAlvo(qMin) || ehGrupoServico(qMin) ||
+            ehDesempenho(qMin) || ehOperacoes(qMin) || ehResumo(qMin) || ehComparativo(qMin) || ehPrevisao(qMin)) return true;
+        return /\b(minha unidade|meus dados|minha area|minha área|nossa area|nossa área|da unidade|do batalhao|do batalhão|na nossa|no cad|sistema p3)\b/.test(qMin);
+    }
+
+    function montarEscolhaFonte() {
+        const estilo = 'display:inline-block;margin:4px 6px 0 0;padding:7px 12px;border-radius:16px;border:1px solid var(--p3-border,#ccd);background:var(--p3-surface,#fff);color:inherit;cursor:pointer;font-size:.9em;';
+        return 'Essa pergunta parece ser sobre a sua unidade/seus dados. De onde você quer que eu busque?<br>'
+            + `<button type="button" style="${estilo}" onclick="window.Xerife.enviarPergunta('meus dados')">📊 Meus dados (CAD / Sistema P3)</button>`
+            + `<button type="button" style="${estilo}" onclick="window.Xerife.enviarPergunta('resposta geral')">💬 Resposta geral (IA)</button>`;
+    }
+
     // ── Orquestrador principal — decide regras vs. IA local ─────────────
     // Intenções com matemática/cruzamento exato (previsão, criticidade,
     // resumo, autor×TCO, atendente COPOM etc.) continuam SEMPRE via regras,
@@ -3177,7 +3225,8 @@
     // pedir pra IA "explicar" isso de novo só adicionaria risco sem ganho.
     // A IA entra pra deixar mais natural as perguntas de contagem/ranking
     // simples e pra responder perguntas soltas fora da taxonomia fixa.
-    async function responderPergunta(textoOriginal) {
+    async function responderPergunta(textoOriginal, opts) {
+        opts = opts || {};
         const q = NORM(textoOriginal);
         const qMin = q.toLowerCase();
 
@@ -3198,6 +3247,25 @@
         const chaveCatPreliminar = detectarCategoria(q);
         const categoriasPreliminar = detectarCategoriasMultiplas(q);
         const ehTcoAutorOperador = chaveCatPreliminar === 'tco' && (ehTopAutorTCO(qMin) || ehTopOperadorTCO(qMin));
+
+        // ── MODO CONVERSA (só na ia_xerife) ─────────────────────────────
+        // forcarFonte='dados' = o usuário já escolheu os bancos → segue o fluxo
+        // ancorado normal (abaixo). Sem escolha ainda: se for sobre os dados
+        // dele, PERGUNTA a fonte; senão, PAPO LIVRE com o Ollama.
+        if (MODO_CONVERSA && opts.forcarFonte !== 'dados') {
+            const pend = contextoPendenteValido();
+            if (pend && pend.tipo === 'escolha_fonte') {
+                contextoPendente = null;
+                if (/(resposta geral|geral|web|internet|modelo|^\s*ia\s*$|^\s*2\s*$)/.test(qMin)) return await responderConversaLivre(pend.pergunta);
+                if (/(meus dados|dados|\bcad\b|\bp3\b|sistema|banco|^\s*1\s*$)/.test(qMin)) return await responderPergunta(pend.pergunta, { forcarFonte: 'dados' });
+                // resposta ambígua → reavalia a NOVA pergunta normalmente abaixo
+            }
+            if (!ehSaudacao(qMin) && !ehAjuda(qMin) && ehPerguntaSobreDados(qMin, textoOriginal, categoriasPreliminar)) {
+                definirContextoPendente({ tipo: 'escolha_fonte', pergunta: textoOriginal });
+                return montarEscolhaFonte();
+            }
+            if (!ehSaudacao(qMin) && !ehAjuda(qMin)) return await responderConversaLivre(textoOriginal);
+        }
 
         // A IA só entra quando pelo menos UMA categoria foi identificada com
         // certeza (MVI, CVP, TCO...) — ou seja, ela SEMPRE recebe um dossiê
