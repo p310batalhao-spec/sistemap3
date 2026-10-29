@@ -32,6 +32,12 @@
     const F = Object.fromEntries(FOCOS.map(f => [f.id, f]));
     const ESPECIALIZADAS = /PELOPES|TATICO|TÁTICO|FOR[CÇ]A TAREFA|\bFT\b|ROTAM|GOE/i;
     const VEL_KMH = 35; // deslocamento médio estimado entre áreas
+    // Guarnições fixas que sempre aparecem pra seleção (pedido do usuário
+    // 29/10/2026), além das que vêm da escala. FT = Força Tarefa (cai na
+    // saturação/interior, pois casa com ESPECIALIZADAS); ADM = administrativo
+    // (cai no entorno/RP). Entram DESMARCADAS por padrão (o usuário opta).
+    const GUARN_EXTRA = ['FT 01', 'FT 02', 'FT 03', 'FT 04', 'FT 05', 'FT 06', 'FT 07', 'ADM 01', 'ADM 02', 'ADM 03', 'ADM 04'];
+    let modoAlfinete = false; // "clicar no mapa pra adicionar hotspot" ligado?
 
     let CFG = null, DB = null, MAPA = null, CAMADAS = null, RESULT = null, CIDADES = [], GUARN = [];
     const $ = id => document.getElementById(id);
@@ -208,11 +214,13 @@
             FOCOS.filter(f => R.focos.includes(f.id)).map(f => `<div class="su-kpi" style="--c:${f.cor}"><small>${f.nome}</small><b>${fmt(contFoco[f.id])}</b></div>`).join('') +
             `<div class="su-kpi" style="--c:#1d4ed8"><small>Períodos de ${R.dur} min</small><b>${R.slots.length}</b></div>`;
         desenharMapa();
-        const linhasAreas = R.areas.map(a => `<tr><td><span class="su-num">${a.n}</span></td><td><b>${esc(a.bairro || '—')}</b><br><small>${esc(a.cidade)}</small></td><td>${fmt(a.score, 2)}</td>
-            <td>${FOCOS.filter(f => a.cont[f.id]).map(f => `${f.nome}: ${a.cont[f.id]}`).join(' · ')}</td><td>${a.raioM} m</td>
+        const linhasAreas = R.areas.map((a, i) => `<tr><td><span class="su-num">${a.n}</span></td><td><b>${esc(a.bairro || a.rua || '—')}</b>${a.manual ? ' <span class="su-tag-man">manual</span>' : ''}<br><small>${esc(a.rua && a.rua !== a.bairro ? a.rua + ' · ' : '')}${esc(a.cidade)}</small></td><td>${fmt(a.score, 2)}</td>
+            <td>${FOCOS.filter(f => a.cont[f.id]).map(f => `${f.nome}: ${a.cont[f.id]}`).join(' · ') || (a.manual ? '<small>ponto manual</small>' : '—')}</td><td>${a.raioM} m</td>
             <td>${a.entorno.map(p => `${esc(p.guarnicao)} <small>(${p.ponto})</small>`).join('<br>') || '—'}</td><td>${a.saturacao.map(esc).join('<br>') || '—'}</td>
-            <td><a href="https://www.google.com/maps?q=${a.lat.toFixed(6)},${a.lng.toFixed(6)}" target="_blank" rel="noopener">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</a></td></tr>`).join('');
-        $('su-areas').innerHTML = R.areas.length ? `<div style="overflow:auto"><table class="su-tab"><tr><th>Nº</th><th>Área</th><th>Pontuação</th><th>Ocorrências</th><th>Raio</th><th>Entorno (RPs)</th><th>Saturação (interior)</th><th>Centro</th></tr>${linhasAreas}</table></div>` : '<div class="su-vazio">Nenhuma área.</div>';
+            <td><a href="https://www.google.com/maps?q=${a.lat.toFixed(6)},${a.lng.toFixed(6)}" target="_blank" rel="noopener">${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}</a></td>
+            <td class="su-noprint" style="white-space:nowrap"><button class="su-mini" data-su="up" data-i="${i}" title="Subir no itinerário"${i === 0 ? ' disabled' : ''}>⬆</button> <button class="su-mini" data-su="down" data-i="${i}" title="Descer no itinerário"${i === R.areas.length - 1 ? ' disabled' : ''}>⬇</button> <button class="su-mini" data-su="del" data-i="${i}" title="Excluir da operação">🗑</button></td></tr>`).join('');
+        $('su-areas').innerHTML = R.areas.length ? `<div style="overflow:auto"><table class="su-tab"><tr><th>Nº</th><th>Área</th><th>Pontuação</th><th>Ocorrências</th><th>Raio</th><th>Entorno (RPs)</th><th>Saturação (interior)</th><th>Centro</th><th class="su-noprint">Ações</th></tr>${linhasAreas}</table></div>` : '<div class="su-vazio">Nenhuma área. Use “Adicionar por rua” ou “Clicar no mapa” para incluir pontos.</div>';
+        if ($('su-manual')) $('su-manual').style.display = 'flex';
         $('su-crono').innerHTML = R.slots.length ? `<div style="overflow:auto"><table class="su-tab"><tr><th>#</th><th>Horário</th><th>Área</th><th>Ciclo</th><th>Deslocamento</th></tr>${R.slots.map(s => {
             const a = R.areas.find(x => x.n === s.area);
             return `<tr><td>${s.ordem}</td><td><b>${s.ini} – ${s.fim}</b></td><td><span class="su-num">${s.area}</span> ${esc(a.bairro || '')}</td><td>${s.ciclo}º</td><td>${s.distanciaKm ? `${fmt(s.distanciaKm, 1)} km · ~${s.deslocamentoMin} min` : 'início'}</td></tr>`; }).join('')}</table></div>` : '<div class="su-vazio">Janela de horário insuficiente.</div>';
@@ -232,13 +240,103 @@
         R.areas.forEach(a => {
             L.circle([a.lat, a.lng], { radius: a.raioM, color: '#b91c1c', weight: 2, fillColor: '#b91c1c', fillOpacity: .12 })
                 .bindPopup(`<b>Área ${a.n}</b> — ${esc(a.bairro)}<br>Pontuação ${fmt(a.score, 2)} · ${a.total} ocorrência(s)<br>${FOCOS.filter(f => a.cont[f.id]).map(f => f.nome + ': ' + a.cont[f.id]).join(' · ')}`).addTo(CAMADAS);
-            L.marker([a.lat, a.lng], { icon: L.divIcon({ className: '', html: `<div class="su-area-lbl">${a.n}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(CAMADAS);
+            const lbl = L.marker([a.lat, a.lng], { draggable: true, icon: L.divIcon({ className: '', html: `<div class="su-area-lbl" title="Arraste para mover esta área">${a.n}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(CAMADAS);
+            lbl.on('dragend', async ev => {
+                const ll = ev.target.getLatLng(); a.lat = ll.lat; a.lng = ll.lng;
+                const geo = await reverseGeocode(a.lat, a.lng);
+                if (geo) { if (geo.rua) a.rua = geo.rua; if (geo.bairro || geo.rua) a.bairro = geo.bairro || geo.rua; if (geo.cidade) a.cidade = geo.cidade; }
+                recalcularManual();
+            });
             a.entorno.forEach(p => L.marker([p.lat, p.lng], { icon: L.divIcon({ className: '', html: `<div class="su-pos">${esc(p.guarnicao)}</div>`, iconAnchor: [20, 8] }) }).bindTooltip(`Entorno ${p.ponto} — ${p.guarnicao}`).addTo(CAMADAS));
             if (a.saturacao.length) L.marker([a.lat - a.raioM / 111320 * 0.5, a.lng], { icon: L.divIcon({ className: '', html: `<div class="su-sat">SATURAÇÃO ×${a.saturacao.length}</div>`, iconAnchor: [34, 8] }) }).bindTooltip('Saturação no interior: ' + a.saturacao.join(', ')).addTo(CAMADAS);
         });
         const b = R.areas.length ? L.latLngBounds(R.areas.map(a => [a.lat, a.lng])) : (R.pts.length ? L.latLngBounds(R.pts.map(p => [p.lat, p.lng])) : null);
         if (b) MAPA.fitBounds(b.pad(0.25), { maxZoom: 16, animate: false }); else MAPA.setView([-9.41, -36.63], 12);
         setTimeout(() => MAPA.invalidateSize(), 150);
+    }
+
+    // ── Edição MANUAL dos hotspots (pedido do usuário 29/10/2026) ─────
+    // Adicionar por rua (geocodifica) ou clicando no mapa (alfinete, com
+    // reconhecimento da rua), mover (arrastar o nº no mapa), excluir e
+    // reordenar o itinerário — mantendo o cálculo automático como base.
+    // Geocodificação: Nominatim (OpenStreetMap), grátis e sem chave. Precisa de
+    // internet; offline, o ponto entra mesmo assim (sem nome de rua) e o
+    // usuário edita. Nunca quebra a página.
+    async function reverseGeocode(lat, lng) {
+        try {
+            const u = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=jsonv2&accept-language=pt-BR&zoom=18`;
+            const r = await fetch(u, { headers: { Accept: 'application/json' } });
+            if (!r.ok) return null;
+            const a = (await r.json()).address || {};
+            return {
+                rua: a.road || a.pedestrian || a.residential || a.footway || '',
+                bairro: a.suburb || a.neighbourhood || a.quarter || a.city_district || '',
+                cidade: a.city || a.town || a.village || a.municipality || '',
+            };
+        } catch (e) { return null; }
+    }
+    async function forwardGeocode(texto) {
+        try {
+            const extra = (RESULT && RESULT.cidade ? ', ' + RESULT.cidade : '') + ', Alagoas, Brasil';
+            const u = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(texto + extra)}&format=jsonv2&limit=1&accept-language=pt-BR`;
+            const r = await fetch(u, { headers: { Accept: 'application/json' } });
+            if (!r.ok) return null;
+            const j = await r.json();
+            return j.length ? { lat: +j[0].lat, lng: +j[0].lon } : null;
+        } catch (e) { return null; }
+    }
+    // Cria um hotspot MANUAL com a MESMA forma dos automáticos (pro mapa,
+    // tabelas, cronograma e Word funcionarem igual). Sem ocorrências (cont 0).
+    function novaAreaManual(lat, lng, geo) {
+        const cont = Object.fromEntries(FOCOS.map(f => [f.id, 0]));
+        const rua = (geo && geo.rua) || '';
+        return {
+            lat, lng, raioM: (RESULT && RESULT.raio) || 350, score: 0, cont, total: 0,
+            bairro: (geo && (geo.bairro || geo.rua)) || '', cidade: (geo && geo.cidade) || (RESULT && RESULT.cidade) || '',
+            rua, manual: true, pts: [], entorno: [], saturacao: [],
+        };
+    }
+    // Reaplica o que depende da ORDEM/posição e redesenha tudo. NÃO re-roteia:
+    // a ordem passa a ser a que o usuário deixou.
+    function recalcularManual() {
+        const R = RESULT; if (!R) return;
+        R.areas.forEach((a, i) => { a.n = i + 1; Object.assign(a, distribuir(a, R.entorno || [], R.saturacao || [])); });
+        R.slots = cronograma(R.areas, R.hIni, R.hFim, R.dur, ($('su-desl') ? $('su-desl').value : '1') === '1');
+        render();
+        ['su-word', 'su-imprimir', 'su-salvar'].forEach(id => { const el = $(id); if (el) el.disabled = !R.areas.length; });
+    }
+    async function adicionarPorRua() {
+        if (!RESULT) { alert('Gere a operação primeiro — depois dá pra adicionar pontos manuais.'); return; }
+        const txt = val($('su-add-rua').value);
+        if (!txt) { alert('Digite o nome da rua / endereço.'); return; }
+        const msg = $('su-manual-msg'); if (msg) msg.textContent = '⏳ Localizando a rua…';
+        const g = await forwardGeocode(txt);
+        if (!g) { if (msg) msg.textContent = '⚠️ Não localizei essa rua. Inclua o bairro/cidade, ou use o mapa.'; return; }
+        const geo = await reverseGeocode(g.lat, g.lng);
+        RESULT.areas.push(novaAreaManual(g.lat, g.lng, geo || { rua: txt }));
+        $('su-add-rua').value = '';
+        if (msg) msg.textContent = '✅ Ponto adicionado.';
+        recalcularManual();
+    }
+    async function adicionarPorPin(lat, lng) {
+        if (!RESULT) return;
+        const msg = $('su-manual-msg'); if (msg) msg.textContent = '⏳ Reconhecendo a rua…';
+        const geo = await reverseGeocode(lat, lng);
+        RESULT.areas.push(novaAreaManual(lat, lng, geo));
+        if (msg) msg.textContent = geo && geo.rua ? `✅ Ponto em: ${geo.rua}` : '✅ Ponto adicionado (rua não reconhecida — edite se quiser).';
+        recalcularManual();
+    }
+    function moverArea(i, dir) {
+        const R = RESULT; if (!R) return;
+        const j = i + dir;
+        if (j < 0 || j >= R.areas.length) return;
+        const t = R.areas[i]; R.areas[i] = R.areas[j]; R.areas[j] = t;
+        recalcularManual();
+    }
+    function excluirArea(i) {
+        const R = RESULT; if (!R || !R.areas[i]) return;
+        R.areas.splice(i, 1);
+        recalcularManual();
     }
 
     // ── Mapa estático (imagem) — tiles do OpenStreetMap num <canvas> ─
@@ -670,12 +768,16 @@
         const meses = Object.keys(esc0 || {}).sort();
         GUARN = meses.length ? (esc0[meses[meses.length - 1]].guarnicoes || []).map(g => g.sigla) : [];
         if (!GUARN.length) GUARN = ['PELOPES 01', 'TÁTICO RURAL 01', 'TÁTICO RURAL 02', 'RP 01', 'RP 02', 'RP 03', 'RP 04', 'RP 05', 'RP 06', 'RP 07', 'RP 08', 'RP 09'];
+        // Acrescenta as guarnições fixas (FT/ADM) às da escala, sem duplicar.
+        GUARN_EXTRA.forEach(g => { if (!GUARN.some(x => NORM(x) === NORM(g))) GUARN.push(g); });
+        const ehExtra = g => GUARN_EXTRA.some(x => NORM(x) === NORM(g));
         const rpsDaCidade = c => { const k = NORM(c); return Object.entries(rpMap || {}).filter(([nome]) => NORM(nome.replace(/\(.*\)/, '')) === k).map(([, rp]) => rp.replace(/^RP\s*0?(\d)$/, 'RP 0$1')); };
         const montarGuarnicoes = () => {
             const rpsCid = $('su-escopo').value === 'cidade' ? rpsDaCidade($('su-cidade').value) : GUARN.filter(g => !ESPECIALIZADAS.test(g));
             const rps = GUARN.filter(g => !ESPECIALIZADAS.test(g)), esp = GUARN.filter(g => ESPECIALIZADAS.test(g));
-            $('su-entorno').innerHTML = rps.map(g => `<label><input type="checkbox" value="${esc(g)}" ${rpsCid.some(r => NORM(r) === NORM(g)) ? 'checked' : ''}> ${esc(g)}</label>`).join('');
-            $('su-saturacao').innerHTML = esp.map(g => `<label><input type="checkbox" value="${esc(g)}" checked> ${esc(g)}</label>`).join('');
+            // Extras (FT/ADM) entram DESMARCADAS; as da escala seguem como antes.
+            $('su-entorno').innerHTML = rps.map(g => `<label><input type="checkbox" value="${esc(g)}" ${!ehExtra(g) && rpsCid.some(r => NORM(r) === NORM(g)) ? 'checked' : ''}> ${esc(g)}</label>`).join('');
+            $('su-saturacao').innerHTML = esp.map(g => `<label><input type="checkbox" value="${esc(g)}" ${ehExtra(g) ? '' : 'checked'}> ${esc(g)}</label>`).join('');
         };
         montarGuarnicoes();
         $('su-escopo').onchange = () => { $('su-bloco-cidade').style.display = $('su-escopo').value === 'cidade' ? '' : 'none'; montarGuarnicoes(); };
@@ -687,6 +789,32 @@
         $('su-salvar').onclick = salvar;
         MAPA = L.map('su-mapa').setView([-9.41, -36.63], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(MAPA);
+
+        // ── Edição manual: controles + clique no mapa + ações da tabela ──
+        if ($('su-add-rua-btn')) $('su-add-rua-btn').onclick = adicionarPorRua;
+        if ($('su-add-rua')) $('su-add-rua').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarPorRua(); } });
+        if ($('su-add-pin')) $('su-add-pin').onclick = () => {
+            modoAlfinete = !modoAlfinete;
+            $('su-add-pin').classList.toggle('su-ativo', modoAlfinete);
+            if (MAPA) MAPA.getContainer().style.cursor = modoAlfinete ? 'crosshair' : '';
+            const m = $('su-manual-msg'); if (m) m.textContent = modoAlfinete ? '📍 Clique no mapa no local do ponto…' : '';
+        };
+        MAPA.on('click', e => {
+            if (!modoAlfinete) return;
+            modoAlfinete = false;
+            if ($('su-add-pin')) $('su-add-pin').classList.remove('su-ativo');
+            MAPA.getContainer().style.cursor = '';
+            adicionarPorPin(e.latlng.lat, e.latlng.lng);
+        });
+        // Delegação (o #su-areas é recriado a cada render, mas o container fica).
+        $('su-areas').addEventListener('click', e => {
+            const b = e.target.closest('button[data-su]'); if (!b) return;
+            const i = +b.dataset.i;
+            if (b.dataset.su === 'up') moverArea(i, -1);
+            else if (b.dataset.su === 'down') moverArea(i, 1);
+            else if (b.dataset.su === 'del') { if (confirm('Excluir esta área da operação?')) excluirArea(i); }
+        });
+
         $('su-status').textContent = `${fmt(geral.length)} ocorrências na base · ${GUARN.length} guarnições na escala.`;
     }
     document.addEventListener('DOMContentLoaded', () => { const s = P3.requireAuth && P3.requireAuth(); if (s === null) return; iniciar().catch(e => { $('su-status').textContent = '⚠️ ' + e.message; }); });
