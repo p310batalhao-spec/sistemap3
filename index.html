@@ -73,6 +73,13 @@
                 </button>
                 <div id="clm-badge-container"></div>
                 <a href="public/painel-comando.html" class="h-btn">Painel do Comando</a>
+                <!-- Botão de atualização (02/11/2026): puxa as novidades direto do
+                     GitHub pra quem tem o instalável. Só aparece no APP (servidor
+                     local responde); na versão web fica oculto. Ver o script no fim. -->
+                <button type="button" id="index-btn-atualizar" title="Baixar as atualizações mais recentes do sistema (do GitHub)"
+                    style="display:none;padding:.5rem 1rem;border:1px solid var(--p3-border);border-radius:6px;background:var(--p3-surface);color:var(--p3-text);font-size:.85rem;font-weight:600;cursor:pointer;">
+                    ⬇️ Baixar atualizações
+                </button>
             </div>
 
             <!-- Resumo Preditivo — abaixo do login, itens lado a lado (ver
@@ -252,6 +259,36 @@
         }
 
         aguardarP3Notificacoes(40); // até 40 x 200ms = 8s
+    </script>
+
+    <!-- Botão "Baixar atualizações" (02/11/2026): só no app instalado (o
+         servidor local responde /site/status); na web fica oculto. Força o
+         download de TODO o site do GitHub (robusto mesmo com manifest defasado)
+         e recarrega a página pra pegar a versão nova. -->
+    <script>
+        (function () {
+            var btn = document.getElementById('index-btn-atualizar');
+            if (!btn) return;
+            fetch('/site/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+                if (j && j.ok) btn.style.display = '';
+            }).catch(function () { });
+            btn.addEventListener('click', function () {
+                var orig = btn.textContent;
+                btn.disabled = true; btn.textContent = '⏳ Baixando atualizações…';
+                fetch('/site/atualizar', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (j) {
+                    if (j && j.ok) {
+                        if (j.baixados) { btn.textContent = '✅ ' + j.baixados + ' arquivo(s) — recarregando…'; setTimeout(function () { location.reload(); }, 900); }
+                        else { btn.textContent = '✅ Já está atualizado'; btn.disabled = false; setTimeout(function () { btn.textContent = orig; }, 2500); }
+                    } else {
+                        btn.textContent = '⚠️ ' + ((j && j.erro) || 'Falha ao atualizar'); btn.disabled = false;
+                        setTimeout(function () { btn.textContent = orig; }, 3500);
+                    }
+                }).catch(function () {
+                    btn.textContent = '⚠️ Sem conexão com o servidor local'; btn.disabled = false;
+                    setTimeout(function () { btn.textContent = orig; }, 3500);
+                });
+            });
+        })();
     </script>
 </body>
 </html>
