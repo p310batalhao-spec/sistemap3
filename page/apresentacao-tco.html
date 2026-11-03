@@ -102,7 +102,7 @@
 
         @media print {
             body { overflow: visible; }
-            .ap-nav, .ap-seta, .ap-conta, .ap-barra, .ap-ajuda { display: none !important; }
+            .ap-nav, .ap-seta, .ap-conta, .ap-barra, .ap-ajuda, #ap-btn-pptx { display: none !important; }
             .ap-slide { display: flex !important; position: relative; inset: auto; page-break-after: always; height: 100vh; }
             @page { size: A4 landscape; margin: 0; }
         }
@@ -113,6 +113,8 @@
     <script src="../js/core/session.js"></script>
     <div class="ap-barra" id="ap-barra"></div>
     <div class="ap-ajuda">Setas = navegar &nbsp;|&nbsp; F = tela cheia &nbsp;|&nbsp; P = PDF</div>
+    <button id="ap-btn-pptx" title="Exportar esta apresentacao em PowerPoint (.pptx)"
+        style="position:fixed;top:1.6vh;left:2vw;z-index:25;padding:.4rem .9rem;border:1px solid #cbd5e1;border-radius:6px;background:rgba(255,255,255,.92);color:#334155;font-size:.78rem;font-weight:700;cursor:pointer;">&#11015; PPTX</button>
     <div id="deck"></div>
     <button class="ap-seta esq" id="ap-prev" aria-label="Anterior">&#10094;</button>
     <button class="ap-seta dir" id="ap-next" aria-label="Proximo">&#10095;</button>
@@ -353,6 +355,84 @@
                 }
             }
         }
+
+        // ====== Exportar PPTX (pptxgenjs, igual o dashboard) ======
+        // Gera um .pptx editavel: cada slide vira um slide do PowerPoint com o
+        // titulo + o texto, e os dois slides de dados ganham GRAFICOS NATIVOS
+        // do PowerPoint (com os numeros ao vivo do Sistema P3).
+        function carregarPptxgen() {
+            if (window.PptxGenJS) return Promise.resolve();
+            return new Promise(function (res, rej) {
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+                s.onload = res; s.onerror = function () { rej(new Error('nao consegui carregar o gerador de PPTX')); };
+                document.head.appendChild(s);
+            });
+        }
+        var MESES = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+
+        async function exportarPPTX() {
+            var btn = document.getElementById('ap-btn-pptx');
+            var orig = btn ? btn.innerHTML : '';
+            if (btn) { btn.disabled = true; btn.innerHTML = '&#8987; Gerando&hellip;'; }
+            try {
+                await carregarPptxgen();
+                var d = await carregarDados();
+                var P = new PptxGenJS();
+                P.defineLayout({ name: 'W16', width: 13.333, height: 7.5 }); P.layout = 'W16';
+                var VINHO = '7F1D1D', VERM = 'B91C1C', CINZA = '334155';
+
+                slidesEl.forEach(function (el, i) {
+                    var s = P.addSlide();
+                    var h1 = el.querySelector('h1'), h2 = el.querySelector('h2');
+                    var titulo = (h1 ? h1.textContent : (h2 ? h2.textContent : '')).replace(/\s+/g, ' ').trim();
+                    var sub = (h2 && h1) ? h2.textContent.replace(/\s+/g, ' ').trim() : '';
+
+                    if (SLIDES[i].capa) {
+                        s.background = { color: VINHO };
+                        s.addText('Policia Militar de Alagoas  -  CPR Agreste  -  10o BPM', { x: 0.7, y: 0.5, w: 12, h: 0.5, fontSize: 14, bold: true, color: 'FFFFFF' });
+                        s.addText(titulo, { x: 0.7, y: 2.7, w: 12, h: 1.8, fontSize: 40, bold: true, color: 'FFFFFF' });
+                        var p0 = el.querySelector('.ap-corpo p');
+                        if (p0) s.addText(p0.textContent.replace(/\s+/g, ' ').trim(), { x: 0.7, y: 4.5, w: 11.6, h: 1.4, fontSize: 20, color: 'F1F5F9' });
+                        return;
+                    }
+
+                    s.addShape(P.ShapeType.rect, { x: 0, y: 0, w: 13.333, h: 0.16, fill: { color: VERM } });
+                    s.addText('Policia Militar de Alagoas  -  CPR Agreste  -  10o BPM', { x: 0.6, y: 0.28, w: 12, h: 0.4, fontSize: 11, bold: true, color: VINHO });
+                    s.addText((sub ? sub + '  -  ' : '') + titulo, { x: 0.6, y: 0.72, w: 12.1, h: 1.0, fontSize: 26, bold: true, color: VERM });
+
+                    if (el.querySelector('#ap-chart-mes') && d.ok) {
+                        s.addChart(P.ChartType.line, [
+                            { name: '2025', labels: MESES, values: d.m25 },
+                            { name: '2026', labels: MESES, values: d.m26 }
+                        ], { x: 0.6, y: 1.9, w: 12.1, h: 5.1, showLegend: true, legendPos: 't', lineSmooth: true });
+                        return;
+                    }
+                    if (el.querySelector('#ap-chart-nat') && d.ok && d.naturezas.length) {
+                        s.addChart(P.ChartType.bar, [
+                            { name: 'TCOs', labels: d.naturezas.map(function (x) { return x.nome; }), values: d.naturezas.map(function (x) { return x.qtd; }) }
+                        ], { x: 0.6, y: 1.9, w: 12.1, h: 5.1, barDir: 'bar', showLegend: false });
+                        return;
+                    }
+
+                    var itens = [];
+                    el.querySelectorAll('.ap-corpo p, .ap-corpo li, .ap-corpo .ap-lei').forEach(function (n) {
+                        var t = (n.textContent || '').replace(/\s+/g, ' ').trim();
+                        if (t) itens.push({ text: t, options: { bullet: { indent: 15 }, fontSize: 15, color: CINZA, paraSpaceAfter: 9 } });
+                    });
+                    if (itens.length) s.addText(itens, { x: 0.7, y: 2.0, w: 12, h: 5.0, valign: 'top' });
+                });
+
+                await P.writeFile({ fileName: 'Apresentacao-TCO-PMAL.pptx' });
+                if (btn) btn.innerHTML = '&#9989; PPTX gerado';
+            } catch (e) {
+                if (btn) btn.innerHTML = '&#9888; ' + (e.message || 'erro');
+            } finally {
+                if (btn) setTimeout(function () { btn.disabled = false; btn.innerHTML = orig; }, 2600);
+            }
+        }
+        var btnPptx = document.getElementById('ap-btn-pptx');
+        if (btnPptx) btnPptx.addEventListener('click', exportarPPTX);
 
         ir(0);
     </script>
