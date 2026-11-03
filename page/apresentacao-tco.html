@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema P3 - Apresentacao: TCO na PMAL</title>
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="../css/theme.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* ================================================================
+           APRESENTACAO DE DADOS - TCO na PMAL (02/11/2026)
+           Deck de slides navegavel, modelado nos slides do dashboard
+           (mesma identidade visual do sistema). Conteudo juridico/historico
+           da apresentacao Apresentacao_cesmac.pptx + dados do levantamento
+           (TCOs/mes 2025 e top naturezas) + inovacao do Sistema P3 e
+           acompanhamento do andamento dos processos de TCO.
+           Navegacao: setas do teclado, clique nas laterais, pontos embaixo,
+           tecla F = tela cheia, P = imprimir/PDF.
+           ================================================================ */
+        :root {
+            --ap-vinho: #7f1d1d;
+            --ap-vermelho: #b91c1c;
+            --ap-laranja: #ea580c;
+            --ap-azul: #2f5fdd;
+        }
+
+        * { box-sizing: border-box; }
+        html, body { margin: 0; height: 100%; }
+        body {
+            font-family: 'Segoe UI', var(--p3-font, Arial), sans-serif;
+            background: #0b1020;
+            color: #0f172a;
+            overflow: hidden;
+        }
+
+        #deck { position: fixed; inset: 0; }
+
+        .ap-slide {
+            position: absolute; inset: 0;
+            display: none;
+            flex-direction: column;
+            padding: 4.2vh 6vw 7vh;
+            background: #ffffff;
+            animation: apIn .35s ease;
+        }
+        .ap-slide.ativo { display: flex; }
+        @keyframes apIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        /* Faixa superior da identidade (PMAL / CPR Agreste) */
+        .ap-topo {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 3px solid var(--ap-vermelho); padding-bottom: 1.2vh; margin-bottom: 2.4vh;
+        }
+        .ap-topo .marca { font-weight: 800; color: var(--ap-vinho); font-size: 1.05rem; letter-spacing: .02em; }
+        .ap-topo .marca small { display: block; font-weight: 600; color: var(--ap-laranja); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; }
+        .ap-topo .secao { font-size: .8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .08em; }
+
+        .ap-slide h1 { font-size: clamp(1.6rem, 3.6vw, 3rem); color: var(--ap-vinho); margin: 0 0 1.6vh; line-height: 1.1; }
+        .ap-slide h2 { font-size: clamp(1.3rem, 2.6vw, 2rem); color: var(--ap-vermelho); margin: 0 0 1.6vh; }
+        .ap-slide p, .ap-slide li { font-size: clamp(.95rem, 1.5vw, 1.3rem); line-height: 1.5; color: #1e293b; }
+        .ap-slide ul { margin: 0; padding-left: 1.3em; }
+        .ap-slide li { margin-bottom: 1.1vh; }
+        .ap-lei { background: #fef2f2; border-left: 5px solid var(--ap-vermelho); border-radius: 0 10px 10px 0; padding: 1.4vh 1.6vw; margin: 1.2vh 0; font-size: clamp(.82rem, 1.25vw, 1.05rem); color: #334155; }
+        .ap-lei b { color: var(--ap-vinho); }
+        .ap-corpo { flex: 1; min-height: 0; }
+        .ap-fonte { font-size: .72rem; color: #94a3b8; margin-top: auto; padding-top: 1.4vh; }
+
+        /* Capa / divisores */
+        .ap-capa { background: linear-gradient(135deg, var(--ap-vinho), var(--ap-vermelho) 55%, var(--ap-laranja)); color: #fff; align-items: flex-start; justify-content: center; }
+        .ap-capa .ap-topo { border-color: rgba(255,255,255,.5); }
+        .ap-capa .ap-topo .marca, .ap-capa .ap-topo .marca small, .ap-capa .ap-topo .secao { color: #fff; }
+        .ap-capa h1 { color: #fff; font-size: clamp(2rem, 5vw, 4rem); }
+        .ap-capa p { color: rgba(255,255,255,.92); font-size: clamp(1rem, 1.8vw, 1.5rem); }
+        .ap-capa .ap-selo { display: inline-block; margin-top: 2vh; padding: .5em 1.2em; border: 2px solid rgba(255,255,255,.7); border-radius: 30px; font-weight: 700; letter-spacing: .05em; }
+
+        /* KPIs e cartoes */
+        .ap-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.4vw; margin: 1.6vh 0; }
+        .ap-kpi { border: 1px solid #e2e8f0; border-top: 5px solid var(--c, var(--ap-vermelho)); border-radius: 12px; padding: 1.6vh 1.4vw; background: #f8fafc; }
+        .ap-kpi b { display: block; font-size: clamp(1.6rem, 3vw, 2.6rem); color: var(--ap-vinho); line-height: 1; }
+        .ap-kpi small { display: block; margin-top: .6vh; font-size: .8rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; }
+        .ap-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2vw; align-items: center; height: 100%; }
+        @media (max-width: 820px) { .ap-grid2 { grid-template-columns: 1fr; } }
+        .ap-chart-wrap { position: relative; width: 100%; height: 56vh; }
+        .ap-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.6vh 1.4vw; background: #f8fafc; }
+        .ap-card h3 { margin: 0 0 .8vh; color: var(--ap-vermelho); font-size: 1.05rem; }
+
+        /* Controles */
+        .ap-nav { position: fixed; bottom: 2.2vh; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 10px; z-index: 20; }
+        .ap-dot { width: 9px; height: 9px; border-radius: 50%; background: rgba(0,0,0,.18); border: none; cursor: pointer; padding: 0; }
+        .ap-dot.ativo { background: var(--ap-vermelho); transform: scale(1.3); }
+        .ap-seta { position: fixed; top: 0; bottom: 0; width: 12vw; z-index: 15; border: none; background: transparent; cursor: pointer; color: transparent; }
+        .ap-seta:hover { background: linear-gradient(var(--lado), rgba(0,0,0,.05), transparent); }
+        .ap-seta.esq { left: 0; --lado: to right; }
+        .ap-seta.dir { right: 0; --lado: to left; }
+        .ap-conta { position: fixed; bottom: 2.1vh; right: 2vw; font-size: .8rem; color: #64748b; z-index: 20; background: rgba(255,255,255,.8); padding: 2px 10px; border-radius: 20px; }
+        .ap-barra { position: fixed; top: 0; left: 0; height: 4px; background: var(--ap-vermelho); z-index: 30; transition: width .3s; }
+        .ap-ajuda { position: fixed; top: 2vh; right: 2vw; font-size: .72rem; color: #94a3b8; z-index: 20; }
+
+        :root[data-p3-theme="dark"] body { background: #000; }
+
+        @media print {
+            body { overflow: visible; }
+            .ap-nav, .ap-seta, .ap-conta, .ap-barra, .ap-ajuda { display: none !important; }
+            .ap-slide { display: flex !important; position: relative; inset: auto; page-break-after: always; height: 100vh; }
+            @page { size: A4 landscape; margin: 0; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <div class="ap-barra" id="ap-barra"></div>
+    <div class="ap-ajuda">Setas = navegar &nbsp;|&nbsp; F = tela cheia &nbsp;|&nbsp; P = PDF</div>
+    <div id="deck"></div>
+    <button class="ap-seta esq" id="ap-prev" aria-label="Anterior">&#10094;</button>
+    <button class="ap-seta dir" id="ap-next" aria-label="Proximo">&#10095;</button>
+    <div class="ap-nav" id="ap-nav"></div>
+    <div class="ap-conta" id="ap-conta"></div>
+
+    <script>
+        // ====== Conteudo dos slides ======
+        var TOPO = '<div class="ap-topo"><div class="marca">Policia Militar de Alagoas<small>Comando de Policiamento da Regiao Agreste &middot; 10&ordm; BPM</small></div><div class="secao">Da Zona da Mata ao Sertao</div></div>';
+
+        var SLIDES = [
+            // 1 - Capa
+            { capa: true, html:
+                TOPO +
+                '<div class="ap-corpo" style="display:flex;flex-direction:column;justify-content:center">' +
+                '<h1>Termo Circunstanciado de Ocorrencia</h1>' +
+                '<p>Historico, base legal e dados operacionais do TCO na Policia Militar de Alagoas</p>' +
+                '<span class="ap-selo">Sistema de Gerenciamento P3 &middot; 10&ordm; BPM</span>' +
+                '</div>' },
+
+            // 2 - O que e o TCO
+            { html: TOPO + '<h1>O que e o TCO</h1><div class="ap-corpo">' +
+                '<p>O <b>Termo Circunstanciado de Ocorrencia (TCO)</b> e o documento que registra, de forma simplificada, as <b>infracoes penais de menor potencial ofensivo</b> &mdash; aquelas com pena maxima de ate 2 anos.</p>' +
+                '<p>Ele <b>substitui o Inquerito Policial</b> nesses casos, tornando o atendimento mais agil: o autor do fato nao e preso em flagrante, assume o compromisso de comparecer ao Juizado Especial, e a guarnicao retorna rapidamente ao patrulhamento.</p>' +
+                '<ul><li>Base: oralidade, simplicidade, informalidade, economia e celeridade processual.</li>' +
+                '<li>Objetivo: eficiencia, pacificacao do conflito e atendimento humanizado.</li></ul>' +
+                '</div><div class="ap-fonte">Lei 9.099/95, arts. 2&ordm;, 61 e 69.</div>' },
+
+            // 3 - Base Constitucional
+            { html: TOPO + '<h2>1. Base Constitucional</h2><h1>O marco inicial: CF/1988</h1><div class="ap-corpo">' +
+                '<p>O <b>Art. 98, I, da Constituicao Federal de 1988</b> estabeleceu a criacao dos Juizados Especiais &mdash; a origem de todo o rito do TCO.</p>' +
+                '<div class="ap-lei"><b>Art. 98.</b> A Uniao, no Distrito Federal e nos Territorios, e os Estados criarao: <b>I -</b> juizados especiais [...] competentes para a conciliacao, o julgamento e a execucao de causas civeis de menor complexidade e <b>infracoes penais de menor potencial ofensivo</b>, mediante os procedimentos oral e sumarissimo [...]</div>' +
+                '</div><div class="ap-fonte">Constituicao Federal de 1988.</div>' },
+
+            // 4 - Lei 9.099/95
+            { html: TOPO + '<h2>2. A Lei 9.099/95</h2><h1>A regulamentacao infraconstitucional</h1><div class="ap-corpo">' +
+                '<p>A previsao constitucional foi regulamentada pela <b>Lei 9.099/95</b>, que define os criterios e o alcance do rito.</p>' +
+                '<div class="ap-lei"><b>Art. 61.</b> Consideram-se infracoes penais de menor potencial ofensivo [...] as contravencoes penais e os crimes a que a lei comine pena maxima nao superior a <b>2 (dois) anos</b>, cumulada ou nao com multa.</div>' +
+                '<div class="ap-lei"><b>Art. 69.</b> A autoridade policial que tomar conhecimento da ocorrencia lavrara <b>termo circunstanciado</b> e o encaminhara imediatamente ao Juizado [...] Ao autor do fato [...] <b>nao se impora prisao em flagrante, nem se exigira fianca.</b></div>' +
+                '</div><div class="ap-fonte">Lei 9.099/95 (arts. 61 e 69; redacoes dadas pelas Leis 11.313/2006 e 10.455/2002).</div>' },
+
+            // 5 - TCO na PMAL - Provimento 15/2019
+            { html: TOPO + '<h2>3. O TCO na PMAL</h2><h1>Provimento n&ordm; 15/2019</h1><div class="ap-corpo">' +
+                '<p>O <b>Provimento n&ordm; 15/2019</b> da Corregedoria Geral da Justica de Alagoas <b>oficializou a competencia da Policia Militar</b> para a lavratura do TCO.</p>' +
+                '<ul><li><b>Art. 778</b> &mdash; a autoridade policial (incluindo oficiais e pracas da PM) deve lavrar o TCO perante infracoes de menor potencial ofensivo.</li>' +
+                '<li><b>Art. 779</b> &mdash; o TCO deve conter o relato sucinto dos fatos, a qualificacao das partes e o termo de compromisso de comparecimento, dispensando o auto de prisao em flagrante.</li></ul>' +
+                '</div><div class="ap-fonte">Provimento n&ordm; 15/2019 - CGJ/AL.</div>' },
+
+            // 6 - TCO na PMAL - Decreto 88.653/2023
+            { html: TOPO + '<h2>3. O TCO na PMAL</h2><h1>Decreto n&ordm; 88.653/2023</h1><div class="ap-corpo">' +
+                '<p>O decreto estadual <b>regulamenta os procedimentos operacionais e administrativos</b> para a consolidacao do TCO nas corporacoes militares de Alagoas.</p>' +
+                '<div class="ap-lei"><b>Art. 1&ordm;</b> O Termo Circunstanciado de Ocorrencia - TCO devera ser lavrado <b>no proprio local da ocorrencia</b> pelo policial militar que a atender, devendo ser encaminhado ao Juizado Especial competente, nos termos do art. 69 da Lei 9.099/95.</div>' +
+                '<p>So excepcionalmente os envolvidos sao conduzidos a outro local &mdash; para preservar a integridade fisica ou pacificar o conflito &mdash; sem que isso implique conducao a uma unidade policial.</p>' +
+                '</div><div class="ap-fonte">Decreto Estadual n&ordm; 88.653/2023 (Alagoas, 2023).</div>' },
+
+            // 7 - Impactos
+            { html: TOPO + '<h2>4. Impactos do TCO na PMAL</h2><h1>Por que o TCO importa</h1><div class="ap-corpo"><div class="ap-kpis" style="grid-template-columns:1fr 1fr">' +
+                '<div class="ap-card"><h3>Economia de recursos</h3><p>Reducao de gastos com deslocamentos e combustivel.</p></div>' +
+                '<div class="ap-card"><h3>Eficiencia e celeridade</h3><p>Menos tempo com a viatura indisponivel: retorno imediato ao patrulhamento preventivo.</p></div>' +
+                '<div class="ap-card"><h3>Gestao de dados</h3><p>Monitoramento de produtividade (TCO, AIT, COP) e visualizacao em tempo real de onde ocorrem as infracoes.</p></div>' +
+                '<div class="ap-card"><h3>Cidadania</h3><p>Atendimento humanizado e resolucao imediata de conflitos sociais de baixa complexidade.</p></div>' +
+                '</div></div><div class="ap-fonte">As infracoes de menor potencial ofensivo sao, muitas vezes, o preludio de crimes mais graves &mdash; monitora-las e prevencao.</div>' },
+
+            // 8 - PMAL e 10 BPM
+            { html: TOPO + '<h1>A PMAL e o 10&ordm; BPM</h1><div class="ap-corpo">' +
+                '<p>O <b>10&ordm; Batalhao de Policia Militar</b> integra o <b>Comando de Policiamento da Regiao Agreste</b>, respondendo pelo policiamento ostensivo e preventivo em sua area &mdash; da Zona da Mata ao Sertao.</p>' +
+                '<ul><li>Atuacao preventiva e de proximidade com o cidadao.</li>' +
+                '<li>Lavratura de TCO no local da ocorrencia, mantendo a tropa na rua.</li>' +
+                '<li>Planejamento operacional baseado em dados (hotspots, operacoes direcionadas).</li></ul>' +
+                '<p style="color:#94a3b8;font-size:.9rem">* Indicadores de efetivo e area podem ser preenchidos conforme os numeros oficiais da unidade.</p>' +
+                '</div><div class="ap-fonte">10&ordm; BPM - CPR Agreste - PMAL.</div>' },
+
+            // 9 - Divisor dados
+            { capa: true, html: TOPO + '<div class="ap-corpo" style="display:flex;flex-direction:column;justify-content:center">' +
+                '<h1>Sintese dos dados</h1><p>Dados ao vivo do Sistema P3 &middot; 2025 e 2026</p>' +
+                '<span class="ap-selo">Dados operacionais de TCO</span></div>' },
+
+            // 10 - TCOs por mes (chart AO VIVO - 2025 e 2026)
+            { html: TOPO + '<h1>TCOs lavrados por mes &middot; 2025 e 2026</h1><div class="ap-corpo"><div class="ap-kpis">' +
+                '<div class="ap-kpi" style="--c:#94a3b8"><b id="kpi-2025">&mdash;</b><small>TCOs em 2025</small></div>' +
+                '<div class="ap-kpi" style="--c:var(--ap-azul)"><b id="kpi-2026">&mdash;</b><small>TCOs em 2026</small></div>' +
+                '<div class="ap-kpi" style="--c:var(--ap-laranja)"><b id="kpi-media">&mdash;</b><small>Media mensal</small></div>' +
+                '</div><div class="ap-chart-wrap"><canvas id="ap-chart-mes"></canvas>' +
+                '<div id="ap-mes-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;text-align:center;padding:1rem">Carregando dados do Sistema P3&hellip;</div></div></div>' +
+                '<div class="ap-fonte">Fonte: dados ao vivo do Sistema P3 (planilha de TCO).</div>' },
+
+            // 11 - Top naturezas (chart AO VIVO - 2025 e 2026)
+            { html: TOPO + '<h1>Principais naturezas dos TCOs &middot; 2025 e 2026</h1><div class="ap-corpo"><div class="ap-chart-wrap"><canvas id="ap-chart-nat"></canvas>' +
+                '<div id="ap-nat-msg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;text-align:center;padding:1rem">Carregando dados do Sistema P3&hellip;</div></div></div>' +
+                '<div class="ap-fonte">Fonte: dados ao vivo do Sistema P3 (naturezas mais frequentes em 2025 e 2026).</div>' },
+
+            // 12 - Inovacao P3
+            { html: TOPO + '<h2>Inovacao</h2><h1>O Sistema de Gerenciamento P3</h1><div class="ap-corpo">' +
+                '<p>Desenvolvido na unidade, o <b>Sistema P3</b> transforma o registro operacional em <b>inteligencia de gestao</b>:</p>' +
+                '<div class="ap-kpis" style="grid-template-columns:1fr 1fr">' +
+                '<div class="ap-card"><h3>Dados em tempo real</h3><p>TCO, MVI, CVLI, CVP, armas e drogas consolidados em dashboards e mapas de calor (hotspots).</p></div>' +
+                '<div class="ap-card"><h3>Operacoes direcionadas</h3><p>Geracao automatica de operacoes (ex.: Sufocamento) a partir dos pontos criticos, com itinerario e cronograma.</p></div>' +
+                '<div class="ap-card"><h3>Xerife - IA local</h3><p>Assistente de IA que consulta os dados da unidade, le oficios e apoia o planejamento &mdash; rodando localmente.</p></div>' +
+                '<div class="ap-card"><h3>Funciona offline</h3><p>Instalavel que roda na maquina, sincroniza as atualizacoes e protege o acesso aos dados sensiveis.</p></div>' +
+                '</div></div><div class="ap-fonte">Sistema de Gerenciamento P3 - P3/10&ordm; BPM.</div>' },
+
+            // 13 - Acompanhamento do andamento
+            { html: TOPO + '<h1>Acompanhamento do andamento dos TCOs</h1><div class="ap-corpo">' +
+                '<p>Mais do que contar TCOs, o Sistema P3 acompanha o <b>andamento de cada processo</b> apos a lavratura:</p>' +
+                '<ul>' +
+                '<li><b>Rastreio da movimentacao</b> &mdash; do envio ao Juizado Especial ate a decisao, cada TCO tem sua situacao atualizada.</li>' +
+                '<li><b>Cruzamento com o E-SAJ / numero do processo</b> &mdash; vinculo entre o boletim, o TCO e o processo judicial.</li>' +
+                '<li><b>Analise qualitativa</b> &mdash; tipificacao, comarca, arquivamentos e resultados, por periodo e por militar.</li>' +
+                '<li><b>Produtividade e gargalos</b> &mdash; identificacao do que esta parado e onde atuar.</li>' +
+                '</ul>' +
+                '<p>Resultado: o TCO deixa de ser so um documento e passa a ser um <b>indicador gerenciado de ponta a ponta</b>.</p>' +
+                '</div><div class="ap-fonte">Modulos de Qualitativo de TCO e Controle de Operacoes - Sistema P3.</div>' },
+
+            // 14 - Encerramento
+            { capa: true, html: TOPO + '<div class="ap-corpo" style="display:flex;flex-direction:column;justify-content:center">' +
+                '<h1>Do dado a decisao</h1><p>O TCO, aliado ao Sistema P3, aproxima a Policia Militar de uma gestao operacional baseada em evidencias &mdash; mais eficiente, mais transparente e mais proxima do cidadao.</p>' +
+                '<span class="ap-selo">Obrigado &middot; P3/10&ordm; BPM - PMAL</span></div>' },
+        ];
+
+        // ====== Motor do deck ======
+        var deck = document.getElementById('deck');
+        var nav = document.getElementById('ap-nav');
+        var atual = 0;
+        SLIDES.forEach(function (s, i) {
+            var el = document.createElement('section');
+            el.className = 'ap-slide' + (s.capa ? ' ap-capa' : '');
+            el.innerHTML = s.html;
+            deck.appendChild(el);
+            var dot = document.createElement('button');
+            dot.className = 'ap-dot'; dot.title = 'Slide ' + (i + 1);
+            dot.onclick = function () { ir(i); };
+            nav.appendChild(dot);
+        });
+        var slidesEl = deck.querySelectorAll('.ap-slide');
+        var dotsEl = nav.querySelectorAll('.ap-dot');
+
+        function ir(n) {
+            atual = Math.max(0, Math.min(SLIDES.length - 1, n));
+            slidesEl.forEach(function (el, i) { el.classList.toggle('ativo', i === atual); });
+            dotsEl.forEach(function (el, i) { el.classList.toggle('ativo', i === atual); });
+            document.getElementById('ap-conta').textContent = (atual + 1) + ' / ' + SLIDES.length;
+            document.getElementById('ap-barra').style.width = ((atual + 1) / SLIDES.length * 100) + '%';
+            desenharGraficos();
+        }
+        document.getElementById('ap-next').onclick = function () { ir(atual + 1); };
+        document.getElementById('ap-prev').onclick = function () { ir(atual - 1); };
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); ir(atual + 1); }
+            else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); ir(atual - 1); }
+            else if (e.key === 'Home') ir(0);
+            else if (e.key === 'End') ir(SLIDES.length - 1);
+            else if (e.key.toLowerCase() === 'f') { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+            else if (e.key.toLowerCase() === 'p') window.print();
+        });
+
+        // ====== Dados AO VIVO do Sistema P3 (TCO 2025 e 2026) ======
+        // Puxa a planilha de TCO (mesma fonte do resto do sistema:
+        // P3.loadUnidadeConfig().gas.TCO?action=getTCO) e calcula os TCOs por
+        // mes de 2025 e 2026 + as naturezas mais frequentes. Precisa estar
+        // logado no sistema (a config vem da sessao). Sem dados, mostra aviso
+        // claro em vez de numero inventado.
+        var feitos = {};
+        var DADOS = null;
+        var fmtN = function (n) { return Number(n || 0).toLocaleString('pt-BR'); };
+
+        function parseDataBR(str) {
+            str = String(str == null ? '' : str).trim();
+            var m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) return { ano: +m[3], mes: +m[2] };
+            var d = new Date(str);
+            return isNaN(d) ? null : { ano: d.getFullYear(), mes: d.getMonth() + 1 };
+        }
+
+        async function carregarDados() {
+            if (DADOS) return DADOS;
+            var m25 = new Array(12).fill(0), m26 = new Array(12).fill(0), nat = {};
+            try {
+                if (!(window.P3 && P3.loadUnidadeConfig)) throw new Error('sistema');
+                var cfg = await P3.loadUnidadeConfig();
+                if (!cfg || !cfg.gas || !cfg.gas.TCO) throw new Error('config');
+                var resp = await fetch(cfg.gas.TCO + '?action=getTCO', { redirect: 'follow' });
+                var json = await resp.json();
+                (Array.isArray(json) ? json : []).forEach(function (t) {
+                    var dt = parseDataBR(t['DATA'] || t['data']);
+                    if (!dt) return;
+                    if (dt.mes >= 1 && dt.mes <= 12) {
+                        if (dt.ano === 2025) m25[dt.mes - 1]++;
+                        else if (dt.ano === 2026) m26[dt.mes - 1]++;
+                    }
+                    if (dt.ano === 2025 || dt.ano === 2026) {
+                        var n = (t['Tipicidade Geral'] || t['TIPIFICACAO'] || t['TIPIFICACAO_GERAL'] || '').toString().trim();
+                        if (n) nat[n] = (nat[n] || 0) + 1;
+                    }
+                });
+                var naturezas = Object.keys(nat).map(function (k) { return { nome: k, qtd: nat[k] }; })
+                    .sort(function (a, b) { return b.qtd - a.qtd; }).slice(0, 8);
+                DADOS = { m25: m25, m26: m26, t25: m25.reduce(function (s, x) { return s + x; }, 0), t26: m26.reduce(function (s, x) { return s + x; }, 0), naturezas: naturezas, ok: true };
+            } catch (e) {
+                DADOS = { m25: m25, m26: m26, t25: 0, t26: 0, naturezas: [], ok: false };
+            }
+            return DADOS;
+        }
+
+        async function desenharGraficos() {
+            // Escopa ao slide ATIVO — Chart.js num canvas oculto (display:none)
+            // renderiza em tamanho 0; so desenha quando o slide esta visivel.
+            var ativo = slidesEl[atual];
+            var temMes = ativo.querySelector('#ap-chart-mes'), temNat = ativo.querySelector('#ap-chart-nat');
+            if ((!temMes || feitos.mes) && (!temNat || feitos.nat)) return;
+            var d = await carregarDados();
+
+            if (temMes && !feitos.mes) {
+                feitos.mes = true;
+                var setT = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+                setT('kpi-2025', d.ok ? fmtN(d.t25) : '—'); setT('kpi-2026', d.ok ? fmtN(d.t26) : '—');
+                var anoRef = d.t26 > 0 ? d.m26 : d.m25, totRef = d.t26 > 0 ? d.t26 : d.t25;
+                var comDado = anoRef.filter(function (x) { return x > 0; }).length;
+                setT('kpi-media', d.ok && comDado ? fmtN(Math.round(totRef / comDado)) : '—');
+                var msg = document.getElementById('ap-mes-msg');
+                if (!d.ok) { if (msg) msg.textContent = '⚠️ Dados indisponiveis — abra a apresentacao pelo Sistema P3 (logado).'; }
+                else {
+                    if (msg) msg.style.display = 'none';
+                    new Chart(temMes, { type: 'line', data: { labels: ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'], datasets: [
+                        { label: '2025', data: d.m25, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,.10)', borderWidth: 2.5, tension: .4, pointRadius: 3 },
+                        { label: '2026', data: d.m26, borderColor: '#2f5fdd', backgroundColor: 'rgba(47,95,221,.14)', borderWidth: 3, tension: .4, fill: true, pointRadius: 4, pointBackgroundColor: '#2f5fdd' }
+                    ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } } });
+                }
+            }
+
+            if (temNat && !feitos.nat) {
+                feitos.nat = true;
+                var msgN = document.getElementById('ap-nat-msg');
+                if (!d.ok || !d.naturezas.length) { if (msgN) msgN.textContent = d.ok ? 'Sem naturezas no periodo.' : '⚠️ Dados indisponiveis — abra pelo Sistema P3 (logado).'; }
+                else {
+                    if (msgN) msgN.style.display = 'none';
+                    var cores = ['#2f5fdd', '#a78bfa', '#f6ad55', '#f06a6a', '#ffe066', '#ec6fb8', '#34d399', '#60a5fa'];
+                    new Chart(temNat, { type: 'bar', data: { labels: d.naturezas.map(function (x) { return x.nome; }), datasets: [{ label: 'TCOs', data: d.naturezas.map(function (x) { return x.qtd; }), backgroundColor: d.naturezas.map(function (_, i) { return cores[i % cores.length]; }) }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } });
+                }
+            }
+        }
+
+        ir(0);
+    </script>
+</body>
+
+</html>
