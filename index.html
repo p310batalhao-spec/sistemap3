@@ -262,9 +262,9 @@
     </script>
 
     <!-- Botão "Baixar atualizações" (02/11/2026): só no app instalado (o
-         servidor local responde /site/status); na web fica oculto. Força o
-         download de TODO o site do GitHub (robusto mesmo com manifest defasado)
-         e recarrega a página pra pegar a versão nova. -->
+         servidor local responde /site/status); na web fica oculto. Baixa TODO o
+         site do GitHub com PROGRESSO (streaming NDJSON de /site/atualizar-stream):
+         contador + barra arquivo a arquivo e alerta de conclusão/erro no fim. -->
     <script>
         (function () {
             var btn = document.getElementById('index-btn-atualizar');
@@ -272,21 +272,85 @@
             fetch('/site/status').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
                 if (j && j.ok) btn.style.display = '';
             }).catch(function () { });
+
+            // Barra de progresso (criada ao lado do botão, só aparece durante o download).
+            var barraWrap = document.createElement('div');
+            barraWrap.style.cssText = 'display:none;height:7px;width:100%;max-width:260px;margin-top:6px;background:var(--p3-border,#d0d5dd);border-radius:5px;overflow:hidden;';
+            var barra = document.createElement('div');
+            barra.style.cssText = 'height:100%;width:0;background:var(--p3-blue-700,#1f5fbf);transition:width .15s ease;';
+            barraWrap.appendChild(barra);
+            btn.insertAdjacentElement('afterend', barraWrap);
+
             btn.addEventListener('click', function () {
-                var orig = btn.textContent;
-                btn.disabled = true; btn.textContent = '⏳ Baixando atualizações…';
-                fetch('/site/atualizar', { method: 'POST' }).then(function (r) { return r.json(); }).then(function (j) {
-                    if (j && j.ok) {
-                        if (j.baixados) { btn.textContent = '✅ ' + j.baixados + ' arquivo(s) — recarregando…'; setTimeout(function () { location.reload(); }, 900); }
-                        else { btn.textContent = '✅ Já está atualizado'; btn.disabled = false; setTimeout(function () { btn.textContent = orig; }, 2500); }
-                    } else {
-                        btn.textContent = '⚠️ ' + ((j && j.erro) || 'Falha ao atualizar'); btn.disabled = false;
-                        setTimeout(function () { btn.textContent = orig; }, 3500);
+                if (btn.disabled) return;
+                var orig = '⬇️ Baixar atualizações';
+                btn.disabled = true; btn.textContent = '⏳ Preparando…';
+                barraWrap.style.display = ''; barra.style.width = '0';
+
+                (async function () {
+                    var ultimo = null;
+                    try {
+                        var resp = await fetch('/site/atualizar-stream', { cache: 'no-store' });
+                        if (resp.status === 404) {
+                            // Exe ainda sem o endpoint de progresso → modo antigo (sem contador).
+                            btn.textContent = '⏳ Baixando atualizações…'; barra.style.width = '45%';
+                            var jr = await fetch('/site/atualizar', { method: 'POST' }).then(function (r) { return r.json(); }).catch(function () { return null; });
+                            barra.style.width = '100%';
+                            ultimo = (jr && jr.ok)
+                                ? { ok: true, baixados: jr.baixados || 0, total: jr.total || 0, ausentes: jr.ausentes || 0 }
+                                : { ok: false, erro: (jr && jr.erro) || 'Falha ao atualizar' };
+                            throw { __fim: true };
+                        }
+                        if (!resp.ok || !resp.body) throw new Error('HTTP ' + resp.status);
+                        var reader = resp.body.getReader();
+                        var dec = new TextDecoder(); var buf = '';
+                        while (true) {
+                            var ch = await reader.read();
+                            if (ch.done) break;
+                            buf += dec.decode(ch.value, { stream: true });
+                            var linhas = buf.split('\n'); buf = linhas.pop();
+                            for (var i = 0; i < linhas.length; i++) {
+                                var ln = linhas[i].trim(); if (!ln) continue;
+                                var ev; try { ev = JSON.parse(ln); } catch (e) { continue; }
+                                if (ev.tipo === 'inicio') {
+                                    btn.textContent = '⏳ 0/' + ev.total + ' (0%)'; barra.style.width = '0';
+                                } else if (ev.tipo === 'progresso') {
+                                    var pct = ev.total ? Math.round(ev.i / ev.total * 100) : 0;
+                                    btn.textContent = '⏳ ' + ev.i + '/' + ev.total + ' (' + pct + '%)';
+                                    barra.style.width = pct + '%';
+                                } else if (ev.tipo === 'fim') {
+                                    ultimo = ev;
+                                } else if (ev.tipo === 'erro') {
+                                    ultimo = { ok: false, erro: ev.erro };
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // __fim = sentinela do fallback (ultimo já definido); não sobrescreve.
+                        if (!(e && e.__fim)) ultimo = { ok: false, erro: (e && e.message) || String(e) || 'sem conexão com o servidor local' };
                     }
-                }).catch(function () {
-                    btn.textContent = '⚠️ Sem conexão com o servidor local'; btn.disabled = false;
-                    setTimeout(function () { btn.textContent = orig; }, 3500);
-                });
+
+                    barraWrap.style.display = 'none';
+                    if (ultimo && ultimo.ok) {
+                        if (ultimo.baixados > 0) {
+                            btn.textContent = '✅ ' + ultimo.baixados + ' atualizado(s) — recarregando…';
+                            alert('✅ Atualização concluída!\n\n' + ultimo.baixados + ' arquivo(s) atualizado(s) de ' + ultimo.total +
+                                (ultimo.ausentes ? ' (' + ultimo.ausentes + ' removido(s) do servidor)' : '') +
+                                '.\n\nA página será recarregada para aplicar as novidades.');
+                            location.reload();
+                        } else {
+                            btn.textContent = '✅ Já está atualizado';
+                            alert('✅ O sistema já está atualizado.\n\nNenhum arquivo novo a baixar.');
+                            btn.disabled = false; setTimeout(function () { btn.textContent = orig; }, 2500);
+                        }
+                    } else {
+                        var msg = (ultimo && ultimo.erro) || 'Falha ao atualizar';
+                        btn.textContent = '⚠️ Erro ao atualizar';
+                        alert('⚠️ Não foi possível concluir a atualização.\n\n' + msg +
+                            '\n\nVerifique se há internet e tente novamente. Se o problema persistir, confirme que o Sistema P3 (servidor local) está aberto.');
+                        btn.disabled = false; setTimeout(function () { btn.textContent = orig; }, 3500);
+                    }
+                })();
             });
         })();
     </script>
