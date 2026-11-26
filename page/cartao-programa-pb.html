@@ -110,6 +110,8 @@
                             <label class="larga" id="cp-rp-wrap" style="display:none">RP (Palmeira dos Índios)<select id="cp-rp"><option value="RP 01">RP 01</option><option value="RP 02">RP 02</option></select></label>
                             <label>Início do serviço<input type="time" id="cp-hini" value="08:00"></label>
                             <label>Fim das rondas (teto 00h)<input type="time" id="cp-hfim" value="00:00"></label>
+                            <label>Início da validade<input type="date" id="cp-val-ini"></label>
+                            <label>Validade (dias)<select id="cp-val-dias"><option value="15">15 dias</option><option value="20">20 dias</option><option value="30" selected>30 dias</option></select></label>
                             <label>Duração do PB<input id="cp-dur-pb" value="45 min" readonly></label>
                             <label>Deslocamento/patrulha entre PBs<select id="cp-desl"><option value="15">15 min</option><option value="20">20 min</option><option value="30" selected>30 min</option></select></label>
                             <label>Análise (dias)<select id="cp-dias"><option value="60">60</option><option value="90" selected>90</option><option value="180">180</option><option value="365">365</option></select></label>
@@ -166,7 +168,7 @@
                     <div class="cp-card"><h3>PB + Rondas no Entorno</h3>
                         <div class="cp-msg cp-noprint" id="cp-pb-dica" style="display:none;margin-bottom:.5rem">Arraste um PB no mapa para mover · ⬆⬇ reordena a visita · 🗑 remove.</div>
                         <div id="cp-pb-lista"><div class="cp-vazio">Escolha a cidade e um modo acima para começar.</div></div></div>
-                    <div class="cp-card" id="cp-cartao-card" style="display:none"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap">Cartão Programa gerado <button class="cp-btn cp-noprint" id="cp-imprimir2" style="padding:6px 12px">🖨 Imprimir / PDF</button></h3><div id="cp-cartao"></div></div>
+                    <div class="cp-card" id="cp-cartao-card" style="display:none"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap">Cartão Programa gerado <span style="display:flex;gap:.4rem;flex-wrap:wrap"><button class="cp-btn cp-btn-pri cp-noprint" id="cp-salvar-controle" style="padding:6px 12px">💾 Salvar no Controle de Operações</button><button class="cp-btn cp-noprint" id="cp-imprimir2" style="padding:6px 12px">🖨 Imprimir / PDF</button></span></h3><div class="cp-msg cp-noprint" id="cp-salvar-controle-msg" style="margin-bottom:.4rem"></div><div id="cp-cartao"></div></div>
                 </div>
             </div>
         </main>
