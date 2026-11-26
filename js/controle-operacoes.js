@@ -259,40 +259,111 @@
 
     // ── Detalhe do dia ──────────────────────────────────────────────
     let diaAberto = null;
+    // Quais cartões programa estão EXPANDIDOS no modal do dia (pra não recolher
+    // tudo a cada recálculo/re-render). Zera quando troca de dia.
+    let cartoesAbertos = new Set(), cartoesDia = null;
+
+    // Rótulo curto do cartão (cidade / RP) para a linha recolhida.
+    const rotuloCartao = it => (it.raw && it.raw.rp && it.raw.rp !== 'RP') ? `${it.cidades.join(', ')} / ${it.raw.rp}` : (it.cidades.join(', ') || it.nome.replace(/^CART[ÃA]O PROGRAMA\s*[—-]\s*/i, ''));
+
+    // Seção recolhível dos cartões programa: resumo geral (soma de todos) +
+    // cada cidade/cartão expansível com os resultados, o cartão salvo e os
+    // botões de imprimir relatório/cartão (dentro de detalheItem).
+    function secaoCartoes(cartoes, dia) {
+        if (!cartoes.length) return '';
+        const t = somaRes(cartoes, 'horario'); // cartão = dia inteiro → chave = it.chave
+        const pend = cartoes.filter(it => pendente(it));
+        const kpisAgg =
+            kpi('#0b7285', 'Cartões programa', cartoes.length, `${t.com} de ${cartoes.length} com resultado`) +
+            kpi('#5e35b1', 'Ocorrências', fmtN(t.ocorrencias), 'no período de validade') +
+            kpi('#c0392b', 'Prisões / apreensões', fmtN(t.prisoes), '') +
+            kpi('#2e7d32', 'Drogas', peso(t.drogasG), '') +
+            kpi('#455a64', 'Armas · materiais', `${fmtN(t.armas)} · ${fmtN(t.materiais)}`, '');
+        const linhas = cartoes.map(it => {
+            const r = RES[it.chave];
+            const resumo = r
+                ? `🚨 ${fmtN(r.kpi.ocorrencias)} · 🔒 ${r.kpi.prisoes ?? '—'} · 💊 ${peso(r.kpi.drogasG)} · 🔫 ${fmtN(r.kpi.armas)} · 📦 ${fmtN(r.kpi.materiais)}${r.parcial ? ' · parcial' : ''}`
+                : (podeCalcular(it) ? '<i>sem resultado — abra e clique em “Computar”</i>' : '<i>ainda não iniciado</i>');
+            const aberto = cartoesAbertos.has(it.chave);
+            return `<details class="co-cartao-det" data-cartao="${esc(it.chave)}"${aberto ? ' open' : ''}>
+                <summary><b>🗺️ ${esc(rotuloCartao(it))}</b><span class="co-cartao-resumo">${resumo}</span></summary>
+                <div class="co-cartao-corpo"${aberto ? '' : ' data-lazy="1"'}>${aberto ? detalheItem(it) : ''}</div></details>`;
+        }).join('');
+        return `<div class="co-cartoes">
+            <div class="co-cartoes-topo"><b>🗺️ Cartões Programa (${cartoes.length})</b>
+                <span style="display:flex;gap:.4rem;flex-wrap:wrap;">
+                    <button class="co-btn" id="co-cartoes-toggle">⇕ Expandir/recolher todos</button>
+                    ${pend.length ? `<button class="co-btn co-btn-pri" id="co-cartoes-computar">⚙ Computar todos (${pend.length})</button>` : ''}
+                </span></div>
+            <div class="co-cartoes-sub">Resultado geral de todos os cartões (soma). Clique numa cidade para ver os resultados, o cartão salvo e imprimir o relatório/cartão.</div>
+            <div class="co-kpis">${kpisAgg}</div>
+            <div class="co-cartoes-lista">${linhas}</div>
+        </div>`;
+    }
+
     function abrirDia(dia) {
         diaAberto = dia;
+        if (cartoesDia !== dia) { cartoesAbertos = new Set(); cartoesDia = dia; }
         const itens = ITENS.filter(it => it.dias.includes(dia));
+        const cartoes = itens.filter(it => it.modalidade === 'cartao_programa');
+        const outros = itens.filter(it => it.modalidade !== 'cartao_programa');
         document.getElementById('co-modal-tit').textContent = `📅 ${parseData(dia).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}`;
         const corpo = document.getElementById('co-modal-corpo');
         corpo.innerHTML = `<div style="display:flex;justify-content:flex-end;margin-bottom:.6rem;"><button class="co-btn co-btn-pri" data-nova-dia="${dia}">➕ Nova OPO Inteligente neste dia</button></div>`
-            + (itens.length ? itens.map(detalheItem).join('') : '<div class="co-vazio">Nenhuma operação ou evento de médio/grande porte neste dia.</div>');
+            + (!itens.length ? '<div class="co-vazio">Nenhuma operação ou evento de médio/grande porte neste dia.</div>'
+                : (outros.map(detalheItem).join('') + secaoCartoes(cartoes, dia)));
         corpo.querySelector('[data-nova-dia]').addEventListener('click', () => abrirNovaOPO({ dataIni: dia, dataFim: dia }));
-        corpo.querySelectorAll('[data-nova-evento]').forEach(b => b.addEventListener('click', () => abrirNovaOPO(prefillEvento(ITENS.find(x => x.chave === b.dataset.novaEvento)))));
-        corpo.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => abrirDocumento(ITENS.find(x => x.chave === b.dataset.doc))));
-        corpo.querySelectorAll('[data-relatorio]').forEach(b => b.addEventListener('click', () => abrirRelatorioOPO(ITENS.find(x => x.chave === b.dataset.relatorio), dia)));
-        ligarOcorrencias(corpo);
-        corpo.querySelectorAll('[data-opo-evento]').forEach(b => b.addEventListener('click', () => abrirOPOEvento(ITENS.find(x => x.chave === b.dataset.opoEvento), null)));
-        corpo.querySelectorAll('[data-editar-opo]').forEach(b => b.addEventListener('click', () => { const o = ITENS.find(x => x.chave === b.dataset.editarOpo); abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(o.eventoId)) || null, o); }));
-        corpo.querySelectorAll('[data-computar]').forEach(b => b.addEventListener('click', async () => {
-            const it = ITENS.find(x => x.chave === b.dataset.computar);
-            b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
-            try { await computar(it, modoDe(it)); } catch (e) { alert('Não foi possível computar: ' + e.message); }
-            abrirDia(dia); renderGeral();
-        }));
-        // Filtro: só no horário da operação × dias inteiros da vigência
-        corpo.querySelectorAll('[data-modo]').forEach(b => b.addEventListener('click', async () => {
-            const it = ITENS.find(x => x.chave === b.dataset.item);
-            const modo = b.dataset.modo;
-            modoItem[it.chave] = modo; modoPadrao = modo;
-            try { localStorage.setItem(LS_MODO, modo); } catch (e) { /* preferência opcional */ }
-            if (!RES[chaveRes(it, modo)] && podeCalcular(it)) {
-                b.closest('.co-det').querySelector('.co-det-res').innerHTML = '<div class="co-det-meta" style="margin:.6rem 0;">⏳ Cruzando com o CAD…</div>';
-                try { await computar(it, modo); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+        // Liga os handlers data-* de um pedaço do modal (usado no corpo inteiro e,
+        // depois, em cada cartão renderizado SOB DEMANDA ao expandir — lazy).
+        const ligarAcoes = raiz => {
+            raiz.querySelectorAll('[data-nova-evento]').forEach(b => b.addEventListener('click', () => abrirNovaOPO(prefillEvento(ITENS.find(x => x.chave === b.dataset.novaEvento)))));
+            raiz.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => abrirDocumento(ITENS.find(x => x.chave === b.dataset.doc))));
+            raiz.querySelectorAll('[data-relatorio]').forEach(b => b.addEventListener('click', () => abrirRelatorioOPO(ITENS.find(x => x.chave === b.dataset.relatorio), dia)));
+            ligarOcorrencias(raiz);
+            raiz.querySelectorAll('[data-opo-evento]').forEach(b => b.addEventListener('click', () => abrirOPOEvento(ITENS.find(x => x.chave === b.dataset.opoEvento), null)));
+            raiz.querySelectorAll('[data-editar-opo]').forEach(b => b.addEventListener('click', () => { const o = ITENS.find(x => x.chave === b.dataset.editarOpo); abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(o.eventoId)) || null, o); }));
+            raiz.querySelectorAll('[data-computar]').forEach(b => b.addEventListener('click', async () => {
+                const it = ITENS.find(x => x.chave === b.dataset.computar);
+                b.disabled = true; b.textContent = '⏳ Cruzando com o CAD…';
+                try { await computar(it, modoDe(it)); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+                abrirDia(dia); renderGeral();
+            }));
+            // Filtro: só no horário da operação × dias inteiros da vigência
+            raiz.querySelectorAll('[data-modo]').forEach(b => b.addEventListener('click', async () => {
+                const it = ITENS.find(x => x.chave === b.dataset.item);
+                const modo = b.dataset.modo;
+                modoItem[it.chave] = modo; modoPadrao = modo;
+                try { localStorage.setItem(LS_MODO, modo); } catch (e) { /* preferência opcional */ }
+                if (!RES[chaveRes(it, modo)] && podeCalcular(it)) {
+                    b.closest('.co-det').querySelector('.co-det-res').innerHTML = '<div class="co-det-meta" style="margin:.6rem 0;">⏳ Cruzando com o CAD…</div>';
+                    try { await computar(it, modo); } catch (e) { alert('Não foi possível computar: ' + e.message); }
+                }
+                abrirDia(dia);
+            }));
+            raiz.querySelectorAll('[data-exec]').forEach(b => b.addEventListener('click', () => document.getElementById('exec-' + b.dataset.exec).classList.toggle('aberto')));
+            raiz.querySelectorAll('[data-salvar-exec]').forEach(b => b.addEventListener('click', () => salvarExecucao(b.dataset.salvarExec)));
+        };
+        ligarAcoes(corpo);
+        // Expande/recolhe cada cartão; renderiza o detalhe só ao abrir (lazy) e
+        // lembra o estado pra não recolher no próximo render.
+        const abrirCartao = d => {
+            cartoesAbertos.add(d.dataset.cartao);
+            const box = d.querySelector('.co-cartao-corpo');
+            if (box && box.dataset.lazy) {
+                const it = ITENS.find(x => x.chave === d.dataset.cartao);
+                box.innerHTML = it ? detalheItem(it) : '';
+                delete box.dataset.lazy;
+                ligarAcoes(box);
             }
-            abrirDia(dia);
-        }));
-        corpo.querySelectorAll('[data-exec]').forEach(b => b.addEventListener('click', () => document.getElementById('exec-' + b.dataset.exec).classList.toggle('aberto')));
-        corpo.querySelectorAll('[data-salvar-exec]').forEach(b => b.addEventListener('click', () => salvarExecucao(b.dataset.salvarExec)));
+        };
+        corpo.querySelectorAll('.co-cartao-det').forEach(d => {
+            if (d.open) abrirCartao(d); // já vinha aberto do render anterior
+            d.addEventListener('toggle', () => { if (d.open) abrirCartao(d); else cartoesAbertos.delete(d.dataset.cartao); });
+        });
+        const bToggle = document.getElementById('co-cartoes-toggle');
+        if (bToggle) bToggle.onclick = () => { const dets = [...corpo.querySelectorAll('.co-cartao-det')]; const abrir = !dets.every(d => d.open); dets.forEach(d => { d.open = abrir; }); };
+        const bComp = document.getElementById('co-cartoes-computar');
+        if (bComp) bComp.onclick = async () => { await computarVarios(cartoes.filter(it => pendente(it)), bComp); abrirDia(dia); renderGeral(); };
         document.getElementById('co-modal').classList.add('aberto');
     }
     const tabMini = (tit, linhas, fmt) => linhas && linhas.length ? `<table class="co-mini"><tr><th>${tit}</th><th style="text-align:right">Qtd.</th></tr>${linhas.slice(0, 8).map(([k, v]) => `<tr><td>${esc(k)}</td><td style="text-align:right">${fmt ? fmt(v) : fmtN(v)}</td></tr>`).join('')}</table>` : '';
@@ -1231,3 +1302,4 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
+
