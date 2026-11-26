@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gerenciamento P3 - Cartao Programa (PB + Rondas no Entorno)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="../css/theme.css">
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        /* CARTAO PROGRAMA com PONTOS BASE (PB) — js/cartao-programa-pb.js
+           Mesma logica de mancha criminal/intervalos do gerarcartao, com o
+           incremento dos Pontos Base (45 min cada), por cidade. Mapa/alfinete/
+           geocodificacao no mesmo padrao do opo-sufocamento. */
+        main { padding: 1.1rem 1.4rem; min-width: 0; flex: 1 1 0; }
+        .cp-topo { background: linear-gradient(120deg, #0f3d2e, #1e6b34 55%, #2bb673); color: #fff; border-radius: var(--p3-radius-lg); padding: 1rem 1.3rem; margin-bottom: 1rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; }
+        .cp-topo h2 { margin: 0; font-size: 1.2rem; } .cp-topo p { margin: .25rem 0 0; font-size: .8rem; opacity: .92; max-width: 820px; }
+        .cp-topo a { color: #fff; font-size: .8rem; }
+        .cp-grade { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 1rem; align-items: start; }
+        .cp-card { background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: var(--p3-radius-md); padding: .9rem 1rem; margin-bottom: 1rem; min-width: 0; }
+        .cp-card h3 { margin: 0 0 .6rem; font-size: .9rem; color: var(--p3-text); }
+        .cp-form { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem .7rem; }
+        .cp-form label { display: flex; flex-direction: column; gap: 3px; font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--p3-text-muted); }
+        .cp-form .larga { grid-column: 1 / -1; }
+        .cp-form input, .cp-form select { background: var(--p3-bg); color: var(--p3-text); border: 1.5px solid var(--p3-border); border-radius: 6px; padding: 6px 8px; font-size: .8rem; width: 100%; box-sizing: border-box; min-width: 0; }
+        .cp-modos { display: flex; flex-direction: column; gap: .4rem; }
+        .cp-modo { text-align: left; padding: 9px 12px; border: 1.5px solid var(--p3-border); border-radius: 8px; background: var(--p3-surface); color: var(--p3-text); font: 700 .8rem var(--p3-font); cursor: pointer; }
+        .cp-modo small { display: block; font-weight: 500; color: var(--p3-text-muted); font-size: .7rem; margin-top: 2px; }
+        .cp-modo.ativo { border-color: #1e6b34; background: rgba(30,107,52,.08); }
+        .cp-editor { display: none; margin-top: .7rem; padding-top: .7rem; border-top: 1px dashed var(--p3-border); }
+        .cp-editor.aberto { display: block; }
+        .cp-addrow { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-bottom: .5rem; }
+        .cp-addrow input { flex: 1; min-width: 150px; }
+        .cp-btn { padding: 8px 13px; border: 1.5px solid var(--p3-border); border-radius: 7px; background: var(--p3-surface); color: var(--p3-text); font: 700 .78rem var(--p3-font); cursor: pointer; }
+        .cp-btn:hover { border-color: #1e6b34; }
+        .cp-btn:disabled { opacity: .55; cursor: wait; }
+        .cp-btn-pri { background: #1e6b34; border-color: #1e6b34; color: #fff; width: 100%; margin-top: .6rem; padding: 10px; }
+        .cp-btn-pin.ativo { background: #1e6b34; border-color: #1e6b34; color: #fff; }
+        .cp-msg { font-size: .72rem; color: var(--p3-text-muted); }
+        #cp-mapa { height: 480px; border-radius: 8px; }
+        .cp-acoes { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; margin-bottom: .8rem; }
+        .cp-tab { width: 100%; border-collapse: collapse; font-size: .78rem; }
+        .cp-tab th, .cp-tab td { border-bottom: 1px solid var(--p3-border); padding: 5px 7px; text-align: left; color: var(--p3-text); vertical-align: top; }
+        .cp-tab th { background: rgba(30,107,52,.08); }
+        .cp-mini { border: 1px solid var(--p3-border); background: var(--p3-surface); color: var(--p3-text); border-radius: 6px; padding: 2px 7px; cursor: pointer; font-size: .82rem; }
+        .cp-mini:hover:not(:disabled) { background: var(--p3-bg); border-color: #1e6b34; }
+        .cp-mini:disabled { opacity: .35; cursor: default; }
+        .cp-pb-lbl { background: #1e6b34; color: #fff; border-radius: 50%; width: 24px; height: 24px; display: grid; place-items: center; font: 800 11px Arial; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.5); }
+        .cp-vazio { font-size: .82rem; color: var(--p3-text-muted); padding: 1rem 0; }
+        .cp-crit { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: .68rem; font-weight: 800; }
+        .cp-crit.alta { background: #ffebee; color: #c62828; }
+        .cp-crit.media { background: #fff3e0; color: #e65100; }
+        .cp-crit.baixa { background: #e8f5e9; color: #2e7d32; }
+        .cp-crono tr.fixa td { background: rgba(0,0,0,.02); color: var(--p3-text-muted); }
+        /* Documento oficial do cartao (tela + impressao) */
+        .cp-doc { color: #111; font-family: 'Inter', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cp-doc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 12px; }
+        .cp-doc-head img { width: 58px; height: auto; }
+        .cp-doc-titulo { text-align: center; flex: 1; }
+        .cp-doc-titulo h2 { margin: 0; font-size: 16px; color: #003366; letter-spacing: .02em; }
+        .cp-doc-titulo h4 { margin: 2px 0 0; font-size: 12px; color: #111; font-weight: 700; }
+        .cp-doc-meta { text-align: right; font-size: 10.5px; color: #222; white-space: nowrap; }
+        .cp-doc table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .cp-doc table th { background: #003366; color: #fff; border: 1px solid #003366; padding: 6px 7px; text-align: left; font-size: 10.5px; }
+        .cp-doc table td { border: 1px solid #cfd8e3; padding: 5px 7px; vertical-align: top; }
+        .cp-doc table tr.fixa td { background: #f3f5f8; color: #555; }
+        .cp-doc .cp-crit { color: #fff !important; border: 0; }
+        .cp-doc .cp-crit.alta { background: #c62828 !important; }
+        .cp-doc .cp-crit.media { background: #e65100 !important; }
+        .cp-doc .cp-crit.baixa { background: #2e7d32 !important; }
+        .cp-assinatura { text-align: center; margin-top: 26px; font-size: 11px; }
+        .cp-assinatura .linha { margin: 0 auto 2px; width: 320px; border-top: 1px solid #111; }
+        .cp-orient { margin-top: 14px; }
+        .cp-orient p { font-size: 9px; color: #555; margin: 3px 0; }
+        .cp-orient strong { font-size: 10px; color: #003366; }
+        .cp-gerado { margin-top: 10px; font-size: 9px; color: #888; text-align: right; }
+        @media (max-width: 1050px) { .cp-grade { grid-template-columns: 1fr; } }
+        @media print {
+            header, .navegacao, footer, .cp-topo, .cp-grade > aside, #cp-mapa, .cp-acoes, .cp-noprint, .xerife-bolha, #xerife-bolha, #xerife-botao, #xerife-janela { display: none !important; }
+            .cp-grade > div > .cp-card:not(#cp-cartao-card) { display: none !important; }
+            #cp-cartao-card > h3 { display: none !important; }
+            .cp-grade { display: block !important; }
+            #cp-cartao-card { border: 0 !important; padding: 0 !important; margin: 0 !important; background: #fff !important; }
+            body, main, .pagecomplete { background: #fff !important; padding: 0 !important; margin: 0 !important; display: block !important; }
+            @page { size: A4; margin: 12mm; }
+        }
+    </style>
+</head>
+
+<body>
+    <script src="../js/core/session.js"></script>
+    <script src="../js/core/header-nav.js" data-active="controle-operacoes"></script>
+    <section class="pagecomplete">
+        <main>
+            <div class="cp-topo">
+                <div><h2>🗺️ Cartão Programa — PB + Rondas no Entorno</h2>
+                    <p>Gera o cartão programa com a <b>mancha criminal</b> e os intervalos de turno, acrescentando os <b>Pontos Base (PB)</b> — 45 min cada, com rondas no entorno, vários por cidade. Em Palmeira dos Índios, use <b>RP 01</b> e <b>RP 02</b> (horários-base das RPs). Cadastre por endereço, geolocalização ou clicando no mapa.</p></div>
+                <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;"><a href="rastreamento-guarnicao.html">↩ Rastreamento</a><a href="controle-operacoes.html">↩ Controle de Operações</a></div>
+            </div>
+            <div class="cp-grade">
+                <aside>
+                    <div class="cp-card"><h3>1. Cidade e turno</h3>
+                        <div class="cp-form">
+                            <label class="larga">Cidade<select id="cp-cidade"><option value="">Carregando cidades…</option></select></label>
+                            <label class="larga" id="cp-rp-wrap" style="display:none">RP (Palmeira dos Índios)<select id="cp-rp"><option value="RP 01">RP 01</option><option value="RP 02">RP 02</option></select></label>
+                            <label>Início do serviço<input type="time" id="cp-hini" value="08:00"></label>
+                            <label>Fim das rondas (teto 00h)<input type="time" id="cp-hfim" value="00:00"></label>
+                            <label>Duração do PB<input id="cp-dur-pb" value="45 min" readonly></label>
+                            <label>Deslocamento/patrulha entre PBs<select id="cp-desl"><option value="15">15 min</option><option value="20">20 min</option><option value="30" selected>30 min</option></select></label>
+                            <label>Análise (dias)<select id="cp-dias"><option value="60">60</option><option value="90" selected>90</option><option value="180">180</option><option value="365">365</option></select></label>
+                        </div></div>
+
+                    <div class="cp-card"><h3>2. PB + Rondas no Entorno</h3>
+                        <label class="cp-msg" style="display:flex;align-items:center;gap:6px;margin-bottom:.6rem;font-weight:700;">Turno dos novos PBs:
+                            <select id="cp-turno-novo" style="padding:4px 8px;border:1.5px solid var(--p3-border);border-radius:6px;background:var(--p3-bg);color:var(--p3-text);font-size:.78rem;font-weight:600;">
+                                <option value="noite" selected>Noite</option>
+                                <option value="manha">Manhã</option>
+                                <option value="tarde">Tarde</option>
+                                <option value="todos">Todos</option>
+                            </select>
+                        </label>
+                        <div class="cp-modos">
+                            <button type="button" class="cp-modo" id="cp-modo-auto" data-modo="auto">⚡ Gerar PB automaticamente<small>Nos pontos de maior movimento e mancha criminal (centro, praças, escolas)</small></button>
+                            <button type="button" class="cp-modo" id="cp-modo-cadastrar" data-modo="cadastrar">✏️ Cadastrar novos PBs<small>Por endereço, geolocalização ou clicando no mapa</small></button>
+                            <button type="button" class="cp-modo" id="cp-modo-carregar" data-modo="carregar">📂 Carregar PBs salvos<small>Reaproveita um conjunto salvo antes</small></button>
+                        </div>
+
+                        <div class="cp-editor" id="cp-editor-cadastrar">
+                            <div class="cp-addrow">
+                                <input id="cp-add-rua" placeholder="Nome da rua / endereço">
+                                <button class="cp-btn" id="cp-add-rua-btn" type="button">➕ Rua</button>
+                                <button class="cp-btn cp-btn-pin" id="cp-add-pin" type="button">📍 Mapa</button>
+                            </div>
+                            <div class="cp-addrow">
+                                <input id="cp-add-lat" placeholder="Latitude" style="min-width:90px">
+                                <input id="cp-add-lng" placeholder="Longitude" style="min-width:90px">
+                                <button class="cp-btn" id="cp-add-coord-btn" type="button">➕ Coord.</button>
+                            </div>
+                            <div class="cp-msg" id="cp-add-msg"></div>
+                            <div class="cp-addrow" style="margin-top:.5rem">
+                                <input id="cp-salvar-nome" placeholder="Nome do conjunto (ex.: PBs Centro)">
+                                <button class="cp-btn" id="cp-salvar-btn" type="button">💾 Salvar PBs</button>
+                            </div>
+                        </div>
+
+                        <div class="cp-editor" id="cp-editor-carregar">
+                            <label class="cp-msg" style="display:block;margin-bottom:4px">Conjuntos salvos desta cidade:</label>
+                            <select id="cp-salvos" style="width:100%;padding:6px 8px;border:1.5px solid var(--p3-border);border-radius:6px;background:var(--p3-bg);color:var(--p3-text);font-size:.8rem"><option value="">—</option></select>
+                            <button class="cp-btn" id="cp-carregar-btn" type="button" style="margin-top:.5rem">📂 Carregar selecionado</button>
+                            <div class="cp-msg" id="cp-carregar-msg" style="margin-top:4px"></div>
+                        </div>
+
+                        <button class="cp-btn cp-btn-pri" id="cp-gerar" disabled>🗺️ Gerar Cartão Programa</button>
+                        <div class="cp-msg" id="cp-status" style="margin-top:.5rem"></div>
+                    </div>
+                </aside>
+
+                <div>
+                    <div class="cp-acoes"><button class="cp-btn" id="cp-imprimir" disabled>🖨 Imprimir / PDF</button></div>
+                    <div class="cp-card"><div id="cp-mapa"></div></div>
+                    <div class="cp-card"><h3>PB + Rondas no Entorno</h3>
+                        <div class="cp-msg cp-noprint" id="cp-pb-dica" style="display:none;margin-bottom:.5rem">Arraste um PB no mapa para mover · ⬆⬇ reordena a visita · 🗑 remove.</div>
+                        <div id="cp-pb-lista"><div class="cp-vazio">Escolha a cidade e um modo acima para começar.</div></div></div>
+                    <div class="cp-card" id="cp-cartao-card" style="display:none"><h3 style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;flex-wrap:wrap">Cartão Programa gerado <button class="cp-btn cp-noprint" id="cp-imprimir2" style="padding:6px 12px">🖨 Imprimir / PDF</button></h3><div id="cp-cartao"></div></div>
+                </div>
+            </div>
+        </main>
+    </section>
+    <footer><div><h4>Seção de Planejamento, Instrução e Estatística - P3/10ºBPM</h4></div></footer>
+    <script src="../js/cartao-programa-pb.js"></script>
+</body>
+
+</html>
