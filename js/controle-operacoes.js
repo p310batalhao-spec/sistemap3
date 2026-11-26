@@ -239,6 +239,7 @@
         const tag = (it.tipo === 'opo' ? `<span class="co-tag" style="background:${COR.opo}">OPO</span>` : `<span class="co-tag" style="background:${COR[it.porte]}">${it.porte === 'GRANDE' ? 'GRANDE' : 'MÉDIO'}</span>`)
             + (it.tipo === 'opo' && it.eventoId ? '<span class="co-tag" style="background:#6d4c41">EVENTO</span>' : '')
             + (it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')
+            + (it.modalidade === 'cartao_programa' ? ' <span class="co-tag" style="background:#0b7285">CARTÃO PROGRAMA</span>' : '')
             + (it.tipo === 'evento' && opoDoEvento(it).length ? '<span class="co-tag" style="background:#1f5fbf">COM OPO</span>' : '');
         const horario = it.hIni ? `${it.hIni}${it.hFim ? '–' + it.hFim : ''}` : 'dia inteiro';
         const periodo = it.tipo === 'opo' && !it.semExecucao && it.dias.length > 1 ? `${br(parseData(it.dias[0]))} a ${br(parseData(it.dias[it.dias.length - 1]))} · ` : '';
@@ -513,7 +514,7 @@
         const res = buscarOPOs(q);
         if (nrm(q).trim().length < 2) { out.classList.remove('aberto'); out.innerHTML = ''; return; }
         out.innerHTML = res.length ? res.slice(0, 30).map(it => `<div class="co-busca-item" data-ir="${esc(it.dias[0])}" data-chave="${esc(it.chave)}">
-                <b>${esc(it.nome)}</b>${it.eventoId ? ' <span class="co-tag" style="background:#6d4c41">EVENTO</span>' : ''}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}
+                <b>${esc(it.nome)}</b>${it.eventoId ? ' <span class="co-tag" style="background:#6d4c41">EVENTO</span>' : ''}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}${(it.modalidade === 'cartao_programa' ? ' <span class="co-tag" style="background:#0b7285">CARTÃO PROGRAMA</span>' : '')}
                 <small>${br(it.ini)}${it.fim - it.ini ? ' a ' + br(it.fim) : ''} · ${esc(it.cidades.join(', ') || 'área completa')}${it.hIni ? ` · ${it.hIni}–${it.hFim}` : ''}</small></div>`).join('')
             + (res.length > 30 ? `<div class="co-det-meta" style="padding:.4rem .7rem;">+${res.length - 30} resultado(s) — refine a busca.</div>` : '')
             : '<div class="co-det-meta" style="padding:.6rem .8rem;">Nenhuma OPO encontrada.</div>';
@@ -593,12 +594,12 @@
                 das <input type="time" data-e="hIni" value="${esc(it.hIni)}"> às <input type="time" data-e="hFim" value="${esc(it.hFim)}">
                 <button class="co-btn co-btn-pri" data-salvar-exec="${esc(it.chave)}">Salvar execução</button></div>` : '';
         return `<div class="co-det" style="--c:${cor}">
-            <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}</h4>
+            <h4>${it.tipo === 'opo' ? '🎯' : '🎉'} ${esc(it.nome)} ${it.tipo === 'opo' ? `<span class="co-tag" style="background:${cor}">OPO</span>` : `<span class="co-tag" style="background:${cor}">${it.porte} PORTE</span>`}${(it.modalidade === 'sufocamento' ? ' <span class="co-tag" style="background:#b91c1c">SUFOCAMENTO</span>' : '')}${(it.modalidade === 'cartao_programa' ? ' <span class="co-tag" style="background:#0b7285">CARTÃO PROGRAMA</span>' : '')}</h4>
             <div class="co-det-meta">${meta}</div>${it.modalidade === 'sufocamento' ? sufocamentoHTML(it) : ''}${filtro}<div class="co-det-res">${kp}</div>
             <div class="co-det-acoes">
                 ${podeCalcular(it) ? `<button class="co-btn co-btn-pri" data-computar="${esc(it.chave)}">${r ? '↻ Recalcular resultados' : '⚙ Computar resultados do CAD'}</button>` : ''}
                 ${it.tipo === 'opo' && it.modelo === 'evento' ? `<button class="co-btn co-btn-pri" data-editar-opo="${esc(it.chave)}">✏️ Editar OPO</button>` : ''}
-                ${it.tipo === 'opo' ? `<button class="co-btn" data-doc="${esc(it.chave)}">📄 Ver OPO (Word / PDF)</button>` : ''}
+                ${it.tipo === 'opo' ? `<button class="co-btn" data-doc="${esc(it.chave)}">📄 ${it.modalidade === 'cartao_programa' ? 'Ver cartão (PDF)' : 'Ver OPO (Word / PDF)'}</button>` : ''}
                 ${it.tipo === 'opo' && podeCalcular(it) ? `<button class="co-btn" data-relatorio="${esc(it.chave)}">📊 Relatório</button>` : ''}
                 ${it.tipo === 'opo' ? `<button class="co-btn" data-exec="${esc(it.chave)}">📅 Período de execução</button>` : ''}
                 ${it.tipo === 'evento' ? (() => { const salva = opoDoEvento(it).find(o => o.modelo === 'evento');
@@ -811,6 +812,7 @@
         document.getElementById('co-doc-refazer').onclick = () => {
             m.classList.remove('aberto');
             if (it.modalidade === 'sufocamento') location.href = 'opo-sufocamento.html?dataIni=' + encodeURIComponent((it.raw.execucao || {}).dataIni || '') + '&dataFim=' + encodeURIComponent((it.raw.execucao || {}).dataFim || '') + '&cidade=' + encodeURIComponent(it.raw.cidade || '');
+            else if (it.modalidade === 'cartao_programa') location.href = 'cartao-programa-pb.html';
             else if (it.modelo === 'evento') abrirOPOEvento(ITENS.find(x => x.tipo === 'evento' && String(x.id) === String(it.eventoId)) || null, it);
             else abrirNovaOPO(prefillOpo(it));
         };
@@ -1229,4 +1231,3 @@
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
-
