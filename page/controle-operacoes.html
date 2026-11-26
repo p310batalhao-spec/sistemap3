@@ -102,6 +102,21 @@
         .co-modal-caixa { background: var(--p3-surface); color: var(--p3-text); border-radius: 12px; width: min(860px, 100%); padding: 1.2rem 1.3rem; box-shadow: var(--p3-shadow-lg); }
         .co-modal-topo { display: flex; justify-content: space-between; align-items: center; margin-bottom: .8rem; }
         .co-modal-topo h3 { margin: 0; font-size: 1rem; }
+        /* Cartões Programa agrupados e recolhíveis no detalhe do dia */
+        .co-cartoes { margin-top: 1rem; border: 1.5px solid #0b7285; border-radius: 10px; padding: .8rem; background: var(--p3-surface); }
+        .co-cartoes-topo { display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; font-size: 1rem; color: #0b7285; }
+        .co-cartoes-sub { font-size: .74rem; color: var(--p3-text-muted); margin: .25rem 0 .6rem; }
+        .co-cartoes .co-kpis { margin-bottom: .7rem; }
+        .co-cartoes-lista { display: flex; flex-direction: column; gap: .4rem; }
+        .co-cartao-det { border: 1px solid var(--p3-border); border-radius: 8px; background: var(--p3-bg); overflow: hidden; }
+        .co-cartao-det > summary { cursor: pointer; padding: .55rem .75rem; display: flex; justify-content: space-between; align-items: center; gap: .6rem; flex-wrap: wrap; list-style: none; }
+        .co-cartao-det > summary::-webkit-details-marker { display: none; }
+        .co-cartao-det > summary::before { content: '▸'; color: #0b7285; font-weight: 700; margin-right: .35rem; }
+        .co-cartao-det[open] > summary::before { content: '▾'; }
+        .co-cartao-det[open] > summary { border-bottom: 1px solid var(--p3-border); background: var(--p3-surface); }
+        .co-cartao-resumo { font-size: .76rem; color: var(--p3-text-muted); font-weight: 600; }
+        .co-cartao-corpo { padding: .2rem .8rem .6rem; }
+        .co-cartao-corpo .co-det { border: 0; border-left: 0; padding: .4rem 0 0; margin: 0; }
         .co-det { border: 1px solid var(--p3-border); border-left: 4px solid var(--c); border-radius: 9px; padding: .8rem .9rem; margin-bottom: .7rem; }
         .co-det h4 { margin: 0 0 .3rem; font-size: .9rem; }
         .co-det-meta { font-size: .74rem; color: var(--p3-text-muted); line-height: 1.55; }
