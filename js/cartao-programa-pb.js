@@ -27,6 +27,10 @@
         if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
         const d = new Date(str); return isNaN(d) ? null : d;
     }
+    const isoLocal = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const isoHoje = () => isoLocal(new Date());
+    const isoMais = (isoStr, dias) => { const d = new Date(isoStr + 'T00:00:00'); d.setDate(d.getDate() + dias); return isoLocal(d); };
+    const brData = isoStr => { const p = String(isoStr || '').split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : isoStr; };
 
     // Pesos por tipo (mesma ideia do opo/gerarcartao: gravidade + recencia)
     const PESO = { MVI: 5, CVP: 3, CCP: 1.5, ARMA: 2.5, DROGA: 1.5 };
@@ -402,14 +406,22 @@
         const topCrit = agrupar(PTS, 350).slice(0, 4).map(c => c.bairro).filter(Boolean);
         const manchaLocal = topCrit.length ? topCrit.join(' · ') : 'Áreas críticas da cidade';
         const linhas = construirCartao(janelas, fixos, ordem, desl, manchaLocal);
-        CARTAO = { cidade: $('cp-cidade').value, rp: ehPalmeira ? (RP_SEL || 'RP') : null, data: new Date().toLocaleDateString('pt-BR'), linhas, nPB: ordem.length };
+        // Validade do cartão (15 a 30 dias) — período em que vale a contagem de
+        // ocorrências no Controle de Operações.
+        const valIni = ($('cp-val-ini') && $('cp-val-ini').value) || isoHoje();
+        const valDias = Math.min(30, Math.max(15, +($('cp-val-dias') ? $('cp-val-dias').value : 30) || 30));
+        const dataFim = isoMais(valIni, valDias - 1);
+        CARTAO = { cidade: $('cp-cidade').value, rp: ehPalmeira ? (RP_SEL || 'RP') : null, data: new Date().toLocaleDateString('pt-BR'),
+            linhas, nPB: ordem.length, dataIni: valIni, dataFim, validadeDias: valDias };
         renderCartao();
         $('cp-cartao-card').style.display = ''; $('cp-imprimir').disabled = false;
+        $('cp-salvar-controle').disabled = false; $('cp-salvar-controle').textContent = '💾 Salvar no Controle de Operações';
+        $('cp-salvar-controle-msg').textContent = '';
         $('cp-status').textContent = `✅ Cartão gerado com ${ordem.length} PB(s)${ehPalmeira ? ' — esquema RP de Palmeira' : ''}.`;
         $('cp-cartao-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function renderCartao() {
+    function corpoCartaoHTML() {
         const C = CARTAO;
         const corpo = C.linhas.map(l => {
             const critCel = l.crit ? `<span class="cp-crit ${l.crit}">${l.crit === 'alta' ? 'Alta' : l.crit === 'media' ? 'Média' : 'Baixa'}</span>` : (l.fixa ? '—' : '');
@@ -422,7 +434,8 @@
         const sessao = (window.P3 && P3.getSession) ? P3.getSession() : null;
         const usuario = sessao ? ([sessao.graduacao, sessao.nomeGuerra || sessao.nome].filter(Boolean).join(' ') || 'usuário do sistema') : 'usuário do sistema';
         const agora = new Date().toLocaleString('pt-BR');
-        $('cp-cartao').innerHTML = `
+        const validade = C.dataIni ? `<br><b>VALIDADE:</b> ${esc(brData(C.dataIni))} a ${esc(brData(C.dataFim))}` : '';
+        return `
           <div class="cp-doc">
             <div class="cp-doc-head">
               <img src="https://pm.al.gov.br/joomgallery/image?view=image&format=raw&type=orig&id=84" alt="Brasão PMAL" onerror="this.style.display='none'">
@@ -430,7 +443,7 @@
                 <h2>CARTÃO PROGRAMA — PB + RONDAS NO ENTORNO</h2>
                 <h4>${esc(nomeUnid)}</h4>
               </div>
-              <div class="cp-doc-meta"><b>DATA:</b> ${esc(C.data)}<br><b>CIDADE:</b> ${esc(C.cidade)}<br><b>GU:</b> ${esc(C.rp || '—')}</div>
+              <div class="cp-doc-meta"><b>DATA:</b> ${esc(C.data)}<br><b>CIDADE:</b> ${esc(C.cidade)}<br><b>GU:</b> ${esc(C.rp || '—')}${validade}</div>
             </div>
             <table><thead><tr><th>Horário</th><th>Atividade</th><th>Local / Bairros de patrulhamento</th><th>Criticidade</th></tr></thead><tbody>${corpo}</tbody></table>
             <div class="cp-assinatura">
@@ -446,6 +459,71 @@
             </div>
             <div class="cp-gerado">Gerado em ${esc(agora)} por ${esc(usuario)}</div>
           </div>`;
+    }
+    function renderCartao() { $('cp-cartao').innerHTML = corpoCartaoHTML(); }
+
+    // CSS do documento (para o cartão salvo abrir/imprimir fora desta página,
+    // ex.: no Controle de Operações "📄 Ver OPO / PDF").
+    const DOC_CSS = `
+        body { margin: 14mm; background: #fff; }
+        .cp-doc { color: #111; font-family: 'Inter', Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .cp-doc-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #003366; padding-bottom: 8px; margin-bottom: 12px; }
+        .cp-doc-head img { width: 58px; height: auto; }
+        .cp-doc-titulo { text-align: center; flex: 1; }
+        .cp-doc-titulo h2 { margin: 0; font-size: 16px; color: #003366; letter-spacing: .02em; }
+        .cp-doc-titulo h4 { margin: 2px 0 0; font-size: 12px; color: #111; font-weight: 700; }
+        .cp-doc-meta { text-align: right; font-size: 10.5px; color: #222; white-space: nowrap; }
+        .cp-doc table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .cp-doc table th { background: #003366; color: #fff; border: 1px solid #003366; padding: 6px 7px; text-align: left; font-size: 10.5px; }
+        .cp-doc table td { border: 1px solid #cfd8e3; padding: 5px 7px; vertical-align: top; }
+        .cp-doc table tr.fixa td { background: #f3f5f8; color: #555; }
+        .cp-crit { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: .68rem; font-weight: 800; color: #fff; }
+        .cp-doc .cp-crit.alta { background: #c62828; }
+        .cp-doc .cp-crit.media { background: #e65100; }
+        .cp-doc .cp-crit.baixa { background: #2e7d32; }
+        .cp-assinatura { text-align: center; margin-top: 26px; font-size: 11px; }
+        .cp-assinatura .linha { margin: 0 auto 2px; width: 320px; border-top: 1px solid #111; }
+        .cp-orient { margin-top: 14px; } .cp-orient p { font-size: 9px; color: #555; margin: 3px 0; } .cp-orient strong { font-size: 10px; color: #003366; }
+        .cp-gerado { margin-top: 10px; font-size: 9px; color: #888; text-align: right; }
+        @page { size: A4; margin: 12mm; }`;
+    function montarDocHTML() {
+        return `<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><title>Cartão Programa — ${esc(CARTAO.cidade)}${CARTAO.rp && CARTAO.rp !== 'RP' ? ' / ' + esc(CARTAO.rp) : ''}</title><style>${DOC_CSS}</style></head><body>${corpoCartaoHTML()}<script>window.onload=function(){if(window.__autoPrint)setTimeout(function(){window.print();},400);};<\/script></body></html>`;
+    }
+
+    // ── Salvar no Controle de Operações (nó cartoes_programa, tipo "opo") ──
+    // Vira um item do Controle de Operações: calcula os resultados do CAD
+    // (ocorrências, prisões, drogas, armas, materiais) no período de validade
+    // e nas cidades do cartão, igual às OPOs. Modalidade "cartao_programa".
+    async function salvarControle() {
+        if (!CARTAO) { alert('Gere o cartão primeiro.'); return; }
+        if (!CARTAO.dataIni) { alert('Informe o início da validade.'); return; }
+        const btn = $('cp-salvar-controle'), msg = $('cp-salvar-controle-msg');
+        btn.disabled = true; btn.textContent = '⏳ Salvando…'; msg.textContent = '';
+        try {
+            const sessao = (window.P3 && P3.getSession) ? P3.getSession() : null;
+            const nome = `CARTÃO PROGRAMA — ${CARTAO.cidade}${CARTAO.rp && CARTAO.rp !== 'RP' ? ' / ' + CARTAO.rp : ''}`;
+            const registro = {
+                tipo: 'opo', modalidade: 'cartao_programa', modelo: 'cartao_programa',
+                nome, cidade: CARTAO.cidade, cidades: [CARTAO.cidade], escopo: 'cidade', rp: CARTAO.rp || null,
+                execucao: { dataIni: CARTAO.dataIni, dataFim: CARTAO.dataFim, horaIni: '', horaFim: '' },
+                validadeDias: CARTAO.validadeDias,
+                cronograma: CARTAO.linhas.map(l => ({ ini: hm(l.ini), fim: hm(l.fim), atividade: l.atividade, local: l.local, crit: l.crit || null })),
+                pbs: PBS.map(p => ({ nome: p.nome, rua: p.rua, turno: p.turno, lat: +p.lat.toFixed(6), lng: +p.lng.toFixed(6), crit: p.crit || null })),
+                temDocumento: true, criadoEm: new Date().toISOString(), data: new Date().toLocaleDateString('pt-BR'),
+                criadoPor: sessao ? [sessao.graduacao, sessao.nomeGuerra || sessao.nome].filter(Boolean).join(' ') : null,
+            };
+            const r = await fetch(`${DB}/cartoes_programa.json`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(registro) });
+            if (!r.ok) throw new Error('Firebase respondeu HTTP ' + r.status);
+            const id = (await r.json()).name;
+            // Documento (para "📄 Ver OPO / PDF" no Controle de Operações).
+            const doc = { nome, modelo: 'cartao_programa', html: montarDocHTML(), criadoEm: new Date().toISOString() };
+            await fetch(`${DB}/opo_documentos/${encodeURIComponent(id)}.json`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(doc) }).catch(() => {});
+            btn.textContent = '✅ Salvo!';
+            msg.innerHTML = `✅ Cartão salvo no <b>Controle de Operações</b> (validade ${esc(brData(CARTAO.dataIni))} a ${esc(brData(CARTAO.dataFim))}). Lá, use “⚙ Computar resultados do CAD” para contabilizar as ocorrências no período.`;
+        } catch (e) {
+            alert('Não consegui salvar: ' + e.message); btn.textContent = '💾 Salvar no Controle de Operações';
+        }
+        setTimeout(() => { if (btn.textContent === '✅ Salvo!') btn.textContent = '💾 Salvar no Controle de Operações'; btn.disabled = false; }, 3000);
     }
 
     // ── Modos ──────────────────────────────────────────────────────────
@@ -518,6 +596,8 @@
         $('cp-gerar').onclick = gerarCartao;
         $('cp-imprimir').onclick = () => window.print();
         $('cp-imprimir2').onclick = () => window.print();
+        $('cp-salvar-controle').onclick = salvarControle;
+        if ($('cp-val-ini') && !$('cp-val-ini').value) $('cp-val-ini').value = isoHoje(); // início da validade = hoje
         $('cp-pb-lista').addEventListener('click', e => {
             const b = e.target.closest('button[data-cp]'); if (!b) return;
             const i = +b.dataset.i;
