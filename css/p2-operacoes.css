@@ -112,6 +112,18 @@
 .op-anexo .nm b { display: block; color: var(--p2-txt-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .84rem; }
 .op-anexo a { color: var(--p2-accent); text-decoration: none; font-size: .76rem; }
 
+/* Lightbox de imagem (abre acima de tudo) */
+.p2-lightbox { position: fixed; inset: 0; z-index: 4000; background: rgba(5, 10, 20, .86); display: none; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(3px); }
+.p2-lightbox.aberto { display: flex; animation: p2lbIn .14s ease; }
+@keyframes p2lbIn { from { opacity: 0; } to { opacity: 1; } }
+.p2-lb-box { position: relative; max-width: 94vw; max-height: 92vh; display: flex; flex-direction: column; align-items: center; }
+.p2-lb-box img { max-width: 94vw; max-height: 84vh; object-fit: contain; border-radius: 8px; box-shadow: 0 12px 48px rgba(0,0,0,.6); }
+.p2-lb-cap { color: #e8edf5; font-size: .82rem; margin-top: 10px; text-align: center; max-width: 80vw; }
+.p2-lb-x { position: absolute; top: -14px; right: -14px; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #fff; color: #111; font-size: 18px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.p2-lb-x:hover { background: #ffe3e3; }
+.op-img img { cursor: zoom-in; }
+.rl-img img { cursor: zoom-in; }
+
 /* Prévia completa do RELOP (modal) */
 .rl-doc { font-size: .86rem; color: var(--p2-txt); }
 .rl-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }

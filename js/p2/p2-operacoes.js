@@ -54,6 +54,23 @@
     }
     const fecharModal = () => { const m = document.getElementById('op-modal'); if (m) m.classList.remove('aberto'); };
 
+    // ── Lightbox de imagem (abre a imagem ampliada em modal) ──────────
+    function abrirImagem(url, legenda) {
+        if (!url) return;
+        let lb = document.getElementById('p2-lightbox');
+        if (!lb) {
+            lb = document.createElement('div'); lb.id = 'p2-lightbox'; lb.className = 'p2-lightbox';
+            document.body.appendChild(lb);
+            lb.addEventListener('click', () => lb.classList.remove('aberto'));
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') lb.classList.remove('aberto'); });
+        }
+        lb.innerHTML = `<div class="p2-lb-box"><button class="p2-lb-x" title="Fechar (Esc)">✕</button>
+            <img src="${esc(url)}" alt="${esc(legenda || '')}">${legenda ? `<div class="p2-lb-cap">${esc(legenda)}</div>` : ''}</div>`;
+        lb.querySelector('.p2-lb-box').onclick = e => e.stopPropagation();
+        lb.querySelector('.p2-lb-x').onclick = () => lb.classList.remove('aberto');
+        lb.classList.add('aberto');
+    }
+
     // ── Carregamento ──────────────────────────────────────────────────
     carregar();
     async function carregar() {
@@ -268,7 +285,7 @@
         const imgs = doc.anexos.filter(a => /^image\//.test(a.arquivo_mime || ''));
         const docs = doc.anexos.filter(a => !/^image\//.test(a.arquivo_mime || ''));
         box.innerHTML = relopHtml(rl, doc.itens, imgs, docs, jaOp);
-        box.querySelectorAll('img[data-apath]').forEach(async im => { const u = await sb.signUrl(im.dataset.abucket || 'midia', im.dataset.apath, 1800).catch(() => null); if (u) im.src = u; else im.outerHTML = '<div class="rl-imgfail">imagem indisponível</div>'; });
+        box.querySelectorAll('img[data-apath]').forEach(async im => { im.onclick = () => { if (im.src) abrirImagem(im.src, im.alt); }; const u = await sb.signUrl(im.dataset.abucket || 'midia', im.dataset.apath, 1800).catch(() => null); if (u) im.src = u; else im.outerHTML = '<div class="rl-imgfail">imagem indisponível</div>'; });
         box.querySelectorAll('[data-adoc]').forEach(a => a.onclick = async ev => { ev.preventDefault(); const an = doc.anexos.find(x => String(x.id) === a.dataset.adoc); if (!an) return; const u = await sb.signUrl(an.bucket_id || 'midia', an.arquivo_path, 600).catch(() => null); if (u) window.open(u, '_blank'); else alert('Não foi possível abrir o anexo.'); });
         const f = document.getElementById('op-modal-f');
         f.innerHTML = `<button class="p2-btn" onclick="document.getElementById('op-modal').classList.remove('aberto')">Fechar</button>
@@ -744,7 +761,8 @@
         }
         document.getElementById('ws-img-cont').textContent = imgs.length;
         if (!imgs.length) { box.innerHTML = '<div class="fa-vazio" style="color:var(--p2-txt-dim2)">Sem imagens nos registros vinculados.</div>'; return; }
-        box.innerHTML = '<div class="op-imgs">' + imgs.map(im => `<div class="op-img"><img src="${esc(im.url)}" alt="${esc(im.legenda || '')}" onerror="this.outerHTML='<div class=&quot;falhou&quot;>imagem indisponível</div>'" onclick="window.open('${esc(im.url)}','_blank')"><span class="origem">${esc(im.origem)}</span></div>`).join('') + '</div>';
+        box.innerHTML = '<div class="op-imgs">' + imgs.map((im, i) => `<div class="op-img"><img src="${esc(im.url)}" alt="${esc(im.legenda || '')}" data-lb="${i}" onerror="this.outerHTML='<div class=&quot;falhou&quot;>imagem indisponível</div>'"><span class="origem">${esc(im.origem)}</span></div>`).join('') + '</div>';
+        box.querySelectorAll('img[data-lb]').forEach(im => { im.onclick = () => { const d = imgs[+im.dataset.lb]; abrirImagem(d.url, d.legenda || d.origem); }; });
     }
 
     // ── RELOP + Xerife ────────────────────────────────────────────────
