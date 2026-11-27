@@ -63,3 +63,36 @@
 .p2nav-foot a:hover { background: var(--p2n-hover); color: #fff; }
 
 @media print { #p2nav-tab, #p2nav-drawer, #p2nav-backdrop { display: none !important; } }
+
+/* ====================================================================
+   Imersão total: sidebar do shell (nav.navegacao) exibindo os MÓDULOS do
+   P2 no lugar do nav do P3. Complementa css/p3-shell.css (que já faz o
+   sidebar fixo escuro). Ativado por body.p2-modnav (p2-nav-inject.js).
+   ==================================================================== */
+body.p2-modnav .navegacao::before { content: "P2 INTELIGÊNCIA" !important; }
+body.p2-modnav .navegacao { padding-bottom: 10px; }
+/* Cabeçalho de grupo */
+body.p2-modnav .navegacao .p2grp {
+    flex-shrink: 0; margin: 12px 16px 4px; font-size: .64rem; font-weight: 800;
+    letter-spacing: .09em; text-transform: uppercase; color: #64748b;
+}
+body.p2-modnav .navegacao .p2grp:first-of-type { margin-top: 10px; }
+/* Ícones Font Awesome (o p3-shell.css só estilizava <img>) */
+body.p2-modnav .navegacao a.p2mod { position: relative; }
+body.p2-modnav .navegacao a.p2mod i {
+    width: 20px; min-width: 20px; text-align: center; font-size: 15px; color: #9fb0c9; flex-shrink: 0;
+}
+body.p2-modnav .navegacao a.p2mod.active i { color: #fff; }
+body.p2-modnav .navegacao a.p2mod:hover i { color: #fff; }
+/* Selo "P3" nos módulos nativos */
+body.p2-modnav .navegacao a.p2mod .p2tag {
+    margin-left: auto; font-size: .56rem; font-weight: 800; letter-spacing: .04em;
+    background: rgba(90, 150, 255, .18); color: #9ec1ff; border: 1px solid rgba(120, 170, 255, .35);
+    padding: 1px 6px; border-radius: 999px; flex-shrink: 0;
+}
+/* "Voltar ao Sistema P3" destacado no rodapé da lista */
+body.p2-modnav .navegacao a.p2-voltar {
+    margin-top: 10px; color: #cbd5e1; border-top: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 0; padding-top: 14px;
+}
+body.p2-modnav .navegacao a.p2-voltar i { color: #cbd5e1; }
