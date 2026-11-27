@@ -134,7 +134,10 @@
 .rl-f span { color: var(--p2-txt); flex: 1; }
 .rl-sec { margin-top: 16px; }
 .rl-sec h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--p2-accent); border-bottom: 1px solid var(--p2-line); padding-bottom: 5px; margin: 0 0 10px; }
-.rl-text { white-space: pre-wrap; line-height: 1.6; font-size: .86rem; color: var(--p2-txt); background: var(--p2-surface2); border-radius: 8px; padding: 11px 13px; }
+.rl-text { line-height: 1.6; font-size: .86rem; color: var(--p2-txt); background: var(--p2-surface2); border-radius: 8px; padding: 11px 13px; }
+.rl-text p { margin: 0 0 8px; text-align: justify; } .rl-text p:last-child { margin-bottom: 0; }
+.rl-lv { font-size: .83rem; line-height: 1.5; color: var(--p2-txt); padding: 1px 0; }
+.rl-lv b { color: var(--p2-txt-dim2); font-weight: 700; }
 .rl-item { border: 1px solid var(--p2-line); border-radius: 10px; padding: 11px 13px; margin-bottom: 10px; background: var(--p2-surface); }
 .rl-item-h { font-weight: 700; color: var(--p2-txt-strong); margin-bottom: 8px; }
 .rl-relato { margin-top: 8px; white-space: pre-wrap; font-size: .82rem; color: var(--p2-txt-dim); line-height: 1.55; }

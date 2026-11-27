@@ -235,8 +235,21 @@
         await carregarOps();
     }
 
-    // ── Prévia completa do RELOP (textos, itens, imagens, anexos) ─────
+    // ── RELOP: dados, prévia e impressão no MODELO do Echelon ─────────
     const SEL_CUMP = 'id,data_hora,situacao,resultado,relato,pessoa_id,endereco_id,mandado_id,tb_pessoas(nome_completo,cpf),tb_enderecos(tipo_logradouro,logradouro,numero,complemento,tb_bairros(nome),tb_cidades(nome),tb_estados(sigla)),tb_mandados(id,numero_mandado,tipo_mandado,processo,vara_comarca)';
+    const PROD_SEL = 'id,cumprimento_id,destino_materiais,destino_pessoas,tb_produtividade_armas(tipo,calibre,quantidade),tb_produtividade_armas_brancas(tipo,quantidade),tb_produtividade_municoes(calibre,quantidade),tb_produtividade_drogas(tipo,quantidade,unidade),tb_produtividade_veiculos(classificacao,modelo,placa),tb_produtividade_aparelhos(marca,modelo,situacao),tb_produtividade_valores(moeda,valor,observacao),tb_produtividade_outros_materiais(descricao,quantidade,unidade,observacao),tb_produtividade_pessoas(is_conduzido,is_preso,tb_pessoas(nome_completo))';
+    const INST_LINES = ['ESTADO DE ALAGOAS', 'SECRETARIA DE SEGURANÇA PÚBLICA', 'POLÍCIA MILITAR DE ALAGOAS', 'COMANDO DE POLICIAMENTO DA REGIÃO DO AGRESTE (CPRA)', 'CISP II – 10º BATALHÃO DE POLÍCIA MILITAR (10º BPM)', 'p2.10bpm@pm.al.gov.br'];
+    const WARN_TOP = 'Conhecimento para assessoramento do processo decisório, não tendo finalidade probatória. Conforme previsto na DNISP, este documento e seus anexos não devem ser inseridos em procedimentos e/ou processos de qualquer natureza.';
+    const WARN_BOT = 'O sigilo deste documento é protegido e controlado pela Lei n.º 12.527/11. A divulgação, o fornecimento, a utilização ou a reprodução desautorizada do seu conteúdo, a qualquer tempo ou por qualquer meio ou modo, inclusive mediante acesso ou facilitação de acesso indevidos, constituem condutas ilícitas que ensejam responsabilidades penais, civis e administrativas.';
+    const TIPO_ANEXO = { mandado_assinado: 'MANDADO CUMPRIDO/ASSINADO', auto_busca_apreensao: 'AUTO DE BUSCA E APREENSÃO', auto_exibicao_apreensao: 'AUTO DE EXIBIÇÃO E APREENSÃO', bo_cop: 'BO/COP', relatorio_cumprimento_busca_apreensao: 'RELATÓRIO DE CUMPRIMENTO DE BUSCA E APREENSÃO', foto: 'FOTO', outro: 'OUTRO DOCUMENTO' };
+    const tipoAnexoLabel = t => !t ? 'OUTRO DOCUMENTO' : (TIPO_ANEXO[t] || String(t).replace(/_/g, ' ').toUpperCase());
+    function vR(v) { if (v === null || v === undefined) return 'X-X-X-X'; const t = String(v).trim(); return (!t || t === '-' || t === '—' || /^(null|undefined)$/i.test(t)) ? 'X-X-X-X' : t; }
+    const uniq = a => Array.from(new Set((a || []).filter(x => x && x !== '—')));
+    function listaNatural(a) { const u = uniq(a); return u.length <= 1 ? (u[0] || '—') : (u.slice(0, -1).join(', ') + ' e ' + u[u.length - 1]); }
+    const seqRelop = n => { const p = String(n || '').split('/'); return (p[0] || 'SEM_NUMERO').padStart(3, '0'); };
+    const cabNum = n => seqRelop(n) + '/10ºBPM/PM-2';
+    const tituloAnexoA = q => q > 1 ? 'ANEXO A — MANDADOS CUMPRIDOS' : 'ANEXO A — MANDADO CUMPRIDO';
+    function fmtDataBR(v) { if (!v) return '—'; const s = String(v); const d = new Date(s.length <= 10 ? s + 'T12:00:00' : s); return isNaN(d) ? s : d.toLocaleDateString('pt-BR'); }
     function endRelop(e) {
         if (!e) return '—';
         const base = [e.tipo_logradouro, e.logradouro].filter(Boolean).join(' ') + (e.numero ? (', ' + e.numero) : '') + (e.complemento ? (' — ' + e.complemento) : '');
@@ -245,85 +258,202 @@
         const uf = e.tb_estados && e.tb_estados.sigla ? ('/' + e.tb_estados.sigla) : '';
         return (base + b + c + uf).trim() || '—';
     }
-    function dtBr(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    function fmtDataExt(d) { return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }); }
+    function montarPeriodo(datas) {
+        const arr = Array.from(new Map((datas || []).map(v => { const d = v ? new Date(v) : null; return (d && !isNaN(d)) ? d : null; }).filter(Boolean).sort((a, b) => a - b).map(d => [d.toISOString().slice(0, 10), d])).values());
+        if (!arr.length) return '—';
+        if (arr.length === 1) return fmtDataExt(arr[0]);
+        const p = arr[0], u = arr[arr.length - 1];
+        if (p.getMonth() === u.getMonth() && p.getFullYear() === u.getFullYear()) return p.toLocaleDateString('pt-BR', { day: '2-digit' }) + ' e ' + fmtDataExt(u);
+        return fmtDataExt(p) + ' e ' + fmtDataExt(u);
+    }
+    function narrativaPadrao(itens) {
+        if (!itens.length) return [];
+        const periodo = montarPeriodo(itens.map(i => i.dataHora));
+        const tipos = new Set(itens.map(i => (i.mandadoTipo || '').toUpperCase()));
+        const mandados = tipos.size === 1 && tipos.has('MP') ? 'MANDADOS DE PRISÃO' : tipos.size === 1 && tipos.has('MB') ? 'MANDADOS DE BUSCA E APREENSÃO' : 'MANDADOS JUDICIAIS';
+        const varas = listaNatural(itens.map(i => i.varaComarca));
+        const processos = listaNatural(itens.map(i => i.processo));
+        const cidadesV = Array.from(new Set(itens.map(i => (!i.cidade || i.cidade === '—') ? '' : (i.cidade + '/' + (i.uf || 'AL'))).filter(Boolean)));
+        const loc = cidadesV.length > 1 ? ('nas cidades de ' + listaNatural(cidadesV)) : ('na cidade de ' + listaNatural(cidadesV));
+        return [
+            `Nos dias ${periodo}, foram devidamente cumpridos ${mandados} expedidos pela ${varas}, com origem nos Autos nº ${processos}, ${loc}.`,
+            'O cumprimento dos mandados ocorreu mediante diligências realizadas pelas equipes policiais nos endereços determinados judicialmente. Foram efetuadas buscas nos limites das residências vinculadas aos alvos, em estrita observância às determinações constantes nas respectivas ordens judiciais.',
+            'Segue a relação detalhada dos alvos, endereços e das apreensões realizadas nos respectivos limites das residências:',
+        ];
+    }
+    function narrToParas(html) {
+        if (!html || !String(html).trim()) return [];
+        const host = document.createElement('div'); host.innerHTML = String(html);
+        const blocos = Array.from(host.querySelectorAll('p,div,li'));
+        if (blocos.length) return blocos.map(b => (b.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+        const t = (host.textContent || '').replace(/\r/g, '').trim();
+        return t ? t.split(/\n+/).map(s => s.trim()).filter(Boolean) : [];
+    }
+    // Monta o documento completo do RELOP (igual ao carregarRelopDocumento do Echelon).
     async function carregarRelopDoc(r) {
         let relop = r;
         try { const full = await sb.get('tb_relops', 'select=*&id=eq.' + r.id); if (full && full[0]) relop = full[0]; } catch (e) { }
-        let itens = [];
-        try { itens = await sb.get('tb_relop_cumprimentos', 'select=id,ordem,observacao,cumprimento_id,tb_mandado_cumprimentos(' + SEL_CUMP + ')&relop_id=eq.' + r.id + '&order=ordem'); } catch (e) { itens = []; }
-        itens = (itens || []).filter(i => i.tb_mandado_cumprimentos);
-        const cumpIds = itens.map(i => i.tb_mandado_cumprimentos.id);
+        let itensRaw = [];
+        try { itensRaw = await sb.get('tb_relop_cumprimentos', 'select=id,ordem,observacao,cumprimento_id,tb_mandado_cumprimentos(' + SEL_CUMP + ')&relop_id=eq.' + r.id + '&order=ordem'); } catch (e) { itensRaw = []; }
+        const base = (itensRaw || []).filter(i => i.tb_mandado_cumprimentos);
+        const cumpIds = base.map(i => i.tb_mandado_cumprimentos.id);
+        const pessoaIds = Array.from(new Set(base.map(i => i.tb_mandado_cumprimentos.pessoa_id).filter(Boolean)));
+        const apelidos = {};
+        if (pessoaIds.length) { try { (await sb.get('tb_pessoa_apelidos', 'select=pessoa_id,apelido&pessoa_id=in.(' + pessoaIds.join(',') + ')')).forEach(a => { (apelidos[a.pessoa_id] = apelidos[a.pessoa_id] || []).push(a.apelido); }); } catch (e) { } }
         let anexos = [];
-        if (cumpIds.length) { try { anexos = await sb.get('tb_missao_anexos', 'select=id,arquivo_nome,arquivo_path,arquivo_mime,legenda,tipo_documento,cumprimento_id,bucket_id,ordem&cumprimento_id=in.(' + cumpIds.join(',') + ')&order=ordem'); } catch (e) { anexos = []; } }
+        if (cumpIds.length) { try { anexos = await sb.get('tb_missao_anexos', 'select=id,arquivo_nome,arquivo_path,arquivo_mime,legenda,tipo_documento,cumprimento_id,bucket_id,ordem&cumprimento_id=in.(' + cumpIds.join(',') + ')&order=cumprimento_id,ordem'); } catch (e) { anexos = []; } }
+        const prodPor = {};
+        if (cumpIds.length) {
+            try {
+                const prods = await sb.get('tb_produtividade', 'select=' + PROD_SEL + '&cumprimento_id=in.(' + cumpIds.join(',') + ')');
+                for (const p of prods || []) {
+                    const mats = [];
+                    for (const a of p.tb_produtividade_armas || []) mats.push(`${a.quantidade} ARMA DE FOGO ${a.tipo}${a.calibre ? ` CAL. ${a.calibre}` : ''}`);
+                    for (const a of p.tb_produtividade_armas_brancas || []) mats.push(`${a.quantidade} ARMA BRANCA ${a.tipo}`);
+                    for (const m of p.tb_produtividade_municoes || []) mats.push(`${m.quantidade} MUNIÇÃO CAL. ${m.calibre}`);
+                    for (const d of p.tb_produtividade_drogas || []) mats.push(`${d.quantidade}${d.unidade ? ` ${d.unidade}` : ''} DE ${d.tipo}`);
+                    for (const v of p.tb_produtividade_veiculos || []) mats.push(`VEÍCULO ${v.classificacao}${v.modelo ? ` ${v.modelo}` : ''}${v.placa ? ` — ${v.placa}` : ''}`);
+                    for (const ap of p.tb_produtividade_aparelhos || []) mats.push(`APARELHO ${ap.marca}${ap.modelo ? ` ${ap.modelo}` : ''} (${ap.situacao})`);
+                    for (const val of p.tb_produtividade_valores || []) { const moeda = (val.moeda || 'BRL').toUpperCase(); const valor = Number(val.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); mats.push(`DINHEIRO ${moeda} ${valor}${val.observacao ? ` — ${val.observacao}` : ''}`); }
+                    for (const o of p.tb_produtividade_outros_materiais || []) mats.push(`${o.quantidade || 1}${o.unidade ? ` ${o.unidade}` : ''} DE ${o.descricao}${o.observacao ? ` — ${o.observacao}` : ''}`);
+                    const pes = (p.tb_produtividade_pessoas || []).map(pp => { const nome = ((pp.tb_pessoas && pp.tb_pessoas.nome_completo) || '—').toUpperCase(); return `${nome} (${pp.is_preso ? 'PRESO' : pp.is_conduzido ? 'CONDUZIDO' : 'ENVOLVIDO'})`; });
+                    const alvo = prodPor[p.cumprimento_id] || (prodPor[p.cumprimento_id] = { materiais: [], pessoas: [] });
+                    alvo.materiais.push(...mats); alvo.pessoas.push(...pes);
+                }
+            } catch (e) { }
+        }
+        const itens = base.map(it => {
+            const c = it.tb_mandado_cumprimentos, p = c.tb_pessoas || {}, man = c.tb_mandados || {}, prod = prodPor[c.id] || { materiais: [], pessoas: [] };
+            return {
+                ordem: it.ordem, observacao: it.observacao || null,
+                pessoaNome: (p.nome_completo || '—').toUpperCase(), vulgos: (apelidos[c.pessoa_id] || []).join(', '), cpf: p.cpf || null,
+                enderecoLabel: endRelop(c.tb_enderecos), dataHora: c.data_hora, situacao: (c.situacao || '—').toUpperCase(),
+                resultado: (c.resultado || '—').replace(/_/g, ' ').toUpperCase(), relato: c.relato || null,
+                mandadoNumero: man.numero_mandado || '—', mandadoTipo: man.tipo_mandado || '—', processo: man.processo || '—', varaComarca: man.vara_comarca || '—',
+                cidade: (c.tb_enderecos && c.tb_enderecos.tb_cidades && c.tb_enderecos.tb_cidades.nome) || '—', uf: (c.tb_enderecos && c.tb_enderecos.tb_estados && c.tb_enderecos.tb_estados.sigla) || 'AL',
+                materiais: prod.materiais, pessoasConduzidas: prod.pessoas, anexos: anexos.filter(a => a.cumprimento_id === c.id),
+            };
+        });
         return { relop, itens, anexos: anexos || [] };
     }
+    // Prévia na tela (mesmas informações do PDF, em layout de leitura).
     function relopHtml(rl, itens, imgs, docs, jaOp) {
         const campo = (l, v) => v ? `<div class="rl-f"><b>${l}</b><span>${esc(v)}</span></div>` : '';
-        const itensHtml = itens.map((it, i) => {
-            const c = it.tb_mandado_cumprimentos, p = c.tb_pessoas || {}, man = c.tb_mandados || {};
-            return `<div class="rl-item"><div class="rl-item-h">${i + 1}. ${esc((p.nome_completo || '—').toUpperCase())}${p.cpf ? ` · CPF ${esc(p.cpf)}` : ''}</div>
-                <div class="rl-grid">${campo('Mandado', [man.numero_mandado, man.tipo_mandado].filter(Boolean).join(' · '))}${campo('Processo', man.processo)}${campo('Vara/Comarca', man.vara_comarca)}${campo('Endereço', endRelop(c.tb_enderecos))}${campo('Data/hora', dtBr(c.data_hora))}${campo('Situação', c.situacao)}${campo('Resultado', (c.resultado || '').replace(/_/g, ' '))}</div>
-                ${c.relato ? `<div class="rl-relato">${esc(c.relato)}</div>` : ''}${it.observacao ? `<div class="rl-relato"><i>Obs.: ${esc(it.observacao)}</i></div>` : ''}</div>`;
-        }).join('');
+        const lv = (l, v) => `<div class="rl-lv"><b>${esc(l)}:</b> ${esc(vR(v))}</div>`;
+        const processos = uniq(itens.map(i => i.processo)).join(' / ');
+        const itensHtml = itens.map(it => `<div class="rl-item"><div class="rl-item-h">${it.ordem}. ${esc(vR(it.pessoaNome))}${it.vulgos ? ` — VULGO: ${esc(it.vulgos.toUpperCase())}` : ''}${it.cpf ? ` · CPF ${esc(it.cpf)}` : ''}</div>
+            ${lv('ENDEREÇO DO CUMPRIMENTO', it.enderecoLabel)}${lv('DATA DO CUMPRIMENTO', it.dataHora ? fmtDataBR(it.dataHora) : null)}${lv('AUTOS Nº', it.processo)}
+            ${lv('MATERIAL APREENDIDO', it.materiais.length ? it.materiais.join('; ') : 'NADA ENCONTRADO.')}${lv('PESSOAS CONDUZIDAS/PRESAS', it.pessoasConduzidas.length ? it.pessoasConduzidas.join('; ') : null)}
+            ${it.relato ? `<div class="rl-relato">${esc(it.relato)}</div>` : ''}${it.observacao ? `<div class="rl-relato"><i>Obs.: ${esc(plain(it.observacao))}</i></div>` : ''}</div>`).join('');
+        const paras = narrToParas(rl.narrativa).length ? narrToParas(rl.narrativa) : narrativaPadrao(itens);
         return `<div class="rl-doc">
-            <div class="rl-head"><div class="rl-num">RELOP Nº ${esc(rl.numero || '—')}</div>${jaOp ? '<span class="p2-badge verde" style="font-size:.62rem">Operação já criada</span>' : ''}</div>
-            <div class="rl-grid">${campo('Data', dataBr(rl.data_documento))}${campo('Operação', rl.operacao)}${campo('Assunto', rl.assunto)}${campo('Referente', rl.referente)}${campo('Origem', rl.origem)}${campo('Difusão', rl.difusao)}${campo('Status', rl.status)}</div>
-            ${rl.narrativa ? `<div class="rl-sec"><h4>Narrativa</h4><div class="rl-text">${esc(rl.narrativa)}</div></div>` : ''}
-            ${rl.observacoes ? `<div class="rl-sec"><h4>Observações</h4><div class="rl-text">${esc(rl.observacoes)}</div></div>` : ''}
-            ${itensHtml ? `<div class="rl-sec"><h4>Cumprimentos / Alvos (${itens.length})</h4>${itensHtml}</div>` : ''}
-            ${imgs.length ? `<div class="rl-sec"><h4>Imagens (${imgs.length})</h4><div class="rl-imgs">${imgs.map(a => `<figure class="rl-img"><img data-apath="${esc(a.arquivo_path)}" data-abucket="${esc(a.bucket_id || 'midia')}" alt="${esc(a.legenda || '')}">${a.legenda ? `<figcaption>${esc(a.legenda)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
-            ${docs.length ? `<div class="rl-sec"><h4>Anexos (${docs.length})</h4>${docs.map(a => `<div class="op-anexo"><span class="fic">📄</span><span class="nm"><b>${esc(a.arquivo_nome || 'documento')}</b><a href="#" data-adoc="${esc(a.id)}">abrir</a></span></div>`).join('')}</div>` : ''}
-            ${!itensHtml && !rl.narrativa && !imgs.length && !docs.length ? '<div class="fa-vazio" style="color:var(--p2-txt-dim2)">Este RELOP ainda não tem conteúdo detalhado (narrativa, cumprimentos ou anexos).</div>' : ''}
+            <div class="rl-head"><div class="rl-num">RELOP Nº ${esc(cabNum(rl.numero))}</div>${jaOp ? '<span class="p2-badge verde" style="font-size:.62rem">Operação já criada</span>' : ''}</div>
+            <div class="rl-grid">${campo('Data', fmtDataBR(rl.data_documento))}${campo('Operação', rl.operacao)}${campo('Assunto', rl.assunto)}${campo('Referente aos autos nº', rl.referente || processos)}${campo('Origem', rl.origem)}${campo('Difusão', rl.difusao)}${campo('Anexos', doc.anexos && doc.anexos.length ? tituloAnexoA(itens.length) : 'SEM ANEXOS')}</div>
+            ${paras.length ? `<div class="rl-sec"><h4>Narrativa</h4><div class="rl-text">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div></div>` : ''}
+            ${itensHtml ? `<div class="rl-sec"><h4>Relação de alvos (${itens.length})</h4>${itensHtml}</div>` : ''}
+            ${rl.observacoes ? `<div class="rl-sec"><h4>Resumo / Observações</h4><div class="rl-text">${esc(rl.observacoes)}</div></div>` : ''}
+            ${imgs.length ? `<div class="rl-sec"><h4>Imagens (${imgs.length})</h4><div class="rl-imgs">${imgs.map(a => `<figure class="rl-img"><img data-apath="${esc(a.arquivo_path)}" data-abucket="${esc(a.bucket_id || 'midia')}" alt="${esc(a.legenda || tipoAnexoLabel(a.tipo_documento))}">${a.legenda ? `<figcaption>${esc(a.legenda)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
+            ${docs.length ? `<div class="rl-sec"><h4>Documentos anexados (${docs.length})</h4>${docs.map(a => `<div class="op-anexo"><span class="fic">📄</span><span class="nm"><b>${esc(a.arquivo_nome || tipoAnexoLabel(a.tipo_documento))}</b><a href="#" data-adoc="${esc(a.id)}">abrir</a></span></div>`).join('')}</div>` : ''}
+            ${!itensHtml && !paras.length && !imgs.length && !docs.length ? '<div class="fa-vazio" style="color:var(--p2-txt-dim2)">Este RELOP ainda não tem conteúdo detalhado (narrativa, cumprimentos ou anexos).</div>' : ''}
         </div>`;
     }
+    let doc = null; // documento RELOP atualmente aberto na prévia
     async function verRelop(r) {
         modal('RELOP ' + (r.numero || ''), '<div class="fa-vazio">⏳ Carregando RELOP…</div>', '', 920);
         const box = document.getElementById('op-modal-b');
-        let doc;
         try { doc = await carregarRelopDoc(r); } catch (e) { box.innerHTML = `<div class="fa-vazio" style="color:var(--p2-amber)">Erro ao carregar RELOP: ${esc(e.message)}</div>`; return; }
         const rl = doc.relop, jaOp = opDoRelop(r);
-        const imgs = doc.anexos.filter(a => /^image\//.test(a.arquivo_mime || ''));
-        const docs = doc.anexos.filter(a => !/^image\//.test(a.arquivo_mime || ''));
+        const imgs = doc.anexos.filter(a => /^image\//.test(a.arquivo_mime || '') || /\.(png|jpe?g|gif|webp)$/i.test(a.arquivo_nome || ''));
+        const docs = doc.anexos.filter(a => !(imgs.indexOf(a) >= 0));
         box.innerHTML = relopHtml(rl, doc.itens, imgs, docs, jaOp);
         box.querySelectorAll('img[data-apath]').forEach(async im => { im.onclick = () => { if (im.src) abrirImagem(im.src, im.alt); }; const u = await sb.signUrl(im.dataset.abucket || 'midia', im.dataset.apath, 1800).catch(() => null); if (u) im.src = u; else im.outerHTML = '<div class="rl-imgfail">imagem indisponível</div>'; });
         box.querySelectorAll('[data-adoc]').forEach(a => a.onclick = async ev => { ev.preventDefault(); const an = doc.anexos.find(x => String(x.id) === a.dataset.adoc); if (!an) return; const u = await sb.signUrl(an.bucket_id || 'midia', an.arquivo_path, 600).catch(() => null); if (u) window.open(u, '_blank'); else alert('Não foi possível abrir o anexo.'); });
         const f = document.getElementById('op-modal-f');
         f.innerHTML = `<button class="p2-btn" onclick="document.getElementById('op-modal').classList.remove('aberto')">Fechar</button>
-            <button class="p2-btn" id="rl-print"><i class="fa-solid fa-print"></i> Imprimir</button>
+            <button class="p2-btn" id="rl-print"><i class="fa-solid fa-print"></i> Imprimir (modelo oficial)</button>
             <button class="p2-btn pri" id="rl-op">${jaOp ? '<i class="fa-solid fa-folder-open"></i> Abrir operação' : '<i class="fa-solid fa-plus"></i> Criar operação'}</button>`;
-        document.getElementById('rl-print').onclick = () => imprimirRelopDoc(rl, doc.itens, imgs, docs);
+        document.getElementById('rl-print').onclick = () => imprimirRelopDoc(doc);
         document.getElementById('rl-op').onclick = () => { if (jaOp) { fecharModal(); abrirWorkspace(jaOp); } else formOperacao(null, r); };
     }
-    async function imprimirRelopDoc(rl, itens, imgs) {
-        const assinadas = [];
-        for (const a of imgs) { const u = await sb.signUrl(a.bucket_id || 'midia', a.arquivo_path, 1800).catch(() => null); if (u) assinadas.push({ u, leg: a.legenda }); }
-        const linha = (l, v) => v ? `<tr><td class="l">${esc(l)}</td><td>${esc(v)}</td></tr>` : '';
-        const itensP = itens.map((it, i) => {
-            const c = it.tb_mandado_cumprimentos, p = c.tb_pessoas || {}, man = c.tb_mandados || {};
-            return `<div class="pit"><h3>${i + 1}. ${esc((p.nome_completo || '—').toUpperCase())}${p.cpf ? ` — CPF ${esc(p.cpf)}` : ''}</h3><table>${linha('Mandado', [man.numero_mandado, man.tipo_mandado].filter(Boolean).join(' · '))}${linha('Processo', man.processo)}${linha('Vara/Comarca', man.vara_comarca)}${linha('Endereço', endRelop(c.tb_enderecos))}${linha('Data/hora', dtBr(c.data_hora))}${linha('Situação', c.situacao)}${linha('Resultado', (c.resultado || '').replace(/_/g, ' '))}</table>${c.relato ? `<p class="rel">${esc(c.relato)}</p>` : ''}</div>`;
-        }).join('');
-        const html = `<div class="relop-print">
-            <h1>RELATÓRIO OPERACIONAL · RELOP Nº ${esc(rl.numero || '—')}</h1>
-            <table class="cab">${linha('Data', dataBr(rl.data_documento))}${linha('Operação', rl.operacao)}${linha('Assunto', rl.assunto)}${linha('Referente', rl.referente)}${linha('Origem', rl.origem)}${linha('Difusão', rl.difusao)}</table>
-            ${rl.narrativa ? `<h2>Narrativa</h2><p>${esc(rl.narrativa).replace(/\n/g, '<br>')}</p>` : ''}
-            ${rl.observacoes ? `<h2>Observações</h2><p>${esc(rl.observacoes).replace(/\n/g, '<br>')}</p>` : ''}
-            ${itensP ? `<h2>Cumprimentos / Alvos</h2>${itensP}` : ''}
-            ${assinadas.length ? `<h2>Imagens</h2><div class="imgs">${assinadas.map(a => `<figure><img src="${esc(a.u)}">${a.leg ? `<figcaption>${esc(a.leg)}</figcaption>` : ''}</figure>`).join('')}</div>` : ''}
+    // Impressão fiel ao modelo oficial do Echelon (cabeçalho institucional,
+    // avisos ACESSO RESTRITO em cada página, campos, RELAÇÃO DE ALVOS e ANEXO A).
+    async function imprimirRelopDoc(documento) {
+        const rl = documento.relop, itens = documento.itens;
+        const btn = document.getElementById('rl-print'); if (btn) { btn.disabled = true; btn.textContent = 'Preparando impressão…'; }
+        const qtd = itens.length;
+        const tituloCumpr = qtd === 1 ? 'CUMPRIMENTO DE MANDADO' : 'CUMPRIMENTO DE MANDADOS';
+        const processos = uniq(itens.map(i => i.processo)).join(' / ');
+        const cp = (l, v) => `<div class="cp"><b>${esc(l)}:</b> ${esc(vR(v))}</div>`;
+        const lv = (l, v) => `<div class="lv"><b>${esc(l)}:</b> ${esc(vR(v))}</div>`;
+        const matHtml = m => { const v = (m || []).map(x => (x || '').trim()).filter(Boolean); if (!v.length) return lv('MATERIAL APREENDIDO', 'NADA ENCONTRADO.'); if (v.length === 1) return lv('MATERIAL APREENDIDO', v[0]); return `<div class="lv"><b>MATERIAL APREENDIDO:</b></div>` + v.map((x, i) => `<div class="ml">${esc(x.replace(/[;.]$/, ''))}${i === v.length - 1 ? '.' : ';'}</div>`).join(''); };
+        const paras = narrToParas(rl.narrativa).length ? narrToParas(rl.narrativa) : narrativaPadrao(itens);
+        const alvos = itens.map(it => `<div class="alvo"><div class="alvo-id">${it.ordem}. ${esc(vR(it.pessoaNome))}${it.vulgos ? ` — VULGO: ${esc(it.vulgos.toUpperCase())}` : ''}</div>
+            ${lv('ENDEREÇO DO CUMPRIMENTO', it.enderecoLabel)}${lv('DATA DO CUMPRIMENTO', it.dataHora ? fmtDataBR(it.dataHora) : null)}${lv('AUTOS Nº', it.processo)}${matHtml(it.materiais)}${lv('PESSOAS CONDUZIDAS/PRESAS', it.pessoasConduzidas.length ? it.pessoasConduzidas.join('; ') : null)}${it.observacao ? lv('OBSERVAÇÃO', plain(it.observacao)) : ''}</div>`).join('');
+        // ANEXO A (assina URLs; imagens incorporadas, PDFs com link)
+        let anexosHtml = '', primeiro = true;
+        for (const it of itens.filter(i => i.anexos.length)) {
+            for (const an of it.anexos) {
+                const u = await sb.signUrl(an.bucket_id || 'midia', an.arquivo_path, 1800).catch(() => null);
+                if (!u) continue;
+                const nome = tipoAnexoLabel(an.tipo_documento);
+                const autos = (it.processo && it.processo !== '—') ? it.processo : 'X-X-X-X';
+                const ident = `${esc(it.pessoaNome)} — AUTOS Nº ${esc(autos)} — ${esc(nome)}`;
+                const isImg = /^image\//.test(an.arquivo_mime || '') || /\.(png|jpe?g|gif|webp)$/i.test(an.arquivo_nome || '');
+                const corpo = isImg ? `<div class="anexo-img"><img src="${esc(u)}"></div>`
+                    : `<div class="anexo-note">Documento anexado ao RELOP (${esc(nome)}). <a href="${esc(u)}" target="_blank">Abrir arquivo original</a>.<br><small>Formato preservado no arquivo original; não incorporado a esta impressão.</small></div>`;
+                anexosHtml += `<section class="anexo-pg">${primeiro ? `<div class="anexo-tit">${esc(tituloAnexoA(qtd))}</div>` : ''}<div class="anexo-id">${ident}</div>${corpo}</section>`;
+                primeiro = false;
+            }
+        }
+        const xsep = 'X' + '-X'.repeat(110);
+        const html = `<div class="relop-of">
+            <div class="run-top"><div class="wbox">${esc(WARN_TOP)}</div><div class="restrito">ACESSO RESTRITO</div></div>
+            <div class="run-bot"><div class="wbox wsmall">${esc(WARN_BOT)}</div><div class="restrito rsmall">ACESSO RESTRITO</div><div class="ts">Gerado em: ${esc(new Date().toLocaleString('pt-BR'))} — SISTEMA P3 / 10º BPM</div></div>
+            <div class="inst"><img class="brasao" src="../img/brasao-pmal.png" onerror="this.style.display='none'"><img class="chancela" src="../img/chancela-direita.jfif" onerror="this.style.display='none'"><div class="inst-lines">${INST_LINES.map((l, i) => `<div class="${i < 3 ? 'b' : ''}${i === 5 ? ' em' : ''}">${esc(l)}</div>`).join('')}</div><hr></div>
+            <div class="titulo">RELOP - ${esc(tituloCumpr)} - Nº ${esc(cabNum(rl.numero))} - ${esc(fmtDataBR(rl.data_documento))}</div>
+            <div class="campos">${cp('DATA', fmtDataBR(rl.data_documento))}${cp('ASSUNTO', rl.assunto)}${cp('REFERENTE AOS AUTOS Nº', rl.referente || processos)}${cp('ORIGEM', rl.origem)}${cp('DIFUSÃO', rl.difusao)}${cp('DIFUSÃO ANTERIOR', rl.difusao_anterior)}${cp('REFERÊNCIA', rl.referencia)}${cp('OPERAÇÃO', rl.operacao)}${cp('ANEXOS', documento.anexos.length ? tituloAnexoA(qtd) : 'SEM ANEXOS')}</div>
+            ${paras.length ? `<div class="narr">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
+            ${itens.length ? `<hr class="sep"><div class="sec-h">RELAÇÃO DE ALVOS</div>${alvos}` : ''}
+            ${rl.observacoes ? `<div class="sec-h">RESUMO / OBSERVAÇÕES</div><div class="obs">${esc(rl.observacoes)}</div>` : ''}
+            <div class="xsep">${xsep}</div>
+            ${anexosHtml}
         </div>
-        <style>.relop-print{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:760px;margin:0 auto}
-        .relop-print h1{font-size:15px;text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin:0 0 12px}
-        .relop-print h2{font-size:13px;border-bottom:1px solid #999;margin:18px 0 8px;padding-bottom:3px}
-        .relop-print table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}
-        .relop-print td{padding:4px 7px;border:1px solid #ccc;vertical-align:top}
-        .relop-print td.l{font-weight:bold;width:130px;background:#f3f3f3}
-        .relop-print p{font-size:12px;line-height:1.5;text-align:justify}
-        .relop-print .pit{margin:10px 0;page-break-inside:avoid}
-        .relop-print .pit h3{font-size:12px;margin:8px 0 4px;background:#eee;padding:4px 6px}
-        .relop-print .rel{white-space:pre-wrap}
-        .relop-print .imgs{display:flex;flex-wrap:wrap;gap:12px}
-        .relop-print figure{margin:0;width:230px;page-break-inside:avoid}
-        .relop-print img{width:100%;border:1px solid #999}
-        .relop-print figcaption{font-size:10px;color:#444;margin-top:2px}</style>`;
+        <style>
+        @page{ size:A4; margin:30mm 14mm 32mm 14mm; }
+        .relop-of{ font-family:Arial,Helvetica,sans-serif; color:#000; font-size:11px; }
+        .relop-of .run-top,.relop-of .run-bot{ position:fixed; left:14mm; right:14mm; }
+        .relop-of .run-top{ top:5mm; } .relop-of .run-bot{ bottom:4mm; }
+        .relop-of .wbox{ border:1px solid #b40000; color:#b40000; font-style:italic; font-size:6px; line-height:1.3; padding:3px 6px; text-align:center; }
+        .relop-of .wbox.wsmall{ font-size:5px; }
+        .relop-of .restrito{ background:#b40000; color:#fff; font-weight:bold; font-size:7px; text-align:center; width:52mm; margin:3px auto 0; padding:1.5px 0; }
+        .relop-of .restrito.rsmall{ width:44mm; font-size:6px; }
+        .relop-of .run-bot .ts{ text-align:center; color:#777; font-size:6px; margin-top:2px; }
+        .relop-of .inst{ position:relative; text-align:center; margin-bottom:4px; min-height:22mm; }
+        .relop-of .inst .brasao{ position:absolute; left:0; top:0; width:17mm; }
+        .relop-of .inst .chancela{ position:absolute; right:0; top:0; width:15mm; }
+        .relop-of .inst-lines div{ font-size:8px; line-height:1.55; }
+        .relop-of .inst-lines div.b{ font-weight:bold; }
+        .relop-of .inst-lines div.em{ font-size:7px; color:#333; }
+        .relop-of .inst hr{ border:0; border-top:1px solid #000; margin:5px 0 0; }
+        .relop-of .titulo{ text-align:center; font-weight:bold; font-size:11px; margin:8px 0; }
+        .relop-of .campos .cp{ font-size:9px; margin:1.6px 0; }
+        .relop-of .narr{ margin:8px 0; }
+        .relop-of .narr p{ font-size:11px; line-height:1.5; text-align:justify; text-indent:10mm; margin:0 0 4px; }
+        .relop-of .sep{ border:0; border-top:1px solid #aaa; margin:8px 0 4px; }
+        .relop-of .sec-h{ font-weight:bold; font-size:10px; margin:9px 0 4px; }
+        .relop-of .alvo{ margin-bottom:6px; page-break-inside:avoid; }
+        .relop-of .alvo-id{ font-weight:bold; font-size:9px; margin-bottom:1px; }
+        .relop-of .lv,.relop-of .ml{ font-size:9px; line-height:1.45; }
+        .relop-of .obs{ font-size:9px; line-height:1.5; white-space:pre-wrap; }
+        .relop-of .xsep{ font-weight:bold; font-size:9px; overflow:hidden; white-space:nowrap; margin:6px 0; }
+        .relop-of .anexo-pg{ page-break-before:always; }
+        .relop-of .anexo-tit{ text-align:center; font-weight:bold; font-size:12px; margin-bottom:6px; }
+        .relop-of .anexo-id{ font-weight:bold; font-size:8.5px; margin-bottom:5px; }
+        .relop-of .anexo-img{ text-align:center; } .relop-of .anexo-img img{ max-width:100%; max-height:215mm; object-fit:contain; }
+        .relop-of .anexo-note{ font-size:9px; border:1px solid #bbb; padding:8px; }
+        </style>`;
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-print"></i> Imprimir (modelo oficial)'; }
         P2.imprimirDoc(html);
     }
 
