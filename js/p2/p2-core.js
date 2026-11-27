@@ -269,7 +269,7 @@
         el.innerHTML = html;
         if (!document.getElementById('p2-print-style')) {
             const s = document.createElement('style'); s.id = 'p2-print-style';
-            s.textContent = '#p2-print-area{display:none}@media print{body.p2-body>.p2-app{display:none!important}body.p2-body{background:#fff!important}#p2-print-area{display:block!important}@page{margin:14mm}}';
+            s.textContent = '#p2-print-area{display:none}@media print{body.p2-body>*{display:none!important}#p2-print-area{display:block!important}body.p2-body{background:#fff!important}@page{margin:14mm}}';
             document.head.appendChild(s);
         }
         setTimeout(() => window.print(), 60);
