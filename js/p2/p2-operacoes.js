@@ -33,6 +33,8 @@
 
     let OPS = [], EQUIPES = {}, CIDADES = {}, filtro = { q: '', status: 'todas' };
     let OP = null, VINC = [], DBURL = null;
+    let RELOPS = [];                    // RELOPs já produzidos (tb_relops do Echelon)
+    let prefRelop = null;              // RELOP de origem ao criar operação (provisão p/ salvar)
     let vista = 'calendario';           // 'calendario' (padrão) | 'lista'
     let calRef = new Date();            // mês exibido no calendário
     const MESES = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
@@ -62,6 +64,7 @@
                 sb.get('tb_cidades', 'select=id,nome&ativo=eq.true&order=nome').catch(() => []),
             ]);
             (eqs || []).forEach(e => EQUIPES[e.id] = e.nome); (cids || []).forEach(c => CIDADES[c.id] = c.nome);
+            try { RELOPS = await sb.get('tb_relops', 'select=id,numero,data_documento,operacao,assunto,referente,narrativa,observacoes,status,arquivo_path&order=data_documento.desc.nullslast&limit=300'); } catch (e) { RELOPS = []; }
             await carregarOps();
         } catch (e) { erroFatal(e); }
     }
@@ -121,28 +124,44 @@
     function dStr(v) { const m = String(v || '').slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; }
     const ymd = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 
+    // Operação já criada a partir de um RELOP (dedup por código == número do RELOP).
+    function opDoRelop(r) {
+        const num = String(r.numero || '').trim();
+        return num ? OPS.find(o => String(o.codigo || '').trim() === num) : null;
+    }
+    function relopsFiltrados() {
+        let l = RELOPS.slice();
+        if (filtro.q) l = l.filter(r => [r.numero, r.operacao, r.assunto, r.referente].join(' ').toLowerCase().includes(filtro.q));
+        return l;
+    }
     function renderCalendario() {
         const lista = opsFiltradas(), box = document.getElementById('op-vista');
         const ref = calRef, ano = ref.getFullYear(), mes = ref.getMonth();
         const hoje = ymd(new Date());
         // mapa dia(YYYY-MM-DD) → operações que ocorrem nele (span início..fim)
-        const porDia = {}; const semData = [];
+        const porDia = {}, relopDia = {}; const semData = [];
         lista.forEach(o => {
             const ini = dStr(o.data_inicio), fim = dStr(o.data_fim) || ini;
             if (!ini) { semData.push(o); return; }
             const a = ini, b = (fim && fim >= ini) ? fim : ini;
             for (let d = new Date(a); d <= b; d.setDate(d.getDate() + 1)) { (porDia[ymd(d)] = porDia[ymd(d)] || []).push(o); }
         });
+        // RELOPs já produzidos — só os que ainda NÃO viraram operação (os já
+        // importados aparecem como a própria operação). Posicionados em data_documento.
+        const relopsPend = relopsFiltrados().filter(r => !opDoRelop(r));
+        relopsPend.forEach(r => { const d = dStr(r.data_documento); if (d) (relopDia[ymd(d)] = relopDia[ymd(d)] || []).push(r); });
         const primeiro = new Date(ano, mes, 1), obrigado = new Date(ano, mes + 1, 0).getDate();
         const offset = primeiro.getDay();
         let celulas = '';
         for (let i = 0; i < offset; i++) celulas += '<div class="op-cal-cel vazio"></div>';
         for (let dia = 1; dia <= obrigado; dia++) {
             const key = ano + '-' + String(mes + 1).padStart(2, '0') + '-' + String(dia).padStart(2, '0');
-            const ops = porDia[key] || [];
-            const chips = ops.slice(0, 4).map(o => `<span class="op-cal-chip st-${esc(o.status || 'planejamento')}" data-op="${esc(o.id)}" title="${esc(o.titulo || '')}">${esc(o.titulo || 'Operação')}</span>`).join('');
-            const mais = ops.length > 4 ? `<span class="op-cal-mais">+${ops.length - 4}</span>` : '';
-            celulas += `<div class="op-cal-cel${key === hoje ? ' hoje' : ''}${ops.length ? ' tem' : ''}"><div class="op-cal-num">${dia}</div>${chips}${mais}</div>`;
+            const ops = porDia[key] || [], rls = relopDia[key] || [];
+            const chipsOp = ops.slice(0, 4).map(o => `<span class="op-cal-chip st-${esc(o.status || 'planejamento')}" data-op="${esc(o.id)}" title="${esc(o.titulo || '')}">${esc(o.titulo || 'Operação')}</span>`).join('');
+            const chipsRl = rls.slice(0, 3).map(r => `<span class="op-cal-chip relop" data-relop="${esc(r.id)}" title="RELOP ${esc(r.numero || '')} — clique para criar a operação">📄 ${esc(r.operacao || r.assunto || ('RELOP ' + (r.numero || '')))}</span>`).join('');
+            const tot = ops.length + rls.length;
+            const mais = tot > 7 ? `<span class="op-cal-mais">+${tot - 7}</span>` : '';
+            celulas += `<div class="op-cal-cel${key === hoje ? ' hoje' : ''}${tot ? ' tem' : ''}"><div class="op-cal-num">${dia}</div>${chipsOp}${chipsRl}${mais}</div>`;
         }
         box.innerHTML = `
             <div class="op-cal-bar">
@@ -150,9 +169,11 @@
                 <div class="op-cal-titulo">${MESES[mes]} <b>${ano}</b></div>
                 <button class="p2-btn" id="cal-next"><i class="fa-solid fa-chevron-right"></i></button>
                 <button class="p2-btn" id="cal-hoje" style="margin-left:8px">Hoje</button>
+                ${relopsPend.length ? `<button class="p2-btn" id="cal-import" title="Criar operações a partir dos RELOPs já produzidos"><i class="fa-solid fa-file-import"></i> Importar RELOPs (${relopsPend.length})</button>` : ''}
                 <span class="op-cal-leg" style="margin-left:auto">
                     <span><i class="dot st-planejamento"></i>Planejamento</span><span><i class="dot st-em_andamento"></i>Em andamento</span>
                     <span><i class="dot st-concluida"></i>Concluída</span><span><i class="dot st-cancelada"></i>Cancelada</span>
+                    <span><i class="dot relop"></i>RELOP produzido</span>
                 </span>
             </div>
             <div class="op-cal-grade">
@@ -160,11 +181,46 @@
                 ${celulas}
             </div>
             ${semData.length ? `<div class="op-cal-semdata"><h3><i class="fa-regular fa-calendar-xmark"></i> Sem data definida (${semData.length})</h3><div class="op-grid">${semData.map(cardOp).join('')}</div></div>` : ''}
-            ${!lista.length ? `<div class="p2-empty"><div class="ic">📁</div><h3>Nenhuma operação</h3><p>Clique em “Nova operação”.</p></div>` : ''}`;
+            ${!lista.length && !relopsPend.length ? `<div class="p2-empty"><div class="ic">📁</div><h3>Nenhuma operação</h3><p>Clique em “Nova operação”.</p></div>` : ''}`;
         document.getElementById('cal-prev').onclick = () => { calRef = new Date(ano, mes - 1, 1); renderCalendario(); };
         document.getElementById('cal-next').onclick = () => { calRef = new Date(ano, mes + 1, 1); renderCalendario(); };
         document.getElementById('cal-hoje').onclick = () => { calRef = new Date(); renderCalendario(); };
+        const bi = document.getElementById('cal-import'); if (bi) bi.onclick = () => importarRelops(relopsPend);
+        box.querySelectorAll('[data-relop]').forEach(c => c.onclick = () => { const r = RELOPS.find(x => String(x.id) === c.dataset.relop); if (r) abrirRelop(r); });
         bindOps(box);
+    }
+    // Clique num RELOP: abre a operação já criada dele, ou o formulário pré-preenchido.
+    function abrirRelop(r) {
+        const o = opDoRelop(r); if (o) return abrirWorkspace(o);
+        formOperacao(null, r);
+    }
+    // Mapeia um RELOP (tb_relops) → campos da operação da P2.
+    function prefillDeRelop(r) {
+        return {
+            codigo: r.numero || '',
+            titulo: r.operacao || r.assunto || ('RELOP ' + (r.numero || '')),
+            status: (r.status === 'finalizado' || r.finalizado_em) ? 'concluida' : 'em_andamento',
+            data_inicio: String(r.data_documento || '').slice(0, 10),
+            data_fim: String(r.data_documento || '').slice(0, 10),
+            objetivo: [r.assunto, r.referente].filter(Boolean).join(' — '),
+            observacoes: r.observacoes || '',
+            relop_texto: r.narrativa || '',
+        };
+    }
+    // Importa em lote: cria uma operação para cada RELOP ainda não importado.
+    async function importarRelops(pend) {
+        if (!pend || !pend.length) return;
+        if (!confirm(`Criar ${pend.length} operação(ões) a partir dos RELOPs já produzidos?\nOs RELOPs já importados são ignorados.`)) return;
+        let ok = 0, erros = 0;
+        for (const r of pend) {
+            const p = prefillDeRelop(r);
+            try {
+                await sb.insert('tb_p2_operacoes', { codigo: p.codigo || null, titulo: p.titulo, status: p.status, data_inicio: p.data_inicio || null, data_fim: p.data_fim || null, objetivo: p.objetivo || null, observacoes: p.observacoes || null, relop_texto: p.relop_texto || null, relop_ia: { origem_relop_id: r.id, numero: r.numero }, atualizado_em: new Date().toISOString() });
+                ok++;
+            } catch (e) { erros++; }
+        }
+        alert(`Importação concluída: ${ok} criada(s)${erros ? ', ' + erros + ' com erro' : ''}.`);
+        await carregarOps();
     }
     function cardOp(o) {
         const st = STATUS[o.status] || STATUS.planejamento;
@@ -177,8 +233,9 @@
     }
 
     // ── FORM de operação ──────────────────────────────────────────────
-    function formOperacao(o) {
-        const v = o || {};
+    function formOperacao(o, relopPre) {
+        prefRelop = (!o && relopPre) ? relopPre : null;
+        const v = o || (prefRelop ? prefillDeRelop(prefRelop) : {});
         const optsEq = '<option value="">—</option>' + Object.keys(EQUIPES).map(id => `<option value="${esc(id)}"${v.equipe_id === id ? ' selected' : ''}>${esc(EQUIPES[id])}</option>`).join('');
         const optsCid = '<option value="">—</option>' + Object.keys(CIDADES).map(id => `<option value="${esc(id)}"${v.cidade_id === id ? ' selected' : ''}>${esc(CIDADES[id])}</option>`).join('');
         modal(o ? 'Editar operação' : 'Nova operação', `
@@ -203,8 +260,11 @@
         const titulo = g('f-tit').trim(), msg = document.getElementById('f-msg');
         if (!titulo) { msg.className = 'pm-msg erro'; msg.textContent = 'O título é obrigatório.'; return; }
         const payload = { codigo: g('f-cod').trim() || null, titulo, status: g('f-status'), equipe_id: g('f-eq') || null, cidade_id: g('f-cid') || null, data_inicio: g('f-ini') || null, data_fim: g('f-fim') || null, area: g('f-area').trim() || null, objetivo: g('f-obj').trim() || null, observacoes: g('f-obs').trim() || null, atualizado_em: new Date().toISOString() };
+        // Criando a partir de um RELOP já produzido: leva a narrativa e a proveniência.
+        if (!o && prefRelop) { payload.relop_texto = prefRelop.narrativa || null; payload.relop_ia = { origem_relop_id: prefRelop.id, numero: prefRelop.numero }; }
         try {
             const nova = o ? (await sb.patch('tb_p2_operacoes', 'id=eq.' + o.id, payload))[0] : (await sb.insert('tb_p2_operacoes', payload))[0];
+            prefRelop = null;
             fecharModal(); await carregarOps();
             const o2 = OPS.find(x => String(x.id) === String(nova.id)); if (o2) abrirWorkspace(o2);
         } catch (e) { msg.className = 'pm-msg erro'; msg.textContent = 'Erro ao salvar: ' + e.message; }
@@ -440,27 +500,32 @@
         for (const r of rotulos) { const k = Object.keys(linha).find(c => c.trim().toLowerCase() === r.toLowerCase()); if (k && linha[k] != null && String(linha[k]).trim()) return String(linha[k]).trim(); }
         return '';
     }
-    // Normaliza 1 linha da grade "ocorrencias" do CAD pros campos que a tela usa
-    // (mesmo esquema de js/cadastroocorrencias.js:MAPA_GERAL + DATA/HORA).
-    function normOcorrencia(linha) {
-        const rawDH = valLinha(linha, ['Data da Ocorrência', 'Dia da Ocorrência', 'Data']);
-        let data = rawDH, hora = valLinha(linha, ['Hora da Ocorrência', 'Hora', 'Horário', 'HORA']);
-        if (rawDH.includes(' ')) { const p = rawDH.split(' '); data = p[0].trim(); if (!hora) hora = (p[1] || '').trim().substring(0, 5); }
+    // Normaliza 1 linha da grade "ocorrencias" do CAD. O backend
+    // (/cad/sincronizar-grade) JÁ devolve as chaves em MAIÚSCULAS
+    // (BOLETIM, DATA='dd/mm/aaaa', HORA, TIPIFICACAO_GERAL, CIDADE…) — ver
+    // cad_grades.py:_extrair_ocorrencias_geral. Lemos a chave direta e só
+    // caímos nos rótulos em português como fallback (caminho Apps Script).
+    function normOcorrencia(o) {
+        const g = (chave, rotulos) => (o[chave] != null && String(o[chave]).trim()) ? String(o[chave]).trim() : valLinha(o, rotulos || []);
+        let data = g('DATA', ['Data da Ocorrência', 'Dia da Ocorrência', 'Data']);
+        let hora = g('HORA', ['Hora da Ocorrência', 'Hora', 'Horário']);
+        if (data.includes(' ')) { const p = data.split(' '); data = p[0].trim(); if (!hora) hora = (p[1] || '').trim().substring(0, 5); }
         return {
-            BOLETIM: valLinha(linha, ['Nº Ocorrência', 'Boletim', 'Ocorrência', 'Nº Boletim']).replace(/\D/g, '').substring(0, 7),
+            BOLETIM: g('BOLETIM', ['Nº Ocorrência', 'Boletim', 'Ocorrência', 'Nº Boletim']).replace(/\D/g, '').substring(0, 7),
             DATA: data || '', HORA: hora || '',
-            TIPIFICACAO_GERAL: valLinha(linha, ['Tipificação Geral']),
-            TIPIFICACAO: valLinha(linha, ['Tipicidade no Despacho', 'Tipificação no Despacho', 'Tipificacao']),
-            SOLUCAO: valLinha(linha, ['Solução', 'Solucao']),
-            CIDADE: valLinha(linha, ['Cidade', 'Município']),
-            BAIRRO: valLinha(linha, ['Bairro']),
-            LOGRADOURO: valLinha(linha, ['Logradouro', 'Endereço']),
-            ESTABELECIMENTO: valLinha(linha, ['Estabelecimento', 'Local']),
-            LATITUDE: valLinha(linha, ['Latitude (Abertura de Ocor.)', 'Latitude']),
-            LONGITUDE: valLinha(linha, ['Longitude (Abertura de Ocor.)', 'Longitude']),
-            SOLICITANTE: valLinha(linha, ['Solicitante']),
-            ATENDIMENTO_INICIAL: valLinha(linha, ['Atendimento Inicial']),
-            TEXTO_DESPACHANTE: valLinha(linha, ['Texto do Despachante']),
+            TIPIFICACAO_GERAL: g('TIPIFICACAO_GERAL', ['Tipificação Geral']),
+            TIPIFICACAO: g('TIPIFICACAO', ['Tipicidade no Despacho', 'Tipificação no Despacho', 'Tipificacao']),
+            SITUACAO: g('SITUACAO', ['Situação', 'Status']),
+            SOLUCAO: g('SOLUCAO', ['Solução', 'Solucao']),
+            UNIDADE: g('UNIDADE', ['Unidade']),
+            TIPO_DESPACHO: g('TIPO_DESPACHO', ['Tipo no Despacho']),
+            CIDADE: g('CIDADE', ['Cidade', 'Município']),
+            BAIRRO: g('BAIRRO', ['Bairro']),
+            LOGRADOURO: g('LOGRADOURO', ['Logradouro', 'Endereço']),
+            SOLICITANTE: g('SOLICITANTE', ['Solicitante']),
+            ATENDENTE: g('ATENDENTE', ['Atendente']),
+            LATITUDE: g('LATITUDE', ['Latitude (Abertura de Ocor.)', 'Latitude']),
+            LONGITUDE: g('LONGITUDE', ['Longitude (Abertura de Ocor.)', 'Longitude']),
         };
     }
     // base64 (puro ou data URL) → Blob, pra subir imagem do COP no bucket.

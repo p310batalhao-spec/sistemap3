@@ -41,6 +41,9 @@
 .op-cal-chip:hover { filter: brightness(1.08); }
 .op-cal-chip.st-em_andamento { background: #2f9e44; } .op-cal-chip.st-concluida { background: #868e96; }
 .op-cal-chip.st-cancelada { background: var(--p2-red); } .op-cal-chip.st-planejamento { background: var(--p2-accent); }
+.op-cal-chip.relop { background: var(--p2-amber-soft, rgba(217,160,0,.16)); color: var(--p2-amber); border-left: 3px dashed var(--p2-amber); font-weight: 700; }
+.op-cal-chip.relop:hover { background: var(--p2-amber); color: #1a1205; }
+.dot.relop { background: var(--p2-amber); }
 .op-cal-mais { font-size: .66rem; color: var(--p2-txt-dim2); font-weight: 700; }
 .op-cal-semdata { margin-top: 18px; }
 .op-cal-semdata h3 { font-size: .9rem; color: var(--p2-txt-dim); margin: 0 0 10px; display: flex; align-items: center; gap: 7px; }
