@@ -336,8 +336,16 @@
         let st;
         try { st = await P3AtualizadorLocal.authStatus(); } catch (e) { return; }
         if (!st || !st.ok || st.indisponivel) return;
-        const vencido = !(st.cad && st.cad.valido) || !(st.quimera && st.quimera.valido);
-        if (vencido) setTexto('⛔ Token vencido — clique para gerar');
+        // CORREÇÃO (27/11/2026): o badge dizia "Token vencido" se CAD OU
+        // Quimera estivesse inválido. Como o Quimera (2ª fonte de foto) dura
+        // só algumas horas, isso fazia parecer que o token do CAD recém-gerado
+        // tinha vencido. Agora o CAD é o PRINCIPAL; o Quimera só gera um aviso
+        // leve, sem mandar o usuário regerar o token do CAD à toa.
+        const cadVenc = !(st.cad && st.cad.valido);
+        const quiVenc = !(st.quimera && st.quimera.valido);
+        if (cadVenc) setTexto('⛔ Token do CAD vencido — clique para gerar');
+        else if (quiVenc) setTexto('⚠️ CAD ✅ · Quimera (2ª foto) vencido');
+        // CAD válido e Quimera válido → mantém o texto padrão (válido).
     }
 
     function montarBadge(container) {

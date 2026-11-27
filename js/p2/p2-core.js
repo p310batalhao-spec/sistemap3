@@ -57,6 +57,12 @@
         return r.json();
     }
 
+    async function sbDelete(tabela, filtro) {
+        const r = await fetch(SB_URL + '/rest/v1/' + tabela + '?' + filtro, { method: 'DELETE', headers: H });
+        if (!r.ok) throw new Error('Delete ' + tabela + ': HTTP ' + r.status + ' — ' + await r.text());
+        return true;
+    }
+
     // ── Storage (buckets privados do Echelon: 'denuncias', 'midia'…) ──
     // Sobe um File/Blob pro bucket. upsert=false por padrão (não sobrescreve).
     async function sbUpload(bucket, path, file, upsert) {
@@ -111,6 +117,7 @@
         // grupo Operacional
         { id: 'visao-operacional', grupo: 'Operacional', nome: 'Visão Operacional', sub: 'Dashboard', ic: 'fa-solid fa-gauge-high', url: 'p2.html', pronto: true },
         { id: 'missoes', grupo: 'Operacional', nome: 'Missões', sub: 'Disque-denúncia → Ficha Alvo', ic: 'fa-solid fa-bullseye', url: 'p2-missoes.html', pronto: true },
+        { id: 'controle-operacoes-p2', grupo: 'Operacional', nome: 'Controle de Operações', sub: 'Operações da P2 + RELOP', ic: 'fa-solid fa-calendar-check', url: 'p2-operacoes.html', pronto: true },
         { id: 'tarefas-analista', grupo: 'Operacional', nome: 'Tarefas do Analista', sub: 'Revisão / decisão', ic: 'fa-solid fa-list-check', url: 'p2-tarefas.html', pronto: true },
         { id: 'apresentacao-equipe', grupo: 'Operacional', nome: 'Apresentação da Equipe', sub: '', ic: 'fa-solid fa-users', url: 'p2-apresentacao.html', pronto: true },
         { id: 'relatorio-servico', grupo: 'Operacional', nome: 'Relatório de Serviço', sub: '', ic: 'fa-solid fa-file-pen', url: 'p2-relservico.html', pronto: true },
@@ -174,6 +181,7 @@
             + '    <small id="p2-top-sub">' + esc(opts.sub || '') + '</small></div>'
             + '  <div class="p2-top-actions">'
             + '    <div class="p2-clock" id="p2-clock"></div>'
+            + '    <span id="clm-badge-topbar" class="clm-badge-topbar" title="Status do login CAD / Quimera"></span>'
             + '    <a class="p2-btn ia" href="ia_xerife.html" title="Xerife — IA do P3"><span class="p2-btn-ic"><i class="fa-solid fa-robot"></i></span><span class="rotulo">Xerife</span></a>'
             + '    <a class="p2-btn" href="solucoesia.html" title="Voltar ao Sistema P3"><span class="p2-btn-ic"><i class="fa-solid fa-house"></i></span><span class="rotulo">Voltar ao P3</span></a>'
             + '    <button id="btn-tema" class="p2-btn-tema" type="button" title="Alternar tema claro/escuro" aria-label="Alternar tema">'
@@ -230,7 +238,26 @@
             return null;
         }
         opts.sessao = sessao || {};
-        return montarShell(opts);
+        const conteudo = montarShell(opts);
+        carregarCadGlobal();
+        return conteudo;
+    }
+
+    // CAD em TODAS as páginas do P2 (pedido do usuário): disponibiliza
+    // window.P3AtualizadorLocal (dados do CAD) e o badge de status CAD/
+    // Quimera no topbar (login único + auto-check), carregando sob demanda.
+    function carregarCadGlobal() {
+        function carrega(src, cb) {
+            if (document.querySelector('script[data-p2cad="' + src + '"]')) { if (cb) cb(); return; }
+            const s = document.createElement('script'); s.src = '../js/core/' + src; s.async = false;
+            s.setAttribute('data-p2cad', src); s.onload = () => { if (cb) cb(); }; document.body.appendChild(s);
+        }
+        if (!window.P3AtualizadorLocal) carrega('atualizador-local.js');
+        function montaBadge() {
+            const c = document.getElementById('clm-badge-topbar');
+            if (c && window.CadLoginModal && CadLoginModal.montarBadge && !c.dataset.pronto) { c.dataset.pronto = '1'; try { CadLoginModal.montarBadge(c); } catch (e) {} }
+        }
+        if (window.CadLoginModal) montaBadge(); else carrega('cad-login-modal.js', montaBadge);
     }
 
     // ── Impressão de documento ───────────────────────────────────────
@@ -252,7 +279,7 @@
     window.P2 = {
         iniciar, MODULOS, moduloPorId, esc, slugify, icone, imprimirDoc,
         sb: {
-            url: SB_URL, get: sbGet, count: sbCount, insert: sbInsert, patch: sbPatch,
+            url: SB_URL, get: sbGet, count: sbCount, insert: sbInsert, patch: sbPatch, del: sbDelete,
             upload: sbUpload, signUrl: sbSignUrl, caminhoDenuncia, headers: H,
         },
     };

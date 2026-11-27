@@ -146,6 +146,8 @@ body.p2-body {
 .p2-top-tit b { font-size: 1.02rem; font-weight: 800; color: var(--p2-txt-strong); letter-spacing: -.01em; }
 .p2-top-tit small { font-size: .72rem; color: var(--p2-txt-dim); }
 .p2-top-actions { margin-left: auto; display: flex; align-items: center; gap: 9px; }
+.clm-badge-topbar { display: inline-flex; align-items: center; }
+.clm-badge-topbar .clm-badge { cursor: pointer; }
 
 /* Relógio (dia da semana + hora) */
 .p2-clock { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; padding-right: 2px; }
