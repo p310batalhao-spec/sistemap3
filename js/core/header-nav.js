@@ -194,6 +194,11 @@
         { id: 'controle-operacoes', href: 'page/controle-operacoes.html', label: 'Controle de Operações',
           icone: 'https://img.icons8.com/ios/50/planner.png', w: 48, h: 48,
           titulo: 'Calendário de operações (OPO) e eventos, resultados, estatísticas e relatório' },
+        // Módulo P2 (sistema próprio) — só 10º BPM e perfil P2 ou ADM.
+        { id: 'p2-inteligencia', domId: 'nav-p2', href: 'page/p2.html', label: 'P2 Inteligência',
+          icone: 'https://img.icons8.com/ios/50/spy.png', w: 48, h: 48,
+          titulo: 'Seção de Inteligência (P2) — módulo próprio',
+          condicao: function (s) { return !!s && s.unidadeId === '10bpm' && (s.nivel === 'p2' || s.nivel === 'admin'); } },
         { id: 'cadastro-ocorrencias', href: 'page/cadastroocorrencias.html', label: 'Cadastro de Ocorrências',
           icone: 'https://img.icons8.com/ios/50/add-file.png', w: 50, h: 50 },
         { id: 'autores', href: 'page/autores.html', label: 'Autores',

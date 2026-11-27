@@ -1249,10 +1249,11 @@
     async function iniciar() {
         CFG = await P3.loadUnidadeConfig();
         DB = CFG.firebase.databaseURL;
-        // Mostra o MÓDULO no painel (a unidade já aparece no topbar do shell —
-        // evita a redundância do nome da unidade duas vezes na tela).
-        document.getElementById('co-unidade').textContent = 'Controle de Operações';
-        if (CFG.logoUrl) document.getElementById('co-logo').src = CFG.logoUrl;
+        // Cabeçalho de marca removido da sidebar interna (evita repetir o
+        // título/ícone que o nav principal do P3 já mostra). Guarda defensiva
+        // caso os elementos não existam mais.
+        const coUni = document.getElementById('co-unidade'); if (coUni) coUni.textContent = 'Controle de Operações';
+        const coLogo = document.getElementById('co-logo'); if (coLogo && CFG.logoUrl) coLogo.src = CFG.logoUrl;
         const h = new Date();
         document.getElementById('f-de').value = iso(new Date(h.getFullYear(), 0, 1));
         document.getElementById('f-ate').value = iso(h);

@@ -232,10 +232,14 @@
         injetarFontAwesome();
         const sessao = (window.P3 && P3.requireAuth) ? P3.requireAuth() : null;
         if (window.P3 && P3.requireAuth && !sessao) return null; // requireAuth já redireciona
-        if (sessao && sessao.nivel && sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
-            alert('O módulo P2 está disponível apenas para usuários com nível P2 ou ADMIN.');
-            location.href = 'solucoesia.html';
-            return null;
+        if (sessao) {
+            const okNivel = sessao.nivel === 'p2' || sessao.nivel === 'admin';
+            const okUnidade = sessao.unidadeId === '10bpm';
+            if (!okNivel || !okUnidade) {
+                alert('O módulo P2 está disponível apenas para o 10º BPM e usuários com perfil P2 ou ADMIN.');
+                location.href = '../index.html';
+                return null;
+            }
         }
         opts.sessao = sessao || {};
         const conteudo = montarShell(opts);
