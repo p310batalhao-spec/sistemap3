@@ -402,34 +402,43 @@
                 const isImg = /^image\//.test(an.arquivo_mime || '') || /\.(png|jpe?g|gif|webp)$/i.test(an.arquivo_nome || '');
                 const corpo = isImg ? `<div class="anexo-img"><img src="${esc(u)}"></div>`
                     : `<div class="anexo-note">Documento anexado ao RELOP (${esc(nome)}). <a href="${esc(u)}" target="_blank">Abrir arquivo original</a>.<br><small>Formato preservado no arquivo original; não incorporado a esta impressão.</small></div>`;
-                anexosHtml += `<section class="anexo-pg">${primeiro ? `<div class="anexo-tit">${esc(tituloAnexoA(qtd))}</div>` : ''}<div class="anexo-id">${ident}</div>${corpo}</section>`;
+                anexosHtml += `<tr class="anexo-row"><td class="rof-body">${primeiro ? `<div class="anexo-tit">${esc(tituloAnexoA(qtd))}</div>` : ''}<div class="anexo-id">${ident}</div>${corpo}</td></tr>`;
                 primeiro = false;
             }
         }
         const xsep = 'X' + '-X'.repeat(110);
-        const html = `<div class="relop-of">
-            <div class="run-top"><div class="wbox">${esc(WARN_TOP)}</div><div class="restrito">ACESSO RESTRITO</div></div>
-            <div class="run-bot"><div class="wbox wsmall">${esc(WARN_BOT)}</div><div class="restrito rsmall">ACESSO RESTRITO</div><div class="ts">Gerado em: ${esc(new Date().toLocaleString('pt-BR'))} — SISTEMA P3 / 10º BPM</div></div>
-            <div class="inst"><img class="brasao" src="../img/brasao-pmal.png" onerror="this.style.display='none'"><img class="chancela" src="../img/chancela-direita.jfif" onerror="this.style.display='none'"><div class="inst-lines">${INST_LINES.map((l, i) => `<div class="${i < 3 ? 'b' : ''}${i === 5 ? ' em' : ''}">${esc(l)}</div>`).join('')}</div><hr></div>
-            <div class="titulo">RELOP - ${esc(tituloCumpr)} - Nº ${esc(cabNum(rl.numero))} - ${esc(fmtDataBR(rl.data_documento))}</div>
-            <div class="campos">${cp('DATA', fmtDataBR(rl.data_documento))}${cp('ASSUNTO', rl.assunto)}${cp('REFERENTE AOS AUTOS Nº', rl.referente || processos)}${cp('ORIGEM', rl.origem)}${cp('DIFUSÃO', rl.difusao)}${cp('DIFUSÃO ANTERIOR', rl.difusao_anterior)}${cp('REFERÊNCIA', rl.referencia)}${cp('OPERAÇÃO', rl.operacao)}${cp('ANEXOS', documento.anexos.length ? tituloAnexoA(qtd) : 'SEM ANEXOS')}</div>
-            ${paras.length ? `<div class="narr">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
-            ${itens.length ? `<hr class="sep"><div class="sec-h">RELAÇÃO DE ALVOS</div>${alvos}` : ''}
-            ${rl.observacoes ? `<div class="sec-h">RESUMO / OBSERVAÇÕES</div><div class="obs">${esc(rl.observacoes)}</div>` : ''}
-            <div class="xsep">${xsep}</div>
-            ${anexosHtml}
-        </div>
+        // Tabela com <thead>/<tfoot>: o cabeçalho de aviso e o rodapé repetem
+        // em cada página sem sobrepor o conteúdo (o position:fixed na impressão
+        // se ancora na área de conteúdo e sobrepunha o cabeçalho institucional).
+        const html = `<table class="relop-of">
+            <thead><tr><td class="rof-h"><div class="wbox">${esc(WARN_TOP)}</div><div class="restrito">ACESSO RESTRITO</div></td></tr></thead>
+            <tfoot><tr><td class="rof-f"><div class="wbox wsmall">${esc(WARN_BOT)}</div><div class="restrito rsmall">ACESSO RESTRITO</div><div class="ts">Gerado em: ${esc(new Date().toLocaleString('pt-BR'))} — SISTEMA P3 / 10º BPM</div></td></tr></tfoot>
+            <tbody>
+                <tr><td class="rof-body">
+                    <div class="inst"><img class="brasao" src="../img/brasao-pmal.png" onerror="this.style.display='none'"><img class="chancela" src="../img/chancela-direita.jfif" onerror="this.style.display='none'"><div class="inst-lines">${INST_LINES.map((l, i) => `<div class="${i < 3 ? 'b' : ''}${i === 5 ? ' em' : ''}">${esc(l)}</div>`).join('')}</div><hr></div>
+                    <div class="titulo">RELOP - ${esc(tituloCumpr)} - Nº ${esc(cabNum(rl.numero))} - ${esc(fmtDataBR(rl.data_documento))}</div>
+                    <div class="campos">${cp('DATA', fmtDataBR(rl.data_documento))}${cp('ASSUNTO', rl.assunto)}${cp('REFERENTE AOS AUTOS Nº', rl.referente || processos)}${cp('ORIGEM', rl.origem)}${cp('DIFUSÃO', rl.difusao)}${cp('DIFUSÃO ANTERIOR', rl.difusao_anterior)}${cp('REFERÊNCIA', rl.referencia)}${cp('OPERAÇÃO', rl.operacao)}${cp('ANEXOS', documento.anexos.length ? tituloAnexoA(qtd) : 'SEM ANEXOS')}</div>
+                    ${paras.length ? `<div class="narr">${paras.map(p => `<p>${esc(p)}</p>`).join('')}</div>` : ''}
+                    ${itens.length ? `<hr class="sep"><div class="sec-h">RELAÇÃO DE ALVOS</div>${alvos}` : ''}
+                    ${rl.observacoes ? `<div class="sec-h">RESUMO / OBSERVAÇÕES</div><div class="obs">${esc(rl.observacoes)}</div>` : ''}
+                    <div class="xsep">${xsep}</div>
+                </td></tr>
+                ${anexosHtml}
+            </tbody>
+        </table>
         <style>
-        @page{ size:A4; margin:30mm 14mm 32mm 14mm; }
-        .relop-of{ font-family:Arial,Helvetica,sans-serif; color:#000; font-size:11px; }
-        .relop-of .run-top,.relop-of .run-bot{ position:fixed; left:14mm; right:14mm; }
-        .relop-of .run-top{ top:5mm; } .relop-of .run-bot{ bottom:4mm; }
+        @page{ size:A4; margin:11mm 13mm; }
+        .relop-of{ width:100%; border-collapse:collapse; font-family:Arial,Helvetica,sans-serif; color:#000; font-size:11px; }
+        .relop-of td{ vertical-align:top; }
+        .relop-of thead td.rof-h{ padding:0 0 5px; }
+        .relop-of tfoot td.rof-f{ padding:5px 0 0; }
+        .relop-of .rof-body{ padding:0; }
         .relop-of .wbox{ border:1px solid #b40000; color:#b40000; font-style:italic; font-size:6px; line-height:1.3; padding:3px 6px; text-align:center; }
         .relop-of .wbox.wsmall{ font-size:5px; }
         .relop-of .restrito{ background:#b40000; color:#fff; font-weight:bold; font-size:7px; text-align:center; width:52mm; margin:3px auto 0; padding:1.5px 0; }
-        .relop-of .restrito.rsmall{ width:44mm; font-size:6px; }
-        .relop-of .run-bot .ts{ text-align:center; color:#777; font-size:6px; margin-top:2px; }
-        .relop-of .inst{ position:relative; text-align:center; margin-bottom:4px; min-height:22mm; }
+        .relop-of .restrito.rsmall{ width:44mm; font-size:6px; margin:3px auto 2px; }
+        .relop-of .ts{ text-align:center; color:#777; font-size:6px; margin-top:2px; }
+        .relop-of .inst{ position:relative; text-align:center; margin:4px 0; min-height:22mm; }
         .relop-of .inst .brasao{ position:absolute; left:0; top:0; width:17mm; }
         .relop-of .inst .chancela{ position:absolute; right:0; top:0; width:15mm; }
         .relop-of .inst-lines div{ font-size:8px; line-height:1.55; }
@@ -447,7 +456,7 @@
         .relop-of .lv,.relop-of .ml{ font-size:9px; line-height:1.45; }
         .relop-of .obs{ font-size:9px; line-height:1.5; white-space:pre-wrap; }
         .relop-of .xsep{ font-weight:bold; font-size:9px; overflow:hidden; white-space:nowrap; margin:6px 0; }
-        .relop-of .anexo-pg{ page-break-before:always; }
+        .relop-of .anexo-row{ page-break-before:always; }
         .relop-of .anexo-tit{ text-align:center; font-weight:bold; font-size:12px; margin-bottom:6px; }
         .relop-of .anexo-id{ font-weight:bold; font-size:8.5px; margin-bottom:5px; }
         .relop-of .anexo-img{ text-align:center; } .relop-of .anexo-img img{ max-width:100%; max-height:215mm; object-fit:contain; }
