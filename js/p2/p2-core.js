@@ -261,18 +261,30 @@
     }
 
     // ── Impressão de documento ───────────────────────────────────────
-    // Mantém o container FORA do .p2-app (que o @media print esconde),
-    // senão o documento some na impressão. Todos os módulos usam isto.
+    // Imprime dentro de um IFRAME isolado: SÓ o documento vai pro papel —
+    // nada da página, de modais abertos ou de overlays vaza na impressão
+    // (o antigo #p2-print-area dependia de @media print e vazava o modal).
+    // O <base> faz os caminhos relativos (../img/…) resolverem certo.
     function imprimirDoc(html) {
-        let el = document.getElementById('p2-print-area');
-        if (!el) { el = document.createElement('div'); el.id = 'p2-print-area'; document.body.appendChild(el); }
-        el.innerHTML = html;
-        if (!document.getElementById('p2-print-style')) {
-            const s = document.createElement('style'); s.id = 'p2-print-style';
-            s.textContent = '#p2-print-area{display:none}@media print{body.p2-body>*{display:none!important}#p2-print-area{display:block!important}body.p2-body{background:#fff!important}@page{margin:14mm}}';
-            document.head.appendChild(s);
-        }
-        setTimeout(() => window.print(), 60);
+        const antigo = document.getElementById('p2-print-frame'); if (antigo) antigo.remove();
+        const f = document.createElement('iframe');
+        f.id = 'p2-print-frame';
+        f.setAttribute('aria-hidden', 'true');
+        f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(f);
+        const d = f.contentWindow.document;
+        d.open();
+        d.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><base href="' + location.href + '"><title>Documento — Sistema P3</title></head><body>' + html + '</body></html>');
+        d.close();
+        let feito = false;
+        const imprimir = () => { if (feito) return; feito = true; try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { } };
+        const imgs = Array.from(d.images || []);
+        const pendentes = imgs.filter(im => !im.complete);
+        if (!pendentes.length) { setTimeout(imprimir, 150); return; }
+        let faltam = pendentes.length;
+        const dec = () => { if (--faltam <= 0) setTimeout(imprimir, 150); };
+        pendentes.forEach(im => { im.addEventListener('load', dec); im.addEventListener('error', dec); });
+        setTimeout(imprimir, 6000); // fallback caso alguma imagem trave
     }
 
     // ── API pública ──────────────────────────────────────────────────
