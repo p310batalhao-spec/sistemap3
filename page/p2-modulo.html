@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P2 Inteligência — Módulo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="../css/p2.css">
+    <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
+</head>
+
+<body class="p2-body">
+    <script src="../js/core/session.js"></script>
+    <script src="../js/p2/p2-core.js"></script>
+    <script>
+        (function () {
+            const esc = P2.esc;
+            const id = new URLSearchParams(location.search).get('m') || '';
+            const m = P2.moduloPorId(id);
+            const alvo = P2.iniciar({ active: id, titulo: m ? m.nome : 'Módulo', sub: m ? m.sub : '' });
+            if (!alvo) return;
+
+            // Descrição do que cada módulo vai fazer quando pronto (roadmap).
+            const PLANO = {
+                'missoes': 'Fluxo completo do disque-denúncia: upload do PDF, leitura por IA (Xerife + Falcão), extração de denúncias/alvos/endereços, distribuição às equipes por local, status, relatório e plotagem no mapa.',
+                'tarefas-analista': 'Fila de revisão/decisão do analista: aprovar, devolver com motivo e acompanhar as missões pendentes.',
+                'apresentacao-equipe': 'Apresentação de serviço das equipes e vínculo dos integrantes.',
+                'relatorio-servico': 'Registro e emissão do relatório de serviço (formulário, lista e visualização/PDF).',
+                'ficha-alvo': 'Cadastro completo do alvo: dados, apelidos, fotos, veículos, vínculos, facção, endereços, denúncias e mandados.',
+                'consulta-global': 'Busca unificada por nome, CPF, vulgo, veículo e endereço em toda a base de inteligência.',
+                'analise-vinculos': 'Rede de vínculos interativa, organograma e ranking de centralidade dos alvos.',
+                'relop': 'Relatório operacional e cumprimentos vinculados.',
+                'mvi': 'Mortes violentas intencionais: importação, lista, dashboard e totais por cidade/bairro/mês.',
+                'produtividade': 'Produtividade operacional: apreensões (armas, drogas, veículos, valores) e dashboards.',
+                'linp': 'Levantamento de informações (LINP): ocorrências, envolvidos, endereços e anexos.',
+                'info-complementar': 'Informações complementares vinculadas a alvos e endereços, com anexos.',
+                'auditoria': 'Trilha de acesso e eventos do sistema (quem viu/alterou o quê).',
+            };
+            const plano = PLANO[id] || 'Módulo do Echelon em reconstrução nativa dentro do P2.';
+
+            alvo.innerHTML = `
+                <div class="p2-page-head">
+                    <h1>${m ? P2.icone(m.ic) + ' ' + esc(m.nome) : 'Módulo'}</h1>
+                    <p>${esc(m ? (m.sub || '') : '')}</p>
+                </div>
+                <div class="p2-card">
+                    <div class="p2-empty">
+                        <div class="ic">🚧</div>
+                        <h3>Módulo em desenvolvimento</h3>
+                        <p>${esc(plano)}</p>
+                        <p style="color:var(--p2-txt-dim2);margin-top:14px">Esta tela está sendo reconstruída nativamente no P3,
+                           com o novo design do módulo P2. Em breve, funcional.</p>
+                        <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                            <a class="p2-btn pri" href="p2.html">← Voltar à Visão Operacional</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        })();
+    </script>
+</body>
+
+</html>

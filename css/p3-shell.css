@@ -1,0 +1,138 @@
+/* ====================================================================
+   Sistema P3 — SHELL global no estilo do módulo P2 (sidebar fixa + topbar)
+   --------------------------------------------------------------------
+   26/11/2026 — pedido do usuário: "o mesmo visual do P2 em todo o P3,
+   exatamente, com sidebar fixo". O header-nav.js já injeta <header> (topo)
+   + <nav class="navegacao"> (dentro de .pagecomplete). Este CSS, escopado
+   por body.p3shell (a classe que o header-nav.js adiciona), TRANSFORMA
+   essa estrutura existente no shell do P2 — SEM mexer no markup/JS de cada
+   página (todos os ids/hooks continuam: #relogio, #user-info, #btn-tema,
+   notificações, #btn-logout, itens de nav). Reversível: basta tirar a
+   classe. A sidebar fica escura (identidade P2) nos dois temas; o conteúdo
+   respeita claro/escuro via tokens --p3-*.
+   ==================================================================== */
+body.p3shell {
+    --p3s-sb: 256px;
+    --p3s-tb: 58px;
+    font-family: 'Inter', -apple-system, system-ui, Arial, sans-serif;
+    margin: 0;
+}
+
+/* ── SIDEBAR (reusa .navegacao) ───────────────────────────────────── */
+body.p3shell .navegacao {
+    position: fixed !important; left: 0; top: 0; height: 100vh !important; width: var(--p3s-sb) !important; z-index: 1000;
+    background: linear-gradient(180deg, #0c1526, #0a1220);
+    border-right: 1px solid rgba(255, 255, 255, .09);
+    display: flex; flex-direction: column; padding: 0; margin: 0; gap: 0;
+    overflow-x: hidden; overflow-y: auto; transition: transform .22s ease;
+}
+/* Nunca colapsar no hover (o style.css antigo fazia width:70px ↔ 250px) */
+body.p3shell .navegacao:hover { width: var(--p3s-sb) !important; }
+body.p3shell .navegacao::-webkit-scrollbar { width: 7px; }
+body.p3shell .navegacao::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .1); border-radius: 4px; }
+/* Marca no topo da sidebar (brasão vem do próprio CSS → caminho estável) */
+body.p3shell .navegacao::before {
+    content: "SISTEMA P3"; flex-shrink: 0; display: flex; align-items: center;
+    height: var(--p3s-tb); box-sizing: border-box; padding: 0 16px 0 52px;
+    color: #fff; font-weight: 800; font-size: .92rem; letter-spacing: .02em;
+    border-bottom: 1px solid rgba(255, 255, 255, .09);
+    background: url(../img/brasao.png) 14px center / 28px 28px no-repeat;
+}
+body.p3shell .navegacao a {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px; margin: 2px 10px; border-radius: 9px;
+    color: #9fb0c9; text-decoration: none; font-size: .85rem; font-weight: 500; white-space: nowrap;
+    transition: background .13s ease, color .13s ease; flex-shrink: 0;
+}
+body.p3shell .navegacao a:hover { background: rgba(255, 255, 255, .05); color: #fff; }
+body.p3shell .navegacao a.active { background: rgba(90, 150, 255, .16); color: #fff; border: 1px solid rgba(120, 170, 255, .4); }
+body.p3shell .navegacao a img { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: brightness(0) invert(.78); }
+body.p3shell .navegacao a.active img { filter: brightness(0) invert(1); }
+/* Rótulos SEMPRE visíveis (o style.css antigo deixava opacity:0 até o hover) */
+body.p3shell .navegacao a p { margin: 0 !important; opacity: 1 !important; font-size: .85rem; }
+body.p3shell .navegacao a p::after { content: none; }
+/* Logout no rodapé da sidebar */
+body.p3shell .navegacao .btn-logout {
+    margin: auto 10px 14px; display: flex; align-items: center; gap: 12px; width: auto; cursor: pointer;
+    padding: 10px 14px; border: 0; border-radius: 9px; background: rgba(248, 113, 113, .08);
+    color: #ff9a8f; font-size: .85rem; font-weight: 600; font-family: inherit;
+}
+body.p3shell .navegacao .btn-logout:hover { background: rgba(248, 113, 113, .16); }
+body.p3shell .navegacao .btn-logout img { width: 20px; height: 20px; filter: brightness(0) invert(.62); }
+body.p3shell .navegacao .btn-logout p { margin: 0; }
+
+/* ── TOPBAR (reusa <header>) ──────────────────────────────────────── */
+body.p3shell > header {
+    position: fixed; top: 0; left: var(--p3s-sb); right: 0; height: var(--p3s-tb); z-index: 900;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 0 20px; margin: 0; background: var(--p3-surface); border-bottom: 1px solid var(--p3-border);
+    box-shadow: 0 1px 10px rgba(20, 40, 90, .04);
+}
+body.p3shell > header .brasao { display: none; }
+body.p3shell > header .header-info-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+body.p3shell > header .cabecalhotexto h1 { font-size: .98rem; font-weight: 800; letter-spacing: -.01em; margin: 0; }
+body.p3shell > header .cabecalhotexto h3 { font-size: .7rem; margin: 0; opacity: .75; }
+body.p3shell > header .header-info-right { display: flex; align-items: center; gap: 12px; }
+
+/* Hambúrguer (mobile) */
+body.p3shell #p3shell-burger {
+    display: none; background: none; border: 0; color: var(--p3-text); font-size: 22px; cursor: pointer;
+    padding: 2px 6px; line-height: 1;
+}
+
+/* ── CONTEÚDO (offset para sidebar + topbar) ──────────────────────── */
+body.p3shell .pagecomplete {
+    display: block !important; margin-left: var(--p3s-sb); padding-top: var(--p3s-tb);
+    min-height: 100vh; width: auto; max-width: none;
+}
+body.p3shell footer { margin-left: var(--p3s-sb); }
+/* Overlay de transição e botão flutuante não são afetados (z-index próprios) */
+body.p3shell #p3shell-backdrop { display: none; }
+
+/* ── MOBILE / webapp ──────────────────────────────────────────────── */
+@media (max-width: 860px) {
+    body.p3shell .navegacao { transform: translateX(-100%); box-shadow: 4px 0 30px rgba(0, 0, 0, .5); z-index: 1002; }
+    body.p3shell .navegacao.aberta { transform: translateX(0); }
+    body.p3shell > header { left: 0; }
+    body.p3shell .pagecomplete, body.p3shell footer { margin-left: 0; }
+    body.p3shell #p3shell-burger { display: inline-flex; align-items: center; }
+    body.p3shell #p3shell-backdrop.on { display: block; position: fixed; inset: 0; background: rgba(0, 0, 0, .5); z-index: 1001; }
+    body.p3shell > header .cabecalhotexto h1 { font-size: .9rem; }
+    body.p3shell > header .cabecalhotexto h3 { display: none; }
+}
+@media (max-width: 560px) {
+    body.p3shell > header { padding: 0 12px; }
+    body.p3shell > header .relogio { display: none; }
+}
+
+/* ====================================================================
+   Acabamento de CONTEÚDO (estilo P2) + responsividade — baseline global
+   --------------------------------------------------------------------
+   Aplicado a TODAS as páginas do shell de uma vez, de forma CONSERVADORA
+   (baixa especificidade / só o que é seguro), pra não quebrar os estilos
+   próprios de cada página. Harmoniza tipografia, foco, espaçamento e,
+   principalmente, o comportamento MOBILE (webapp). Ajustes finos por
+   página podem vir depois, caso a caso.
+   ==================================================================== */
+body.p3shell main { padding: 22px 26px; }
+body.p3shell h1, body.p3shell h2, body.p3shell h3 { letter-spacing: -.01em; }
+
+/* Foco com o acento do P2 em qualquer campo (não altera layout) */
+body.p3shell input:focus, body.p3shell select:focus, body.p3shell textarea:focus {
+    outline: 2px solid rgba(61, 123, 247, .35); outline-offset: 1px;
+}
+
+/* Cantos levemente arredondados em tabelas "cruas" (páginas que já
+   estilizam a própria tabela têm regra mais específica e continuam iguais) */
+body.p3shell table { border-collapse: collapse; }
+
+/* ── Responsividade / webapp (mobile) ── */
+@media (max-width: 760px) {
+    body.p3shell main { padding: 16px 14px; }
+    /* Tabelas largas rolam DENTRO da área, sem estourar a página */
+    body.p3shell main { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    body.p3shell table { font-size: .84rem; }
+    /* Campos e botões ocupam a largura no celular (mais "app") */
+    body.p3shell main input:not([type=checkbox]):not([type=radio]):not([type=color]),
+    body.p3shell main select, body.p3shell main textarea { max-width: 100%; }
+}
+

@@ -1,0 +1,54 @@
+/* ====================================================================
+   P2 · componentes de dashboard (MVI, Produtividade) — usa tokens p2.css
+   ==================================================================== */
+.pd-filtros { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+.pd-sel { padding: 8px 12px; border-radius: 9px; border: 1px solid var(--p2-line2); background: var(--p2-surface); color: var(--p2-txt); font: inherit; font-size: .84rem; cursor: pointer; }
+.pd-sel:focus { outline: 2px solid var(--p2-accent-line); border-color: var(--p2-accent); }
+
+/* "Dias sem CVLI/homicídio" — placar */
+.pd-dias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.pd-dias { background: var(--p2-surface); border: 1px solid var(--p2-line); border-left: 4px solid var(--p2-green); border-radius: var(--p2-radius); padding: 15px 17px; box-shadow: var(--p2-shadow); }
+.pd-dias.alerta { border-left-color: var(--p2-red); }
+.pd-dias .cidade { font-size: .82rem; font-weight: 700; color: var(--p2-txt-strong); display: flex; align-items: center; gap: 6px; }
+.pd-dias .n { font-size: 2.2rem; font-weight: 900; color: var(--p2-txt-strong); line-height: 1.1; letter-spacing: -.02em; }
+.pd-dias .lab { font-size: .72rem; color: var(--p2-txt-dim); }
+.pd-dias .ult { font-size: .68rem; color: var(--p2-txt-dim2); margin-top: 4px; }
+
+/* Cartões de bloco (gráficos/listas) */
+.pd-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 18px; }
+.pd-card { background: var(--p2-surface); border: 1px solid var(--p2-line); border-radius: var(--p2-radius); padding: 16px 18px; box-shadow: var(--p2-shadow); }
+.pd-card h2 { font-size: .98rem; margin: 0 0 14px; color: var(--p2-txt-strong); display: flex; align-items: center; gap: 8px; }
+.pd-card h2 .cont { margin-left: auto; font-size: .72rem; color: var(--p2-txt-dim2); font-weight: 600; }
+
+/* Barras horizontais */
+.pd-bars { display: flex; flex-direction: column; gap: 9px; }
+.pd-bar { display: grid; grid-template-columns: 130px 1fr 44px; align-items: center; gap: 10px; font-size: .8rem; }
+.pd-bar .lb { color: var(--p2-txt); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pd-bar .tk { height: 10px; background: var(--p2-surface2); border-radius: 6px; overflow: hidden; }
+.pd-bar .fl { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--p2-accent), #6aa0ff); }
+.pd-bar .vl { text-align: right; font-weight: 700; color: var(--p2-txt-strong); font-variant-numeric: tabular-nums; }
+
+/* Tabela */
+.pd-tbl-wrap { overflow-x: auto; }
+.pd-tbl { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.pd-tbl th { text-align: left; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--p2-txt-dim2); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--p2-line2); white-space: nowrap; }
+.pd-tbl td { padding: 9px 10px; border-bottom: 1px solid var(--p2-line); color: var(--p2-txt); }
+.pd-tbl tr { cursor: pointer; }
+.pd-tbl tbody tr:hover { background: var(--p2-hover); }
+.pd-tbl b { color: var(--p2-txt-strong); }
+
+/* Modal genérico (detalhe) */
+.pd-modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 5vh 16px; background: rgba(0,0,0,.55); overflow: auto; }
+.pd-modal.aberto { display: flex; }
+.pd-modal-box { background: var(--p2-bg); border: 1px solid var(--p2-line2); border-radius: 16px; width: min(640px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.pd-modal-h { display: flex; align-items: center; gap: 10px; padding: 15px 20px; border-bottom: 1px solid var(--p2-line); }
+.pd-modal-h h2 { margin: 0; font-size: 1.05rem; color: var(--p2-txt-strong); }
+.pd-modal-h .fechar { margin-left: auto; background: none; border: 0; color: var(--p2-txt-dim); font-size: 22px; cursor: pointer; }
+.pd-modal-b { padding: 16px 20px; }
+.pd-modal-f { display: flex; gap: 10px; justify-content: flex-end; padding: 13px 20px; border-top: 1px solid var(--p2-line); }
+.pd-linha { display: flex; gap: 10px; padding: 7px 0; border-top: 1px solid var(--p2-line); font-size: .85rem; }
+.pd-linha:first-child { border-top: 0; }
+.pd-linha b { min-width: 130px; color: var(--p2-txt-dim); font-weight: 600; }
+
+@media (max-width: 900px) { .pd-cols { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .pd-bar { grid-template-columns: 96px 1fr 38px; } }

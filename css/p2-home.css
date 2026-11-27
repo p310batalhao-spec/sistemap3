@@ -1,0 +1,54 @@
+/* ====================================================================
+   P3 · Re-skin "estilo P2" das telas de ENTRADA (index, Soluções IA,
+   Dashboard) + responsividade (webapp mobile).
+   --------------------------------------------------------------------
+   26/11/2026 — pedido do usuário: deixar o P3 com o visual do módulo P2 e
+   totalmente responsivo. Aplicado de forma ESCOPADA (body.p2-look) e por
+   CIMA do theme.css/style.css, sem mexer no markup nem no JS das páginas
+   (todos os ids/classes continuam iguais). Usa os tokens --p3-* (respeita
+   claro/escuro) com a estética do P2: cards arredondados, números em
+   destaque, hover, Inter e grade responsiva.
+   ==================================================================== */
+body.p2-look { font-family: 'Inter', -apple-system, system-ui, Arial, sans-serif; }
+
+.p2-look .saudacao h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+.p2-look .saudacao p { color: var(--p3-text-muted); }
+
+/* Botões da barra superior (login CAD, painel, baixar atualizações) */
+.p2-look .h-btn, .p2-look #index-btn-cad-login, .p2-look #index-btn-atualizar { border-radius: 9px !important; font-weight: 600; }
+
+/* ── Grade de cartões ── */
+.p2-look .dashboard {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: 16px; margin-top: 8px;
+}
+.p2-look .dashboard .btn {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 9px;
+    background: var(--p3-surface); border: 1px solid var(--p3-border); border-radius: 16px; padding: 22px 16px;
+    text-decoration: none; color: var(--p3-text); box-shadow: 0 6px 20px rgba(20, 40, 90, .06);
+    transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; min-height: 150px;
+}
+.p2-look .dashboard .btn:hover { transform: translateY(-3px); border-color: var(--p3-blue-700); box-shadow: 0 12px 30px rgba(20, 40, 90, .14); }
+.p2-look .dashboard .btn img { width: 46px; height: 46px; object-fit: contain; opacity: .95; }
+.p2-look .dashboard .btn p { margin: 0; font-size: .86rem; font-weight: 600; text-align: center; line-height: 1.3; }
+.p2-look .dashboard .btn .numero { font-size: 1.95rem; font-weight: 800; color: var(--p3-blue-700); letter-spacing: -.02em; margin-top: auto; }
+.p2-look .dashboard .btn .ultima-atualizacao { font-size: .68rem; color: var(--p3-text-muted); }
+
+/* Resumo preditivo — arredonda igual aos cards */
+.p2-look #resumo-preditivo { border-radius: 16px; }
+
+/* Dashboard (iframe Looker) — ocupa a área toda e arredonda */
+.p2-look #dashboard-iframe { width: 100%; height: calc(100vh - 185px); min-height: 460px; border-radius: 16px; border: 1px solid var(--p3-border); }
+
+/* ── Responsivo / webapp ── */
+@media (max-width: 760px) {
+    .p2-look .dashboard { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .p2-look .saudacao h2 { font-size: 1.35rem; }
+}
+@media (max-width: 560px) {
+    .p2-look .dashboard { grid-template-columns: repeat(2, 1fr); gap: 11px; }
+    .p2-look .dashboard .btn { padding: 16px 10px; min-height: 126px; border-radius: 13px; gap: 6px; }
+    .p2-look .dashboard .btn img { width: 38px; height: 38px; }
+    .p2-look .dashboard .btn p { font-size: .8rem; }
+    .p2-look .dashboard .btn .numero { font-size: 1.5rem; }
+    .p2-look #dashboard-iframe { height: calc(100vh - 160px); }
+}

@@ -55,6 +55,20 @@
         return hrefCanonico;                                // raiz: "page/x.html" já está certo
     }
 
+    // ── Shell P2 global (sidebar fixa + topbar) — 26/11/2026 ──────────
+    // Transforma o header+nav existentes no mesmo visual do módulo P2, via
+    // css/p3-shell.css (escopado por body.p3shell). Sem tocar no markup/JS
+    // de cada página. Ver o CSS pra detalhes.
+    function ativarShellP2() { try { document.body.classList.add('p3shell'); } catch (e) {} }
+    if (document.body) ativarShellP2(); else document.addEventListener('DOMContentLoaded', ativarShellP2);
+    (function injetarShellCss() {
+        if (document.querySelector('link[data-p3shell-css]')) return;
+        var l = document.createElement('link'); l.rel = 'stylesheet';
+        l.href = (estaEmSubpasta() ? '../' : '') + 'css/p3-shell.css';
+        l.setAttribute('data-p3shell-css', '1');
+        (document.head || document.documentElement).appendChild(l);
+    })();
+
     // ════════════════════════════════════════════════════════════════
     // TRANSIÇÃO ENTRE PÁGINAS (27/08/2026) — pedido do usuário: animação
     // ao navegar entre páginas do sistema, tema "estatística e pastas"
@@ -258,6 +272,7 @@
     var HEADER_HTML =
         '<header>' +
         '<div class="header-info-left">' +
+        '<button id="p3shell-burger" type="button" aria-label="Abrir menu" title="Menu">☰</button>' +
         '<img class="brasao" src="' + (estaEmSubpasta() ? '../' : '') + 'img/brasao.png" alt="brasão do 10º Batalhão">' +
         '<div class="cabecalhotexto">' +
         '<h1>SISTEMA DE GERENCIAMENTO P3</h1>' +
@@ -357,6 +372,22 @@
     } else {
         inserirNav();
     }
+
+    // Gaveta mobile do shell P2: o hambúrguer (#p3shell-burger, visível só
+    // no celular via css/p3-shell.css) abre/fecha a sidebar (.navegacao).
+    function ligarGavetaShell() {
+        var nav = document.querySelector('.navegacao');
+        if (!nav) return;
+        var bd = document.getElementById('p3shell-backdrop');
+        if (!bd) { bd = document.createElement('div'); bd.id = 'p3shell-backdrop'; document.body.appendChild(bd); }
+        var burger = document.getElementById('p3shell-burger');
+        function fechar() { nav.classList.remove('aberta'); bd.classList.remove('on'); }
+        if (burger) burger.addEventListener('click', function () { nav.classList.add('aberta'); bd.classList.add('on'); });
+        bd.addEventListener('click', fechar);
+        nav.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('a, button')) fechar(); });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarGavetaShell);
+    else ligarGavetaShell();
 
     // Carrega o motor de notificações (js/core/notificacoes.js) sob
     // demanda — só as páginas com o header unificado precisam dele, não

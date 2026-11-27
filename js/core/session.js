@@ -966,6 +966,15 @@
             const pagina = (global.location.pathname.split('/').pop() || '').toLowerCase();
             if (pagina === 'chat-mobile.html' || pagina === 'ia_xerife.html' || pagina === 'login.html') return;
             if (document.getElementById('xerife-botao')) return;
+            // Nunca mostrar o botão/painel do Xerife em IMPRESSÃO (pedido do
+            // usuário: "não apareça o ícone do xerife em nenhum relatório").
+            // O #xerife-botao fica no <body> (fora do .p2-app), então sem isto
+            // ele sairia nos relatórios impressos do módulo P2 e das páginas.
+            if (!document.getElementById('xerife-print-hide')) {
+                const ph = document.createElement('style'); ph.id = 'xerife-print-hide';
+                ph.textContent = '@media print{#xerife-botao,#xerife-painel{display:none !important}}';
+                document.head.appendChild(ph);
+            }
             // Página carregada DENTRO de um iframe (single embed ou split do
             // IA Xerife, ver js/components/jarvis-dashboard.js) — nunca
             // injeta o botão flutuante aqui: a esfera de partículas do

@@ -1,0 +1,42 @@
+/* ====================================================================
+   P2 · Mapa de Inteligência — identidade visual do módulo P2
+   --------------------------------------------------------------------
+   27/11/2026 — pedido do usuário: o Mapa de Inteligência (específico da
+   P2) deve ter a identidade visual do módulo P2. Como o mapa precisa de
+   largura total, a NAVEGAÇÃO do P2 fica na gaveta lateral "P2 INTEL"
+   (js/p2/p2-nav-inject.js, já carregada) e aqui damos ao HEADER e aos
+   controles a cara escura "sala de operações" do P2. Escopado por
+   body.p2-mapa, sem mexer no layout/JS do mapa.
+   ==================================================================== */
+body.p2-mapa { font-family: 'Inter', -apple-system, system-ui, Arial, sans-serif; }
+
+/* ── Topbar estilo P2 (escura) ── */
+body.p2-mapa > header {
+    background: linear-gradient(180deg, #0c1731, #0a1220) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, .1) !important;
+    box-shadow: 0 2px 16px rgba(0, 0, 0, .35) !important;
+}
+body.p2-mapa > header .cabecalhotexto h1 { color: #fff !important; font-weight: 800; letter-spacing: -.01em; font-size: 1.05rem; }
+body.p2-mapa > header .cabecalhotexto h3,
+body.p2-mapa > header #relogio-mapa,
+body.p2-mapa > header .relogio, body.p2-mapa > header #relogio,
+body.p2-mapa > header .exibirusuario, body.p2-mapa > header #user-info { color: #9fb0c9 !important; }
+body.p2-mapa > header .brasao { filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .5)); }
+body.p2-mapa > header #btn-tema { color: #fff !important; border: 1px solid rgba(255, 255, 255, .3) !important; background: rgba(255, 255, 255, .08) !important; border-radius: 9px !important; }
+body.p2-mapa > header #btn-tema:hover { background: rgba(255, 255, 255, .16) !important; }
+
+/* Botões de ação do header (Dashboard, OPO Inteligente, OPO Interativa) */
+body.p2-mapa > header .header-info-right > a {
+    background: rgba(90, 150, 255, .16) !important; border: 1px solid rgba(120, 170, 255, .4) !important;
+    color: #9fd2ff !important; border-radius: 9px !important; font-weight: 600;
+}
+body.p2-mapa > header .header-info-right > a:hover { background: rgba(90, 150, 255, .3) !important; }
+body.p2-mapa > header .header-info-right > a i { color: #9fd2ff !important; }
+
+/* ── Ferramentas / botões do mapa arredondados ── */
+body.p2-mapa .btn-mapa { border-radius: 8px !important; }
+body.p2-mapa #mapa-ferramentas { backdrop-filter: blur(4px); }
+
+/* Aba "P2 INTEL" da gaveta — já estilizada por css/p2-nav.css; aqui só
+   garante que fique acima dos controles do mapa. */
+body.p2-mapa #p2nav-tab { z-index: 100000 !important; }

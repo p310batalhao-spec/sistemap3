@@ -232,22 +232,24 @@
     }
 
     // ── Etapa 2 — revisão/edição antes de gerar o documento ────────────
-    // Referência do processo: prioriza o Nº do processo extraído do
-    // "Relato do Despachante" no CAD (pedido explícito do usuário,
-    // 12/09/2026: "no lugar de informar o nº do boletim... deve informar
-    // o número do processo, tanto no texto quanto nos dados") — só cai
-    // pro boletim quando o CAD não trouxe o número do processo.
-    function referenciasProcesso(alvos) {
-        return alvos.map(a => a.NUMERO_PROCESSO || `boletim ${a.BOLETIM}`);
+    // Referência de cada alvo na narrativa: SEMPRE cita o boletim (é o
+    // que a busca usou de fato) e, quando o CAD achou o nº do processo no
+    // "Relato do Despachante", acrescenta ele também — pedido explícito
+    // do usuário (29/09/2026): "o correto é colocar '...de boletim nº
+    // [numero do boletim], referente ao processo [numero do processo]'"
+    // (antes o boletim só aparecia como FALLBACK, nunca junto do processo).
+    function referenciaAlvo(a) {
+        const processo = a.NUMERO_PROCESSO ? `, referente ao processo nº ${a.NUMERO_PROCESSO}` : '';
+        return `de boletim nº ${a.BOLETIM}${processo}`;
     }
 
     function montarNarrativaPadrao(params, alvos) {
         const cidades = [...new Set(alvos.map(a => a.CIDADE).filter(Boolean))].join(', ');
-        const refs = referenciasProcesso(alvos).join(', ');
+        const refs = alvos.map(referenciaAlvo).join('; ');
         const dataRef = ULTIMO_MODO === 'individual' ? formatarDataBrExtenso(alvos[0] && alvos[0].DATA) : null;
         const periodoTxt = dataRef
-            ? `No dia ${dataRef}, foi cumprido mandado de busca e apreensão referente ao processo nº ${refs}`
-            : `No período informado, foram cumpridos mandados de busca e apreensão referentes aos processos nº ${refs}`;
+            ? `No dia ${dataRef}, foi cumprido mandado de busca e apreensão ${refs}`
+            : `No período informado, foram cumpridos mandados de busca e apreensão ${refs}`;
         return `${periodoTxt}, expedido(s) pela Vara Criminal da Comarca de [COMARCA], no âmbito de investigação que apura [NATUREZA DA INVESTIGAÇÃO], tendo como alvos indivíduos situados n${cidades ? 'o município de ' + cidades : 'este município'}/AL.\n\n` +
             `As diligências foram executadas com base em levantamentos da Agência de Inteligência do 10º BPM (PM-2), com emprego de equipes operacionais, visando à localização de materiais ilícitos, armas de fogo, drogas e dispositivos eletrônicos.`;
     }
@@ -413,8 +415,14 @@
                 .relopdoc-cabecalho img { width:64px; height:64px; object-fit:contain; }
                 .relopdoc-cabecalho-texto { flex:1; text-align:center; font-weight:700; font-size:11.5px; line-height:1.4; }
                 .relopdoc-cabecalho-texto small { display:block; font-weight:400; font-size:10px; }
-                .relopdoc-titulo { text-align:center; font-weight:700; font-size:13px; margin:14px 0; position:relative; }
-                .relopdoc-selo { position:absolute; right:0; top:-6px; width:70px; height:auto; opacity:.92; }
+                .relopdoc-titulo { text-align:center; font-weight:700; font-size:13px; margin:14px 0; }
+                /* Selo fixo: pedido explícito do usuário (12/09/2026) — "o selo da
+                   p2 é colocado em todas as páginas e maior e exatamente no local e
+                   tamanho que está no relop de referência" (canto superior direito,
+                   perto do nº de página). position:fixed se repete em toda página
+                   impressa nos motores Chromium (Chrome/Edge/WebView2) — é assim que
+                   o RELOP de referência também funciona. */
+                .relopdoc-selo { position:fixed; top:6mm; right:10mm; width:26mm; height:auto; }
                 table.relopdoc-campos { width:100%; border-collapse:collapse; margin-bottom:14px; }
                 table.relopdoc-campos td { padding:2px 4px; font-size:12px; vertical-align:top; }
                 table.relopdoc-campos td.relopdoc-rot { font-weight:700; width:150px; white-space:nowrap; }
@@ -430,17 +438,18 @@
                 .relopdoc-galeria img { max-width:100%; max-height:220mm; object-fit:contain; page-break-inside:avoid; }
             </style></head>
             <body>
+                <img class="relopdoc-selo" src="../img/selo-relop-10bpm.png" alt="selo de autenticação">
                 <div class="relopdoc-topo-aviso">${TEXTO_DNISP}</div>
                 <div class="relopdoc-acesso-restrito"><span>ACESSO RESTRITO</span></div>
                 <div class="relopdoc-cabecalho">
-                    <img src="../img/brasao.png" alt="brasão">
+                    <img src="../img/brasao-pmal.png" alt="brasão PMAL">
                     <div class="relopdoc-cabecalho-texto">
                         ESTADO DE ALAGOAS<br>SECRETARIA DE SEGURANÇA PÚBLICA<br>POLÍCIA MILITAR DE ALAGOAS<br>
                         COMANDO DE POLICIAMENTO DA REGIÃO DO AGRESTE (CPRA)<br>CISP II – 10º BATALHÃO DE POLÍCIA MILITAR (10º BPM)
                         <small>p2.10bpm@pm.al.gov.br / p2.10bpm.pmal@gmail.com</small>
                     </div>
                 </div>
-                <div class="relopdoc-titulo">RELOP - CUMPRIMENTO DE MANDADO - ${numeroTitulo}<img class="relopdoc-selo" src="../img/selo-relop-10bpm.png" alt="selo de autenticação"></div>
+                <div class="relopdoc-titulo">RELOP - CUMPRIMENTO DE MANDADO - ${numeroTitulo}</div>
                 <table class="relopdoc-campos">
                     <tr><td class="relopdoc-rot">DATA:</td><td>${esc(dataExibicao)}</td></tr>
                     <tr><td class="relopdoc-rot">ASSUNTO:</td><td>${esc(c.assunto)}</td></tr>

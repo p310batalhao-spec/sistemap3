@@ -4,175 +4,116 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gerenciamento P3 - Módulo P2</title>
+    <title>P2 Inteligência — Visão Operacional</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
-    <link rel="stylesheet" href="../css/theme.css">
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/p2.css">
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
-    <style>
-        /* 04/09/2026 — módulo P2, pedido explícito do usuário: "visual
-           moderno e pode ser até diferente do visual do sistema, contanto
-           que tenha o mesmo nav". Header/nav ficam 100% padrão
-           (js/core/header-nav.js, sem nenhuma alteração) — só o
-           conteúdo dentro de <main> tem identidade própria: fundo escuro
-           "sala de operações", grade de cartões com selo de acesso
-           restrito. Tudo em cima dos tokens --p3-* onde faz sentido
-           (tema claro/escuro do resto do sistema), com uma paleta própria
-           mais escura por cima pra esta página específica.
-        */
-        .p2-shell {
-            margin: -20px -20px -20px -20px;
-            padding: 0 0 60px;
-            min-height: calc(100vh - 40px);
-            background:
-                radial-gradient(1100px 480px at 12% -8%, rgba(60, 120, 220, .16), transparent 60%),
-                radial-gradient(900px 460px at 100% 0%, rgba(230, 140, 40, .10), transparent 55%),
-                #0a1220;
-            color: #e7ecf5;
-        }
-        .p2-hero {
-            padding: 46px 40px 34px;
-            border-bottom: 1px solid rgba(255,255,255,.08);
-        }
-        .p2-selo {
-            display: inline-flex; align-items: center; gap: 7px; font-size: 11px; font-weight: 700;
-            letter-spacing: .09em; text-transform: uppercase; color: #ffb44d;
-            background: rgba(255, 160, 40, .12); border: 1px solid rgba(255, 160, 40, .35);
-            border-radius: 999px; padding: 5px 14px; margin-bottom: 16px;
-        }
-        .p2-hero h1 {
-            font-family: 'Inter', sans-serif; font-size: 2.1rem; font-weight: 900; margin: 0 0 10px;
-            letter-spacing: -.02em; color: #fff; text-wrap: balance;
-        }
-        .p2-hero p { font-size: .95rem; color: #9fb0c9; max-width: 680px; line-height: 1.6; margin: 0; }
-
-        .p2-grid {
-            padding: 34px 40px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 20px; max-width: 1200px;
-        }
-        .p2-card {
-            position: relative; display: flex; flex-direction: column; gap: 12px; padding: 24px 22px;
-            border-radius: 16px; text-decoration: none; color: #e7ecf5;
-            background: linear-gradient(165deg, rgba(255,255,255,.05), rgba(255,255,255,.015));
-            border: 1px solid rgba(255,255,255,.09);
-            transition: transform .16s ease, border-color .16s ease, background .16s ease;
-            overflow: hidden;
-        }
-        .p2-card::before {
-            content: ""; position: absolute; inset: 0; opacity: 0; transition: opacity .2s ease;
-            background: radial-gradient(280px 140px at 0% 0%, rgba(90, 150, 255, .18), transparent 70%);
-        }
-        .p2-card:hover { transform: translateY(-3px); border-color: rgba(120, 170, 255, .45); background: linear-gradient(165deg, rgba(255,255,255,.08), rgba(255,255,255,.02)); }
-        .p2-card:hover::before { opacity: 1; }
-        .p2-card-icone {
-            width: 52px; height: 52px; border-radius: 13px; display: flex; align-items: center; justify-content: center;
-            background: rgba(90, 150, 255, .14); border: 1px solid rgba(120, 170, 255, .25); flex-shrink: 0;
-        }
-        .p2-card-icone img { width: 28px; height: 28px; filter: brightness(0) invert(1); opacity: .92; }
-        .p2-card h3 { font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff; }
-        .p2-card p { font-size: .82rem; color: #9fb0c9; line-height: 1.5; margin: 0; }
-        .p2-card-seta { position: absolute; top: 22px; right: 20px; font-size: 18px; color: #5a7bb8; transition: transform .16s ease; }
-        .p2-card:hover .p2-card-seta { transform: translateX(3px); color: #7fa8ff; }
-
-        .p2-card-interesses { border-color: rgba(255, 180, 77, .3); }
-        .p2-card-interesses .p2-card-icone { background: rgba(255, 180, 77, .14); border-color: rgba(255, 180, 77, .3); }
-        .p2-card-interesses:hover { border-color: rgba(255, 180, 77, .6); }
-
-        @media (max-width: 640px) {
-            .p2-hero { padding: 34px 20px 26px; }
-            .p2-grid { padding: 26px 20px 0; gap: 14px; }
-        }
-    </style>
 </head>
 
-<body>
+<body class="p2-body">
     <script src="../js/core/session.js"></script>
-    <script src="../js/core/header-nav.js" data-active="solucoesia"></script>
-
-    <section class="pagecomplete">
-        <main>
-            <div class="p2-shell">
-                <div class="p2-hero">
-                    <span class="p2-selo">🔒 Acesso restrito · P2 / ADMIN</span>
-                    <h1>Módulo P2</h1>
-                    <p>Inteligência e investigação — base de dados do Cérbero, consulta integrada por CPF (CAD, TJAL, BNMP),
-                        comparação por reconhecimento facial e o acompanhamento contínuo dos alvos de interesse.</p>
-                </div>
-
-                <div class="p2-grid">
-                    <a class="p2-card" href="lista-interesses.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/star--v1.png" alt=""></div>
-                        <h3>Lista de Interesses</h3>
-                        <p>Alvos marcados em Autores, Suspeitos e Cérbero — processos, movimentações e ocorrências
-                            acompanhados num só lugar, com aviso no sino de notificações.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <a class="p2-card p2-card-interesses" href="relint.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/document--v1.png" alt=""></div>
-                        <h3>Relatório de Inteligência (RELINT)</h3>
-                        <p>Ficha Alvo do ExchelonX — dados, veículos, fotos, vínculos, mandados, endereços, informações e
-                            denúncias de um ou mais alvos ou de uma ORCRIM, impresso no modelo oficial do RELINT.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <a class="p2-card p2-card-interesses" href="mapaInteligencia.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/map-marker.png" alt=""></div>
-                        <h3>Mapa de Inteligência</h3>
-                        <p>Ocorrências e alvos do ExchelonX no mapa — rede de vínculos, ocorrências do CAD por alvo,
-                            relatório por polígono e geração do RELINT direto do alvo.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <a class="p2-card" href="cerbero.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/dog.png" alt=""></div>
-                        <h3>Cérbero</h3>
-                        <p>Base de inteligência da PM-AL — pessoas, endereços vinculados e galeria de fotos importados
-                            de uma captura do sistema.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <a class="p2-card" href="consulta-pessoa.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/search--v1.png" alt=""></div>
-                        <h3>Consulta Integrada de Pessoas</h3>
-                        <p>Busca por CPF cruzando CAD (PPE/PC/SISPOL/BNMP/IDNET), TJAL e Supabase numa página só.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <a class="p2-card" href="reconhecimento-facial.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/face-id.png" alt=""></div>
-                        <h3>Reconhecimento Facial</h3>
-                        <p>Comparação por similaridade contra Autores, Suspeitos, Echelonx e Cérbero.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                    <!-- 04/09/2026, pedido explícito do usuário: "faltou
-                         incluir no módulo da p2 a página denúncias
-                         recorrentes". Continua TAMBÉM no grid principal de
-                         Soluções IA (não foi movida pra cá, diferente dos
-                         outros 3 cartões) — nunca teve trava de nível
-                         (sempre foi "visão geral do sistema"), então
-                         restringir agora tiraria acesso de quem já usa.
-                         Aqui é só um atalho de conveniência pra quem já
-                         está no módulo P2. -->
-                    <a class="p2-card" href="denunciasRecorrentes.html">
-                        <div class="p2-card-icone"><img src="https://img.icons8.com/ios-filled/50/repeat.png" alt=""></div>
-                        <h3>Denúncias Recorrentes</h3>
-                        <p>Denúncias que se repetem para o mesmo local, cruzadas contra cadastro (Supabase/Autores) —
-                            busca completa já feita e salva pra cada alvo confirmado.</p>
-                        <span class="p2-card-seta">→</span>
-                    </a>
-                </div>
-            </div>
-        </main>
-    </section>
-
+    <script src="../js/p2/p2-core.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const sessao = P3.requireAuth();
-            if (!sessao) return;
-            if (sessao.nivel !== 'p2' && sessao.nivel !== 'admin') {
-                alert('O módulo P2 está disponível apenas para usuários com nível P2 ou ADMIN.');
-                location.href = 'solucoesia.html';
-                return;
+        (function () {
+            const alvo = P2.iniciar({ active: 'visao-operacional', titulo: 'Visão Operacional', sub: 'Panorama da inteligência — 10º BPM' });
+            if (!alvo) return;
+            const esc = P2.esc;
+
+            // ── Monta a estrutura estática ──────────────────────────────
+            alvo.innerHTML = `
+                <div class="p2-page-head">
+                    <h1>Bem-vindo à Central de Inteligência P2</h1>
+                    <p>Todas as ferramentas de inteligência do 10º BPM num só lugar — missões do disque-denúncia,
+                       fichas de alvo, vínculos, RELINT e as ferramentas nativas do P3. Os dados são do mesmo banco
+                       de inteligência (online).</p>
+                </div>
+
+                <div class="p2-kpis" id="p2-kpis">
+                    ${kpiSkel('fa-solid fa-id-card', 'Alvos cadastrados')}
+                    ${kpiSkel('fa-solid fa-phone-volume', 'Denúncias')}
+                    ${kpiSkel('fa-solid fa-bullseye', 'Missões')}
+                    ${kpiSkel('fa-solid fa-people-group', 'Facções')}
+                </div>
+
+                <div class="p2-cols">
+                    <div class="p2-card">
+                        <div class="p2-card-h"><h2>Últimas denúncias</h2>
+                            <a class="p2-card-sub" href="p2-missoes.html" style="text-decoration:none;color:var(--p2-accent)">ver missões →</a></div>
+                        <div id="p2-recentes" class="p2-list"><div class="p2-empty"><div class="ic">⏳</div><p>Carregando…</p></div></div>
+                    </div>
+                    <div class="p2-card">
+                        <div class="p2-card-h"><h2>Acesso rápido</h2></div>
+                        <div class="p2-launch" id="p2-launch"></div>
+                    </div>
+                </div>
+            `;
+
+            // ── Acesso rápido (destaques) ───────────────────────────────
+            const destaques = ['missoes', 'ficha-alvo', 'consulta-global', 'analise-vinculos', 'mapa-inteligencia', 'consulta-integrada'];
+            document.getElementById('p2-launch').innerHTML = destaques.map(id => {
+                const m = P2.moduloPorId(id); if (!m) return '';
+                return `<a class="p2-launch-item" href="${esc(m.url)}"><span class="p2-launch-ic">${P2.icone(m.ic)}</span>
+                    <span class="p2-launch-tx"><b>${esc(m.nome)}</b><small>${esc(m.sub || '')}</small></span></a>`;
+            }).join('');
+
+            function kpiSkel(ic, lab) {
+                return `<div class="p2-kpi"><div class="p2-kpi-ic">${P2.icone(ic)}</div>
+                    <div class="p2-kpi-val carregando" data-lab="${esc(lab)}">···</div>
+                    <div class="p2-kpi-lab">${esc(lab)}</div></div>`;
             }
-        });
+            function setKpi(lab, val) {
+                const el = document.querySelector(`.p2-kpi-val[data-lab="${CSS.escape(lab)}"]`);
+                if (el) { el.textContent = val == null ? '—' : val.toLocaleString('pt-BR'); el.classList.remove('carregando'); }
+            }
+
+            // ── Dados reais (Supabase do Echelon) ───────────────────────
+            (async () => {
+                try {
+                    const [alvos, den, mis, fac] = await Promise.all([
+                        P2.sb.count('tb_pessoas'), P2.sb.count('tb_denuncias'),
+                        P2.sb.count('tb_missoes'), P2.sb.count('tb_faccoes'),
+                    ]);
+                    setKpi('Alvos cadastrados', alvos);
+                    setKpi('Denúncias', den);
+                    setKpi('Missões', mis);
+                    setKpi('Facções', fac);
+                } catch (e) {
+                    ['Alvos cadastrados', 'Denúncias', 'Missões', 'Facções'].forEach(l => setKpi(l, null));
+                }
+
+                const box = document.getElementById('p2-recentes');
+                try {
+                    const linhas = await P2.sb.get('tb_denuncias',
+                        'select=id,numero,tipo,resumo_breve,data_denuncia,status_operacional&order=data_denuncia.desc.nullslast&limit=8');
+                    if (!linhas.length) { box.innerHTML = vazio('📭', 'Sem denúncias', 'Nenhuma denúncia cadastrada ainda.'); return; }
+                    box.innerHTML = linhas.map(d => {
+                        const st = statusBadge(d.status_operacional);
+                        const data = d.data_denuncia ? d.data_denuncia.split('-').reverse().join('/') : '';
+                        const tit = d.numero ? ('Denúncia nº ' + d.numero) : (d.tipo || 'Denúncia');
+                        const sub = (d.tipo && d.numero ? d.tipo + ' · ' : '') + (d.resumo_breve || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 70);
+                        return `<a class="p2-li" href="p2-missoes.html">
+                            <span class="p2-li-ic"><i class="fa-solid fa-phone-volume"></i></span>
+                            <span class="p2-li-tx"><b>${esc(tit)}</b><small>${esc(sub)}</small></span>
+                            <span class="p2-li-meta">${st} ${esc(data)}</span></a>`;
+                    }).join('');
+                } catch (e) {
+                    box.innerHTML = vazio('⚠️', 'Não foi possível carregar', 'Verifique a conexão com o banco de inteligência.');
+                }
+            })();
+
+            function vazio(ic, t, p) { return `<div class="p2-empty"><div class="ic">${ic}</div><h3>${esc(t)}</h3><p>${esc(p)}</p></div>`; }
+            function statusBadge(s) {
+                if (!s) return '';
+                const v = String(s).toLowerCase();
+                let cls = 'cinza';
+                if (/aprov|conclu|proced|finaliz/.test(v)) cls = 'verde';
+                else if (/aberto|pend|revis|distrib|anális|analis/.test(v)) cls = 'amb';
+                else if (/improc|devolv|arquiv|cancel/.test(v)) cls = 'verm';
+                return `<span class="p2-badge ${cls}">${esc(s)}</span>`;
+            }
+        })();
     </script>
 </body>
 

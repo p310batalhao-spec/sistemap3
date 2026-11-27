@@ -13,6 +13,7 @@
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../css/stylesMapaDashboard.css">
+    <link rel="stylesheet" href="../css/p2-mapa.css">
     <style>
         /* ── Camada de alvos (js/mapa-alvos.js) ── */
         .al-item { font-size: 10.5px; color: rgba(255,255,255,.85); padding: 5px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.08); margin-bottom: 4px; cursor: pointer; line-height: 1.35; }
@@ -85,7 +86,7 @@
     </style>
 </head>
 
-<body>
+<body class="p2-mapa">
     <script src="../js/core/session.js"></script>
 
     <!-- ══ HEADER ══════════════════════════════════════════════════════ -->
@@ -191,6 +192,10 @@
                 <div id="alvo-resumo" style="font-size:10px;color:rgba(255,255,255,.6);line-height:1.5;margin-bottom:6px;">⏳ Carregando…</div>
                 <div id="alvo-status" style="font-size:9.5px;color:#ffe082;margin-bottom:4px;"></div>
                 <input class="busca-input" id="alvo-busca" placeholder="🔍 Nome, vulgo, CPF, facção, endereço…" oninput="MapaAlvos.filtrar()" style="border-color:rgba(213,0,0,.35);">
+                <div style="display:flex;gap:5px;margin-bottom:6px;">
+                    <button class="btn-mapa" onclick="MapaAlvos.alternar(true);var c=document.getElementById('alvo-ver');if(c)c.checked=true;" style="flex:1;">☑ Mostrar alvos</button>
+                    <button class="btn-mapa" onclick="MapaAlvos.alternar(false);var c=document.getElementById('alvo-ver');if(c)c.checked=false;" style="flex:1;">☐ Ocultar alvos</button>
+                </div>
                 <div style="display:flex;gap:5px;margin-bottom:6px;"><button class="btn-mapa" onclick="MapaAlvos.limparRede()" style="flex:1;">✕ Ocultar linhas de vínculo</button></div>
                 <div id="alvo-lista"></div>
 
@@ -301,6 +306,9 @@
     <script src="../js/mapa-Dashboard-P3.js"></script>
     <script src="../js/core/atualizador-local.js"></script>
     <script src="../js/mapa-alvos.js"></script>
+    <script src="../js/mapa-denuncias.js"></script>
+    <script src="../js/p2/p2-core.js"></script>
+    <script src="../js/p2/p2-nav-inject.js"></script>
 </body>
 
 </html>

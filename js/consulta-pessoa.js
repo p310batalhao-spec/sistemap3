@@ -2040,11 +2040,26 @@
     // BNMP
     // ────────────────────────────────────────────────────────────────
     function renderMandados(r) {
-        if (!r.mandados || !r.mandados.possuiMandado) {
+        const m = r.mandados;
+        if (!m || !m.possuiMandado) {
+            // Estado 'indeterminado': o CAD/BNMP respondeu fora do padrão
+            // (sessão/contexto/erro) — NÃO é um "nada consta" confiável nem
+            // um mandado. Avisa em âmbar pra reconsultar, em vez de cravar.
+            if (m && m.indeterminado) {
+                return `<div class="cip-card" style="color:#8a6d00;border-color:rgba(255,160,40,.4);background:rgba(255,160,40,.08);">
+                    ⚠️ Não foi possível confirmar mandado na Central Nacional (BNMP) agora — a tela respondeu fora do padrão
+                    (sessão/contexto). Consulte novamente em alguns segundos.
+                    ${m.erro ? `<div style="font-size:11px;opacity:.7;margin-top:4px;">${esc(m.erro)}</div>` : ''}</div>`;
+            }
             return '<div class="cip-card" style="color:#1e6b34;">✓ Nenhuma informação de mandado de prisão ativo encontrada na Central Nacional (BNMP) pra este CPF.</div>';
         }
-        return `<div class="cip-card"><div class="cip-card-titulo" style="color:var(--p3-danger);">🚨 Mandado de prisão — BNMP</div>
-            ${montarHtmlDetalheCampos(r.mandados.detalhe)}</div>`;
+        // Pode haver mais de um mandado (m.mandados = lista de tabelas).
+        const lista = (Array.isArray(m.mandados) && m.mandados.length) ? m.mandados : [m.detalhe];
+        const blocos = lista.map((det, i) => `
+            ${lista.length > 1 ? `<div style="font-weight:700;margin:8px 0 2px;color:var(--p3-danger);">Mandado ${i + 1} de ${lista.length}</div>` : ''}
+            ${montarHtmlDetalheCampos(det)}`).join('');
+        return `<div class="cip-card"><div class="cip-card-titulo" style="color:var(--p3-danger);">🚨 Mandado de prisão — BNMP${lista.length > 1 ? ` (${lista.length})` : ''}</div>
+            ${blocos}</div>`;
     }
 
     // ────────────────────────────────────────────────────────────────

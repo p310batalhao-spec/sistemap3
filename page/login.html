@@ -7,234 +7,130 @@
     <link rel="shortcut icon" href="../img/favicon.ico" type="image/x-icon">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="../css/theme.css">
     <style>
+        /* 26/11/2026 — login reconstruído no estilo do módulo P2 ("Split
+           institucional", escolhido pelo usuário): painel escuro de
+           identidade à esquerda, formulário à direita. Toda a LÓGICA
+           (Firebase, cadastro, Íris, animação, ids) foi preservada — só o
+           visual mudou. Tema claro/escuro compartilhado (data-p3-theme). */
         * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        .btn-tema-login {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(255, 255, 255, 0.35);
-            color: #fff;
+        :root {
+            --lg-bg: #eef1f6; --lg-surface: #ffffff; --lg-surface2: #f4f6fb;
+            --lg-txt: #26314a; --lg-strong: #0f1a30; --lg-dim: #53617c;
+            --lg-line: rgba(14, 28, 54, .16); --lg-accent: #2e6be6;
         }
-        .btn-tema-login:hover { background: rgba(255, 255, 255, 0.22); }
-
-        body {
-            font-family: var(--p3-font);
-            background: linear-gradient(135deg, var(--p3-blue-900) 0%, var(--p3-blue-700) 60%, var(--p3-blue-900) 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
+        :root[data-p3-theme="dark"] {
+            --lg-bg: #0b1627; --lg-surface: #111f35; --lg-surface2: #152542;
+            --lg-txt: #cdd8ea; --lg-strong: #fff; --lg-dim: #9fb0c9;
+            --lg-line: rgba(255, 255, 255, .14); --lg-accent: #3d7bf7;
         }
+        body { font-family: 'Inter', sans-serif; min-height: 100vh; background: var(--lg-bg); color: var(--lg-txt); -webkit-font-smoothing: antialiased; }
 
-        .login-card {
-            background: var(--p3-surface);
-            border-radius: var(--p3-radius-lg);
-            padding: 2.5rem 2rem;
-            width: min(420px, 100%);
-            box-shadow: var(--p3-shadow-lg);
+        .lg-split { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
+
+        /* ── Painel esquerdo (identidade) ── */
+        .lg-left {
+            position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+            padding: 56px 60px; color: #e7ecf5;
+            background:
+                radial-gradient(900px 520px at 12% -5%, rgba(60, 120, 220, .28), transparent 60%),
+                radial-gradient(760px 520px at 105% 108%, rgba(130, 90, 230, .20), transparent 55%),
+                linear-gradient(160deg, #0c1731, #0a1220);
         }
-
-        .login-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            padding-bottom: 1.25rem;
-            border-bottom: 2px solid #e8ecf5;
+        .lg-left::before {
+            content: ""; position: absolute; inset: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, .045) 1px, transparent 1px);
+            background-size: 34px 34px;
+            -webkit-mask-image: radial-gradient(circle at 28% 42%, #000, transparent 76%); mask-image: radial-gradient(circle at 28% 42%, #000, transparent 76%);
+            opacity: .6;
         }
-
-        .login-header img {
-            width: 64px;
-            height: 64px;
-            object-fit: contain;
-            flex-shrink: 0;
+        .lg-left > * { position: relative; z-index: 1; }
+        .lg-brasao { width: 104px; height: 104px; object-fit: contain; filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .55)); margin-bottom: 24px; }
+        .lg-tag {
+            display: inline-flex; align-items: center; gap: 8px; font-size: .68rem; font-weight: 700; letter-spacing: .1em;
+            text-transform: uppercase; color: #ffb44d; background: rgba(255, 160, 40, .12); border: 1px solid rgba(255, 160, 40, .35);
+            border-radius: 999px; padding: 5px 14px; margin-bottom: 20px;
         }
+        .lg-left h1 { font-size: 2.1rem; font-weight: 900; letter-spacing: -.025em; line-height: 1.08; margin-bottom: 14px; color: #fff; }
+        .lg-left h1 span { color: #7fb0ff; }
+        .lg-left p { font-size: .95rem; color: #9fb0c9; max-width: 430px; line-height: 1.65; }
+        .lg-feats { margin-top: 26px; display: flex; flex-direction: column; gap: 11px; }
+        .lg-feat { display: flex; align-items: center; gap: 11px; font-size: .86rem; color: #c3d0e6; }
+        .lg-feat i { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; background: rgba(90, 150, 255, .14); border: 1px solid rgba(120, 170, 255, .3); color: #9fd2ff; font-size: 14px; }
+        .lg-cred { position: absolute; bottom: 24px; left: 60px; font-size: .7rem; color: rgba(255, 255, 255, .42); z-index: 1; }
 
-        .login-header-txt h2 {
-            font-size: .95rem;
-            color: var(--p3-blue-900);
-            font-weight: 700;
-            line-height: 1.3;
-        }
+        /* ── Painel direito (formulário) ── */
+        .lg-right { display: flex; align-items: center; justify-content: center; padding: 40px 28px; }
+        .lg-form { width: min(400px, 100%); }
+        .lg-form-h { margin-bottom: 22px; }
+        .lg-form-h h2 { font-size: 1.55rem; font-weight: 800; color: var(--lg-strong); letter-spacing: -.02em; }
+        .lg-form-h p { font-size: .85rem; color: var(--lg-dim); margin-top: 4px; }
 
-        .login-header-txt p {
-            font-size: .75rem;
-            color: #6b7594;
-            margin-top: .2rem;
-        }
+        .btn-tema-login { position: fixed; top: 1rem; right: 1rem; background: rgba(255, 255, 255, .12); border-color: rgba(255, 255, 255, .35); color: #fff; z-index: 10; }
+        .btn-tema-login:hover { background: rgba(255, 255, 255, .22); }
 
-        /* Abas Login / Cadastro */
-        .tabs {
-            display: flex;
-            border-radius: 8px;
-            background: #f0f2f8;
-            padding: 4px;
-            margin-bottom: 1.75rem;
-            gap: 4px;
-        }
+        .tabs { display: flex; border-radius: 10px; background: var(--lg-surface2); padding: 4px; margin-bottom: 1.6rem; gap: 4px; border: 1px solid var(--lg-line); }
+        .tab-btn { flex: 1; padding: .6rem; border: none; border-radius: 7px; background: transparent; font-size: .85rem; font-weight: 700; color: var(--lg-dim); cursor: pointer; transition: all .18s; font-family: inherit; }
+        .tab-btn.active { background: var(--lg-surface); color: var(--lg-accent); box-shadow: 0 1px 6px rgba(0, 0, 0, .14); }
 
-        .tab-btn {
-            flex: 1;
-            padding: .55rem;
-            border: none;
-            border-radius: 6px;
-            background: transparent;
-            font-size: .85rem;
-            font-weight: bold;
-            color: #6b7594;
-            cursor: pointer;
-            transition: all .2s;
-        }
-
-        .tab-btn.active {
-            background: #fff;
-            color: var(--p3-blue-900);
-            box-shadow: 0 1px 4px rgba(0,0,0,.12);
-        }
-
-        /* Formulário */
         .painel { display: none; }
         .painel.ativo { display: block; }
-
-        .campo { margin-bottom: 1.1rem; }
-
-        .campo label {
-            display: block;
-            font-size: .78rem;
-            font-weight: bold;
-            color: #374263;
-            margin-bottom: .35rem;
-            text-transform: uppercase;
-            letter-spacing: .04em;
+        .campo { margin-bottom: 1rem; }
+        .campo label { display: block; font-size: .72rem; font-weight: 700; color: var(--lg-dim); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .05em; }
+        .campo-ic { position: relative; }
+        .campo-ic > i { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--lg-dim); font-size: 14px; pointer-events: none; }
+        .campo input, .campo select {
+            width: 100%; padding: 12px 14px; border: 1.5px solid var(--lg-line); border-radius: 9px; font-size: .9rem;
+            color: var(--lg-strong); background: var(--lg-surface2); transition: border-color .18s, background .18s; font-family: inherit;
         }
+        .campo-ic input { padding-left: 38px; }
+        .campo input:focus, .campo select:focus { outline: none; border-color: var(--lg-accent); background: var(--lg-surface); box-shadow: 0 0 0 3px rgba(61, 123, 247, .14); }
+        .campo select { cursor: pointer; }
 
-        .campo input,
-        .campo select {
-            width: 100%;
-            padding: 11px 13px;
-            border: 1.5px solid #d5daea;
-            border-radius: 7px;
-            font-size: .9rem;
-            color: #1a1f36;
-            transition: border-color .2s;
-            background: #fafbff;
-        }
+        .btn-submit { width: 100%; padding: 13px; background: var(--lg-accent); color: #fff; border: none; border-radius: 9px; font-size: .95rem; font-weight: 700; cursor: pointer; letter-spacing: .04em; margin-top: .6rem; transition: background .18s, transform .1s; font-family: inherit; }
+        .btn-submit:hover { background: #1f5fe0; }
+        .btn-submit:active { transform: translateY(1px); }
+        .btn-submit:disabled { opacity: .6; cursor: not-allowed; }
 
-        .campo input:focus,
-        .campo select:focus {
-            outline: none;
-            border-color: var(--p3-blue-700);
-            background: #fff;
-        }
+        .msg { font-size: .82rem; font-weight: 600; padding: .7rem 1rem; border-radius: 9px; margin-bottom: 1rem; display: none; text-align: center; }
+        .msg.erro { background: rgba(248, 113, 113, .12); color: #c0392b; border: 1px solid rgba(248, 113, 113, .4); }
+        .msg.sucesso { background: rgba(52, 211, 153, .14); color: #1b7a4a; border: 1px solid rgba(52, 211, 153, .4); }
 
-        .btn-submit {
-            width: 100%;
-            padding: 13px;
-            background: var(--p3-gradient);
-            color: #fff;
-            border: none;
-            border-radius: var(--p3-radius-sm);
-            font-size: .95rem;
-            font-weight: 700;
-            cursor: pointer;
-            letter-spacing: .04em;
-            margin-top: .5rem;
-            transition: opacity .2s;
-        }
-
-        .btn-submit:hover { opacity: .9; }
-        .btn-submit:disabled { opacity: .55; cursor: not-allowed; }
-
-        /* Mensagem de erro/sucesso */
-        .msg {
-            font-size: .82rem;
-            font-weight: bold;
-            padding: .7rem 1rem;
-            border-radius: 7px;
-            margin-bottom: 1rem;
-            display: none;
-            text-align: center;
-        }
-
-        .msg.erro    { background: #fde8e8; color: #b71c1c; border: 1px solid #f5c6c6; }
-        .msg.sucesso { background: #e8f5e9; color: #1b5e20; border: 1px solid #c3e6cb; }
-
-        /* Spinner dentro do botão */
-        .spinner-btn {
-            display: inline-block;
-            width: 14px; height: 14px;
-            border: 2px solid rgba(255,255,255,.4);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin .7s linear infinite;
-            vertical-align: middle;
-            margin-right: 6px;
-        }
+        .spinner-btn { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255, 255, 255, .4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .lg-foot { margin-top: 1.6rem; font-size: .72rem; color: var(--lg-dim); text-align: center; }
 
-        footer {
-            margin-top: 1.5rem;
-            font-size: .72rem;
-            color: rgba(255,255,255,.45);
-            text-align: center;
-        }
-
-        /* ── Animação de sucesso no login ─────────────────────────── */
-        .overlay-sucesso {
-            position: fixed;
-            inset: 0;
-            background: linear-gradient(135deg, var(--p3-blue-900) 0%, var(--p3-blue-700) 60%, var(--p3-blue-900) 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity .25s ease;
-        }
+        /* ── Animação de sucesso ── */
+        .overlay-sucesso { position: fixed; inset: 0; background: linear-gradient(160deg, #0c1731, #0a1220); display: flex; align-items: center; justify-content: center; z-index: 9999; opacity: 0; pointer-events: none; transition: opacity .25s ease; }
         .overlay-sucesso.ativo { opacity: 1; pointer-events: all; }
-
         .sucesso-conteudo { text-align: center; color: #fff; }
-
         .check-svg { width: 88px; height: 88px; margin-bottom: 1.1rem; }
-        .check-circulo {
-            fill: none; stroke: #fff; stroke-width: 2.5;
-            stroke-dasharray: 151; stroke-dashoffset: 151;
-        }
-        .check-marca {
-            fill: none; stroke: #fff; stroke-width: 3.5;
-            stroke-linecap: round; stroke-linejoin: round;
-            stroke-dasharray: 36; stroke-dashoffset: 36;
-        }
+        .check-circulo { fill: none; stroke: #4d86ff; stroke-width: 2.5; stroke-dasharray: 151; stroke-dashoffset: 151; }
+        .check-marca { fill: none; stroke: #4d86ff; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 36; stroke-dashoffset: 36; }
         .overlay-sucesso.ativo .check-circulo { animation: desenharCirculo .5s ease forwards; }
-        .overlay-sucesso.ativo .check-marca   { animation: desenharMarca .35s .45s ease forwards; }
+        .overlay-sucesso.ativo .check-marca { animation: desenharMarca .35s .45s ease forwards; }
         @keyframes desenharCirculo { to { stroke-dashoffset: 0; } }
-        @keyframes desenharMarca   { to { stroke-dashoffset: 0; } }
-
-        .sucesso-texto {
-            font-size: 1.15rem; font-weight: 700;
-            opacity: 0; transform: translateY(6px);
-        }
-        .sucesso-sub {
-            font-size: .85rem; margin-top: .3rem; color: rgba(255,255,255,.75);
-            opacity: 0; transform: translateY(6px);
-        }
+        @keyframes desenharMarca { to { stroke-dashoffset: 0; } }
+        .sucesso-texto { font-size: 1.15rem; font-weight: 700; opacity: 0; transform: translateY(6px); }
+        .sucesso-sub { font-size: .85rem; margin-top: .3rem; color: rgba(255, 255, 255, .75); opacity: 0; transform: translateY(6px); }
         .overlay-sucesso.ativo .sucesso-texto { animation: apareceTexto .4s .55s ease forwards; }
-        .overlay-sucesso.ativo .sucesso-sub   { animation: apareceTexto .4s .7s ease forwards; }
+        .overlay-sucesso.ativo .sucesso-sub { animation: apareceTexto .4s .7s ease forwards; }
         @keyframes apareceTexto { to { opacity: 1; transform: translateY(0); } }
-
-        .sucesso-credito {
-            font-size: .68rem; margin-top: 1.5rem; color: rgba(255,255,255,.45);
-            opacity: 0; letter-spacing: .03em;
-        }
+        .sucesso-credito { font-size: .68rem; margin-top: 1.5rem; color: rgba(255, 255, 255, .45); opacity: 0; letter-spacing: .03em; }
         .overlay-sucesso.ativo .sucesso-credito { animation: apareceTexto .4s .9s ease forwards; }
+
+        @media (max-width: 860px) {
+            .lg-split { grid-template-columns: 1fr; }
+            .lg-left { padding: 34px 26px 28px; min-height: auto; }
+            .lg-brasao { width: 70px; height: 70px; margin-bottom: 16px; }
+            .lg-left h1 { font-size: 1.5rem; }
+            .lg-left p, .lg-feats { display: none; }
+            .lg-cred { position: static; margin-top: 16px; left: auto; }
+            .lg-right { padding: 28px 20px 40px; }
+        }
     </style>
 </head>
 <body>
@@ -245,410 +141,422 @@
         <svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
     </button>
 
-<div class="login-card">
-    <div class="login-header">
-        <img src="../img/brasao.png" alt="Brasão 10º BPM">
-        <div class="login-header-txt">
-            <h2>SISTEMA DE GERENCIAMENTO P3</h2>
-            <p>10º Batalhão de Polícia Militar</p>
+    <div class="lg-split">
+        <!-- ══ IDENTIDADE ══ -->
+        <section class="lg-left">
+            <img class="lg-brasao" src="../img/brasao.png" alt="Brasão 10º BPM" onerror="this.style.display='none'">
+            <span class="lg-tag"><i class="fa-solid fa-shield-halved"></i> Acesso restrito · P3</span>
+            <h1>SISTEMA DE<br>GERENCIAMENTO <span>P3</span></h1>
+            <p>Plataforma de planejamento, inteligência e estatística do 10º Batalhão de Polícia Militar — PMAL.</p>
+            <div class="lg-feats">
+                <div class="lg-feat"><i class="fa-solid fa-magnifying-glass-chart"></i> Consulta integrada e inteligência</div>
+                <div class="lg-feat"><i class="fa-solid fa-map-location-dot"></i> Operações, mapas e produtividade</div>
+                <div class="lg-feat"><i class="fa-solid fa-lock"></i> Dados protegidos e auditados</div>
+            </div>
+            <div class="lg-cred">Criado por 1º Tenente Calheiros</div>
+        </section>
+
+        <!-- ══ FORMULÁRIO ══ -->
+        <section class="lg-right">
+            <div class="lg-form">
+                <div class="lg-form-h">
+                    <h2>Bem-vindo de volta</h2>
+                    <p>Entre com seu CPF e senha para acessar o sistema.</p>
+                </div>
+
+                <!-- Abas -->
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-login" onclick="trocarAba('login')">Entrar</button>
+                    <button class="tab-btn" id="tab-cadastro" onclick="trocarAba('cadastro')">Cadastrar</button>
+                </div>
+
+                <!-- ══ PAINEL LOGIN ══ -->
+                <div class="painel ativo" id="painel-login">
+                    <div class="msg" id="msg-login"></div>
+                    <div class="campo">
+                        <label>CPF</label>
+                        <div class="campo-ic"><i class="fa-solid fa-id-card"></i>
+                            <input type="text" id="login-cpf" placeholder="Somente números" maxlength="11" inputmode="numeric"></div>
+                    </div>
+                    <div class="campo">
+                        <label>Senha</label>
+                        <div class="campo-ic"><i class="fa-solid fa-lock"></i>
+                            <input type="password" id="login-senha" placeholder="Sua senha"></div>
+                    </div>
+                    <button class="btn-submit" id="btn-entrar" onclick="fazerLogin()">ENTRAR</button>
+                </div>
+
+                <!-- ══ PAINEL CADASTRO ══ -->
+                <div class="painel" id="painel-cadastro">
+                    <div class="msg" id="msg-cadastro"></div>
+                    <div class="campo">
+                        <label>Graduação</label>
+                        <select id="cad-graduacao">
+                            <option value="">Selecione</option>
+                            <option>Soldado</option>
+                            <option>Cabo</option>
+                            <option>3º Sargento</option>
+                            <option>2º Sargento</option>
+                            <option>1º Sargento</option>
+                            <option>Subtenente</option>
+                            <option>Aspirante</option>
+                            <option>2º Tenente</option>
+                            <option>1º Tenente</option>
+                            <option>Capitão</option>
+                            <option>Major</option>
+                            <option>Tenente Coronel</option>
+                            <option>Coronel</option>
+                        </select>
+                    </div>
+                    <div class="campo">
+                        <label>Nome Completo</label>
+                        <input type="text" id="cad-nome" placeholder="Nome completo">
+                    </div>
+                    <div class="campo">
+                        <label>Nome de Guerra</label>
+                        <input type="text" id="cad-nomeguerra" placeholder="Como é chamado">
+                    </div>
+                    <div class="campo">
+                        <label>CPF</label>
+                        <input type="text" id="cad-cpf" placeholder="Somente números" maxlength="11" inputmode="numeric">
+                    </div>
+                    <div class="campo">
+                        <label>Senha</label>
+                        <input type="password" id="cad-senha" placeholder="Crie uma senha">
+                    </div>
+                    <div class="campo">
+                        <label>Unidade</label>
+                        <select id="cad-unidade">
+                            <option value="10bpm">10º BPM</option>
+                        </select>
+                    </div>
+                    <div class="campo" style="display:flex;align-items:flex-start;gap:8px;">
+                        <input type="checkbox" id="cad-operador-campo" style="width:auto;margin-top:3px;">
+                        <label for="cad-operador-campo" style="font-weight:400;font-size:.82rem;text-transform:none;letter-spacing:0;color:var(--lg-dim);">
+                            Quero acesso como <strong>Operador de Campo</strong> (só a tela de busca facial) —
+                            cadastro fica pendente de aprovação do administrador antes de poder entrar.
+                        </label>
+                    </div>
+                    <button class="btn-submit" id="btn-cadastrar" onclick="fazerCadastro()">CADASTRAR</button>
+                </div>
+
+                <div class="lg-foot">P3 / 10º BPM — Sistema de Gerenciamento Interno</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ══ Animação de sucesso (login) ══ -->
+    <div class="overlay-sucesso" id="overlay-sucesso">
+        <div class="sucesso-conteudo">
+            <svg class="check-svg" viewBox="0 0 52 52">
+                <circle class="check-circulo" cx="26" cy="26" r="24"/>
+                <path class="check-marca" d="M14 27l7 7 16-16"/>
+            </svg>
+            <p class="sucesso-texto">Login realizado com sucesso!</p>
+            <p class="sucesso-sub" id="sucesso-sub"></p>
+            <p class="sucesso-credito">Criado por 1º Tenente Calheiros</p>
         </div>
     </div>
 
-    <!-- Abas -->
-    <div class="tabs">
-        <button class="tab-btn active" id="tab-login"    onclick="trocarAba('login')">Entrar</button>
-        <button class="tab-btn"        id="tab-cadastro" onclick="trocarAba('cadastro')">Cadastrar</button>
-    </div>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 
-    <!-- ══ PAINEL LOGIN ══════════════════════════════════════════ -->
-    <div class="painel ativo" id="painel-login">
-        <div class="msg" id="msg-login"></div>
+    <script>
+    // ═══════════════════════════════════════════════════════════════
+    // CONFIGURAÇÃO FIREBASE
+    // ═══════════════════════════════════════════════════════════════
+    const firebaseConfig = {
+        apiKey           : "AIzaSyBRZn_EOfV6ozsx6NNzOlq1sjIV_xVm7xE",
+        authDomain       : "sistema-p3-v2.firebaseapp.com",
+        projectId        : "sistema-p3-v2",
+        storageBucket    : "sistema-p3-v2.firebasestorage.app",
+        messagingSenderId: "1019080251258",
+        appId            : "1:1019080251258:web:93f9e299cf19b16189e8c3",
+        databaseURL      : "https://sistema-p3-v2-default-rtdb.firebaseio.com"
+    };
 
-        <div class="campo">
-            <label>CPF</label>
-            <input type="text" id="login-cpf" placeholder="Somente números"
-                maxlength="11" inputmode="numeric">
-        </div>
-        <div class="campo">
-            <label>Senha</label>
-            <input type="password" id="login-senha" placeholder="Sua senha">
-        </div>
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-        <button class="btn-submit" id="btn-entrar" onclick="fazerLogin()">ENTRAR</button>
-    </div>
+    // ═══════════════════════════════════════════════════════════════
+    // UTILITÁRIOS
+    // ═══════════════════════════════════════════════════════════════
+    function trocarAba(aba) {
+        document.getElementById('painel-login').classList.toggle('ativo', aba === 'login');
+        document.getElementById('painel-cadastro').classList.toggle('ativo', aba === 'cadastro');
+        document.getElementById('tab-login').classList.toggle('active', aba === 'login');
+        document.getElementById('tab-cadastro').classList.toggle('active', aba === 'cadastro');
+        limparMensagens();
+    }
 
-    <!-- ══ PAINEL CADASTRO ══════════════════════════════════════ -->
-    <div class="painel" id="painel-cadastro">
-        <div class="msg" id="msg-cadastro"></div>
+    function limparMensagens() {
+        ['msg-login', 'msg-cadastro'].forEach(id => {
+            const el = document.getElementById(id);
+            el.style.display = 'none';
+            el.className = 'msg';
+            el.textContent = '';
+        });
+    }
 
-        <div class="campo">
-            <label>Graduação</label>
-            <select id="cad-graduacao">
-                <option value="">Selecione</option>
-                <option>Soldado</option>
-                <option>Cabo</option>
-                <option>3º Sargento</option>
-                <option>2º Sargento</option>
-                <option>1º Sargento</option>
-                <option>Subtenente</option>
-                <option>Aspirante</option>
-                <option>2º Tenente</option>
-                <option>1º Tenente</option>
-                <option>Capitão</option>
-                <option>Major</option>
-                <option>Tenente Coronel</option>
-                <option>Coronel</option>
-            </select>
-        </div>
-        <div class="campo">
-            <label>Nome Completo</label>
-            <input type="text" id="cad-nome" placeholder="Nome completo">
-        </div>
-        <div class="campo">
-            <label>Nome de Guerra</label>
-            <input type="text" id="cad-nomeguerra" placeholder="Como é chamado">
-        </div>
-        <div class="campo">
-            <label>CPF</label>
-            <input type="text" id="cad-cpf" placeholder="Somente números"
-                maxlength="11" inputmode="numeric">
-        </div>
-        <div class="campo">
-            <label>Senha</label>
-            <input type="password" id="cad-senha" placeholder="Crie uma senha">
-        </div>
-        <div class="campo">
-            <label>Unidade</label>
-            <select id="cad-unidade">
-                <option value="10bpm">10º BPM</option>
-            </select>
-        </div>
-        <div class="campo" style="display:flex;align-items:flex-start;gap:8px;">
-            <input type="checkbox" id="cad-operador-campo" style="width:auto;margin-top:3px;">
-            <label for="cad-operador-campo" style="font-weight:400;font-size:.85rem;">
-                Quero acesso como <strong>Operador de Campo</strong> (só a tela de busca facial) —
-                cadastro fica pendente de aprovação do administrador antes de poder entrar.
-            </label>
-        </div>
-
-        <button class="btn-submit" id="btn-cadastrar" onclick="fazerCadastro()">CADASTRAR</button>
-    </div>
-</div>
-
-<footer>P3 / 10º BPM — Sistema de Gerenciamento Interno</footer>
-
-<!-- ══ Animação de sucesso (login) ══════════════════════════════ -->
-<div class="overlay-sucesso" id="overlay-sucesso">
-    <div class="sucesso-conteudo">
-        <svg class="check-svg" viewBox="0 0 52 52">
-            <circle class="check-circulo" cx="26" cy="26" r="24"/>
-            <path class="check-marca" d="M14 27l7 7 16-16"/>
-        </svg>
-        <p class="sucesso-texto">Login realizado com sucesso!</p>
-        <p class="sucesso-sub" id="sucesso-sub"></p>
-        <p class="sucesso-credito">Criado por 1º Tenente Calheiros</p>
-    </div>
-</div>
-
-<!-- Firebase SDK -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
-<script>
-// ═══════════════════════════════════════════════════════════════
-// CONFIGURAÇÃO FIREBASE
-// ═══════════════════════════════════════════════════════════════
-const firebaseConfig = {
-    apiKey           : "AIzaSyBRZn_EOfV6ozsx6NNzOlq1sjIV_xVm7xE",
-    authDomain       : "sistema-p3-v2.firebaseapp.com",
-    projectId        : "sistema-p3-v2",
-    storageBucket    : "sistema-p3-v2.firebasestorage.app",
-    messagingSenderId: "1019080251258",
-    appId            : "1:1019080251258:web:93f9e299cf19b16189e8c3",
-    databaseURL      : "https://sistema-p3-v2-default-rtdb.firebaseio.com"
-};
-
-if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-// ═══════════════════════════════════════════════════════════════
-// UTILITÁRIOS
-// ═══════════════════════════════════════════════════════════════
-function trocarAba(aba) {
-    document.getElementById('painel-login').classList.toggle('ativo', aba === 'login');
-    document.getElementById('painel-cadastro').classList.toggle('ativo', aba === 'cadastro');
-    document.getElementById('tab-login').classList.toggle('active', aba === 'login');
-    document.getElementById('tab-cadastro').classList.toggle('active', aba === 'cadastro');
-    limparMensagens();
-}
-
-function limparMensagens() {
-    ['msg-login', 'msg-cadastro'].forEach(id => {
+    function mostrarMensagem(id, texto, tipo) {
         const el = document.getElementById(id);
-        el.style.display = 'none';
-        el.className = 'msg';
-        el.textContent = '';
-    });
-}
-
-function mostrarMensagem(id, texto, tipo) {
-    const el = document.getElementById(id);
-    el.textContent = texto;
-    el.className   = `msg ${tipo}`;
-    el.style.display = 'block';
-}
-
-function limparCPF(cpf) {
-    return (cpf || '').toString().replace(/\D/g, '').trim();
-}
-
-function setBtnLoading(id, loading, textoOriginal) {
-    const btn = document.getElementById(id);
-    if (loading) {
-        btn.innerHTML = `<span class="spinner-btn"></span> Aguarde...`;
-        btn.disabled  = true;
-    } else {
-        btn.textContent = textoOriginal;
-        btn.disabled    = false;
+        el.textContent = texto;
+        el.className   = `msg ${tipo}`;
+        el.style.display = 'block';
     }
-}
 
-function mostrarAnimacaoSucesso(nomeExibicao) {
-    document.getElementById('sucesso-sub').textContent = `Bem-vindo(a), ${nomeExibicao}`;
-    document.getElementById('overlay-sucesso').classList.add('ativo');
-}
+    function limparCPF(cpf) {
+        return (cpf || '').toString().replace(/\D/g, '').trim();
+    }
 
-// ═══════════════════════════════════════════════════════════════
-// LOGIN CRUZADO NO ÍRIS PMAL (sistema à parte, mesma unidade, banco
-// MySQL/Hostinger) — best-effort e SILENCIOSO: tenta autenticar lá com
-// o MESMO CPF+senha que acabou de validar aqui no P3. Se bater, guarda
-// o token JWT do Íris (localStorage) pra usar direto na página de
-// Rastreamento (dados do botão de pânico). Se não bater (senha
-// diferente ou usuário não existe no Íris), NÃO bloqueia nem avisa o
-// login do P3 — só não fica com o token; a página de Rastreamento
-// oferece autenticar manualmente nesse caso.
-const IRIS_API_URL = 'https://irispmal.io/api/iris_api.php';
-async function tentarLoginIris(cpf, senha) {
-    try {
-        const res = await fetch(IRIS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ acao: 'login_mysql', cpf, senha }),
-        });
-        const data = await res.json().catch(() => null);
-        if (data && data.ok && data.token) {
-            localStorage.setItem('irisToken', data.token);
-            localStorage.setItem('irisUnidadeChave', data.unidade || '');
+    function setBtnLoading(id, loading, textoOriginal) {
+        const btn = document.getElementById(id);
+        if (loading) {
+            btn.innerHTML = `<span class="spinner-btn"></span> Aguarde...`;
+            btn.disabled  = true;
         } else {
-            localStorage.removeItem('irisToken');
-            localStorage.removeItem('irisUnidadeChave');
+            btn.textContent = textoOriginal;
+            btn.disabled    = false;
         }
-    } catch (e) {
-        console.error('Login cruzado no Íris (best-effort) falhou:', e);
-    }
-}
-
-// Se o usuário chegou aqui deslogado por inatividade (js/core/session.js
-// redireciona pra login.html?motivo=inatividade), mostra o motivo em vez
-// de deixar o formulário mudo sobre por que ele "caiu" do sistema.
-(function avisarSeSessaoExpirou() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('motivo') === 'inatividade') {
-        mostrarMensagem('msg-login', 'Sua sessão expirou por inatividade (2h). Faça login novamente.', 'erro');
-    }
-})();
-
-// ═══════════════════════════════════════════════════════════════
-// LOGIN — consulta direto no nó /usuarios/{cpf} do Firebase
-// ═══════════════════════════════════════════════════════════════
-async function fazerLogin() {
-    limparMensagens();
-    const cpf   = limparCPF(document.getElementById('login-cpf').value);
-    const senha = document.getElementById('login-senha').value.trim();
-
-    if (!cpf || !senha) {
-        mostrarMensagem('msg-login', 'Preencha CPF e senha.', 'erro');
-        return;
     }
 
-    setBtnLoading('btn-entrar', true, 'ENTRAR');
+    function mostrarAnimacaoSucesso(nomeExibicao) {
+        document.getElementById('sucesso-sub').textContent = `Bem-vindo(a), ${nomeExibicao}`;
+        document.getElementById('overlay-sucesso').classList.add('ativo');
+    }
 
-    try {
-        const snap = await db.ref(`usuarios/${cpf}`).once('value');
-        const usuario = snap.val();
+    // ═══════════════════════════════════════════════════════════════
+    // LOGIN CRUZADO NO ÍRIS PMAL (sistema à parte, mesma unidade, banco
+    // MySQL/Hostinger) — best-effort e SILENCIOSO: tenta autenticar lá com
+    // o MESMO CPF+senha que acabou de validar aqui no P3. Se bater, guarda
+    // o token JWT do Íris (localStorage) pra usar direto na página de
+    // Rastreamento (dados do botão de pânico). Se não bater (senha
+    // diferente ou usuário não existe no Íris), NÃO bloqueia nem avisa o
+    // login do P3 — só não fica com o token; a página de Rastreamento
+    // oferece autenticar manualmente nesse caso.
+    const IRIS_API_URL = 'https://irispmal.io/api/iris_api.php';
+    async function tentarLoginIris(cpf, senha) {
+        try {
+            const res = await fetch(IRIS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ acao: 'login_mysql', cpf, senha }),
+            });
+            const data = await res.json().catch(() => null);
+            if (data && data.ok && data.token) {
+                localStorage.setItem('irisToken', data.token);
+                localStorage.setItem('irisUnidadeChave', data.unidade || '');
+            } else {
+                localStorage.removeItem('irisToken');
+                localStorage.removeItem('irisUnidadeChave');
+            }
+        } catch (e) {
+            console.error('Login cruzado no Íris (best-effort) falhou:', e);
+        }
+    }
 
-        if (!usuario) {
-            mostrarMensagem('msg-login', 'CPF não encontrado no sistema.', 'erro');
+    // Se o usuário chegou aqui deslogado por inatividade (js/core/session.js
+    // redireciona pra login.html?motivo=inatividade), mostra o motivo em vez
+    // de deixar o formulário mudo sobre por que ele "caiu" do sistema.
+    (function avisarSeSessaoExpirou() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('motivo') === 'inatividade') {
+            mostrarMensagem('msg-login', 'Sua sessão expirou por inatividade (2h). Faça login novamente.', 'erro');
+        }
+    })();
+
+    // ═══════════════════════════════════════════════════════════════
+    // LOGIN — consulta direto no nó /usuarios/{cpf} do Firebase
+    // ═══════════════════════════════════════════════════════════════
+    async function fazerLogin() {
+        limparMensagens();
+        const cpf   = limparCPF(document.getElementById('login-cpf').value);
+        const senha = document.getElementById('login-senha').value.trim();
+
+        if (!cpf || !senha) {
+            mostrarMensagem('msg-login', 'Preencha CPF e senha.', 'erro');
             return;
         }
 
-        if (usuario.senha !== senha) {
-            mostrarMensagem('msg-login', 'Senha incorreta.', 'erro');
+        setBtnLoading('btn-entrar', true, 'ENTRAR');
+
+        try {
+            const snap = await db.ref(`usuarios/${cpf}`).once('value');
+            const usuario = snap.val();
+
+            if (!usuario) {
+                mostrarMensagem('msg-login', 'CPF não encontrado no sistema.', 'erro');
+                return;
+            }
+
+            if (usuario.senha !== senha) {
+                mostrarMensagem('msg-login', 'Senha incorreta.', 'erro');
+                return;
+            }
+
+            if (usuario.ativo === false) {
+                mostrarMensagem('msg-login', 'Usuário inativo. Contate o administrador.', 'erro');
+                return;
+            }
+
+            // ── Salva sessão no localStorage ──────────────────────
+            localStorage.setItem('userCpf',       usuario.cpf);
+            localStorage.setItem('userGraduacao', usuario.graduacao);
+            localStorage.setItem('userNomeGuerra',usuario.nomeGuerra);
+            localStorage.setItem('userNome',      usuario.nome);
+            localStorage.setItem('userNivel',     usuario.nivel || 'operador');
+            localStorage.setItem('userUnidade',   usuario.unidade || '10bpm');
+            localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
+            // Login automático dos tokens CAD/Quimera (25/10/2026, pedido do
+            // usuário: "todas as vezes que o login no sistema for feito, gere um
+            // novo token") — marca a intenção; quem efetiva é o cad-login-modal
+            // na 1ª página que usa o CAD (só se o e-mail estiver configurado).
+            localStorage.setItem('p3_auto_tokens_login', '1');
+
+            // Best-effort, sem await de propósito — não atrasa o login do P3.
+            // Roda em paralelo à animação de sucesso (~3.4s), tempo de sobra
+            // pra terminar antes do redirecionamento.
+            tentarLoginIris(cpf, senha);
+
+            // Animação de sucesso, depois redireciona para a home
+            mostrarAnimacaoSucesso(`${usuario.graduacao} ${usuario.nomeGuerra}`);
+            setTimeout(() => { window.location.href = '../index.html'; }, 3400);
+            return;
+
+        } catch (err) {
+            console.error('Erro no login:', err);
+            mostrarMensagem('msg-login', 'Erro de conexão. Tente novamente.', 'erro');
+        } finally {
+            setBtnLoading('btn-entrar', false, 'ENTRAR');
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // CADASTRO — grava no nó /usuarios/{cpf} do Firebase
+    // ═══════════════════════════════════════════════════════════════
+    async function fazerCadastro() {
+        limparMensagens();
+
+        const graduacao  = document.getElementById('cad-graduacao').value.trim();
+        const nome       = document.getElementById('cad-nome').value.trim();
+        const nomeGuerra = document.getElementById('cad-nomeguerra').value.trim() || nome.split(' ')[0];
+        const cpf        = limparCPF(document.getElementById('cad-cpf').value);
+        const senha      = document.getElementById('cad-senha').value.trim();
+        const unidade    = document.getElementById('cad-unidade').value;
+        // Auto-cadastro normal sempre entra como Operador (ativo na hora).
+        // Quem marca "Operador de Campo" entra como esse nível, mas PENDENTE
+        // (ativo:false) — login já bloqueia usuário inativo (ver checkAtivo
+        // mais abaixo), admin aprova mudando ativo pra true em
+        // admin-usuarios.html. Evita alguém ganhar acesso à busca facial de
+        // campo só se auto-declarando, sem nenhuma revisão.
+        const querOperadorCampo = document.getElementById('cad-operador-campo').checked;
+        const nivel      = querOperadorCampo ? 'operador_campo' : 'operador';
+
+        // Validações básicas
+        if (!graduacao || !nome || !cpf || !senha) {
+            mostrarMensagem('msg-cadastro', 'Preencha todos os campos obrigatórios.', 'erro');
             return;
         }
 
-        if (usuario.ativo === false) {
-            mostrarMensagem('msg-login', 'Usuário inativo. Contate o administrador.', 'erro');
+        if (cpf.length !== 11) {
+            mostrarMensagem('msg-cadastro', 'CPF deve ter 11 dígitos.', 'erro');
             return;
         }
 
-        // ── Salva sessão no localStorage ──────────────────────
-        localStorage.setItem('userCpf',       usuario.cpf);
-        localStorage.setItem('userGraduacao', usuario.graduacao);
-        localStorage.setItem('userNomeGuerra',usuario.nomeGuerra);
-        localStorage.setItem('userNome',      usuario.nome);
-        localStorage.setItem('userNivel',     usuario.nivel || 'operador');
-        localStorage.setItem('userUnidade',   usuario.unidade || '10bpm');
-        localStorage.setItem('userSenha',     senha); // usado para confirmação de exclusão
-        // Login automático dos tokens CAD/Quimera (25/10/2026, pedido do
-        // usuário: "todas as vezes que o login no sistema for feito, gere um
-        // novo token") — marca a intenção; quem efetiva é o cad-login-modal
-        // na 1ª página que usa o CAD (só se o e-mail estiver configurado).
-        localStorage.setItem('p3_auto_tokens_login', '1');
-
-        // Best-effort, sem await de propósito — não atrasa o login do P3.
-        // Roda em paralelo à animação de sucesso (~3.4s), tempo de sobra
-        // pra terminar antes do redirecionamento.
-        tentarLoginIris(cpf, senha);
-
-        // Animação de sucesso, depois redireciona para a home
-        mostrarAnimacaoSucesso(`${usuario.graduacao} ${usuario.nomeGuerra}`);
-        setTimeout(() => { window.location.href = '../index.html'; }, 3400);
-        return;
-
-    } catch (err) {
-        console.error('Erro no login:', err);
-        mostrarMensagem('msg-login', 'Erro de conexão. Tente novamente.', 'erro');
-    } finally {
-        setBtnLoading('btn-entrar', false, 'ENTRAR');
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// CADASTRO — grava no nó /usuarios/{cpf} do Firebase
-// ═══════════════════════════════════════════════════════════════
-async function fazerCadastro() {
-    limparMensagens();
-
-    const graduacao  = document.getElementById('cad-graduacao').value.trim();
-    const nome       = document.getElementById('cad-nome').value.trim();
-    const nomeGuerra = document.getElementById('cad-nomeguerra').value.trim() || nome.split(' ')[0];
-    const cpf        = limparCPF(document.getElementById('cad-cpf').value);
-    const senha      = document.getElementById('cad-senha').value.trim();
-    const unidade    = document.getElementById('cad-unidade').value;
-    // Auto-cadastro normal sempre entra como Operador (ativo na hora).
-    // Quem marca "Operador de Campo" entra como esse nível, mas PENDENTE
-    // (ativo:false) — login já bloqueia usuário inativo (ver checkAtivo
-    // mais abaixo), admin aprova mudando ativo pra true em
-    // admin-usuarios.html. Evita alguém ganhar acesso à busca facial de
-    // campo só se auto-declarando, sem nenhuma revisão.
-    const querOperadorCampo = document.getElementById('cad-operador-campo').checked;
-    const nivel      = querOperadorCampo ? 'operador_campo' : 'operador';
-
-    // Validações básicas
-    if (!graduacao || !nome || !cpf || !senha) {
-        mostrarMensagem('msg-cadastro', 'Preencha todos os campos obrigatórios.', 'erro');
-        return;
-    }
-
-    if (cpf.length !== 11) {
-        mostrarMensagem('msg-cadastro', 'CPF deve ter 11 dígitos.', 'erro');
-        return;
-    }
-
-    if (senha.length < 4) {
-        mostrarMensagem('msg-cadastro', 'A senha deve ter pelo menos 4 caracteres.', 'erro');
-        return;
-    }
-
-    setBtnLoading('btn-cadastrar', true, 'CADASTRAR');
-
-    try {
-        // Verifica se CPF já existe
-        const snap = await db.ref(`usuarios/${cpf}`).once('value');
-        if (snap.val()) {
-            mostrarMensagem('msg-cadastro', 'CPF já cadastrado no sistema.', 'erro');
+        if (senha.length < 4) {
+            mostrarMensagem('msg-cadastro', 'A senha deve ter pelo menos 4 caracteres.', 'erro');
             return;
         }
 
-        // Grava o novo usuário
-        const novoUsuario = {
-            graduacao,
-            nome,
-            nomeGuerra,
-            cpf,
-            senha,
-            nivel,
-            unidade,
-            ativo      : !querOperadorCampo, // Operador de Campo entra inativo, pendente de aprovação do admin
-            cadastrado_em: new Date().toISOString()
-        };
+        setBtnLoading('btn-cadastrar', true, 'CADASTRAR');
 
-        await db.ref(`usuarios/${cpf}`).set(novoUsuario);
+        try {
+            // Verifica se CPF já existe
+            const snap = await db.ref(`usuarios/${cpf}`).once('value');
+            if (snap.val()) {
+                mostrarMensagem('msg-cadastro', 'CPF já cadastrado no sistema.', 'erro');
+                return;
+            }
 
-        mostrarMensagem('msg-cadastro', querOperadorCampo
-            ? 'Cadastro realizado! Fica pendente de aprovação do administrador antes de poder entrar.'
-            : 'Cadastro realizado! Você já pode fazer login.', 'sucesso');
+            // Grava o novo usuário
+            const novoUsuario = {
+                graduacao,
+                nome,
+                nomeGuerra,
+                cpf,
+                senha,
+                nivel,
+                unidade,
+                ativo      : !querOperadorCampo, // Operador de Campo entra inativo, pendente de aprovação do admin
+                cadastrado_em: new Date().toISOString()
+            };
 
-        // Limpa o formulário e volta para aba de login após 2s
-        document.getElementById('cad-graduacao').value  = '';
-        document.getElementById('cad-nome').value       = '';
-        document.getElementById('cad-nomeguerra').value = '';
-        document.getElementById('cad-cpf').value        = '';
-        document.getElementById('cad-senha').value      = '';
-        document.getElementById('cad-operador-campo').checked = false;
+            await db.ref(`usuarios/${cpf}`).set(novoUsuario);
 
-        setTimeout(() => trocarAba('login'), 2000);
+            mostrarMensagem('msg-cadastro', querOperadorCampo
+                ? 'Cadastro realizado! Fica pendente de aprovação do administrador antes de poder entrar.'
+                : 'Cadastro realizado! Você já pode fazer login.', 'sucesso');
 
-    } catch (err) {
-        console.error('Erro no cadastro:', err);
-        mostrarMensagem('msg-cadastro', 'Erro ao salvar. Tente novamente.', 'erro');
-    } finally {
-        setBtnLoading('btn-cadastrar', false, 'CADASTRAR');
+            // Limpa o formulário e volta para aba de login após 2s
+            document.getElementById('cad-graduacao').value  = '';
+            document.getElementById('cad-nome').value       = '';
+            document.getElementById('cad-nomeguerra').value = '';
+            document.getElementById('cad-cpf').value        = '';
+            document.getElementById('cad-senha').value      = '';
+            document.getElementById('cad-operador-campo').checked = false;
+
+            setTimeout(() => trocarAba('login'), 2000);
+
+        } catch (err) {
+            console.error('Erro no cadastro:', err);
+            mostrarMensagem('msg-cadastro', 'Erro ao salvar. Tente novamente.', 'erro');
+        } finally {
+            setBtnLoading('btn-cadastrar', false, 'CADASTRAR');
+        }
     }
-}
 
-// ═══════════════════════════════════════════════════════════════
-// Popula o <select> de unidades no cadastro (10º BPM já vem fixo)
-// ═══════════════════════════════════════════════════════════════
-async function carregarUnidadesNoCadastro() {
-    const select = document.getElementById('cad-unidade');
-    try {
-        const snap = await db.ref('unidades').once('value');
-        const dados = snap.val();
-        if (!dados) return;
-        Object.keys(dados).forEach(id => {
-            if (id === '10bpm') return; // já existe como opção padrão
-            if (dados[id].ativo === false) return;
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = dados[id].nome || id;
-            select.appendChild(opt);
+    // ═══════════════════════════════════════════════════════════════
+    // Popula o <select> de unidades no cadastro (10º BPM já vem fixo)
+    // ═══════════════════════════════════════════════════════════════
+    async function carregarUnidadesNoCadastro() {
+        const select = document.getElementById('cad-unidade');
+        try {
+            const snap = await db.ref('unidades').once('value');
+            const dados = snap.val();
+            if (!dados) return;
+            Object.keys(dados).forEach(id => {
+                if (id === '10bpm') return; // já existe como opção padrão
+                if (dados[id].ativo === false) return;
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = dados[id].nome || id;
+                select.appendChild(opt);
+            });
+        } catch (err) {
+            console.error('Erro ao carregar unidades:', err);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // ENTER confirma nos campos
+    // ═══════════════════════════════════════════════════════════════
+    document.addEventListener('DOMContentLoaded', () => {
+        // Se já está logado, redireciona direto
+        if (localStorage.getItem('userGraduacao') && localStorage.getItem('userNomeGuerra')) {
+            window.location.href = '../index.html';
+            return;
+        }
+
+        carregarUnidadesNoCadastro();
+
+        document.getElementById('login-senha').addEventListener('keydown', e => {
+            if (e.key === 'Enter') fazerLogin();
         });
-    } catch (err) {
-        console.error('Erro ao carregar unidades:', err);
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// ENTER confirma nos campos
-// ═══════════════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-    // Se já está logado, redireciona direto
-    if (localStorage.getItem('userGraduacao') && localStorage.getItem('userNomeGuerra')) {
-        window.location.href = '../index.html';
-        return;
-    }
-
-    carregarUnidadesNoCadastro();
-
-    document.getElementById('login-senha').addEventListener('keydown', e => {
-        if (e.key === 'Enter') fazerLogin();
+        document.getElementById('login-cpf').addEventListener('keydown', e => {
+            if (e.key === 'Enter') document.getElementById('login-senha').focus();
+        });
     });
-    document.getElementById('login-cpf').addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('login-senha').focus();
-    });
-});
-</script>
+    </script>
 
 </body>
 </html>

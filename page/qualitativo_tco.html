@@ -556,14 +556,15 @@
       var porMotivo = {}, porResultado = {}, porAno = {}, tipificacaoObj = {};
       var porMotivoAno = {};
       var errosMatMap = {}, errosFormMap = {}, catObj = {};
-      // Processos por categoria — alimenta as tabelas expansíveis "Resultados"
-      // e "Motivo do Arquivamento" da aba Relatório (pedido explícito do
-      // usuário, 30/09/2026: "duas tabelas expansível... data, número do
-      // cop, número do processo, tipificação, cidade, resultado, teor da
-      // sentença/certidão ou decisão"). Mesmo padrão já usado pra
-      // Atipicidade Material/Formal (errosMatMap/errosFormMap), só que
-      // agrupado por RESULTADO/MOTIVO em vez de por texto de erro
-      // agrupado por similaridade.
+      // Processos por categoria — alimenta as tabelas expansíveis
+      // "Resultados" e "Motivo do Arquivamento" da aba Relatório (pedido
+      // explícito do usuário). Mesmo padrão já usado pra Atipicidade
+      // Material/Formal (errosMatMap/errosFormMap), só que agrupado por
+      // RESULTADO/MOTIVO (as categorias JÁ canonicalizadas por
+      // resultadoFinal/canonMotivo — não o texto bruto da planilha, que
+      // foi exatamente o que gerou as redundâncias que o usuário reprovou
+      // antes: "Homologo A Transação C..." repetido 4x em vez de 1 linha
+      // só de "Transação Penal Cumprida").
       var porResultadoProcessos = {}, porMotivoProcessos = {};
       var esajsAceitaveis = [], esajsFalha = [];
       var esajAno = {}; // Nº Processo → ano da sentença (usado no ranking de militares por período)
@@ -575,12 +576,10 @@
         var motivoRaw = String(r['Motivo do Arquivamento'] || '').trim();
         var erroMat   = r['Erro – Atipicidade Material'] || r['Erro - Atipicidade Material'] || '';
         var erroForm  = r['Erro – Atipicidade Formal']   || r['Erro - Atipicidade Formal']   || '';
-        // "Teor da sentença/certidão ou decisão" — a coluna dedicada a isso
-        // na planilha é "Fundamentação Legal"; quando vem vazia (planilha
-        // real confirma que às vezes o parágrafo inteiro é colado em
-        // "Motivo do Arquivamento" em vez disso — ver comentário de
-        // canonMotivo), cai pro motivoRaw como 2ª opção em vez de mostrar
-        // vazio à toa.
+        // "Teor da sentença/certidão ou decisão" — coluna dedicada a isso
+        // na planilha é "Fundamentação Legal"; quando vem vazia (algumas
+        // linhas colam o parágrafo inteiro em "Motivo do Arquivamento" em
+        // vez disso), cai pro motivoRaw como 2ª opção em vez de ficar vazio.
         var teor      = String(r['Fundamentação Legal'] || '').trim() || motivoRaw;
         var tip       = _canonTip(r['Tipificação']);
         var comarca   = String(r['Comarca'] || '').trim();
@@ -799,13 +798,14 @@
       }
       h += mkSec('Atipicidade Material', 'mat', d.errosMaterial || []);
       h += mkSec('Atipicidade Formal', 'form', d.errosFormais || []);
-      // Tabelas expansíveis por categoria — pedido explícito do usuário
-      // (30/09/2026): "duas tabelas expansível... data, número do cop,
-      // número do processo, tipificação, cidade, resultado, teor da
-      // sentença/certidão ou decisão". Mesmo mecanismo de clique/expandir
-      // de mkSec acima, só que agrupado por RESULTADO/MOTIVO (dicionário
-      // categoria→qtd) em vez de por texto de erro agrupado por
-      // similaridade — ver mkSecCategorias.
+      // Tabelas expansíveis por categoria — pedido explícito do usuário:
+      // clicar num Resultado/Motivo mostra a lista de processos daquela
+      // categoria (data, nº do COP, nº do processo, tipificação, cidade,
+      // resultado, teor). Mesmo mecanismo de clique/expandir de mkSec
+      // acima, só que agrupado por um dicionário categoria→qtd (as
+      // mesmas categorias JÁ canonicalizadas de d.porResultado/d.porMotivo,
+      // as mesmas que alimentam os gráficos de barra acima) em vez de por
+      // texto de erro agrupado por similaridade — ver mkSecCategorias.
       h += mkSecCategorias('Resultados', 'res', d.porResultado || {}, '&#128202;');
       h += mkSecCategorias('Motivo do Arquivamento', 'mot', d.porMotivo || {}, '&#128193;');
       return h;

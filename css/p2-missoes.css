@@ -1,0 +1,132 @@
+/* ====================================================================
+   P2 · Módulo Missões / Disque-Denúncia — estilos específicos
+   (usa os tokens de css/p2.css)
+   ==================================================================== */
+
+/* Barra de ações do topo da página */
+.pm-acoes { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.pm-acoes .pm-busca { flex: 1; min-width: 180px; }
+.pm-input, .pm-select, .pm-textarea {
+    width: 100%; padding: 9px 12px; border-radius: 9px; border: 1px solid var(--p2-line2);
+    background: var(--p2-surface); color: var(--p2-txt); font: inherit; font-size: .86rem;
+}
+.pm-input:focus, .pm-select:focus, .pm-textarea:focus { outline: 2px solid var(--p2-accent-line); border-color: var(--p2-accent); }
+.pm-textarea { resize: vertical; min-height: 70px; }
+.pm-select { cursor: pointer; }
+
+/* Grade de denúncias */
+.pm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.pm-card {
+    background: var(--p2-surface); border: 1px solid var(--p2-line); border-radius: var(--p2-radius);
+    padding: 15px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--p2-shadow);
+}
+.pm-card-top { display: flex; align-items: flex-start; gap: 10px; }
+.pm-card-ic { width: 38px; height: 38px; border-radius: 9px; background: var(--p2-accent-soft); display: grid; place-items: center; font-size: 17px; flex-shrink: 0; }
+.pm-card-tit { flex: 1; min-width: 0; }
+.pm-card-tit b { display: block; font-size: .95rem; font-weight: 700; color: var(--p2-txt-strong); }
+.pm-card-tit small { font-size: .74rem; color: var(--p2-txt-dim); }
+.pm-card-resumo { font-size: .8rem; color: var(--p2-txt-dim); line-height: 1.5; max-height: 3em; overflow: hidden; }
+.pm-card-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: .74rem; color: var(--p2-txt-dim2); }
+.pm-card-meta span { display: inline-flex; align-items: center; gap: 4px; }
+.pm-card-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; border-top: 1px solid var(--p2-line); padding-top: 10px; }
+.pm-mini {
+    display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 8px; cursor: pointer;
+    font-size: .76rem; font-weight: 600; border: 1px solid var(--p2-line2); background: var(--p2-surface2); color: var(--p2-txt);
+}
+.pm-mini:hover { background: var(--p2-hover); border-color: var(--p2-accent-line); }
+.pm-mini.pri { background: var(--p2-accent); border-color: transparent; color: #fff; }
+.pm-mini.pri:hover { background: #4d86ff; }
+
+/* Dropzone de upload */
+.pm-drop {
+    border: 2px dashed var(--p2-line2); border-radius: 12px; padding: 30px 20px; text-align: center;
+    color: var(--p2-txt-dim); cursor: pointer; transition: border-color .15s, background .15s;
+}
+.pm-drop:hover, .pm-drop.drag { border-color: var(--p2-accent); background: var(--p2-accent-soft); }
+.pm-drop .ic { font-size: 40px; margin-bottom: 8px; }
+.pm-drop b { color: var(--p2-txt-strong); }
+.pm-drop small { display: block; margin-top: 6px; font-size: .76rem; }
+
+/* Formulário */
+.pm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+.pm-field { display: flex; flex-direction: column; gap: 5px; }
+.pm-field.full { grid-column: 1 / -1; }
+.pm-field label { font-size: .76rem; font-weight: 600; color: var(--p2-txt-dim); }
+.pm-field label .req { color: var(--p2-amber); }
+.pm-hint { font-size: .72rem; color: var(--p2-txt-dim2); }
+.pm-ia-nota { font-size: .76rem; color: var(--p2-txt-dim2); background: var(--p2-surface2); border: 1px solid var(--p2-line); border-radius: 8px; padding: 8px 11px; }
+
+/* Modal */
+.pm-modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: flex-start; justify-content: center; padding: 4vh 16px; background: rgba(0,0,0,.55); overflow: auto; }
+.pm-modal.aberto { display: flex; }
+.pm-modal-box { background: var(--p2-bg); border: 1px solid var(--p2-line2); border-radius: 16px; width: min(760px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.pm-modal-h { display: flex; align-items: center; gap: 10px; padding: 16px 20px; border-bottom: 1px solid var(--p2-line); }
+.pm-modal-h h2 { margin: 0; font-size: 1.1rem; color: var(--p2-txt-strong); }
+.pm-modal-h .fechar { margin-left: auto; background: none; border: 0; color: var(--p2-txt-dim); font-size: 22px; cursor: pointer; }
+.pm-modal-b { padding: 18px 20px; }
+.pm-modal-f { display: flex; gap: 10px; justify-content: flex-end; padding: 14px 20px; border-top: 1px solid var(--p2-line); flex-wrap: wrap; }
+
+.pm-msg { font-size: .82rem; padding: 9px 12px; border-radius: 8px; margin-top: 10px; display: none; }
+.pm-msg.ok { display: block; color: #1a7a4a; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.3); }
+.pm-msg.erro { display: block; color: #c0392b; background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); }
+.pm-msg.carregando { display: block; color: var(--p2-txt-dim); background: var(--p2-surface2); border: 1px solid var(--p2-line); }
+
+/* Detalhe / campos */
+.pm-det-linha { display: flex; gap: 10px; padding: 8px 0; border-top: 1px solid var(--p2-line); font-size: .85rem; }
+.pm-det-linha:first-child { border-top: 0; }
+.pm-det-linha b { min-width: 130px; color: var(--p2-txt-dim); font-weight: 600; }
+.pm-det-linha span { color: var(--p2-txt); }
+
+/* Texto rich (resumo/narrativa do Echelon) renderizado com segurança */
+.pm-rich { line-height: 1.55; word-break: break-word; }
+.pm-rich b, .pm-rich strong { color: var(--p2-txt-strong); }
+.pm-rich u { text-decoration-color: var(--p2-amber); }
+.pm-rich div { margin: 2px 0; }
+
+/* ── Lote de denúncias detectadas (revisão antes de salvar) ────────── */
+.pm-lote-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.pm-lote-top b { color: var(--p2-txt-strong); font-size: .95rem; }
+.pm-ai-chip { font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.pm-ai-chip.on { color: #1a7a4a; background: rgba(52, 211, 153, .14); border: 1px solid rgba(52, 211, 153, .35); }
+.pm-ai-chip.off { color: var(--p2-txt-dim2); background: var(--p2-surface2); border: 1px solid var(--p2-line); }
+.pm-item {
+    border: 1px solid var(--p2-line2); border-radius: 12px; padding: 13px 14px; margin-bottom: 12px; background: var(--p2-surface);
+}
+.pm-item.prio { border-color: rgba(248, 113, 113, .6); box-shadow: 0 0 0 1px rgba(248, 113, 113, .25) inset; }
+.pm-item-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.pm-item-h .n { font-weight: 800; color: var(--p2-txt-strong); }
+.pm-item-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.pm-tag { font-size: .64rem; font-weight: 800; padding: 3px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+.pm-tag.prio { color: #fff; background: #e03131; }
+.pm-tag.reinc-alvo { color: #fff; background: #c2410c; }
+.pm-tag.reinc-end { color: #fff; background: #9a6700; }
+.pm-tag.cat { color: var(--p2-accent); background: var(--p2-accent-soft); border: 1px solid var(--p2-accent-line); }
+.pm-reinc { font-size: .76rem; color: var(--p2-amber); background: var(--p2-amber-soft); border: 1px solid rgba(255, 160, 40, .3); border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; }
+.pm-reinc b { color: var(--p2-txt-strong); }
+.pm-item-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px 10px; }
+.pm-item-grid .pm-field.full { grid-column: 1 / -1; }
+.pm-item-grid .pm-input, .pm-item-grid .pm-select, .pm-item-grid .pm-textarea { font-size: .8rem; padding: 7px 9px; }
+.pm-item-grid .pm-textarea { min-height: 48px; }
+
+/* ── Impressão do disque-denúncia (modelo oficial) ─────────────────── */
+#pm-print { display: none; }
+@media print {
+    body.p2-body > .p2-app { display: none !important; }
+    body.p2-body { background: #fff !important; }
+    #pm-print { display: block !important; }
+    @page { margin: 14mm; }
+}
+.pm-doc { color: #111; font-family: 'Inter', Arial, sans-serif; background: #fff; max-width: 780px; margin: 0 auto; padding: 24px; }
+.pm-doc-cab { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 16px; }
+.pm-doc-cab img { height: 64px; }
+.pm-doc-cab .tit { text-align: center; flex: 1; }
+.pm-doc-cab .tit h1 { font-size: 15px; margin: 0; letter-spacing: .02em; }
+.pm-doc-cab .tit h2 { font-size: 12px; margin: 3px 0 0; font-weight: 600; color: #333; }
+.pm-doc h3 { font-size: 13px; background: #111; color: #fff; padding: 4px 8px; margin: 14px 0 8px; }
+.pm-doc-campo { display: flex; gap: 8px; font-size: 12.5px; padding: 3px 0; border-bottom: 1px dotted #bbb; }
+.pm-doc-campo b { min-width: 150px; }
+.pm-doc-texto { font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; }
+.pm-doc-rodape { margin-top: 24px; font-size: 11px; color: #555; text-align: center; border-top: 1px solid #ccc; padding-top: 8px; }
+
+@media (max-width: 680px) { .pm-form-grid, .pm-item-grid { grid-template-columns: 1fr; } .pm-det-linha b { min-width: 100px; } }
+@media (max-width: 980px) { .pm-item-grid { grid-template-columns: 1fr 1fr; } }
