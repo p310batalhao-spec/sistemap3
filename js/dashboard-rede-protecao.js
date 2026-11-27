@@ -991,6 +991,16 @@
             param = 'token=' + encodeURIComponent(dados.token);
         }
         const url = new URL('../relatorios/rede_protecao.html?' + param, location.href).href;
+        // No .exe (WebView2), window.open abre OUTRA janela WebView2 que também
+        // bloqueia download — por isso pedimos ao backend pra abrir o navegador
+        // REAL do SO (/abrir-navegador). Fora do app, segue com window.open.
+        if (emAppDesktop()) {
+            const urlLocal = (window.P3AtualizadorLocal && P3AtualizadorLocal.URL_BASE) || 'http://localhost:5057';
+            try {
+                const r = await fetch(urlLocal + '/abrir-navegador?url=' + encodeURIComponent(url));
+                if (r.ok) return;
+            } catch (e) { /* cai no window.open abaixo */ }
+        }
         window.open(url, '_blank');
     }
 

@@ -280,6 +280,10 @@
         '</div>' +
         '</div>' +
         '<div class="header-info-right">' +
+        // Badge central de status do login CAD/Quimera — aparece em TODAS as
+        // páginas, mostra ao vivo se o token está válido (auto-check 60s) e,
+        // ao clicar, abre o login ÚNICO (CadLoginModal). Pedido do usuário.
+        '<span id="clm-badge-topbar" class="clm-badge-topbar" title="Status do login CAD / Quimera"></span>' +
         '<button id="btn-tema" class="btn-tema" type="button" title="Alternar modo escuro" aria-label="Alternar modo escuro">' +
         '<svg class="icone-sol" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"/><path d="M12 2.5v2.2M12 19.3v2.2M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>' +
         '<svg class="icone-lua" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>' +
@@ -433,6 +437,29 @@
         s.src = prefixo + 'js/core/notificacoes.js?v=' + VERSAO_SCRIPTS_DINAMICOS;
         s.async = false;
         document.body.appendChild(s);
+    })();
+
+    // Login ÚNICO do CAD/Quimera + badge de status no topbar (em todas as
+    // páginas). Carrega o CadLoginModal sob demanda (degrada sem backend) e
+    // monta o badge, que já se auto-verifica a cada 60s.
+    (function () {
+        var prefixo = estaEmSubpasta() ? '../' : '';
+        function montarBadgeCad() {
+            var cont = document.getElementById('clm-badge-topbar');
+            if (cont && window.CadLoginModal && CadLoginModal.montarBadge && !cont.dataset.pronto) {
+                cont.dataset.pronto = '1';
+                try { CadLoginModal.montarBadge(cont); } catch (e) {}
+            }
+        }
+        function garantir() {
+            if (window.CadLoginModal) { montarBadgeCad(); return; }
+            var s = document.createElement('script');
+            s.src = prefixo + 'js/core/cad-login-modal.js';
+            s.async = false; s.onload = montarBadgeCad;
+            document.body.appendChild(s);
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', garantir);
+        else garantir();
     })();
 
     // Relógio e "Bem-vindo(a)" — centraliza o que hoje cada página

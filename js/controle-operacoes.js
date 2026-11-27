@@ -1249,7 +1249,9 @@
     async function iniciar() {
         CFG = await P3.loadUnidadeConfig();
         DB = CFG.firebase.databaseURL;
-        document.getElementById('co-unidade').textContent = CFG.nome || 'Unidade';
+        // Mostra o MÓDULO no painel (a unidade já aparece no topbar do shell —
+        // evita a redundância do nome da unidade duas vezes na tela).
+        document.getElementById('co-unidade').textContent = 'Controle de Operações';
         if (CFG.logoUrl) document.getElementById('co-logo').src = CFG.logoUrl;
         const h = new Date();
         document.getElementById('f-de').value = iso(new Date(h.getFullYear(), 0, 1));

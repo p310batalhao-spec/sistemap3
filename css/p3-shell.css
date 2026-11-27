@@ -72,6 +72,8 @@ body.p3shell > header .header-info-left { display: flex; align-items: center; ga
 body.p3shell > header .cabecalhotexto h1 { font-size: .98rem; font-weight: 800; letter-spacing: -.01em; margin: 0; }
 body.p3shell > header .cabecalhotexto h3 { font-size: .7rem; margin: 0; opacity: .75; }
 body.p3shell > header .header-info-right { display: flex; align-items: center; gap: 12px; }
+body.p3shell .clm-badge-topbar { display: inline-flex; align-items: center; }
+body.p3shell .clm-badge-topbar .clm-badge { cursor: pointer; }
 
 /* Hambúrguer (mobile) */
 body.p3shell #p3shell-burger {
