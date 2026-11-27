@@ -112,6 +112,27 @@
 .op-anexo .nm b { display: block; color: var(--p2-txt-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .84rem; }
 .op-anexo a { color: var(--p2-accent); text-decoration: none; font-size: .76rem; }
 
+/* Prévia completa do RELOP (modal) */
+.rl-doc { font-size: .86rem; color: var(--p2-txt); }
+.rl-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rl-num { font-size: 1.05rem; font-weight: 800; color: var(--p2-txt-strong); }
+.rl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.rl-f { display: flex; gap: 6px; font-size: .82rem; padding: 3px 0; border-bottom: 1px dashed var(--p2-line); }
+.rl-f b { color: var(--p2-txt-dim2); font-weight: 700; min-width: 92px; }
+.rl-f span { color: var(--p2-txt); flex: 1; }
+.rl-sec { margin-top: 16px; }
+.rl-sec h4 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--p2-accent); border-bottom: 1px solid var(--p2-line); padding-bottom: 5px; margin: 0 0 10px; }
+.rl-text { white-space: pre-wrap; line-height: 1.6; font-size: .86rem; color: var(--p2-txt); background: var(--p2-surface2); border-radius: 8px; padding: 11px 13px; }
+.rl-item { border: 1px solid var(--p2-line); border-radius: 10px; padding: 11px 13px; margin-bottom: 10px; background: var(--p2-surface); }
+.rl-item-h { font-weight: 700; color: var(--p2-txt-strong); margin-bottom: 8px; }
+.rl-relato { margin-top: 8px; white-space: pre-wrap; font-size: .82rem; color: var(--p2-txt-dim); line-height: 1.55; }
+.rl-imgs { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.rl-img { margin: 0; border: 1px solid var(--p2-line2); border-radius: 9px; overflow: hidden; background: var(--p2-surface2); }
+.rl-img img { width: 100%; height: 130px; object-fit: cover; display: block; cursor: zoom-in; }
+.rl-img figcaption { font-size: .68rem; color: var(--p2-txt-dim2); padding: 4px 6px; }
+.rl-imgfail { height: 130px; display: grid; place-items: center; color: var(--p2-txt-dim2); font-size: .72rem; }
+@media (max-width: 620px) { .rl-grid { grid-template-columns: 1fr; } }
+
 /* Picker com multisseleção */
 .pk-item { display: flex; align-items: center; gap: 11px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--p2-line); margin-bottom: 7px; cursor: pointer; background: var(--p2-surface); }
 .pk-item:hover { border-color: var(--p2-accent-line); }

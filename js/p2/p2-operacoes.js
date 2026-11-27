@@ -41,10 +41,10 @@
     const DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
     // ── Modal genérico ────────────────────────────────────────────────
-    function modal(titulo, corpoHtml, rodapeHtml) {
+    function modal(titulo, corpoHtml, rodapeHtml, larg) {
         let m = document.getElementById('op-modal');
         if (!m) { m = document.createElement('div'); m.id = 'op-modal'; m.className = 'pd-modal'; document.body.appendChild(m); }
-        m.innerHTML = `<div class="pd-modal-box" style="width:min(720px,100%)">
+        m.innerHTML = `<div class="pd-modal-box" style="width:min(${larg || 720}px,100%)">
             <div class="pd-modal-h"><h2>${titulo}</h2><button class="fechar" id="op-modal-x">✕</button></div>
             <div class="pd-modal-b" id="op-modal-b">${corpoHtml}</div>
             <div class="pd-modal-f" id="op-modal-f">${rodapeHtml || ''}</div></div>`;
@@ -186,13 +186,8 @@
         document.getElementById('cal-next').onclick = () => { calRef = new Date(ano, mes + 1, 1); renderCalendario(); };
         document.getElementById('cal-hoje').onclick = () => { calRef = new Date(); renderCalendario(); };
         const bi = document.getElementById('cal-import'); if (bi) bi.onclick = () => importarRelops(relopsPend);
-        box.querySelectorAll('[data-relop]').forEach(c => c.onclick = () => { const r = RELOPS.find(x => String(x.id) === c.dataset.relop); if (r) abrirRelop(r); });
+        box.querySelectorAll('[data-relop]').forEach(c => c.onclick = () => { const r = RELOPS.find(x => String(x.id) === c.dataset.relop); if (r) verRelop(r); });
         bindOps(box);
-    }
-    // Clique num RELOP: abre a operação já criada dele, ou o formulário pré-preenchido.
-    function abrirRelop(r) {
-        const o = opDoRelop(r); if (o) return abrirWorkspace(o);
-        formOperacao(null, r);
     }
     // Mapeia um RELOP (tb_relops) → campos da operação da P2.
     function prefillDeRelop(r) {
@@ -222,6 +217,99 @@
         alert(`Importação concluída: ${ok} criada(s)${erros ? ', ' + erros + ' com erro' : ''}.`);
         await carregarOps();
     }
+
+    // ── Prévia completa do RELOP (textos, itens, imagens, anexos) ─────
+    const SEL_CUMP = 'id,data_hora,situacao,resultado,relato,pessoa_id,endereco_id,mandado_id,tb_pessoas(nome_completo,cpf),tb_enderecos(tipo_logradouro,logradouro,numero,complemento,tb_bairros(nome),tb_cidades(nome),tb_estados(sigla)),tb_mandados(id,numero_mandado,tipo_mandado,processo,vara_comarca)';
+    function endRelop(e) {
+        if (!e) return '—';
+        const base = [e.tipo_logradouro, e.logradouro].filter(Boolean).join(' ') + (e.numero ? (', ' + e.numero) : '') + (e.complemento ? (' — ' + e.complemento) : '');
+        const b = e.tb_bairros && e.tb_bairros.nome ? (' — ' + e.tb_bairros.nome) : '';
+        const c = e.tb_cidades && e.tb_cidades.nome ? (' — ' + e.tb_cidades.nome) : '';
+        const uf = e.tb_estados && e.tb_estados.sigla ? ('/' + e.tb_estados.sigla) : '';
+        return (base + b + c + uf).trim() || '—';
+    }
+    function dtBr(v) { if (!v) return '—'; const d = new Date(v); return isNaN(d) ? String(v) : d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    async function carregarRelopDoc(r) {
+        let relop = r;
+        try { const full = await sb.get('tb_relops', 'select=*&id=eq.' + r.id); if (full && full[0]) relop = full[0]; } catch (e) { }
+        let itens = [];
+        try { itens = await sb.get('tb_relop_cumprimentos', 'select=id,ordem,observacao,cumprimento_id,tb_mandado_cumprimentos(' + SEL_CUMP + ')&relop_id=eq.' + r.id + '&order=ordem'); } catch (e) { itens = []; }
+        itens = (itens || []).filter(i => i.tb_mandado_cumprimentos);
+        const cumpIds = itens.map(i => i.tb_mandado_cumprimentos.id);
+        let anexos = [];
+        if (cumpIds.length) { try { anexos = await sb.get('tb_missao_anexos', 'select=id,arquivo_nome,arquivo_path,arquivo_mime,legenda,tipo_documento,cumprimento_id,bucket_id,ordem&cumprimento_id=in.(' + cumpIds.join(',') + ')&order=ordem'); } catch (e) { anexos = []; } }
+        return { relop, itens, anexos: anexos || [] };
+    }
+    function relopHtml(rl, itens, imgs, docs, jaOp) {
+        const campo = (l, v) => v ? `<div class="rl-f"><b>${l}</b><span>${esc(v)}</span></div>` : '';
+        const itensHtml = itens.map((it, i) => {
+            const c = it.tb_mandado_cumprimentos, p = c.tb_pessoas || {}, man = c.tb_mandados || {};
+            return `<div class="rl-item"><div class="rl-item-h">${i + 1}. ${esc((p.nome_completo || '—').toUpperCase())}${p.cpf ? ` · CPF ${esc(p.cpf)}` : ''}</div>
+                <div class="rl-grid">${campo('Mandado', [man.numero_mandado, man.tipo_mandado].filter(Boolean).join(' · '))}${campo('Processo', man.processo)}${campo('Vara/Comarca', man.vara_comarca)}${campo('Endereço', endRelop(c.tb_enderecos))}${campo('Data/hora', dtBr(c.data_hora))}${campo('Situação', c.situacao)}${campo('Resultado', (c.resultado || '').replace(/_/g, ' '))}</div>
+                ${c.relato ? `<div class="rl-relato">${esc(c.relato)}</div>` : ''}${it.observacao ? `<div class="rl-relato"><i>Obs.: ${esc(it.observacao)}</i></div>` : ''}</div>`;
+        }).join('');
+        return `<div class="rl-doc">
+            <div class="rl-head"><div class="rl-num">RELOP Nº ${esc(rl.numero || '—')}</div>${jaOp ? '<span class="p2-badge verde" style="font-size:.62rem">Operação já criada</span>' : ''}</div>
+            <div class="rl-grid">${campo('Data', dataBr(rl.data_documento))}${campo('Operação', rl.operacao)}${campo('Assunto', rl.assunto)}${campo('Referente', rl.referente)}${campo('Origem', rl.origem)}${campo('Difusão', rl.difusao)}${campo('Status', rl.status)}</div>
+            ${rl.narrativa ? `<div class="rl-sec"><h4>Narrativa</h4><div class="rl-text">${esc(rl.narrativa)}</div></div>` : ''}
+            ${rl.observacoes ? `<div class="rl-sec"><h4>Observações</h4><div class="rl-text">${esc(rl.observacoes)}</div></div>` : ''}
+            ${itensHtml ? `<div class="rl-sec"><h4>Cumprimentos / Alvos (${itens.length})</h4>${itensHtml}</div>` : ''}
+            ${imgs.length ? `<div class="rl-sec"><h4>Imagens (${imgs.length})</h4><div class="rl-imgs">${imgs.map(a => `<figure class="rl-img"><img data-apath="${esc(a.arquivo_path)}" data-abucket="${esc(a.bucket_id || 'midia')}" alt="${esc(a.legenda || '')}">${a.legenda ? `<figcaption>${esc(a.legenda)}</figcaption>` : ''}</figure>`).join('')}</div></div>` : ''}
+            ${docs.length ? `<div class="rl-sec"><h4>Anexos (${docs.length})</h4>${docs.map(a => `<div class="op-anexo"><span class="fic">📄</span><span class="nm"><b>${esc(a.arquivo_nome || 'documento')}</b><a href="#" data-adoc="${esc(a.id)}">abrir</a></span></div>`).join('')}</div>` : ''}
+            ${!itensHtml && !rl.narrativa && !imgs.length && !docs.length ? '<div class="fa-vazio" style="color:var(--p2-txt-dim2)">Este RELOP ainda não tem conteúdo detalhado (narrativa, cumprimentos ou anexos).</div>' : ''}
+        </div>`;
+    }
+    async function verRelop(r) {
+        modal('RELOP ' + (r.numero || ''), '<div class="fa-vazio">⏳ Carregando RELOP…</div>', '', 920);
+        const box = document.getElementById('op-modal-b');
+        let doc;
+        try { doc = await carregarRelopDoc(r); } catch (e) { box.innerHTML = `<div class="fa-vazio" style="color:var(--p2-amber)">Erro ao carregar RELOP: ${esc(e.message)}</div>`; return; }
+        const rl = doc.relop, jaOp = opDoRelop(r);
+        const imgs = doc.anexos.filter(a => /^image\//.test(a.arquivo_mime || ''));
+        const docs = doc.anexos.filter(a => !/^image\//.test(a.arquivo_mime || ''));
+        box.innerHTML = relopHtml(rl, doc.itens, imgs, docs, jaOp);
+        box.querySelectorAll('img[data-apath]').forEach(async im => { const u = await sb.signUrl(im.dataset.abucket || 'midia', im.dataset.apath, 1800).catch(() => null); if (u) im.src = u; else im.outerHTML = '<div class="rl-imgfail">imagem indisponível</div>'; });
+        box.querySelectorAll('[data-adoc]').forEach(a => a.onclick = async ev => { ev.preventDefault(); const an = doc.anexos.find(x => String(x.id) === a.dataset.adoc); if (!an) return; const u = await sb.signUrl(an.bucket_id || 'midia', an.arquivo_path, 600).catch(() => null); if (u) window.open(u, '_blank'); else alert('Não foi possível abrir o anexo.'); });
+        const f = document.getElementById('op-modal-f');
+        f.innerHTML = `<button class="p2-btn" onclick="document.getElementById('op-modal').classList.remove('aberto')">Fechar</button>
+            <button class="p2-btn" id="rl-print"><i class="fa-solid fa-print"></i> Imprimir</button>
+            <button class="p2-btn pri" id="rl-op">${jaOp ? '<i class="fa-solid fa-folder-open"></i> Abrir operação' : '<i class="fa-solid fa-plus"></i> Criar operação'}</button>`;
+        document.getElementById('rl-print').onclick = () => imprimirRelopDoc(rl, doc.itens, imgs, docs);
+        document.getElementById('rl-op').onclick = () => { if (jaOp) { fecharModal(); abrirWorkspace(jaOp); } else formOperacao(null, r); };
+    }
+    async function imprimirRelopDoc(rl, itens, imgs) {
+        const assinadas = [];
+        for (const a of imgs) { const u = await sb.signUrl(a.bucket_id || 'midia', a.arquivo_path, 1800).catch(() => null); if (u) assinadas.push({ u, leg: a.legenda }); }
+        const linha = (l, v) => v ? `<tr><td class="l">${esc(l)}</td><td>${esc(v)}</td></tr>` : '';
+        const itensP = itens.map((it, i) => {
+            const c = it.tb_mandado_cumprimentos, p = c.tb_pessoas || {}, man = c.tb_mandados || {};
+            return `<div class="pit"><h3>${i + 1}. ${esc((p.nome_completo || '—').toUpperCase())}${p.cpf ? ` — CPF ${esc(p.cpf)}` : ''}</h3><table>${linha('Mandado', [man.numero_mandado, man.tipo_mandado].filter(Boolean).join(' · '))}${linha('Processo', man.processo)}${linha('Vara/Comarca', man.vara_comarca)}${linha('Endereço', endRelop(c.tb_enderecos))}${linha('Data/hora', dtBr(c.data_hora))}${linha('Situação', c.situacao)}${linha('Resultado', (c.resultado || '').replace(/_/g, ' '))}</table>${c.relato ? `<p class="rel">${esc(c.relato)}</p>` : ''}</div>`;
+        }).join('');
+        const html = `<div class="relop-print">
+            <h1>RELATÓRIO OPERACIONAL · RELOP Nº ${esc(rl.numero || '—')}</h1>
+            <table class="cab">${linha('Data', dataBr(rl.data_documento))}${linha('Operação', rl.operacao)}${linha('Assunto', rl.assunto)}${linha('Referente', rl.referente)}${linha('Origem', rl.origem)}${linha('Difusão', rl.difusao)}</table>
+            ${rl.narrativa ? `<h2>Narrativa</h2><p>${esc(rl.narrativa).replace(/\n/g, '<br>')}</p>` : ''}
+            ${rl.observacoes ? `<h2>Observações</h2><p>${esc(rl.observacoes).replace(/\n/g, '<br>')}</p>` : ''}
+            ${itensP ? `<h2>Cumprimentos / Alvos</h2>${itensP}` : ''}
+            ${assinadas.length ? `<h2>Imagens</h2><div class="imgs">${assinadas.map(a => `<figure><img src="${esc(a.u)}">${a.leg ? `<figcaption>${esc(a.leg)}</figcaption>` : ''}</figure>`).join('')}</div>` : ''}
+        </div>
+        <style>.relop-print{font-family:Arial,Helvetica,sans-serif;color:#111;max-width:760px;margin:0 auto}
+        .relop-print h1{font-size:15px;text-align:center;border-bottom:2px solid #111;padding-bottom:8px;margin:0 0 12px}
+        .relop-print h2{font-size:13px;border-bottom:1px solid #999;margin:18px 0 8px;padding-bottom:3px}
+        .relop-print table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:6px}
+        .relop-print td{padding:4px 7px;border:1px solid #ccc;vertical-align:top}
+        .relop-print td.l{font-weight:bold;width:130px;background:#f3f3f3}
+        .relop-print p{font-size:12px;line-height:1.5;text-align:justify}
+        .relop-print .pit{margin:10px 0;page-break-inside:avoid}
+        .relop-print .pit h3{font-size:12px;margin:8px 0 4px;background:#eee;padding:4px 6px}
+        .relop-print .rel{white-space:pre-wrap}
+        .relop-print .imgs{display:flex;flex-wrap:wrap;gap:12px}
+        .relop-print figure{margin:0;width:230px;page-break-inside:avoid}
+        .relop-print img{width:100%;border:1px solid #999}
+        .relop-print figcaption{font-size:10px;color:#444;margin-top:2px}</style>`;
+        P2.imprimirDoc(html);
+    }
+
     function cardOp(o) {
         const st = STATUS[o.status] || STATUS.planejamento;
         const per = [dataBr(o.data_inicio), dataBr(o.data_fim)].filter(Boolean).join(' – ');
